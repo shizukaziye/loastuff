@@ -19,6 +19,9 @@ A single landing page linking every tool I've built for **Lost Ark** and **Leagu
 **League of Legends**
 - [Champion Pool Coverage](https://shizukaziye.github.io/lol-pool-coverage/) — analyze your pool vs the live meta
 
+**Finance**
+- [FIRE Calculator](https://shizukaziye.github.io/fire-calculator/) — financial-independence / early-retirement planner with fixed, historical, and Monte-Carlo modes
+
 ---
 
 Static single-page site (`index.html`, no build step). Unofficial fan tools — not affiliated with Smilegate, Amazon Games, or Riot Games.
