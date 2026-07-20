@@ -1,6 +1,6 @@
 # loastuff
 
-A single landing page linking every tool I've built for **Lost Ark** and **League of Legends**.
+One page linking every tool I've built for **Lost Ark** and **League of Legends**.
 
 **Live:** https://shizukaziye.github.io/loastuff/
 
