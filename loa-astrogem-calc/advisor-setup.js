@@ -169,10 +169,23 @@
   // ---- markup ----
   function css() {
     return '<style>' +
-      '#av-setup .avs-searchwrap{position:relative;flex:1;min-width:220px}' +
-      '#av-setup .avs-search{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 30px 8px 10px;font:14px inherit}' +
-      '#av-setup .avs-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--dim);cursor:pointer;font-size:15px;padding:2px 5px}' +
-      '#av-setup .avs-results{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);background:var(--panel2);border:1px solid var(--border);border-radius:8px;max-height:290px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.45)}' +
+      // Compact decision box (2026-07-21, Shizu round 3): CHARACTER row on top —
+      // the always-visible typable search + favorite chips (no dropdown plate) —
+      // then one market bar: axis chips · gold ◀ tier ▶ · base ◀ rank ▶, all
+      // beside Consider Complete / Roster bound / Get advice.
+      '#av-setup .avs-charline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}' +
+      '#av-setup .avs-bar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}' +
+      '#av-setup .avs-searchwrap{position:relative;display:inline-flex}' +
+      '#av-setup .avs-search{width:250px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 26px 6px 10px;font:12.5px inherit}' +
+      '#av-setup .avs-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--dim);cursor:pointer;font-size:14px;padding:2px 5px}' +
+      '#av-setup .avs-clear:hover{color:var(--text)}' +
+      '#av-setup .avs-results{display:none;position:absolute;z-index:45;left:0;right:0;top:calc(100% + 4px);background:var(--panel2);border:1px solid var(--border);border-radius:8px;max-height:260px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.45)}' +
+      '#av-setup .avs-selline{font-size:12.5px}' +
+      '#av-setup .avs-selline .meta{color:var(--dim);font-size:11.5px}' +
+      '#av-setup .avs-mini{padding:4px 9px;font-size:12px}' +
+      '#av-setup .avs-microlab{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700}' +
+      '#av-setup .avs-baseline{display:inline-flex;align-items:center;gap:5px}' +
+      '#av-setup .avs-gpdval{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}' +
       '#av-setup .avs-row{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);color:var(--text);padding:7px 10px;cursor:pointer;font:13px inherit}' +
       '#av-setup .avs-row:hover{background:rgba(102,199,255,.08)}' +
       '#av-setup .avs-row .rg{font-size:10px;font-weight:700;letter-spacing:.05em;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--dim)}' +
@@ -180,22 +193,17 @@
       '#av-setup .avs-row .il{margin-left:auto;color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}' +
       '#av-setup .avs-more{padding:6px 10px;color:var(--dim);font-size:11px}' +
       '#av-setup .avs-favs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}' +
+      '#av-setup .avs-favs:empty{display:none}' +
       '#av-setup .avs-fav{display:inline-flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:99px;padding:4px 11px;color:var(--text);cursor:pointer;font:12px inherit}' +
       '#av-setup .avs-fav:hover{border-color:var(--accent)}' +
       '#av-setup .avs-fav .st{color:var(--high)}' +
       '#av-setup .avs-fav .rg{color:var(--dim);font-size:10px}' +
-      '#av-setup .avs-sel{margin-top:8px;font-size:13px}' +
-      '#av-setup .avs-sel .nm{font-weight:700}' +
-      '#av-setup .avs-sel .meta{color:var(--dim)}' +
       '#av-setup .avs-status{color:var(--dim);font-size:12px;margin-top:3px;min-height:14px}' +
-      '#av-setup .avs-rowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}' +
-      // slimmer gpd chips so all 8 tiers (incl. 10M) hold one row at usual widths
-      '#av-setup .avs-gpd{padding:6px 10px}' +
-      '#av-setup .avs-rowline .lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700;min-width:120px}' +
-      '#av-setup .avs-note{font-size:11px;color:var(--dim);margin:2px 0 6px 0}' +
+      '#av-setup .avs-status:empty{display:none}' +
+      '#av-setup .avs-note{font-size:11px;color:var(--dim);margin:4px 0 0}' +
       '#av-setup .avs-note .warn{color:#e8b84a;font-weight:600}' +
-      '#av-setup .rank-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:800;font-size:14px;font-variant-numeric:tabular-nums}' +
-      '#av-setup .avs-arrow{background:var(--panel2);border:1px solid var(--border);border-radius:7px;color:var(--text);cursor:pointer;padding:3px 9px;font-size:12px}' +
+      '#av-setup .rank-badge{display:inline-block;padding:1px 8px;border-radius:99px;font-weight:800;font-size:12.5px;font-variant-numeric:tabular-nums}' +
+      '#av-setup .avs-arrow{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;padding:2px 7px;font-size:11px}' +
       '#av-setup .avs-arrow:disabled{opacity:.35;cursor:default}' +
       '</style>';
   }
@@ -208,49 +216,51 @@
   function render() {
     if (!host) return;
     var canSupport = supportAxisAvailable();
-    var selHtml = "";
-    if (charSel) {
-      selHtml = '<div class="avs-sel">★ <span class="nm">' + esc(charSel.name) + '</span> ' +
-        '<span class="meta">(' + esc(charSel.region) + (charSel.class ? " · " + esc(charSel.class) : "") +
+    var gpdIdx = Econ.GPD_TIERS.indexOf(gpd);
+    if (gpdIdx === -1) gpdIdx = Econ.GPD_TIERS.indexOf(Econ.GPD_DEFAULT);
+    var selLine = charSel
+      ? '<span class="avs-selline">★ <b>' + esc(charSel.name) + '</b> <span class="meta">(' + esc(charSel.region) +
+        (charSel.class ? " · " + esc(charSel.class) : "") +
         (charSel.itemLevel != null ? " · ilvl " + Number(charSel.itemLevel).toLocaleString() : "") +
-        (charSel.combatPower != null ? " · CP " + Number(charSel.combatPower).toLocaleString("en-US") : "") + ')</span></div>';
-    }
-    var gpdChips = Econ.GPD_TIERS.map(function (g) {
-      return '<button type="button" class="mbtn avs-gpd' + (g === gpd ? " active" : "") + '" data-gpd="' + g + '">' + Econ.gpdLabel(g) + '</button>';
-    }).join("");
+        (charSel.combatPower != null ? " · CP " + Number(charSel.combatPower).toLocaleString("en-US") : "") + ')</span></span>'
+      : "";
     var gnote = gpdNoteText();
     var m = getMarket();
 
     host.innerHTML = css() +
-      '<div class="subh">Character (optional)</div>' +
-      '<div class="avs-rowline">' +
+      '<div class="avs-charline">' +
       '  <span class="avs-searchwrap">' +
-      '    <input id="avs-search" class="avs-search" type="search" placeholder="Search ' + (searchRows ? searchRows.length.toLocaleString() : "9,500+") + ' graded characters…" autocomplete="off">' +
+      '    <input id="avs-search" class="avs-search" type="search" placeholder="Search ' + (searchRows ? searchRows.length.toLocaleString() : "9,500+") + ' characters…" autocomplete="off">' +
       (charSel ? '<button type="button" id="avs-clear" class="avs-clear" title="Clear character">×</button>' : "") +
-      '    <div id="avs-results" class="avs-results" style="display:none"></div>' +
+      '    <div id="avs-results" class="avs-results"></div>' +
+      '  </span>' +
+      '  <span id="avs-favs" class="avs-favs" style="margin-top:0"></span>' +
+      selLine +
+      '</div>' +
+      '<div class="avs-bar">' +
+      (canSupport
+        ? '<button type="button" class="mbtn avs-mini avs-axis' + (axis === "dps" ? " active" : "") + '" data-axis="dps">DPS</button>' +
+          '<button type="button" class="mbtn avs-mini avs-axis' + (axis === "support" ? " active" : "") + '" data-axis="support">Support</button>'
+        : "") +
+      '  <span class="avs-baseline" title="Gold per 1% damage tier' + (gpdAuto ? " — auto-set from combat power" : "") + '">' +
+      '    <span class="avs-microlab">gold</span>' +
+      '    <button type="button" id="avs-gpd-dn" class="avs-arrow"' + (gpdIdx <= 0 ? " disabled" : "") + '>&#9664;</button>' +
+      '    <span class="avs-gpdval">' + Econ.gpdLabel(gpd) + '/1%</span>' +
+      '    <button type="button" id="avs-gpd-up" class="avs-arrow"' + (gpdIdx >= Econ.GPD_TIERS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
+      '  </span>' +
+      '  <span class="avs-baseline" title="Baseline — ' + esc(m.provenance.baseNote) + '">' +
+      '    <span class="avs-microlab">base</span>' +
+      '    <button type="button" id="avs-base-dn" class="avs-arrow"' + (baseIdx <= 0 ? " disabled" : "") + '>&#9664;</button>' +
+      rankBadge(m.baselineRank) +
+      '    <button type="button" id="avs-base-up" class="avs-arrow"' + (baseIdx >= Econ.GRADE_ROWS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
       '  </span>' +
       '</div>' +
-      '<div id="avs-favs" class="avs-favs"></div>' +
-      selHtml +
-      '<div id="avs-status" class="avs-status">' + esc(charStatus) + '</div>' +
-      '<div class="subh">Market assumptions</div>' +
-      (canSupport
-        ? '<div class="avs-rowline"><span class="lab">Axis</span>' +
-          '<button type="button" class="mbtn avs-axis' + (axis === "dps" ? " active" : "") + '" data-axis="dps">DPS</button>' +
-          '<button type="button" class="mbtn avs-axis' + (axis === "support" ? " active" : "") + '" data-axis="support">Support</button>' +
-          '</div>'
-        : "") +
-      '<div class="avs-rowline"><span class="lab">Gold / 1% DMG</span>' + gpdChips + '</div>' +
       (gnote ? '<div class="avs-note">' + gnote.replace(/⚠ [^·]+/g, function (w) { return '<span class="warn">' + esc(w.trim()) + '</span>'; }) + '</div>' : "") +
-      '<div class="avs-rowline"><span class="lab">Baseline</span>' +
-      '  <button type="button" id="avs-base-dn" class="avs-arrow"' + (baseIdx <= 0 ? " disabled" : "") + '>&#9664;</button>' +
-      rankBadge(m.baselineRank) +
-      '  <button type="button" id="avs-base-up" class="avs-arrow"' + (baseIdx >= Econ.GRADE_ROWS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
-      '  <span class="avs-note" style="margin:0">' + esc(m.provenance.baseNote) + '</span>' +
-      '</div>';
+      '<div id="avs-status" class="avs-status">' + esc(charStatus) + '</div>';
 
     renderFavs();
     wire();
+    searchOpen = false;   // results dropdown always rebuilds hidden
   }
 
   function renderStatus() {
@@ -318,11 +328,19 @@
     }
     host.onclick = function (ev) {
       var t = ev.target;
+      // FIRST: any click outside the search wrap closes the results dropdown —
+      // checked before the control branches, because several of them
+      // early-return (an already-active chip) and would otherwise strand it open.
+      if (searchOpen && !(t.closest && t.closest(".avs-searchwrap"))) {
+        var rb = host.querySelector("#avs-results");
+        if (rb) rb.style.display = "none";
+        searchOpen = false;
+      }
       var row = t.closest ? t.closest(".avs-row") : null;
       if (row) {
         var box = host.querySelector("#avs-results");
         var hit = box && box._hits && box._hits[parseInt(row.getAttribute("data-ri"), 10)];
-        if (hit) { box.style.display = "none"; searchOpen = false; selectCharacter(hit); }
+        if (hit) { box.style.display = "none"; searchOpen = false; selectCharacter(hit); }   // render() closes the pop
         return;
       }
       var fav = t.closest ? t.closest(".avs-fav") : null;
@@ -334,9 +352,12 @@
         return;
       }
       if (t.id === "avs-clear") { clearCharacter(); return; }
-      if (t.classList && t.classList.contains("avs-gpd")) {
-        gpd = parseInt(t.getAttribute("data-gpd"), 10);
-        gpdAuto = false;                       // manual click clears the auto flag
+      if (t.id === "avs-gpd-dn" || t.id === "avs-gpd-up") {
+        var ti = Econ.GPD_TIERS.indexOf(gpd);
+        if (ti === -1) ti = Econ.GPD_TIERS.indexOf(Econ.GPD_DEFAULT);
+        ti = Math.max(0, Math.min(Econ.GPD_TIERS.length - 1, ti + (t.id === "avs-gpd-up" ? 1 : -1)));
+        gpd = Econ.GPD_TIERS[ti];
+        gpdAuto = false;                       // manual step clears the auto flag
         render(); emit(); return;
       }
       if (t.classList && t.classList.contains("avs-axis")) {
@@ -353,12 +374,6 @@
         if (ci == null) baseShift = want - 5;  // manual mode: shift is relative to the B+ default
         applyBaseline();
         render(); emit(); return;
-      }
-      // click elsewhere closes the dropdown
-      if (searchOpen && !(t.closest && t.closest(".avs-searchwrap"))) {
-        var b = host.querySelector("#avs-results");
-        if (b) b.style.display = "none";
-        searchOpen = false;
       }
     };
   }

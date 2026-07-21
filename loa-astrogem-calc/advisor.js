@@ -104,7 +104,7 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 70;   // MUST match this file's ?v= in index.html on every deploy
+  var CLIENT_V = 72;   // MUST match this file's ?v= in index.html on every deploy
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -143,13 +143,19 @@
   function tabMarkup() {
     return '' +
 '<style>' +
-'  #tab-advisor .av-drop{border:2px dashed var(--border);border-radius:10px;padding:22px 14px;text-align:center;color:var(--dim);cursor:pointer;transition:border-color .15s,background .15s;background:var(--panel2);font-size:13px}' +
+// no pointer cursor while empty — the zone is drop/paste intake, not a button;
+// once an image lands, clicking toggles expand ⇄ minimize (pointer returns)
+'  #tab-advisor .av-drop{border:2px dashed var(--border);border-radius:10px;padding:14px 12px;text-align:center;color:var(--dim);cursor:default;transition:border-color .15s,background .15s;background:var(--panel2);font-size:12.5px}' +
+'  #tab-advisor .av-drop.has-img{cursor:pointer}' +
 '  #tab-advisor .av-drop.drag{border-color:var(--accent);background:rgba(102,199,255,.08);color:var(--text)}' +
 '  #tab-advisor .av-drop b{color:var(--text)}' +
 // once a screenshot lands, it fills the zone at full column width, undimmed
 '  #tab-advisor .av-drop.has-img{padding:8px}' +
 '  #tab-advisor .av-drop.has-img .hint{display:none}' +
-'  #tab-advisor .av-preview{display:none;width:100%;height:auto;border-radius:8px;border:1px solid var(--border)}' +
+// The preview starts MINIMIZED (av-min, 56px strip — see showPreviewBlob) so the
+// column stays short; "expand to cross-check" opens the parser's PANEL CROP at a
+// readable size (object-fit:contain — never crop away what the user is checking)
+'  #tab-advisor .av-preview{display:none;width:100%;height:auto;max-height:440px;object-fit:contain;object-position:top;background:#0b0e14;border-radius:8px;border:1px solid var(--border)}' +
 '  #tab-advisor .av-drop.has-img .av-preview{display:block}' +
 '  #tab-advisor .av-drop .cap{display:none;font-size:11px;color:var(--dim);margin-top:7px}' +
 '  #tab-advisor .av-drop.has-img .cap{display:block}' +
@@ -158,19 +164,23 @@
 '  #tab-advisor .av-status.err{color:var(--bad)}' +
 '  #tab-advisor .av-engines{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}' +
 '  #tab-advisor .mbtn:disabled{opacity:.45;cursor:not-allowed}' +
-'  #tab-advisor .av-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}' +
+// all four action cards on ONE row (Shizu's sketch — Reset no longer orphaned);
+// falls back to 2×2 when the column can't fit four across
+'  #tab-advisor .av-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}' +
+'  @media(max-width:1150px){#tab-advisor .av-cards{grid-template-columns:1fr 1fr}}' +
 '  #tab-advisor .av-cols{display:flex;gap:16px;align-items:flex-start;margin-top:14px}' +
 '  #tab-advisor .av-col-l{flex:0 0 470px;max-width:470px;min-width:0}' +
 '  #tab-advisor .av-col-r{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px}' +
 '  @media(max-width:880px){#tab-advisor .av-cols{flex-direction:column}#tab-advisor .av-col-l{flex:1 1 auto;max-width:none;width:100%}#tab-advisor .av-col-r{width:100%}}' +
 '  #tab-advisor .av-result-empty{border:1px dashed var(--border);border-radius:10px;background:var(--panel2);color:var(--dim);font-size:13px;text-align:center;padding:26px 16px}' +
-'  #tab-advisor .av-setup-panel{margin:0}' +
-'  #tab-advisor .av-gorow{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}' +
-'  #tab-advisor .av-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--panel2)}' +
+'  #tab-advisor .av-ctrlbar{padding:10px 12px}' +
+'  #tab-advisor .primary:disabled{opacity:.45;cursor:not-allowed}' +
+// tighter cards so four fit across the column
+'  #tab-advisor .av-card{border:1px solid var(--border);border-radius:10px;padding:10px 11px;background:var(--panel2)}' +
 '  #tab-advisor .av-card.best{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}' +
-'  #tab-advisor .av-card .cn{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}' +
-'  #tab-advisor .av-card .pill{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--accent);color:#06121f;border-radius:99px;padding:2px 7px}' +
-'  #tab-advisor .av-card .cm{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.7}' +
+'  #tab-advisor .av-card .cn{font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}' +
+'  #tab-advisor .av-card .pill{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:var(--accent);color:#06121f;border-radius:99px;padding:2px 6px}' +
+'  #tab-advisor .av-card .cm{font-size:11.5px;color:var(--dim);margin-top:7px;line-height:1.65}' +
 '  #tab-advisor .av-card .ev{font-variant-numeric:tabular-nums;font-weight:700}' +
 '  #tab-advisor .av-best{font-size:13px;margin:2px 0 0;color:var(--dim)}' +
 '  #tab-advisor .av-best b{color:var(--accent);font-size:18px}' +
@@ -193,19 +203,32 @@
 '  #tab-advisor .av-drop .av-min-btn{display:none;font-size:11px;color:var(--dim);background:none;border:0;cursor:pointer;text-decoration:underline;padding:0;margin-top:4px}' +
 '  #tab-advisor .av-drop.has-img .av-min-btn{display:inline-block}' +
 '</style>' +
-// two balanced columns: LEFT = the cut (the lookalike window),
-// RIGHT = your economy (character/market), the verdict, then the screenshot intake.
+// Redesign 2026-07-21 (Shizu, round 2): two columns — LEFT = the cut (lookalike
+// window; rarity/base cost live inside it), RIGHT = the intake (compact
+// screenshot), then ONE controls box holding the whole decision surface:
+// character/axis/gold/baseline (AdvisorSetup renders compact into av-setup)
+// plus Consider Complete / Roster bound / Get advice — then the verdict.
 '<div class="av-cols">' +
 '  <div class="av-col-l">' +
 '    <div id="av-window"></div>' +
 '  </div>' +
 '  <div class="av-col-r">' +
-'    <div class="panel av-setup-panel"><div id="av-setup"></div>' +
-'      <div class="barrow av-gorow">' +
+'    <div class="av-drop" id="av-drop">' +
+'      <span class="hint"><b>Drop or paste</b> — a Processing screenshot prefills the window. Or just tap the fields.</span>' +
+'      <img id="av-preview" class="av-preview" alt="screenshot preview">' +
+'      <span class="cap">drop or paste a new screenshot to replace · click to expand / minimize</span>' +
+'      <button type="button" class="av-min-btn" id="av-min-btn">minimize preview</button>' +
+'    </div>' +
+'    <div class="av-share" id="av-share"></div>' +
+'    <div class="av-engines" id="av-engines"></div>' +
+'    <div class="av-status" id="av-status"></div>' +
+'    <div class="panel av-ctrlbar">' +
+'      <div id="av-setup"></div>' +
+'      <div class="barrow" style="margin-top:8px;padding-top:10px;border-top:1px solid var(--border)">' +
 '        <button class="mbtn" id="av-sim2" data-on="1">Consider Complete: on</button>' +
 '        <button class="mbtn" id="av-bound" data-on="0">Roster bound: no</button>' +
 '        <button class="primary" id="av-go">Get advice</button>' +
-'        <span class="note" id="av-go-note"></span>' +
+'        <button class="primary" id="av-read" type="button" style="display:none" title="Grabs the current frame, reads it, and shows advice">📷 Read screen now</button>' +
 '      </div>' +
 '      <div id="av-warns"></div>' +
 '      <div class="av-bar" id="av-bar"><i id="av-bar-i"></i></div>' +
@@ -217,17 +240,7 @@
 '      <div class="av-cards" id="av-cards"></div>' +
 '      <div class="note" id="av-result-note"></div>' +
 '    </div>' +
-'    <div class="av-drop" id="av-drop">' +
-'      <span class="hint"><b>Drop, paste, or click</b> — a Processing screenshot prefills the window. Or just tap the fields.</span>' +
-'      <img id="av-preview" class="av-preview" alt="screenshot preview">' +
-'      <span class="cap">click, drop, or paste a new screenshot to replace</span>' +
-'      <button type="button" class="av-min-btn" id="av-min-btn">minimize preview</button>' +
-'      <input type="file" id="av-file" accept="image/*" style="display:none">' +
-'    </div>' +
-'    <div class="av-share" id="av-share"></div>' +
-'    <div class="av-engines" id="av-engines"></div>' +
-'    <div class="av-status" id="av-status"></div>' +
-'    <div class="note" style="font-size:11px;margin-top:6px">Screenshots you read here are uploaded with the parse and your corrections to improve the reader.</div>' +
+'    <div class="note" style="font-size:11px;margin-top:2px">Screenshots you read here are uploaded with the parse and your corrections to improve the reader.</div>' +
 '  </div>' +
 '</div>' +
 '<details class="method">' +
@@ -238,7 +251,7 @@
 '    <li><b>Reroll</b> redraws the 4 outcomes; only the <i>last</i> reroll costs 3,800g (the on-screen counter shows the free ones; the window translates). Not available on turn 1 &mdash; the game greys it out until the gem has been processed once.</li>' +
 '    <li><b>Complete</b> stops now and keeps the current gem (Turn&nbsp;1 = dismantle, value 0). Ranked against Process/Reroll whenever the toggle is on &mdash; it wins when both are negative.</li>' +
 '    <li><b>Reset</b> (last turn only): pay 20,000g to return the gem to a fresh unprocessed state. Recommended when it beats both Process and Complete. Because a reset may re-roll the side effects, the advisor also lists the fresh-cut value of every effect pair whenever reset is a live option.</li>' +
-'    <li><b>P(above baseline)</b> is the probability the final gem clears your baseline under optimal play. A below-baseline gem is valued as fusion fodder, not zero.</li>' +
+'    <li><b>Success</b> is the probability the final gem clears your baseline under optimal play. A below-baseline gem is valued as fusion fodder, not zero.</li>' +
 '  </ul>' +
 '  <p class="note">The baseline is the S/A/B/C/D rank ladder the Grader uses (12 anchor grades); picking a character sets it one rank above your stronger 3rd-lowest gem, and sets the gold-per-1%-damage tier from combat power. On the Support axis gems are valued by party contribution (supportValue) against support-scale baselines; support advice has no Monte-Carlo fallback &mdash; if the exact model fails you get an error, never a silently mis-ranked answer.</p>' +
 '</details>';
@@ -616,6 +629,7 @@
     setStatus("Reading " + (sourceNoun || "screenshot") + " with " + (eng.label || eng.name) + "…", "working");
     eng.parseScreenshot(input).then(function (parsed) {
       window.AdvisorWindow.setParsed(parsed);
+      showPanelCrop(input, parsed._srcPanel);   // expand view = the parsed panel
       // stage the collection record; it ships when the user presses Get advice
       // (their edits between now and then are the ground-truth labels)
       Promise.resolve(collectBlob || (input instanceof Blob ? input : null)).then(function (b) {
@@ -649,12 +663,29 @@
       setStatus("Could not read the " + (sourceNoun || "screenshot") + ": " + (err && err.message || err) + " — fill the window manually.", "err");
     });
   }
+  // Preview lands MINIMIZED (thin strip): the working surface is the window, not
+  // the screenshot. "Expand to cross-check" opens it — and once the parse reports
+  // a panel rect the preview becomes the CROPPED panel (showPanelCrop), so what
+  // you expand is exactly what the parser read, field for field.
   function showPreviewBlob(blob) {
     var url = URL.createObjectURL(blob);
     if (lastObjectUrl) URL.revokeObjectURL(lastObjectUrl);
     lastObjectUrl = url;
     $("av-preview").src = url;
-    $("av-drop").classList.add("has-img");
+    var dz = $("av-drop");
+    dz.classList.add("has-img");
+    dz.classList.add("av-min");
+    $("av-min-btn").textContent = "expand to cross-check";
+  }
+  // Swap the preview to the parser's panel crop (768px webp — the same helper the
+  // AI verifier sends), keeping the expand view comparable to the window beside it.
+  function showPanelCrop(input, rect) {
+    if (!rect || !(rect.w > 40)) return;
+    cropPanelWebp(input, rect, function (u) {
+      if (!u) return;
+      if (lastObjectUrl) { URL.revokeObjectURL(lastObjectUrl); lastObjectUrl = null; }
+      $("av-preview").src = u;
+    });
   }
   function onImageFile(file) {
     if (!file || !/^image\//.test(file.type)) { setStatus("Not an image file.", "err"); return; }
@@ -665,40 +696,39 @@
   // ---------------- live screen share (one click per turn, no screenshotting) ----------------
   // getDisplayMedia needs a user gesture and a secure context (https / localhost).
   // First click ("Share game screen" in av-share) opens the browser's picker (pick
-  // the Lost Ark window/monitor). After that, av-go (up in the top row, see
-  // updateGoButton) BECOMES the per-turn action: it grabs one frame, parses it
-  // locally, and auto-advises — one press instead of "read" then "get advice" as
-  // two separate clicks. The frame + parse + your corrections are also sent to the
+  // the Lost Ark window/monitor). After that, 📷 Read screen now (av-read, in the
+  // controls bar) is the per-turn action: it grabs one frame, parses it locally,
+  // and auto-advises. Get advice stays its own separate, always-visible button —
+  // correcting a misread field then recomputing/saving must never require a fresh
+  // frame grab. The frame + parse + your corrections are also sent to the
   // collection endpoint to improve the parser (see the note under the drop zone).
   var shareStream = null, shareVideo = null;
   function shareSupported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
   }
-  // While actively sharing, the "Read screen now" action rides the SAME button as
-  // "Get advice" (av-go, up in the top row) instead of a second button down here —
-  // grabAndParse() already ends in an auto-triggered runAdvice(), so one press does
-  // both. Keeps this bar to just the one-time picker (not sharing yet) or a "stop
-  // sharing" exit (sharing), and means av-go never needs a scroll to reach.
-  function updateGoButton() {
-    var go = $("av-go");
-    if (!go) return;
-    if (shareStream) {
-      go.textContent = "📷 Read screen now";
-      go.title = "Grabs the current frame, reads it, and shows advice";
-    } else {
-      go.textContent = "Get advice";
-      go.title = "";
-    }
+  // Get advice NEVER changes label or disappears (redesign 2026-07-21 — the old
+  // label-swap made it vanish mid-share, right when corrections need it). While
+  // sharing, the separate 📷 Read screen now button appears beside it.
+  function updateReadButton() {
+    var b = $("av-read");
+    if (b) b.style.display = shareStream ? "" : "none";
+  }
+  // Both buttons share a busy state so a solve can't be launched twice
+  // (or a fresh frame grabbed) while one is already running.
+  function setGoBusy(busy) {
+    var a = $("av-go"), b = $("av-read");
+    if (a) a.disabled = busy;
+    if (b) b.disabled = busy;
   }
   function renderShareBar() {
     var bar = $("av-share");
     if (!bar) return;
     bar.innerHTML = "";
-    updateGoButton();
+    updateReadButton();
     if (!shareSupported()) return;
     if (!shareStream) {
       var b = el("button", { class: "mbtn", type: "button",
-        title: "Pick the Lost Ark window once; then Get advice reads + advises each turn" }, "🖥 Share game screen");
+        title: "Pick the Lost Ark window once; then 📷 Read screen now grabs + reads + advises each turn" }, "🖥 Share game screen");
       b.addEventListener("click", startShare);
       bar.appendChild(b);
     } else {
@@ -799,7 +829,7 @@
     try { window.NESTED_INNER_RUNS = MC_INNER; } catch (e) {}
     var bar = $("av-bar"), barI = $("av-bar-i");
     bar.style.display = "block"; barI.style.width = "0%"; bar.classList.remove("av-bar-indeterminate");
-    $("av-go").disabled = true;
+    setGoBusy(true);
     clearResult("Calculating the recommended action…");
     setStatus(hasDP ? "Solving the exact decision model…" : "Simulating…", "working");
     function onProgress(done, total) { barI.style.width = (total ? Math.round((done / total) * 100) : 0) + "%"; }
@@ -824,7 +854,7 @@
               console.error("DP failed:", dpErr);
               if (m.axis === "support" || !hasMC) {
                 setStatus("The exact model failed" + (m.axis === "support" ? " — support-axis advice has no Monte-Carlo fallback" : "") + ": " + (dpErr && dpErr.message || dpErr), "err");
-                $("av-go").disabled = false; bar.style.display = "none";
+                setGoBusy(false); bar.style.display = "none";
                 clearResult();
                 return;
               }
@@ -833,7 +863,7 @@
               engineUsed = "mc";
             }
           } else {
-            if (m.axis === "support") { setStatus("Support-axis advice needs the exact model (not loaded).", "err"); $("av-go").disabled = false; bar.style.display = "none"; return; }
+            if (m.axis === "support") { setStatus("Support-axis advice needs the exact model (not loaded).", "err"); setGoBusy(false); bar.style.display = "none"; return; }
             result = window.evaluateActions(state, m.baselineScore, m.gpd, MC_RUNS, onProgress, { includeSim2: includeSim2 });
             engineUsed = "mc";
           }
@@ -853,7 +883,7 @@
           clearResult();
         } finally {
           bar.classList.remove("av-bar-indeterminate");
-          $("av-go").disabled = false;
+          setGoBusy(false);
           setTimeout(function () { bar.style.display = "none"; }, 400);
         }
       })();
@@ -909,7 +939,9 @@
       }
     })();
 
-    var scoreLabel = sup ? "party value (support axis)" : "% dmg";
+    // Card copy is deliberately terse (Shizu 2026-07-21: rows were wrapping at
+    // four-across): "Success" = P(final gem clears the baseline under optimal
+    // play); the Exp.-final-gem row is gone entirely.
     var cards = $("av-cards");
     cards.innerHTML = "";
     ["Process", "Reroll", "Complete", "Reset"].forEach(function (name) {
@@ -920,10 +952,7 @@
       var odds = (a.aboveBaselineOdds != null ? (a.aboveBaselineOdds * 100).toFixed(1) : "—");
       var evClass = a.value >= 0 ? "good" : "bad";
       var costLine = isFinite(a.expectedCost) && a.expectedCost > 0
-        ? '<div>Avg. spend from here: <span class="ev">' + Math.round(a.expectedCost).toLocaleString() + "g</span></div>"
-        : "";
-      var scoreLine = isFinite(a.expectedScore)
-        ? '<div>Exp. final gem: <span class="ev">' + a.expectedScore.toFixed(sup ? 3 : 2) + " " + scoreLabel + "</span></div>"
+        ? '<div>Avg. spend: <span class="ev">' + Math.round(a.expectedCost).toLocaleString() + "g</span></div>"
         : "";
       var c = el("div", { class: "av-card" + (isBest ? " best" : "") });
       c.innerHTML =
@@ -931,9 +960,9 @@
         '<div class="cm">' +
           (disabled
             ? '<div style="color:var(--dim)">Not applicable' + (name === "Complete" && includeSim2 === false ? " (not ranked)" : (name === "Reroll" ? (state.currentTurn === 1 ? " (turn 1 — process once first)" : " (no rerolls left)") : (name === "Complete" ? " (turn 1 — process once first)" : (name === "Reset" ? " (ranked on the last turn)" : "")))) + "</div>"
-            : '<div>P(above baseline): <span class="ev">' + odds + '%</span></div>' +
+            : '<div>Success: <span class="ev">' + odds + '%</span> <span title="Probability the final gem clears your baseline under optimal play" style="cursor:help;opacity:.55">?</span></div>' +
               '<div>Net EV: <span class="ev ' + evClass + '">' + fmtGold(a.value) + "</span></div>" +
-              scoreLine + costLine) +
+              costLine) +
         "</div>";
       cards.appendChild(c);
     });
@@ -1004,16 +1033,14 @@
       b.classList.toggle("active", b.dataset.on === "1");
     });
 
-    // drop zone + file + paste (the lookalike frame accepts drops too)
+    // drop zone: drop / paste intake only (the file-picker click was removed
+    // 2026-07-21 — Shizu). Clicking the zone now toggles expand ⇄ minimize; the
+    // av-min-btn label is the visible affordance and its clicks just bubble here.
     var dz = $("av-drop");
-    dz.addEventListener("click", function () { $("av-file").click(); });
-    // Minimize the captured preview so it doesn't push the recapture button (and
-    // everything below it) further down the column every turn. stopPropagation
-    // keeps this click from also bubbling into dz's own "click = open file picker".
-    $("av-min-btn").addEventListener("click", function (e) {
-      e.stopPropagation();
+    dz.addEventListener("click", function () {
+      if (!dz.classList.contains("has-img")) return;
       var min = dz.classList.toggle("av-min");
-      $("av-min-btn").textContent = min ? "show preview" : "minimize preview";
+      $("av-min-btn").textContent = min ? "expand to cross-check" : "minimize preview";
     });
     dz.addEventListener("dragover", function (e) { e.preventDefault(); dz.classList.add("drag"); });
     dz.addEventListener("dragleave", function () { dz.classList.remove("drag"); });
@@ -1030,10 +1057,6 @@
       var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (f) onImageFile(f);
     });
-    $("av-file").addEventListener("change", function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (f) onImageFile(f);
-    });
     document.addEventListener("paste", function (e) {
       // only when the advisor tab is visible
       if (!elTab.classList.contains("active")) return;
@@ -1047,11 +1070,11 @@
       }
     });
 
-    // While sharing, av-go IS the "read + advise" button (grabAndParse ends in an
-    // auto runAdvice()); otherwise it runs advice on whatever's in the window now.
-    $("av-go").addEventListener("click", function () {
-      if (shareStream) grabAndParse(); else runAdvice();
-    });
+    // Get advice always runs the solver on the CURRENT window (and ships the
+    // staged collection record); 📷 Read screen now (share only) grabs a fresh
+    // frame, which ends in its own auto-advice.
+    $("av-go").addEventListener("click", function () { runAdvice(); });
+    $("av-read").addEventListener("click", function () { grabAndParse(); });
 
     window.addEventListener("beforeunload", function () {
       var t = window.ocrGetEngine && window.ocrGetEngine("structural");

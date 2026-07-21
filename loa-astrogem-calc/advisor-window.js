@@ -148,20 +148,6 @@
       '<path d="M10 3 a7 7 0 1 0 7 7" fill="none" stroke="#c7ccd6" stroke-width="2"/>' +
       '<path d="M10 0 L14 3.2 L10 6.4 Z" fill="#c7ccd6"/></svg>';
   }
-  function gemIconSvg(rarity, processed) {
-    var rc = RARITY_COLOR[rarity] || RARITY_COLOR.epic;
-    return '<svg viewBox="0 0 56 56" width="52" height="52" aria-hidden="true">' +
-      '<rect x="3" y="3" width="50" height="50" rx="7" fill="#182238" stroke="' + rc + '" stroke-width="3"/>' +
-      '<path d="M28 12 L41 28 L28 44 L15 28 Z" fill="#8fd7ee" stroke="#3e7f96" stroke-width="1.6"/>' +
-      '<path d="M28 12 L41 28 L28 28 Z" fill="#ffffff" opacity="0.35"/>' +
-      '<path d="M22 24 L34 24 M28 18 L28 34 M23 32 L33 32" stroke="#1e6f86" stroke-width="1.6" fill="none"/>' +
-      (processed
-        ? '<g><circle cx="46" cy="46" r="8.5" fill="#c9ccd4" stroke="#5d6673" stroke-width="1.4"/>' +
-          '<circle cx="46" cy="46" r="3" fill="#5d6673"/>' +
-          '<path d="M46 36.5 v3 M46 52.5 v3 M36.5 46 h3 M52.5 46 h3 M39.5 39.5 l2 2 M50.5 50.5 l2 2 M52.5 39.5 l-2 2 M41.5 50.5 l-2 2" stroke="#5d6673" stroke-width="1.6"/></g>'
-        : "") +
-      '</svg>';
-  }
 
   // ---- outcome captions (game phrasing; template map is deliberately tiny so the
   // owner can fine-tune wording against real screenshots) ----
@@ -200,10 +186,14 @@
   // ---- styles ----
   function css() {
     return '<style id="pw-style">' +
-      '#av-window .pw-metabar{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:10px}' +
+      // Rarity + base cost live INSIDE the frame now (redesign 2026-07-21): they are
+      // parsed fields like everything else in the window, so they sit with the window
+      // and inherit the same low-confidence glow (group-level pw-unconfirmed).
+      '#av-window .pw-metabar{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 0 10px;padding:7px 8px;background:rgba(8,11,18,.55);border:1px solid #232a38;border-radius:9px;font-family:system-ui,sans-serif}' +
       // groups wrap as units — a lone "10" chip orphaned on its own line reads badly
-      '#av-window .pw-metabar .grp{display:inline-flex;gap:8px;align-items:center;white-space:nowrap}' +
-      '#av-window .pw-metabar .lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700}' +
+      '#av-window .pw-metabar .grp{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;border-radius:8px}' +
+      '#av-window .pw-metabar .lab{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8a93a5;font-weight:700}' +
+      '#av-window .pw-metabar .mbtn{padding:4px 9px;font-size:12px}' +
       '#av-window .pw-frame{position:relative;max-width:420px;margin:0 auto;background:linear-gradient(180deg,#131a29 0%,#0e1420 100%);border:1px solid var(--border);outline:1px solid #39414f;outline-offset:-4px;border-radius:12px;padding:16px 14px 14px;font-family:Georgia,"Times New Roman",serif;color:#e7e9ee;box-shadow:0 10px 30px rgba(0,0,0,.45)}' +
       '#av-window .pw-title{text-align:center;font-size:22px;letter-spacing:.08em;color:#f5f7fb;margin:0 0 10px}' +
       '#av-window .pw-head{text-align:center}' +
@@ -295,20 +285,24 @@
 
     host.innerHTML = css() +
       (unconfN ? '<div class="pw-confstrip">Parsed — <b>' + unconfN + '</b> field' + (unconfN > 1 ? "s" : "") + ' need a look; tap the highlighted ones to confirm.</div>' : "") +
-      '<div class="pw-metabar">' +
-      '<span class="grp"><span class="lab">Rarity</span>' +
+      '<div class="pw-frame" id="pw-frame">' +
+      '  <h3 class="pw-title">Processing</h3>' +
+      // Rarity/base cost are PARSED fields — they live inside the frame with the
+      // rest of the window and glow at group level when the parse is unsure
+      // (rarity derives from maxTurns; see setParsed).
+      '  <div class="pw-metabar">' +
+      '  <span class="grp' + conf("state.maxTurns") + '"><span class="lab">Rarity</span>' +
       ["uncommon", "rare", "epic"].map(function (r) {
         return '<button type="button" class="mbtn' + (win.rarity === r ? " active" : "") + '" data-act="rarity" data-v="' + r + '">' + r.charAt(0).toUpperCase() + r.slice(1) + ' (' + RARITY[r].maxTurns + ')</button>';
       }).join("") + '</span>' +
-      '<span class="grp"><span class="lab">Base cost</span>' +
+      '  <span class="grp' + conf("config.baseCost") + '"><span class="lab">Base cost</span>' +
       [8, 9, 10].map(function (b) {
-        return '<button type="button" class="mbtn' + (c.baseCost === b ? " active" : "") + conf("config.baseCost") + '" data-act="basecost" data-v="' + b + '">' + b + '</button>';
+        return '<button type="button" class="mbtn' + (c.baseCost === b ? " active" : "") + '" data-act="basecost" data-v="' + b + '">' + b + '</button>';
       }).join("") + '</span>' +
-      '</div>' +
-      '<div class="pw-frame" id="pw-frame">' +
-      '  <h3 class="pw-title">Processing</h3>' +
+      '  </div>' +
       '  <div class="pw-head">' +
-      '    <button type="button" class="pw-btnreset" data-act="rarity-pop" aria-label="Rarity" title="Click to change rarity">' + gemIconSvg(win.rarity, win.currentTurn > 1) + '</button>' +
+      // the old gem-icon button (rarity popover) is gone — rarity is a direct
+      // button row in the metabar above, so the icon was pure dead height
       '    <button type="button" class="pw-gemname' + conf("config.gemType") + '" data-act="gemtype" style="color:' + (RARITY_COLOR[win.rarity] || "#b06fe0") + '" title="Click to switch Order/Chaos">' +
              esc(c.gemType === "chaos" ? "Chaos Astrogem" : "Order Astrogem") + '</button>' +
       '    <div class="pw-points">' + pointsSum() + ' Astrogem Points<span class="q" title="Derived: the four levels summed. Check it against the number the game shows — a mismatch means a transcription slip.">?</span></div>' +
@@ -407,12 +401,6 @@
     openPop(anchor, "Gem type", '<div class="opts">' +
       optBtn("order", "Order", win.config.gemType === "order") + optBtn("chaos", "Chaos", win.config.gemType === "chaos") + '</div>',
       function (b) { win.config.gemType = b.getAttribute("data-v"); markConfirmed("config.gemType"); markConfirmed("config.gemType2"); closePop(); render(); emit(); });
-  }
-  function editRarity(anchor) {
-    openPop(anchor, "Rarity", '<div class="opts">' + ["uncommon", "rare", "epic"].map(function (r) {
-      return optBtn(r, r.charAt(0).toUpperCase() + r.slice(1) + " — " + RARITY[r].maxTurns + " turns", win.rarity === r);
-    }).join("") + '</div>',
-      function (b) { setRarity(b.getAttribute("data-v")); closePop(); render(); emit(); });
   }
   function editTurn(anchor) {
     var N = maxTurns();
@@ -566,8 +554,7 @@
       if (!btn) { closePop(); return; }
       var act = btn.getAttribute("data-act");
       if (!act) return;
-      if (act === "rarity") { setRarity(btn.getAttribute("data-v")); render(); emit(); return; }
-      if (act === "rarity-pop") { editRarity(btn); return; }
+      if (act === "rarity") { setRarity(btn.getAttribute("data-v")); markConfirmed("state.maxTurns"); render(); emit(); return; }
       if (act === "basecost") { win.config.baseCost = parseInt(btn.getAttribute("data-v"), 10); markConfirmed("config.baseCost"); render(); emit(); return; }
       if (act === "gemtype") { editGemType(btn); return; }
       if (act === "effect1") { editEffect(btn, "effect1"); return; }
@@ -651,6 +638,8 @@
         ["currentTurn", "rerollsRemaining", "processCostMultiplier"].forEach(function (k) {
           if (sc[k] != null && sc[k] < CT) win.unconfirmed["state." + k] = 1;
         });
+        // rarity is derived from maxTurns — a shaky maxTurns read glows the rarity group
+        if (sc.maxTurns != null && sc.maxTurns < CT) win.unconfirmed["state.maxTurns"] = 1;
         oc.forEach(function (v, i) { if (v != null && v < CT) win.unconfirmed["outcomes." + i] = 1; });
       }
       render(); emit();
