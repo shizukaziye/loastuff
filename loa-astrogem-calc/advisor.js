@@ -104,7 +104,7 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 73;   // MUST match this file's ?v= in index.html on every deploy
+  var CLIENT_V = 74;   // MUST match this file's ?v= in index.html on every deploy
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -178,6 +178,9 @@
 '  @media(max-width:880px){#tab-advisor .av-cols{flex-direction:column}#tab-advisor .av-col-l{flex:1 1 auto;max-width:none;width:100%}#tab-advisor .av-col-r{width:100%}}' +
 '  #tab-advisor .av-result-empty{border:1px dashed var(--border);border-radius:10px;background:var(--panel2);color:var(--dim);font-size:13px;text-align:center;padding:26px 16px}' +
 '  #tab-advisor .av-ctrlbar{padding:10px 12px}' +
+// the global h2 rule carries a 26px top margin — inside the result panel it read
+// as a phantom empty line above RECOMMENDED ACTION (Shizu 2026-07-21)
+'  #tab-advisor #av-result h2{margin-top:0}' +
 '  #tab-advisor .primary:disabled{opacity:.45;cursor:not-allowed}' +
 // tighter cards so four fit across the column
 '  #tab-advisor .av-card{border:1px solid var(--border);border-radius:10px;padding:10px 11px;background:var(--panel2)}' +
