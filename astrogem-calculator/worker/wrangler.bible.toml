@@ -1,0 +1,90 @@
+# wrangler.bible.toml — Cloudflare Worker for the Grader tab's "pull from
+# lostark.bible" feature. Separate from wrangler.toml (the Workers-AI vision
+# Worker) so the two deploy independently and neither breaks the other.
+#
+# Fetches a lostark.bible character page server-side with a browser User-Agent
+# (the site 403s default fetchers but returns 200 for a browser UA), extracts the
+# embedded arkGridCores data, and returns each equipped astrogem as JSON with CORS
+# headers. No bindings, no secrets, no external paid API — just an HTML fetch.
+#
+# Deploy:   cd worker && wrangler deploy --config wrangler.bible.toml
+# Local:    cd worker && wrangler dev --config wrangler.bible.toml
+#
+# After deploy, copy the printed https URL into grader.js (WORKER_URL).
+
+name = "astrogem-bible"
+main = "astrogem-bible.js"
+compatibility_date = "2026-06-01"
+
+# KV namespace: caches each pulled character (key = "region:name" lowercased) +
+# a "__index__" key listing every cached key, so the Leaderboard tab can list all
+# stored characters via ?list=1. The Worker degrades gracefully if this binding is
+# absent (fetches fresh, no caching). The owner creates the namespace (id below)
+# and deploys; see worker/README-bible.md.
+[[kv_namespaces]]
+binding = "CHARS"
+id = "0f51c3b5ac6d45a59186375d62879ad7"
+
+# Cron fires EVERY MINUTE to drain the lookup queue (budget guard + circuit
+# breaker inside). The leaderboard snapshot rebuild rides the same tick but is
+# dirty-gated and throttled in code (~30 min cadence at most) — see
+# README-bible.md and docs/how-the-queue-and-drain-work.md.
+[triggers]
+crons = ["* * * * *"]
+
+# Edge rate-limit bindings (keyed by IP in code; NO KV touched on a blocked hit). period must
+# be 10 or 60 seconds. HARD_CAP is the absolute backstop on EVERY request to stop scripted abuse.
+[[ratelimits]]
+name = "HARD_CAP"
+namespace_id = "1000"
+[ratelimits.simple]
+limit = 60
+period = 60
+
+# Per-IP lookup throttle for EVERYONE: ~1 new-character lookup per 5s (2 per 10s; period must be 10 or 60).
+# Cached lookups bypass this entirely — it only paces fresh lostark.bible fetches/enqueues. The password
+# no longer changes this rate (it only adds queue priority + access while the site is degraded).
+[[ratelimits]]
+name = "LOOKUP_THROTTLE"
+namespace_id = "1002"
+[ratelimits.simple]
+limit = 2
+period = 10
+
+# Leaderboard pulls (open to everyone): 3 per minute, to block spam-refresh.
+[[ratelimits]]
+name = "LB_THROTTLE"
+namespace_id = "1003"
+[ratelimits.simple]
+limit = 3
+period = 60
+
+# GLOBAL overload gate: ONE shared counter across all requests (fixed key in code, not per-IP).
+# When tripped (limit below) the worker degrades: free (no-password) lookups are cut off; password lookups keep working at their normal 1/5s.
+# period max is 60s, so this is a rolling per-minute proxy for "10k/hour" that auto-recovers.
+[[ratelimits]]
+name = "GLOBAL_GATE"
+namespace_id = "1004"
+[ratelimits.simple]
+limit = 1000
+period = 60
+
+# Global enqueue cap: ~10 NEW characters queued per minute site-wide, matching the drain rate so the
+# queue (and thus monthly writes) can never grow faster than we empty it. period must be 10 or 60.
+[[ratelimits]]
+name = "ENQUEUE_GATE"
+namespace_id = "1005"
+[ratelimits.simple]
+limit = 10
+period = 60
+
+# Observability (logs) — optional, handy while validating the parser.
+[observability]
+enabled = true
+
+# --- Optional: lock CORS to your Pages origin instead of "*" ---
+# The Worker hardcodes ALLOW_ORIGIN = "*" (see TODO in astrogem-bible.js). To
+# restrict it without editing source you could read an env var; left commented to
+# keep the default zero-config.
+# [vars]
+# ALLOW_ORIGIN = "https://astrogem-calculator.pages.dev"

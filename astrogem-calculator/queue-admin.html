@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Astrogem Queue Admin</title>
+<style>
+  :root{--bg:#0b0d11;--panel:#14171d;--panel2:#1b1f27;--line:#252a33;--text:#e7e9ec;--dim:#8b919b;--accent:#6db1ff;--good:#5fcf80;--warn:#e8b54a;--bad:#e8736a}
+  *{box-sizing:border-box}
+  body{margin:0 auto;max-width:980px;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 18px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 12px;font:inherit;min-width:280px;flex:1}
+  input:focus{outline:0;border-color:var(--accent)}
+  button{background:var(--accent);color:#08111c;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}
+  button.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0 6px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .card .v{font-size:26px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+  .card .v small{font-size:12px;color:var(--dim);font-weight:600}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:0;padding:13px 16px;border-bottom:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{text-align:left;padding:7px 16px;border-bottom:1px solid var(--line);font-size:13px}
+  th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase}
+  tr:last-child td{border-bottom:0}
+  .tier-premium{color:var(--warn);font-weight:700}
+  .tier-free{color:var(--dim)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:6px;vertical-align:middle}
+  .dot.stale{background:var(--warn)} .dot.off{background:var(--bad)}
+  .muted{color:var(--dim)} .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  #status{font-size:12px;color:var(--dim)}
+  .hide{display:none}
+  .bm{display:inline-block;background:var(--accent);color:#08111c;padding:6px 14px;border-radius:8px;text-decoration:none;font-weight:700;cursor:grab}
+  .mode{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  #m-run.on{background:var(--good);color:#08111c;border-color:var(--good)}
+  #m-off.on{background:var(--bad);color:#08111c;border-color:var(--bad)}
+  #m-probe.on{background:var(--warn);color:#08111c;border-color:var(--warn)}
+</style>
+</head>
+<body>
+  <h1>Astrogem Queue Admin</h1>
+  <p class="sub">Private live view of the lostark.bible lookup queue. <span id="status"></span></p>
+
+  <div class="row" id="auth">
+    <input id="tok" type="password" placeholder="Owner token (the k= value)" autocomplete="off" spellcheck="false">
+    <button id="connect">Connect</button>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="panel">
+      <h2>Controls</h2>
+      <div style="padding:14px 16px">
+        <div class="row" style="gap:8px;align-items:center">
+          <span class="muted">Queue</span>
+          <button class="mode" id="m-run">Run</button>
+          <button class="mode" id="m-off">Off</button>
+          <button class="mode" id="m-probe">Probe</button>
+          <span style="flex:1 1 16px"></span>
+          <span class="muted">Drain</span>
+          <input id="rate" type="number" min="1" max="30" style="min-width:62px;flex:0 0 62px">
+          <span class="muted">/min</span>
+          <button id="rateapply">Set</button>
+        </div>
+        <p class="muted" id="ctlnote" style="margin:9px 0 0;font-size:12px">Run = draining · Off = frozen (no lostark.bible requests) · Probe = paused but auto-resumes when lostark.bible recovers.</p>
+      </div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <p class="sub" id="note"></p>
+    <div class="panel">
+      <h2 id="ehead">Errors</h2>
+      <div id="ebody" style="max-height:30vh;overflow:auto"></div>
+    </div>
+    <div class="panel">
+      <h2 id="hhead">Drain history (last hour)</h2>
+      <div id="hbody" style="max-height:36vh;overflow:auto"></div>
+    </div>
+    <div class="panel">
+      <h2 id="qhead">Queue</h2>
+      <div id="qbody" style="max-height:58vh;overflow:auto"></div>
+    </div>
+    <div class="panel">
+      <h2>Import bookmarklet</h2>
+      <div id="bmbody" style="padding:14px 16px"></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="ghost" id="refresh">Refresh now</button>
+      <button class="ghost" id="logout">Forget token</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  var WORKER = "https://astrogem-bible.shizukaziye.workers.dev";
+  var TOKKEY = "astrogem_admin_token";
+  var $ = function(id){ return document.getElementById(id); };
+  var timer = null, lastOk = 0, lastErr = "", curMode = "", curRate = 0;
+
+  function fmtAgo(ms){
+    if(!ms) return "never";
+    var s = Math.max(0, Math.round((Date.now()-ms)/1000));
+    if(s<60) return s+"s ago";
+    var m = Math.round(s/60); if(m<60) return m+"m ago";
+    return Math.round(m/60)+"h ago";
+  }
+  function fmtWait(s){ if(s==null) return "—"; if(s<60) return s+"s"; var m=Math.floor(s/60); if(m<60) return m+"m"; return Math.floor(m/60)+"h "+(m%60)+"m"; }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c];}); }
+  function num(n){ return (n||0).toLocaleString(); }
+  function card(k,v){ return '<div class="card"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+
+  function setStatus(){
+    if(lastErr){ $("status").innerHTML = '<span class="dot off"></span>'+esc(lastErr); return; }
+    if(!lastOk){ $("status").textContent = ""; return; }
+    var stale = (Date.now()-lastOk) > 25000;
+    var drain = curMode ? (' · drain <b class="'+(curMode==="run"?"good":curMode==="off"?"bad":"warn")+'">'+curMode.toUpperCase()+(curMode==="run"?" "+curRate+"/min":"")+'</b>') : '';
+    $("status").innerHTML = '<span class="dot'+(stale?' stale':'')+'"></span>live'+drain+' · updated '+fmtAgo(lastOk);
+  }
+
+  function render(j){
+    lastOk = Date.now(); lastErr = "";
+    var q = j.queue, d = j.drain, u = j.usage;
+    var clearMin = d.perMin>0 ? Math.ceil(q.total/d.perMin) : 0;
+    var ago = (j.nowMs - j.lastWriteMs)/1000;
+    var drainCls = (!j.lastWriteMs) ? "bad" : (ago<180 ? "good" : (ago<900 ? "warn" : "bad"));
+    var mode = j.mode || (j.paused ? "off" : "run");
+    var modeCls = mode === "run" ? "good" : (mode === "off" ? "bad" : "warn");
+    var modeDetail = mode === "run" ? (d.perMin + "/min") : (mode === "probe" ? "probing · auto-resumes" : "frozen");
+    curMode = mode; curRate = d.perMin;                       // feed the always-on status line
+    $("cards").innerHTML =
+      card("Free backlog", num(q.free)) +
+      card("Premium", num(q.premium)) +
+      card("Total queued", num(q.total) + (q.total ? ' <small>&#8776;'+clearMin+' min to clear</small>' : '')) +
+      card("Drain", '<span class="'+modeCls+'">'+mode.toUpperCase()+'</span> <small>'+modeDetail+'</small>') +
+      card("Last drain", '<span class="'+drainCls+'">'+fmtAgo(j.lastWriteMs)+'</span>') +
+      card("Cached this month", num(u.count) + ' <small>/ '+num(u.budget)+'</small>');
+    $("note").textContent = q.total
+      ? "Clear estimate assumes no new lookups — the drain ("+d.perMin+"/min) is intentionally gentle, so a backlog only shrinks when traffic dips below it."
+      : "";
+    var list = q.list || [];
+    $("qhead").textContent = "Queue — " + q.total + (list.length < q.total ? " (showing first "+list.length+")" : "");
+    if(!list.length){
+      $("qbody").innerHTML = '<p class="muted" style="padding:16px;margin:0">Queue is empty — all caught up. &#127881;</p>';
+    } else {
+      var rows = list.map(function(x,i){
+        var tier = x.tier === "premium" ? "premium" : "free";
+        return '<tr><td class="muted">'+(i+1)+'</td><td class="tier-'+tier+'">'+(tier==="premium"?"&#9733; priority":"free")+'</td><td>'+esc(x.region)+'</td><td>'+esc(x.name)+'</td><td class="muted">'+fmtWait(x.waitedS)+'</td></tr>';
+      }).join("");
+      $("qbody").innerHTML = '<table><thead><tr><th>#</th><th>Tier</th><th>Region</th><th>Character</th><th>Waited</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }
+    renderErrors(j.drainLog);
+    renderDrainHistory(j.drainLog);
+    renderControls(j);
+    setStatus();
+  }
+
+  // Controls: reflect the live mode + rate, and POST changes to the owner-only ?control endpoint.
+  function renderControls(j){
+    var mode = j.mode || (j.paused ? "off" : "run");
+    ["run","off","probe"].forEach(function(m){ var b=$("m-"+m); if(b) b.classList.toggle("on", m===mode); });
+    var rate = j.drain && j.drain.perMin;
+    if(rate != null && document.activeElement !== $("rate")) $("rate").value = rate;
+  }
+  function applyControl(qs){
+    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok) return;
+    $("ctlnote").textContent = "Applying…";
+    fetch(WORKER + "/?control=1&k=" + encodeURIComponent(tok) + "&" + qs).then(function(r){ return r.json(); }).then(function(j){
+      if(j && j.ok){ $("ctlnote").textContent = "Set — mode: " + j.config.mode + " · " + j.config.drainPerMin + "/min."; poll(); }
+      else { $("ctlnote").textContent = "Failed: " + ((j && j.error) || "error"); }
+    }).catch(function(e){ $("ctlnote").textContent = "Failed: " + e.message; });
+  }
+
+  function fmtTime(ms){ try { return new Date(ms).toLocaleTimeString(); } catch(e){ return "—"; } }
+
+  // Detailed error log (newest first) — flattens every failed fetch across the last hour of drains,
+  // with the worker status + the real upstream status (e.g. lostark.bible 401) + the message.
+  function renderErrors(log){
+    log = log || [];
+    var errs = [];
+    log.forEach(function(r){ (r.failed||[]).forEach(function(e){ errs.push({ t:r.t, e:e }); }); });
+    errs.reverse();
+    $("ehead").innerHTML = errs.length ? 'Errors — <span class="bad">'+errs.length+' in the last hour</span>' : 'Errors';
+    if(!errs.length){ $("ebody").innerHTML = '<p class="good" style="padding:16px;margin:0">&#10003; No drain errors in the last hour.</p>'; return; }
+    var rows = errs.slice(0,100).map(function(x){
+      var e = x.e;
+      var st = e.upstream ? (e.status+' <span class="bad">(upstream '+e.upstream+')</span>') : (''+e.status);
+      return '<tr><td class="muted" style="white-space:nowrap">'+fmtTime(x.t)+'</td>'+
+        '<td style="white-space:nowrap">'+esc(e.region)+'/'+esc(e.name)+'</td>'+
+        '<td class="bad" style="white-space:nowrap">HTTP '+st+'</td>'+
+        '<td class="muted">'+esc(e.msg||"")+((e.att>1)?' <span class="warn">(attempt '+e.att+')</span>':'')+'</td></tr>';
+    }).join("");
+    $("ebody").innerHTML = '<table><thead><tr><th>Time</th><th>Character</th><th>Status</th><th>Detail</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  // Per-drain history (newest first): what each cron run cached / failed / dropped + why it stopped.
+  function renderDrainHistory(log){
+    log = log || [];
+    var tot=0, cac=0, fail=0;
+    log.forEach(function(r){ tot++; cac += (r.cached||[]).length; fail += (r.failed||[]).length; });
+    $("hhead").textContent = "Drain history (last hour) — "+tot+" drains · "+cac+" cached · "+fail+" failed";
+    if(!log.length){ $("hbody").innerHTML = '<p class="muted" style="padding:16px;margin:0">No drains logged yet (the cron runs every minute).</p>'; return; }
+    var rows = log.slice().reverse().map(function(r){
+      var c=(r.cached||[]).length, f=(r.failed||[]).length, dr=(r.dropped||[]).length;
+      var stopCls = r.stop==="upstream" ? "bad" : (r.stop==="budget"||r.stop==="time" ? "warn" : "muted");
+      var stop = r.kick ? '<span class="good">kick</span>' : (r.stop ? '<span class="'+stopCls+'">'+esc(r.stop)+'</span>' : '<span class="muted">ok</span>');
+      var names = (r.cached||[]).map(function(x){ var p=String(x).split(":"); return p[1]||x; }).join(", ");
+      return '<tr><td class="muted" style="white-space:nowrap">'+fmtTime(r.t)+'</td>'+
+        '<td class="'+(c?"good":"muted")+'">'+c+'</td>'+
+        '<td class="'+(f?"bad":"muted")+'">'+f+'</td>'+
+        '<td class="muted">'+dr+'</td>'+
+        '<td>'+stop+'</td>'+
+        '<td class="muted">'+(r.ms!=null?(r.ms/1000).toFixed(1)+"s":"—")+'</td>'+
+        '<td class="muted" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(names)+'">'+esc(names||"—")+'</td></tr>';
+    }).join("");
+    $("hbody").innerHTML = '<table><thead><tr><th>Time</th><th>&#10003;</th><th>&#10007;</th><th>&#8856;</th><th>Stop</th><th>Dur</th><th>Cached</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  function showAuth(){ $("auth").classList.remove("hide"); $("app").classList.add("hide"); if(timer){ clearInterval(timer); timer=null; } }
+
+  function poll(){
+    var tok = localStorage.getItem(TOKKEY) || "";
+    if(!tok){ showAuth(); return; }
+    fetch(WORKER + "/?metrics=1&k=" + encodeURIComponent(tok)).then(function(r){
+      if(r.status === 403){ var e = new Error("Wrong token"); e.forbidden = true; throw e; }
+      if(!r.ok) throw new Error("Worker " + r.status);
+      return r.json();
+    }).then(function(j){
+      if(!j || !j.ok) throw new Error("Bad response");
+      $("auth").classList.add("hide"); $("app").classList.remove("hide");
+      render(j);
+    }).catch(function(e){
+      lastErr = e.message || "error"; setStatus();
+      if(e.forbidden){ localStorage.removeItem(TOKKEY); showAuth(); }
+    });
+  }
+
+  function start(){ poll(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
+
+  $("connect").addEventListener("click", function(){ var t = $("tok").value.trim(); if(t){ localStorage.setItem(TOKKEY, t); lastErr=""; start(); } });
+  $("tok").addEventListener("keydown", function(e){ if(e.key === "Enter") $("connect").click(); });
+  $("refresh").addEventListener("click", poll);
+  $("logout").addEventListener("click", function(){ localStorage.removeItem(TOKKEY); lastOk=0; lastErr=""; showAuth(); });
+  ["run","off","probe"].forEach(function(m){ $("m-"+m).addEventListener("click", function(){ applyControl("mode="+m); }); });
+  $("rateapply").addEventListener("click", function(){ var v=parseInt($("rate").value,10); if(v>=1 && v<=30) applyControl("rate="+v); else $("ctlnote").textContent="Rate must be 1–30."; });
+  $("rate").addEventListener("keydown", function(e){ if(e.key==="Enter") $("rateapply").click(); });
+  setInterval(setStatus, 1000);
+
+  // One-click importer bookmarklet (admin-only — this page is token-gated). Drag it to the bookmarks
+  // bar, then click it on a lostark.bible character page: it grabs the gem blob + item level + class,
+  // and opens the calculator with them in #import=, which grades it client-side (no Worker, no CORS).
+  function renderBookmarklet(){
+    var host = $("bmbody"); if(!host) return;
+    var calcUrl = location.origin + location.pathname.replace(/[^/]*$/, "index.html");
+    function bmSource(){
+      var h = document.documentElement.innerHTML;
+      var ci = h.indexOf('classification:"most_recent_raid"');
+      var i = h.indexOf('arkGridCores:[', ci < 0 ? 0 : ci);
+      if (i < 0) i = h.indexOf('arkGridCores:[');
+      if (i < 0) { alert('Open a character page on lostark.bible first, then click this.'); return; }
+      var s = i + 13, d = 0, e = -1;
+      for (var k = s; k < h.length; k++) { var c = h[k]; if (c === '[') d++; else if (c === ']') { d--; if (d === 0) { e = k + 1; break; } } }
+      if (e < 0) { alert('Could not read the gem data on this page.'); return; }
+      var im = h.match(/ilvl:\d+/);
+      var cm = h.match(/bg-neutral-900 px-2 py-1 text-sm">[^<]+<\/p>/g);
+      var meta = (im ? im[0] + ' ' : '') + (cm ? cm.join(' ') : '');
+      var p = location.pathname.split('/');
+      var o = { src: meta + ' arkGridCores:' + h.slice(s, e), region: (p[2] || ''), name: decodeURIComponent(p[3] || '') };
+      location.href = '__CALC__#import=' + encodeURIComponent(JSON.stringify(o));
+    }
+    var bm = "javascript:(" + bmSource.toString().split("__CALC__").join(calcUrl) + ")();";
+    host.innerHTML = '<p class="muted" style="margin:0 0 10px">Drag this to your bookmarks bar, then click it on any lostark.bible character page — it sends the loadout (gems, item level, class) straight to the calculator and grades it client-side, no Worker.</p>';
+    var a = document.createElement("a");
+    a.className = "bm"; a.textContent = "⚡ Grade on Astrogem"; a.setAttribute("href", bm);
+    host.appendChild(a);
+  }
+  renderBookmarklet();
+
+  if(localStorage.getItem(TOKKEY)) start(); else showAuth();
+})();
+</script>
+</body>
+</html>

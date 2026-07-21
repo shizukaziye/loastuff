@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang='en'><head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Lost Ark Accessory Value Calculator</title>
+<style>
+:root{
+  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
+  --dim:#97a0b4;--accent:#66c7ff;--high:#ffb86b;--mid:#c78cff;--low:#6ad4ff;
+  --none:#4f5666;--useless:#707788;--good:#6ee7a8;--bad:#ff7f7f;
+  --smax:#e8e2cc; /* astrogem S+ white — used for max main stat */
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 18px 80px}
+h1{font-size:25px;margin:0 0 4px;letter-spacing:-.02em}
+.tag{color:var(--dim);font-size:13px;margin-bottom:18px}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:26px 0 10px;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.panel+.panel{margin-top:12px}
+.grid .panel+.panel{margin-top:0}
+h3{font-size:12px;margin:0 0 10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.th{color:var(--high);font-weight:700}.tm{color:var(--mid);font-weight:700}
+.tl{color:var(--low);font-weight:700}.tn{color:var(--none)}.tu{color:var(--useless);font-style:italic}
+.tx{color:var(--smax);font-weight:700}
+[title]{cursor:help}
+/* dense tables where 6 columns share a third of the page — must fit, no scrollbars */
+#catalog table,#policy table{font-size:12px}
+#catalog th,#catalog td,#policy th,#policy td{padding:5px 4px}
+#catalog th:first-child,#catalog td:first-child,#policy th:first-child,#policy td:first-child{padding-left:0}
+#catalog th:last-child,#catalog td:last-child,#policy th:last-child,#policy td:last-child{padding-right:0}
+#catalog .panel{padding:12px 12px}
+.sep{color:var(--dim);margin:0 2px}
+code,.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:12px}
+.formula{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-family:"SF Mono",Menlo,monospace;font-size:12.5px;overflow-x:auto}
+.grid{display:grid;gap:12px}
+.grid.c3{grid-template-columns:1fr 1fr 1fr}
+.grid.c2{grid-template-columns:1fr 1fr}
+.inputs{position:sticky;top:0;z-index:20;background:rgba(13,16,23,.97);
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px)}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px}
+.fld{display:flex;flex-direction:column;gap:2px}
+.fld label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.fld input{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-family:inherit;width:100%}
+.fld input:disabled{color:var(--accent);opacity:1;cursor:not-allowed;border-style:dashed}
+.fld input:focus{outline:1px solid var(--accent)}
+.subh{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700;margin:12px 0 6px}
+.subh:first-child{margin-top:0}
+button{background:var(--accent);color:#06121f;border:none;border-radius:7px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+button:hover{filter:brightness(1.08)}
+.barrow{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.note{color:var(--dim);font-size:11px;margin-top:6px}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;font-family:inherit;cursor:pointer}
+.ihdr{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;user-select:none;margin-bottom:10px}
+.ihdr .tgl{cursor:pointer}
+.ihdr .mk{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0}
+.ihdr .mk span{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.ihdr #caret{display:inline-block;width:12px}
+.catctl{display:flex;align-items:center;gap:8px;margin:8px 0 12px;flex-wrap:wrap}
+.catctl label{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
+.tbtn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.tbtn.bn{color:var(--useless)}.tbtn.bl{color:var(--low)}.tbtn.bm{color:var(--mid)}.tbtn.bh{color:var(--high)}
+.tbtn.active{color:#06121f}
+.tbtn.bn.active{background:var(--useless);border-color:var(--useless)}
+.tbtn.bl.active{background:var(--low);border-color:var(--low)}
+.tbtn.bm.active{background:var(--mid);border-color:var(--mid)}
+.tbtn.bh.active{background:var(--high);border-color:var(--high)}
+.mbtn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--dim)}
+.mbtn.active{background:var(--accent);border-color:var(--accent);color:#06121f}
+details.method{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0 16px;margin-top:12px}
+details.method>summary{cursor:pointer;padding:14px 0;font-weight:700;color:var(--accent);font-size:13px;list-style:none}
+details.method>summary::-webkit-details-marker{display:none}
+details.method>summary::before{content:'\25B8 ';color:var(--dim)}
+details.method[open]>summary::before{content:'\25BE '}
+details.method .body{padding:0 0 16px;font-size:13px;line-height:1.6}
+details.method h4{color:var(--text);font-size:13px;margin:14px 0 6px}
+details.method .formula{margin:6px 0}
+details.method ul{margin:4px 0;padding-left:20px}
+footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--border);color:var(--dim);font-size:11px;line-height:1.6}
+@media(max-width:1100px){.grid.c3{grid-template-columns:1fr 1fr}} /* 6-col tables need ~350px each — go 2-up before they'd scroll */
+@media(max-width:820px){.grid.c3,.grid.c2{grid-template-columns:1fr}h1{font-size:21px}}
+.hl{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:12px 16px;margin:10px 0 0;font-size:14px;line-height:1.55}
+.hl b{color:var(--accent)}
+.tabs{display:flex;gap:2px;margin:14px 0 4px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:10px 16px;cursor:pointer;font-family:inherit}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.view{display:none}
+.view.active{display:block}
+.panel{overflow-x:auto}
+@media(max-width:820px){.tab{padding:9px 10px;font-size:11px;letter-spacing:.04em}}
+</style>
+</head><body><div class='wrap'>
+
+<h1>Lost Ark Accessory Value Calculator</h1>
+<div class='tag'>Live model &mdash; edit the anchors or your character stats and hit Recalculate. All gold values are net of the pheon tax.</div>
+
+<div class='inputs'>
+  <div class='ihdr'>
+    <span class='tgl' onclick='toggleInputs()'><span id='caret'>&#9662;</span> Inputs &mdash; anchors &amp; character stats</span>
+    <span class='mk'><span>HP flat</span>
+      <button class='mbtn active' data-hp='junk' onclick='setHP("junk")' title='Max HP+ lines are junk (default)'>Junk</button>
+      <button class='mbtn' data-hp='wpn' onclick='setHP("wpn")' title='Value Max HP+ exactly like Weapon Attack Power+ at the same tier (both markets)'>= Wpn</button>
+      <span>Market</span>
+      <button class='mbtn active' data-m='dps' onclick='setMarket("dps")'>DPS</button>
+      <button class='mbtn' data-m='support' onclick='setMarket("support")'>Support</button>
+    </span>
+  </div>
+  <div id='infields'>
+    <div class='subh'>Necklace anchor prices (net gold) &mdash; earring/ring derived by damage ratio</div>
+    <div class='ig'>
+      <div class='fld'><label>DPS neck high/mid</label><input id='a_dps_hm' type='number'></div>
+      <div class='fld'><label>DPS neck high/high</label><input id='a_dps_hh' type='number'></div>
+      <div class='fld'><label>Support neck high/mid</label><input id='a_sup_hm' type='number'></div>
+      <div class='fld'><label>Support neck high/high</label><input id='a_sup_hh' type='number'></div>
+      <div class='fld'><label>Pheon tax</label><input id='p_tax' type='number' step='1000'></div>
+    </div>
+    <div class='subh'>Your character (DPS damage model)</div>
+    <div class='ig'>
+      <div class='fld'><label>Additional dmg %</label><input id='p_baseAdd' type='number' step='0.01'></div>
+      <div class='fld'><label>Atk power %</label><input id='p_baseAtk' type='number' step='0.01'></div>
+      <div class='fld'><label>Crit rate %</label><input id='p_baseCR' type='number' step='0.1'></div>
+      <div class='fld'><label>Crit damage %</label><input id='p_baseCD' type='number' step='1'></div>
+      <div class='fld'><label>Base weapon power</label><input id='p_baseWP' type='number' step='1000'></div>
+      <div class='fld'><label>Base main stat</label><input id='p_baseMS' type='number' step='1000'></div>
+    </div>
+    <div class='subh'>Support buffs (non-accessory totals, %)</div>
+    <div class='ig'>
+      <div class='fld'><label>Brand power</label><input id='p_supBrand' type='number' step='0.1'></div>
+      <div class='fld'><label>Ally atk enh</label><input id='p_supAtkEnh' type='number' step='0.1'></div>
+      <div class='fld'><label>Ally dmg</label><input id='p_supAllyDmg' type='number' step='0.1'></div>
+      <div class='fld'><label>Serenade dmg</label><input id='p_supSerenDmg' type='number' step='0.1'></div>
+    </div>
+    <div class='subh'>Support buff uptime / coverage (% of party damage)</div>
+    <div class='ig'>
+      <div class='fld'><label>Brand uptime</label><input id='p_upBrand' type='number' step='1'></div>
+      <div class='fld'><label>AP buff uptime</label><input id='p_upAp' type='number' step='1'></div>
+      <div class='fld'><label>Serenade uptime</label><input id='p_upSeren' type='number' step='1'></div>
+      <div class='fld'><label>T-skill uptime</label><input id='p_upTskill' type='number' step='1'></div>
+      <div class='fld'><label>AP mult to DPS (derived)</label><input id='p_supMultView' type='text' disabled></div>
+    </div>
+  </div>
+  <div class='barrow'>
+    <button onclick='recalc()'>Recalculate</button>
+    <button onclick='resetDefaults();recalc()' style='background:var(--panel2);color:var(--text)'>Reset defaults</button>
+    <span id='status' class='note'></span>
+  </div>
+</div>
+
+<div id='highlight' class='hl'></div>
+
+<div class='tabs'>
+  <button class='tab active' data-v='value' onclick='setView("value")'>Value &amp; cutting</button>
+  <button class='tab' data-v='budget' onclick='setView("budget")'>Budget planner</button>
+  <button class='tab' data-v='model' onclick='setView("model")'>Model &amp; odds</button>
+</div>
+
+<div class='view' id='view-model'>
+<h2>Damage per line</h2>
+<div class='panel'>
+  <div class='note' style='margin-bottom:8px'>Lines multiply: total mult = product of (1+each). Score D = 100&middot;ln(total mult). Atk-power lines run through <code>atk = sqrt(WP&middot;MS/6)</code>, diluted by a support contributing <code>sup&middot;mult</code> of base atk.</div>
+  <div id='dmgtable'></div>
+</div>
+
+<h2>Pricing model</h2>
+<div class='panel'>
+  <div class='formula'>value(D) = max(0, &int;<sub>baseline</sub><sup>D</sup> min(cap, p<sub>min</sub>(1&minus;F(x))<sup>&minus;1/a</sup>) dx &minus; tax)</div>
+  <div id='pricetable'></div>
+</div>
+
+<details class='method'>
+<summary>Methodology &mdash; how we calculate every number</summary>
+<div class='body'>
+
+<h4>1. Damage is multiplicative (log score D)</h4>
+Every accessory line is a multiplier on your damage; lines stack as a product, not a sum.
+We score each accessory by <code>D = 100&middot;ln(total multiplier)</code> so damage becomes additive
+and a clean axis for pricing. For small values D &asymp; the percent gain.
+
+<h4>2. DPS line values</h4>
+<ul>
+<li><b>Outgoing</b>: a direct damage bucket &mdash; the line value <i>is</i> the % (0.55/1.20/2.00).</li>
+<li><b>Additional</b>: additive with your non-accessory additional damage; marginal = <code>acc / (1 + base_additional)</code>.</li>
+<li><b>Attack / Weapon power %, flats, main stat</b>: run through the attack-power model
+<div class='formula'>atk = sqrt(WP&middot;MS / 6);&nbsp; total_atk = (atk + sup&middot;k)&middot;(1 + atk%) + flat_atk</div>
+WP includes weapon% then weapon-flat; MS = base main stat + the accessory roll. Weapon power gives
+~half its value (sqrt). <b>k</b> (the support's atk contribution to you) is derived &mdash; see §4.</li>
+<li><b>Crit</b>: average multiplier <code>cr&middot;cd&middot;1.12 + (1&minus;cr)</code>; a line bumps cr or cd, value = the ratio change.</li>
+<li><b>Max HP+ (toggle)</b>: with <i>HP flat = Wpn</i> on, we value Max HP+ exactly like Weapon
+Attack Power+ at the same tier &mdash; in <em>both</em> markets (DPS damage and the support's base atk).
+More outcomes count as premium, so the supply curve reshapes and every price recalibrates
+(the necklace anchors stay pinned by definition). Off = HP is junk (default).</li>
+</ul>
+Each line's marginal % feeds <code>D</code>; main stat runs through the same atk model (so it's diluted by the support).
+
+<h4>3. Support value = party-damage contribution</h4>
+We grade a support's lines by how much party damage their buffs add (contribution above a no-accessory support),
+on the same log scale. Four buff buckets, each applied to its <i>uptime</i> share of damage:
+<div class='formula'>brand&nbsp;= 1 + up<sub>b</sub>&middot;0.10(1 + brand_power)</div>
+<div class='formula'>t&middot;skill = 1 + up<sub>t</sub>&middot;0.10(1 + ally_dmg)</div>
+<div class='formula'>serenade = 1 + up<sub>s</sub>(1 + 0.5&middot;gain)&middot;0.15(1 + ally_dmg + serenade_dmg)</div>
+<div class='formula'>ap&nbsp;&nbsp;&nbsp;= 1 + up<sub>a</sub>(apMult &minus; 1),&nbsp; apMult from the support's base atk &times; 0.22(1 + ally_atk_enh)</div>
+<code>Q = 100&middot;ln(brand&middot;tskill&middot;serenade&middot;ap)</code>. Accessory lines feed: Stigma&rarr;brand power,
+Gauge&rarr;serenade gain (half-effective uptime), Ally Dmg&rarr;t-skill+serenade, Ally Atk&rarr;ap,
+Weapon% / Weapon-flat / main stat&rarr;the support's base atk (bigger ap buff).
+
+<h4>4. The support's buff to your DPS (k)</h4>
+The "support atk mult" in the DPS model isn't a free field &mdash; it's the AP buff a baseline support gives you:
+<code>k = 0.22(1 + ally_atk_enh)&middot;ap_uptime</code>, pulled straight from the support buff/uptime fields.
+
+<h4>5. Pricing (supply &times; demand)</h4>
+<ul>
+<li><b>Supply</b> <code>F(D)</code>: enumerate every full-cut outcome (10 effects, tiers 6.3/3.0/0.7%, renormalised
+per locked line) &times; 5 main-stat quintiles (min/low/mid/high/max = 0/25/50/75/100% of the roll range,
+20% of drops each) &rarr; the share of cuts scoring &le; D.</li>
+<li><b>Demand</b>: an 80/20 Pareto, <code>price(F) = p<sub>min</sub>(1&minus;F)<sup>&minus;1/a</sup></code> gold per unit of log-damage,
+<b>capped at 60M / 1% damage</b> (the richest-buyer ceiling; applied only to final pricing, not calibration, so anchors stay exact). Rare = steep premium.</li>
+<li><b>Value</b> = integral of price over [baseline, D], minus the pheon tax, floored at 0. The
+<b>baseline</b> is a better-primary-high / nothing / nothing piece at min main stat (= 0 gold).</li>
+<li><b>Calibration</b>: only the <b>necklace</b> high/mid &amp; high/high anchors are inputs; <code>(a, p<sub>min</sub>)</code>
+solve to hit them. Earring/ring anchors are derived by scaling the neck anchor by that slot's
+damage-above-baseline ratio, then each slot fits its own <code>(a, p<sub>min</sub>)</code>.</li>
+</ul>
+
+<h4>6. Cut EV &amp; optimal policy</h4>
+Each finished accessory is worth <code>max(DPS value, Support value)</code> &mdash; you sell to whichever market pays more.
+A Bellman DP over every cut state chooses cut-vs-stop (cut while E[next] &minus; 1,200g &gt; 0); S1/S3 are simple
+reference strategies. Partial cuts are valued at 0.
+
+<h4>7. Budget planner</h4>
+For each of the 5 slots we build the cost&rarr;damage efficient frontier over every primary pair, flat tier
+(none/low/mid/high) and main-stat tier (min/mid/max), then merge all slots' marginal upgrades by gold-per-1%-damage.
+A budget buys the cheapest-per-damage prefix of that list; "closest upgrade / cheapest equipped" show the
+efficiency right at your budget.
+
+</div>
+</details>
+
+</div><!-- /view-model -->
+
+<div class='view active' id='view-value'>
+<h2>Accessory catalog</h2>
+<div class='catctl'>
+  <label>3rd line (flat)</label>
+  <button class='tbtn bn active' data-t='useless' onclick='setTier(this)'>None</button>
+  <button class='tbtn bl' data-t='low' onclick='setTier(this)'>Low</button>
+  <button class='tbtn bm' data-t='mid' onclick='setTier(this)'>Mid</button>
+  <button class='tbtn bh' data-t='high' onclick='setTier(this)'>High</button>
+  <span class='note'>mid/mid, high/low, low/high and better. Dmg &amp; gold at the 5 main-stat quintiles &mdash; hover a column for the exact stat.</span>
+</div>
+<div id='catalog'></div>
+
+<h2>Cut EV (gold per attempt)</h2>
+<div class='panel'>
+  <div class='note' style='margin-bottom:8px'>We value every cut outcome at <b>max(DPS, Support)</b> &mdash; you sell into whichever market pays more &mdash; so these EVs already fold in the support market. S1 = abandon unless cut 1 is a DPS <em>or</em> support primary at mid+. Optimal = Bellman DP (cut while expected gain &gt; 1,200g). S3 = always full-cut. Partial cuts valued at 0.</div>
+  <div id='evtable'></div>
+</div>
+
+<h2>Tier hit rates (necklace, full cut)</h2>
+<div class='panel'><div id='grid4'></div></div>
+
+<h2>When to keep cutting</h2>
+<div class='panel'>
+  <div class='note' style='margin-bottom:10px'>Bellman DP at every state: after cut 1, each cell is the <b>EV of paying for the next cut and playing on optimally</b> (net of all remaining cut costs), at each main-stat quintile (hover a column for the exact stat, a cell for the exact gold &amp; decision). Color scales with the EV (log): <span style='color:#ff7f7f;font-weight:700'>red</span> = stop (&le;0, deeper = worse), then <span style='color:#e0913d;font-weight:700'>&le;100g</span> &rarr; <span style='color:#ffd166;font-weight:700'>~1k</span> &rarr; <span style='color:#6ee7a8;font-weight:700'>~10k</span> &rarr; <span style='color:#66c7ff;font-weight:700;text-shadow:0 0 9px rgba(102,199,255,.55)'>50k+ jackpot</span>.</div>
+  <div id='policy'></div>
+</div>
+
+</div><!-- /view-value -->
+
+<div class='view' id='view-budget'>
+<h2>Budget planner</h2>
+<div class='panel'>
+  <div class='note' style='margin-bottom:10px'>Buy the cheapest damage-per-gold upgrades first. A full set is <b>1 neck, 2 earrings, 2 rings</b>. Candidates span every primary pair, flat tier (none/low/mid/high) and main-stat tier (min/mid/max). Follows the <b>DPS / Support</b> toggle at the top.</div>
+  <div class='barrow' style='margin-top:0'>
+    <label style='font-size:13px'>Total budget: <b id='budgetlbl' style='color:var(--accent)'></b></label>
+  </div>
+  <input id='budget' type='range' style='width:100%;margin:8px 0 14px' oninput='renderBudget()'>
+  <div class='grid c2' style='align-items:start'>
+    <div><div class='subh' style='color:var(--dim)'>Recommended loadout</div><div id='loadout'></div></div>
+    <div><div class='subh' style='color:var(--dim)'>Upgrade priority (cheapest dmg/gold first)</div><div id='upgorder'></div></div>
+  </div>
+</div>
+
+</div><!-- /view-budget -->
+
+<footer id='foot'></footer>
+
+<script>
+"use strict";
+const TIERS=['low','mid','high'];
+const TIER_PROB={low:0.063,mid:0.030,high:0.007};
+const CUT_COST=1200, DEMAND_MAX=6e7;  // cap: 60M gold per 1% damage (final pricing only; calibration is cap-free)
+const EFFECTS={
+ neck:['Outgoing Damage %','Additional Damage %','Gauge Gain %','Stigma %','Max HP+','Attack Power+','Weapon Attack Power+','Max MP+','Debuff Duration %','HP Recovery+'],
+ earring:['Attack Power %','Weapon Attack Power %','Healing %','Shield %','Max HP+','Attack Power+','Weapon Attack Power+','Max MP+','Debuff Duration %','HP Recovery+'],
+ ring:['Crit Damage %','Crit Rate %','Ally Atk Buff %','Ally Dmg Buff %','Max HP+','Attack Power+','Weapon Attack Power+','Max MP+','Debuff Duration %','HP Recovery+']
+};
+const PRIMARY={neck:['Outgoing Damage %','Additional Damage %'],earring:['Attack Power %','Weapon Attack Power %'],ring:['Crit Damage %','Crit Rate %']};
+const FLAT=new Set(['Attack Power+','Weapon Attack Power+']);
+const MAIN_RANGE={neck:[15178,17857],earring:[11806,13889],ring:[10962,12897]};
+const ACC_NAME={neck:'Necklace',earring:'Earring',ring:'Ring'};
+const ACC_SHORT={neck:['Outgoing','Additional'],earring:['ATK%','WPN%'],ring:['Crit Dmg','Crit Rate']};
+const RAW={
+ 'Outgoing Damage %':[0.55,1.20,2.00],
+ 'Additional Damage %':[0.95,1.60,2.60],
+ 'Attack Power %':[0.40,0.95,1.55],
+ 'Weapon Attack Power %':[0.80,1.80,3.00],
+ 'Crit Rate %':[0.40,0.95,1.55],
+ 'Crit Damage %':[1.10,2.40,4.00],
+ 'Attack Power+':[80,195,390],
+ 'Weapon Attack Power+':[195,480,960]
+};
+const DEFAULTS={
+ anchors:{dps:{hm:500000,hh:3200000}, support:{hm:250000,hh:1200000}}, // NECK only per market
+ baseAdd:35.85, baseAtk:13.33, baseCR:90, baseCD:280, critX:1.12,
+ baseWP:250000, baseMS:750000, tax:60000, baseFlatAtk:2700,
+ supBrand:48.8, supAtkEnh:63.55, supAllyDmg:7.66, supSerenDmg:88.03,
+ upBrand:100, upAp:95, upSeren:70, upTskill:40
+};
+let P=null, MODEL={};
+const _distCache={};
+// toggle: value Max HP+ flats exactly like Weapon Attack Power+ flats (both markets)
+let hpAsWp=false;
+function effName(e){return (hpAsWp&&e==='Max HP+')?'Weapon Attack Power+':e;}
+// main-stat quality levels: quintile marks of the roll range, 20% of rolls each
+const STAT_LABS=['min','low','mid','high','max'];
+const STATC={min:'tn',low:'tl',mid:'tm',high:'th',max:'tx'};
+function msLevels(acc){const[lo,hi]=MAIN_RANGE[acc];
+ return STAT_LABS.map((lab,i)=>({lab,v:Math.round(lo+(hi-lo)*i/4)}));}
+function statSpan(acc,i){const o=msLevels(acc)[i];
+ return `<span class='${STATC[o.lab]}' title='${o.v.toLocaleString()} main stat'>${o.lab}</span>`;}
+
+// support line mapping/values (better primary first)
+const SUP_PRIMARY={neck:['Stigma %','Gauge Gain %'],earring:['Weapon Attack Power %'],ring:['Ally Dmg Buff %','Ally Atk Buff %']};
+const SUP_SHORT={neck:['Brand','Serenade'],earring:['Wpn%'],ring:['Ally Dmg','Ally Atk']};
+const SUP_FLAT=new Set(['Weapon Attack Power+']);
+const SUP_RAW={
+ 'Stigma %':[2.15,4.8,8], 'Gauge Gain %':[1.6,3.6,6],
+ 'Ally Dmg Buff %':[2,4.5,7.5], 'Ally Atk Buff %':[1.35,3,5],
+ 'Weapon Attack Power %':[0.8,1.8,3.0], 'Weapon Attack Power+':[195,480,960]
+};
+
+// ---- DPS damage ----
+function atkBucket(o){
+ const wpPct=o.wpPct||0, wpFlat=o.wpFlat||0, msAdd=o.msAdd||0, atkPct=o.atkPct||0, atkFlat=o.atkFlat||0;
+ const WP=P.baseWP*(1+wpPct)+wpFlat, MS=P.baseMS+msAdd;
+ const dps=Math.sqrt(WP*MS/6), supBase=Math.sqrt(P.baseWP*P.baseMS/6);
+ const tot=(dps+supBase*P.supMult)*(1+P.baseAtk+atkPct)+atkFlat+P.baseFlatAtk;
+ const tot0=(supBase+supBase*P.supMult)*(1+P.baseAtk)+P.baseFlatAtk;
+ return tot/tot0;
+}
+function critF(cr,cd){cr=Math.min(cr,1);return cr*cd*P.critX+(1-cr);}
+function lineMarginalPct(eff,tier){
+ eff=effName(eff);
+ const t=TIERS.indexOf(tier), r=RAW[eff];
+ if(eff==='Outgoing Damage %') return r[t];
+ if(eff==='Additional Damage %') return r[t]/(1+P.baseAdd);
+ if(eff==='Attack Power %') return (atkBucket({atkPct:r[t]/100})-1)*100;
+ if(eff==='Weapon Attack Power %') return (atkBucket({wpPct:r[t]/100})-1)*100;
+ if(eff==='Crit Rate %') return (critF(P.baseCR+r[t]/100,P.baseCD)/critF(P.baseCR,P.baseCD)-1)*100;
+ if(eff==='Crit Damage %') return (critF(P.baseCR,P.baseCD+r[t]/100)/critF(P.baseCR,P.baseCD)-1)*100;
+ if(eff==='Attack Power+') return (atkBucket({atkFlat:r[t]})-1)*100;
+ if(eff==='Weapon Attack Power+') return (atkBucket({wpFlat:r[t]})-1)*100;
+ return 0;
+}
+function lineLog(eff,tier){return 100*Math.log(1+lineMarginalPct(eff,tier)/100);}
+function mainLog(ms){return 100*Math.log(atkBucket({msAdd:ms}));}
+function accD(ms,lines){let d=mainLog(ms);for(const[e,t]of lines)d+=lineLog(e,t);return d;}
+
+// ---- Support quality (party-damage contribution, log) ----
+function supExtract(lines){let brand=0,gain=0,allydmg=0,atkenh=0,wp=0,wpflat=0;
+ for(const[e0,t]of lines){const e=effName(e0);const r=SUP_RAW[e];if(!r)continue;const v=r[TIERS.indexOf(t)];
+  if(e==='Stigma %')brand+=v/100;else if(e==='Gauge Gain %')gain+=v/100;
+  else if(e==='Ally Dmg Buff %')allydmg+=v/100;else if(e==='Ally Atk Buff %')atkenh+=v/100;
+  else if(e==='Weapon Attack Power %')wp+=v/100;else if(e==='Weapon Attack Power+')wpflat+=v;}
+ return {brand,gain,allydmg,atkenh,wp,wpflat};}
+function supContribMult(x,ms){ // party-damage multiplier from buffs given accessory deltas x and acc main stat
+ const ally_dmg=P.supAllyDmg/100+x.allydmg, atkenh=P.supAtkEnh/100+x.atkenh, serdmg=P.supSerenDmg/100, bp=P.supBrand/100;
+ const brand=1+(P.upBrand/100)*(0.10*(1+bp+x.brand));
+ const tskill=1+(P.upTskill/100)*(0.10*(1+ally_dmg));
+ const serenade=1+(P.upSeren/100)*(1+0.5*x.gain)*(0.15*(1+ally_dmg+serdmg));
+ const supWP=P.baseWP*(1+x.wp)+x.wpflat, supMS=P.baseMS+ms, supBaseAp=Math.sqrt(supWP*supMS/6);
+ const dpsBase=Math.sqrt(P.baseWP*P.baseMS/6), dpsMults=1+P.baseAtk, dpsFlats=P.baseFlatAtk;
+ const apMult=((dpsBase+supBaseAp*0.22*(1+atkenh))*dpsMults+dpsFlats)/(dpsBase*dpsMults+dpsFlats);
+ const ap=1+(P.upAp/100)*(apMult-1);
+ return brand*tskill*serenade*ap;
+}
+const _ZERO={brand:0,gain:0,allydmg:0,atkenh:0,wp:0,wpflat:0};
+function supportQuality(slot,ms,lines){
+ // contribution above a no-accessory support (matches DPS D = damage above no-accessory)
+ return 100*Math.log(supContribMult(supExtract(lines),ms)/supContribMult(_ZERO,0));
+}
+function quality(slot,ms,lines,market){return market==='support'?supportQuality(slot,ms,lines):accD(ms,lines);}
+
+function threeLineDist(acc){
+ if(_distCache[acc])return _distCache[acc];
+ const effs=EFFECTS[acc], out=new Map();
+ function rec(lines,prob,excl){
+  if(lines.length===3){
+   const key=lines.map(x=>x[0]+'@'+x[1]).slice().sort().join('#');
+   const e=out.get(key); if(e)e.prob+=prob; else out.set(key,{lines:lines.slice(),prob});
+   return;
+  }
+  const rem=1-0.1*excl.size;
+  for(const ef of effs){ if(excl.has(ef))continue;
+   for(const t of TIERS){ excl.add(ef); rec(lines.concat([[ef,t]]),prob*TIER_PROB[t]/rem,excl); excl.delete(ef);} }
+ }
+ rec([],1,new Set());
+ _distCache[acc]=[...out.values()];
+ return _distCache[acc];
+}
+
+function buildSupply(slot,market){
+ const levels=msLevels(slot).map(o=>o.v);
+ const pts=[];
+ for(const s of threeLineDist(slot))
+  for(const ms of levels) pts.push([quality(slot,ms,s.lines,market), s.prob/5]);
+ pts.sort((a,b)=>a[0]-b[0]);
+ const damages=[],cum=[]; let r=0;
+ for(const[d,p]of pts){r+=p;damages.push(d);cum.push(r);}
+ return {damages,cum};
+}
+function marginalPrice(f,a,pmin,cap){ cap=cap===undefined?DEMAND_MAX:cap; if(f>=1)return cap; return Math.min(cap, pmin*Math.pow(1-f,-1/a)); }
+function integ(damages,cum,a,pmin,D,cap){
+ let tot=0; const n=damages.length;
+ for(let i=0;i<n;i++){ if(damages[i]>=D)break;
+  const nb=(i+1<n)?damages[i+1]:D, de=Math.min(nb,D);
+  if(de>damages[i]) tot+=marginalPrice(cum[i],a,pmin,cap)*(de-damages[i]); }
+ return tot;
+}
+function refSets(slot,market){
+ // baseline = better primary at high, nothing else, min main stat (high/nothing/nothing)
+ if(market!=='support'){const[p0,p1]=PRIMARY[slot];
+  return {hi:[[p0,'high'],[p1,'high']], lo:[[p0,'high'],[p1,'mid']], base:[[p0,'high']]};}
+ if(slot==='earring')
+  return {hi:[['Weapon Attack Power %','high'],['Weapon Attack Power+','high']],
+          lo:[['Weapon Attack Power %','high'],['Weapon Attack Power+','low']],
+          base:[['Weapon Attack Power %','high']]};
+ const[p0,p1]=SUP_PRIMARY[slot];
+ return {hi:[[p0,'high'],[p1,'high']], lo:[[p0,'high'],[p1,'mid']], base:[[p0,'high']]};
+}
+function baseScore(slot,market){return quality(slot,MAIN_RANGE[slot][0],refSets(slot,market).base,market);}
+function calibrate(slot,market,sup){
+ const lo=MAIN_RANGE[slot][0], rs=refSets(slot,market), baseD=baseScore(slot,market);
+ const dHM=quality(slot,lo,rs.lo,market), dHH=quality(slot,lo,rs.hi,market);
+ let vHM,vHH;
+ if(slot==='neck'){vHM=P.anchors[market].hm; vHH=P.anchors[market].hh;}
+ else { // derive from neck by score-above-baseline ratio
+  const nlo=MAIN_RANGE.neck[0], nrs=refSets('neck',market), nb=baseScore('neck',market);
+  const nHM=quality('neck',nlo,nrs.lo,market)-nb, nHH=quality('neck',nlo,nrs.hi,market)-nb;
+  vHM=P.anchors[market].hm*Math.max(0,dHM-baseD)/nHM;
+  vHH=P.anchors[market].hh*Math.max(0,dHH-baseD)/nHH;
+ }
+ const target=(vHH+P.tax)/(vHM+P.tax);
+ const INF=Infinity;  // cap-free during calibration (keeps ratio pmin-linear)
+ const ratioErr=(a)=>{const Ib=integ(sup.damages,sup.cum,a,1,baseD,INF);
+  const ihm=integ(sup.damages,sup.cum,a,1,dHM,INF)-Ib;
+  if(ihm<=0)return 1e99;
+  return Math.abs((integ(sup.damages,sup.cum,a,1,dHH,INF)-Ib)/ihm-target);};
+ let bestA=1, bestErr=1e99;
+ for(let k=0;k<=400;k++){const a=0.15*Math.pow(60/0.15,k/400);const e=ratioErr(a);if(e<bestErr){bestErr=e;bestA=a;}}
+ let alo=bestA/1.4, ahi=bestA*1.4, gr=0.6180339887;
+ let g1=ahi-gr*(ahi-alo), g2=alo+gr*(ahi-alo);
+ for(let it=0;it<60;it++){ if(ratioErr(g1)<ratioErr(g2)){ahi=g2;g2=g1;g1=ahi-gr*(ahi-alo);} else {alo=g1;g1=g2;g2=alo+gr*(ahi-alo);} }
+ const a=(alo+ahi)/2;
+ const Ib=integ(sup.damages,sup.cum,a,1,baseD,INF), ihm=integ(sup.damages,sup.cum,a,1,dHM,INF)-Ib;
+ const pmin=(ihm>0)?(vHM+P.tax)/ihm:0;
+ const d=sup.damages,c=sup.cum,Gcum=[0];
+ for(let i=1;i<d.length;i++) Gcum.push(Gcum[i-1]+marginalPrice(c[i-1],a,pmin)*(d[i]-d[i-1]));
+ return {damages:d,cum:c,Gcum,baseD,a,pmin};
+}
+function bisect(arr,x){let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi)>>1;if(arr[m]<=x)lo=m+1;else hi=m;}return lo;}
+function Gat(m,D){const d=m.damages; let idx=bisect(d,D)-1; if(idx<0)return 0;
+ return m.Gcum[idx]+marginalPrice(m.cum[idx],m.a,m.pmin)*(D-d[idx]);}
+function valueAt(slot,score,market){const m=MODEL[slot+'_'+market];return Math.max(0,(Gat(m,score)-Gat(m,m.baseD))-P.tax);}
+function bestValue(slot,ms,lines){return Math.max(valueAt(slot,accD(ms,lines),'dps'),valueAt(slot,supportQuality(slot,ms,lines),'support'));}
+
+const RANK={high:3,mid:2,low:1};
+function keepPair(slot,market,p1,p2){
+ if(market==='support'&&slot==='earring')return p1==='high'||p1==='mid';
+ return CAT_PAIRS.has(p1+'/'+p2);
+}
+function catalogRows(slot,market){
+ const isSup=market==='support', pr=isSup?SUP_PRIMARY[slot]:PRIMARY[slot];
+ const flatset=isSup?SUP_FLAT:FLAT, lv=msLevels(slot).map(o=>o.v);
+ const cats=new Map();
+ for(const s of threeLineDist(slot)){
+  const tm={}; for(const[e,t]of s.lines)tm[e]=t;
+  const p1=tm[pr[0]]||'none', p2=(pr.length>1)?(tm[pr[1]]||'none'):'-';
+  const flats=s.lines.filter(x=>flatset.has(effName(x[0]))).map(x=>x[1]);
+  let third='useless'; if(flats.length) third=flats.reduce((a,b)=>RANK[b]>RANK[a]?b:a);
+  const key=p1+'/'+p2+'/'+third, c=cats.get(key)||{p1,p2,third,prob:0}; c.prob+=s.prob; cats.set(key,c);
+ }
+ const rows=[];
+ for(const c of cats.values()){
+  const lines=[];
+  if(c.p1!=='none'&&c.p1!=='-')lines.push([pr[0],c.p1]);
+  if(pr.length>1&&c.p2!=='none')lines.push([pr[1],c.p2]);
+  if(c.third!=='useless')lines.push(['Weapon Attack Power+',c.third]);
+  rows.push({pair:[c.p1,c.p2],third:c.third,prob:c.prob,
+   d:lv.map(v=>quality(slot,v,lines,market))});
+ }
+ return rows;
+}
+const CAT_PAIRS=new Set(['high/high','high/mid','mid/high','high/low','low/high','mid/mid']);
+
+function singleCut(acc,excl){const out=[];const rem=1-0.1*excl.size;
+ for(const e of EFFECTS[acc]){if(excl.has(e))continue;for(const t of TIERS)out.push([e,t,TIER_PROB[t]/rem]);}return out;}
+function isPrimaryMidPlus(acc,line){return (PRIMARY[acc].includes(line[0])||SUP_PRIMARY[acc].includes(line[0]))&&line[1]!=='low';}
+function stratDist(acc,cont){const dist=new Map();
+ function rec(lines,prob,excl){ if(!cont(lines)){const k=lines.map(x=>x[0]+'@'+x[1]).join('#');
+   const e=dist.get(k); if(e)e.prob+=prob; else dist.set(k,{lines:lines.slice(),prob}); return;}
+  for(const[e,t,p]of singleCut(acc,excl)){excl.add(e);rec(lines.concat([[e,t]]),prob*p,excl);excl.delete(e);} }
+ rec([],1,new Set()); return [...dist.values()];}
+function evOf(acc,ms,strat){
+ const cont=(strat===1)?(l)=>{if(l.length===0)return true;if(l.length>=3)return false;return isPrimaryMidPlus(acc,l[0]);}:(l)=>l.length<3;
+ const dist=stratDist(acc,cont); let ev=0,cost=0;
+ for(const o of dist){cost+=o.prob*CUT_COST*o.lines.length; if(o.lines.length===3)ev+=o.prob*bestValue(acc,ms,o.lines);}
+ return ev-cost;
+}
+function optEV(acc,ms){
+ const memo=new Map();
+ function val(lines,excl){
+  if(lines.length===3)return bestValue(acc,ms,lines);
+  const key=lines.map(x=>x[0]+'@'+x[1]).slice().sort().join('#');
+  if(memo.has(key))return memo.get(key);
+  let ev=0; for(const[e,t,p]of singleCut(acc,excl)){excl.add(e);ev+=p*val(lines.concat([[e,t]]),excl);excl.delete(e);}
+  const r=Math.max(0,ev-CUT_COST); memo.set(key,r); return r;
+ }
+ return val([],new Set());
+}
+function optModel(acc,ms){
+ const memo=new Map();
+ function val(lines,excl){
+  if(lines.length===3)return bestValue(acc,ms,lines);
+  const key=lines.map(x=>x[0]+'@'+x[1]).slice().sort().join('#');
+  if(memo.has(key))return memo.get(key);
+  let ev=0; for(const[e,t,p]of singleCut(acc,excl)){excl.add(e);ev+=p*val(lines.concat([[e,t]]),excl);excl.delete(e);}
+  const r=Math.max(0,ev-CUT_COST); memo.set(key,r); return r;
+ }
+ function contEV(lines){ // EV of paying for the next cut and playing on optimally (net of all remaining cut costs)
+  if(lines.length>=3)return 0;
+  const excl=new Set(lines.map(l=>l[0])); let ev=0;
+  for(const[e,t,p]of singleCut(acc,excl)){excl.add(e);ev+=p*val(lines.concat([[e,t]]),excl);excl.delete(e);}
+  return ev-CUT_COST;
+ }
+ function shouldCut(lines){return lines.length<3&&contEV(lines)>0;}
+ return {shouldCut,contEV};
+}
+function primGrid(acc){const pr=PRIMARY[acc], g={};
+ for(const s of threeLineDist(acc)){const tm={};for(const[e,t]of s.lines)tm[e]=t;
+  const k=(tm[pr[0]]||'none')+'/'+(tm[pr[1]]||'none'); g[k]=(g[k]||0)+s.prob;}
+ return g;}
+
+const $=id=>document.getElementById(id);
+const gold=g=>{const x=Math.round(g);if(Math.abs(x)>=1e6)return (x/1e6).toFixed(2)+'M';if(Math.abs(x)>=1e4)return (x/1e3).toFixed(0)+'k';return x.toLocaleString();};
+const pct=p=>{if(p===0)return '0%';if(p<1e-4)return (p*100).toFixed(4)+'%';if(p<1e-2)return (p*100).toFixed(3)+'%';return (p*100).toFixed(2)+'%';};
+const tc=t=>({high:'th',mid:'tm',low:'tl',none:'tn',useless:'tu'}[t]||'');
+const pairHTML=(a,b)=>`<span class='${tc(a)}'>${a}</span><span class='sep'>/</span><span class='${tc(b)}'>${b}</span>`;
+const tierHTML=lab=>{const p=lab.split('/');return p.length>1?pairHTML(p[0],p[1]):`<span class='${tc(p[0])}'>${p[0]}</span>`;};
+const BUDGET_MIN=10000;  // exponential (log) slider: equal travel = equal ratio
+function budgetFromPos(){return Math.round(BUDGET_MIN*Math.pow(PLAN.maxCost/BUDGET_MIN,(+$('budget').value)/1000));}
+function clampBudget(){const sl=$('budget');sl.min=0;sl.max=1000;sl.step=1;if(+sl.value>1000)sl.value=1000;}
+
+function renderDmg(){
+ if(curMarket==='support')return renderDmgSup();
+ const ord=[['Outgoing Damage %','neck'],['Additional Damage %','neck'],['Attack Power %','ear'],['Weapon Attack Power %','ear'],['Crit Damage %','ring'],['Crit Rate %','ring'],['Attack Power+','all'],['Weapon Attack Power+','all']];
+ if(hpAsWp)ord.push(['Max HP+','all, =wpn']);
+ let h="<div class='note' style='margin-bottom:6px'>DPS &mdash; marginal %damage each line adds (follows the market toggle below).</div>";
+ h+="<table><thead><tr><th>Effect</th><th class='num tl'>Low</th><th class='num tm'>Mid</th><th class='num th'>High</th></tr></thead><tbody>";
+ for(const[e,slot]of ord) h+=`<tr><td>${e} <span class='mono' style='color:var(--dim)'>(${slot})</span></td><td class='num tl'>${lineMarginalPct(e,'low').toFixed(3)}%</td><td class='num tm'>${lineMarginalPct(e,'mid').toFixed(3)}%</td><td class='num th'>${lineMarginalPct(e,'high').toFixed(3)}%</td></tr>`;
+ h+="</tbody></table><div class='note' style='margin-top:8px'>Main stat dmg (min/low/mid/high/max): "+
+  ['neck','earring','ring'].map(a=>`${ACC_NAME[a]} `+msLevels(a).map(o=>`<span title='${o.v.toLocaleString()} main stat'>${mainLog(o.v).toFixed(2)}</span>`).join('/')+'%').join(' &middot; ')+"</div>";
+ $('dmgtable').innerHTML=h;
+}
+function renderDmgSup(){
+ const ord=[['Stigma %','Brand &middot; neck'],['Gauge Gain %','Serenade gain &middot; neck'],['Ally Dmg Buff %','Ally dmg &middot; ring'],['Ally Atk Buff %','Ally atk enh &middot; ring'],['Weapon Attack Power %','Weapon% &middot; earring'],['Weapon Attack Power+','Weapon flat &middot; any']];
+ if(hpAsWp)ord.push(['Max HP+','Max HP+ &middot; any (=wpn flat)']);
+ const sq=(e,t)=>supportQuality('neck',0,[[e,t]]);
+ let h="<div class='note' style='margin-bottom:6px'>Support &mdash; marginal %party-damage each line adds (brand / AP buff / serenade / t-skill contribution).</div>";
+ h+="<table><thead><tr><th>Effect</th><th class='num tl'>Low</th><th class='num tm'>Mid</th><th class='num th'>High</th></tr></thead><tbody>";
+ for(const[e,lbl]of ord) h+=`<tr><td>${lbl}</td><td class='num tl'>${sq(e,'low').toFixed(3)}%</td><td class='num tm'>${sq(e,'mid').toFixed(3)}%</td><td class='num th'>${sq(e,'high').toFixed(3)}%</td></tr>`;
+ h+="</tbody></table><div class='note' style='margin-top:8px'>Main stat raises the support's base atk &rarr; bigger AP buff. Main stat (min/low/mid/high/max): "+
+  ['neck','earring','ring'].map(a=>`${ACC_NAME[a]} `+msLevels(a).map(o=>`<span title='${o.v.toLocaleString()} main stat'>${supportQuality('neck',o.v,[]).toFixed(2)}</span>`).join('/')+'%').join(' &middot; ')+"</div>";
+ $('dmgtable').innerHTML=h;
+}
+function renderPrice(){
+ let h="<div class='note' style='margin-bottom:6px'>Both markets use the same method &mdash; supply curve from cut probabilities, an 80/20 Pareto demand fit to the <b>necklace</b> anchors (earring/ring derived by damage ratio), value above the high/nothing/nothing baseline minus tax. DPS quality = %damage; Support quality = %party-damage from brand/AP/serenade/t-skill buffs. A cut sells to whichever market pays more.</div>";
+ h+="<table><thead><tr><th>Accessory</th><th class='num'>DPS a</th><th class='num'>DPS p<sub>min</sub></th><th class='num'>DPS cheap h/h</th><th class='num'>Sup a</th><th class='num'>Sup p<sub>min</sub></th><th class='num'>Sup cheap h/h</th></tr></thead><tbody>";
+ for(const a of ['neck','earring','ring']){const lo=MAIN_RANGE[a][0];
+  const md=MODEL[a+'_dps'], ms=MODEL[a+'_support'], rd=refSets(a,'dps'), rsup=refSets(a,'support');
+  const vhhd=valueAt(a,quality(a,lo,rd.hi,'dps'),'dps'), vhhs=valueAt(a,quality(a,lo,rsup.hi,'support'),'support');
+  h+=`<tr><td>${ACC_NAME[a]}</td><td class='num'>${md.a.toFixed(2)}</td><td class='num'>${gold(md.pmin)}</td><td class='num'>${gold(vhhd)}</td><td class='num'>${ms.a.toFixed(2)}</td><td class='num'>${gold(ms.pmin)}</td><td class='num'>${gold(vhhs)}</td></tr>`;}
+ $('pricetable').innerHTML=h+"</tbody></table>";
+}
+let curTier='useless', curMarket='dps', inputsCollapsed=false, curView='value';
+function setView(v){curView=v;
+ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+ document.querySelectorAll('.view').forEach(d=>d.classList.toggle('active',d.id==='view-'+v));}
+function renderHighlight(){
+ const mk=curMarket, lbl=mk==='dps'?'DPS':'Support';
+ const lo=MAIN_RANGE.neck[0], mid=msLevels('neck')[2].v;
+ const hh=valueAt('neck',quality('neck',lo,refSets('neck',mk).hi,mk),mk);   // cheapest high/high = the anchor
+ const ev=optEV('neck',mid);
+ const el=$('highlight'); if(!el)return;
+ el.innerHTML=`Showing the <b>${lbl}</b> market${hpAsWp?" &middot; <b>Max HP+ valued as Weapon Power</b>":""}. A cheap high/high necklace is worth about <b>${gold(hh)}</b>; cutting a naked necklace is worth <b>${gold(ev)}/attempt</b> at optimal play (mid roll) &mdash; though most cuts lose money. Edit Inputs or switch market to retune.`;
+}
+function setTier(btn){curTier=btn.dataset.t;document.querySelectorAll('.tbtn[data-t]').forEach(b=>b.classList.toggle('active',b===btn));renderCatalog();}
+function setMarket(m){curMarket=m;
+ document.querySelectorAll('.mbtn[data-m]').forEach(b=>b.classList.toggle('active',b.dataset.m===m));
+ PLAN=buildUpgradePlan(curMarket); clampBudget(); renderDmg(); renderCatalog(); renderBudget(); renderPrice(); renderHighlight();}
+function setHP(v){hpAsWp=(v==='wpn');
+ document.querySelectorAll('.mbtn[data-hp]').forEach(b=>b.classList.toggle('active',b.dataset.hp===v));
+ recalc();}  // supply reshapes -> full recalibration + rerender
+function toggleInputs(){inputsCollapsed=!inputsCollapsed;$('infields').style.display=inputsCollapsed?'none':'';$('caret').innerHTML=inputsCollapsed?'&#9656;':'&#9662;';}
+function renderCatalog(){
+ const tier=curTier, mk=curMarket; let h="<div class='grid c3'>";
+ const gd=(v,d)=>`<td class='num'>${gold(v)}<div style='font-size:10px;color:var(--dim);font-weight:400'>${d.toFixed(2)}%</div></td>`;
+ for(const acc of ['neck','earring','ring']){
+  let rows=catalogRows(acc,mk).filter(r=>keepPair(acc,mk,r.pair[0],r.pair[1])&&r.third===tier);
+  rows.forEach(r=>{r.v=r.d.map(d=>valueAt(acc,d,mk));});
+  rows.sort((a,b)=>b.v[2]-a.v[2]);
+  const sh=(mk==='support'?SUP_SHORT:ACC_SHORT)[acc];
+  h+=`<div class='panel'><h3>${ACC_NAME[acc]} <span style='color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0'>(${sh.join('/')})</span></h3>`+
+     `<div class='note' style='margin:-4px 0 8px'>main-stat quintiles &mdash; hover a column for the exact stat</div>`;
+  h+="<table><thead><tr><th>Pair</th>"+STAT_LABS.map((_,i)=>`<th class='num'>${statSpan(acc,i)}</th>`).join('')+"</tr></thead><tbody>";
+  for(const r of rows){const pd=r.pair[1]==='-'?`<span class='${tc(r.pair[0])}'>${r.pair[0]}</span>`:pairHTML(r.pair[0],r.pair[1]);
+   h+=`<tr><td>${pd}</td>${r.v.map((v,i)=>gd(v,r.d[i])).join('')}</tr>`;}
+  h+="</tbody></table></div>";
+ }
+ $('catalog').innerHTML=h+"</div>";
+}
+function renderEV(){
+ let h="<div class='grid c3'>";
+ for(const acc of ['neck','earring','ring']){
+  h+=`<div><div style='font-weight:600;margin-bottom:6px'>${ACC_NAME[acc]}</div><table><thead><tr><th>Main</th><th class='num'>S1</th><th class='num'>Optimal</th><th class='num'>S3</th></tr></thead><tbody>`;
+  msLevels(acc).forEach((o,i)=>{
+   h+=`<tr><td>${statSpan(acc,i)}</td><td class='num'>${gold(evOf(acc,o.v,1))}</td><td class='num'>${gold(optEV(acc,o.v))}</td><td class='num'>${gold(evOf(acc,o.v,3))}</td></tr>`;});
+  h+="</tbody></table></div>";}
+ $('evtable').innerHTML=h+"</div>";
+}
+// policy-cell color: <=0 red (deeper the worse, floor -1,200). Positive EVs walk
+// a full hue gradient over log10 stops so magnitudes read like a heatmap:
+//   <=100g orange, ~1k yellow, ~10k green (--good), 50k+ accent blue (+glow).
+function evColor(ev){
+ const mix=(c1,c2,t)=>'#'+[0,1,2].map(i=>Math.round(c1[i]+(c2[i]-c1[i])*t).toString(16).padStart(2,'0')).join('');
+ if(ev<=0){const t=Math.min(1,Math.abs(ev)/1200);
+  return mix([0xa8,0x6e,0x6e],[0xff,0x7f,0x7f],t);}                     // muted brick -> --bad
+ const stops=[[2,[0xe0,0x91,0x3d]],[3,[0xff,0xd1,0x66]],[4,[0x6e,0xe7,0xa8]],[4.7,[0x66,0xc7,0xff]]];
+ const x=Math.log10(Math.max(ev,1));
+ if(x<=stops[0][0])return mix(stops[0][1],stops[0][1],0);
+ for(let i=1;i<stops.length;i++) if(x<=stops[i][0]){
+  const t=(x-stops[i-1][0])/(stops[i][0]-stops[i-1][0]);
+  return mix(stops[i-1][1],stops[i][1],t);}
+ return mix(stops[3][1],stops[3][1],0);
+}
+function renderPolicy(){
+ const T=['high','mid','low'], cats=['dps primary','sup primary','flat','useless'];
+ const order=[]; for(const c of cats)for(const t of T)order.push(c+' '+t);
+ const role=(acc,e)=>PRIMARY[acc].includes(e)?'dps primary':(SUP_PRIMARY[acc].includes(e)?'sup primary':(FLAT.has(effName(e))?'flat':'useless'));
+ let h="<div class='grid c3'>";
+ for(const acc of ['neck','earring','ring']){
+  const oms=msLevels(acc).map(o=>optModel(acc,o.v));
+  const dec=oms.map(om=>{const d={};
+   for(const e of EFFECTS[acc])for(const t of TIERS){const c=role(acc,e)+' '+t;
+    const ev=om.contEV([[e,t]]);
+    const g=d[c]=d[c]||{sum:0,n:0,cut:0,stop:0}; g.sum+=ev; g.n++; ev>0?g.cut++:g.stop++;}
+   return d;});
+  // cut-2 continue rate per stat level
+  const c2pct=oms.map(om=>{let n2=0,c2=0;
+   for(const e1 of EFFECTS[acc])for(const t1 of TIERS){ if(!om.shouldCut([[e1,t1]]))continue;
+    for(const e2 of EFFECTS[acc]){ if(e2===e1)continue; for(const t2 of TIERS){n2++; if(om.shouldCut([[e1,t1],[e2,t2]]))c2++;}}}
+   return n2?Math.round(c2/n2*100):0;});
+  const disp=g=>{ if(!g)return '';
+   const ev=Math.round(g.sum/g.n);   // color+sign follow the displayed (rounded) value, so "0" is always red
+   const word=(g.cut&&g.stop)?'depends on the effect':(g.cut?'cut':'stop');
+   const sign=ev>0?'+':(ev<0?'&minus;':'');
+   const glow=ev>=50000?';text-shadow:0 0 9px rgba(102,199,255,.55)':'';
+   return `<span style='color:${evColor(ev)};font-weight:700${glow}' title='${word} — continuing is worth ${ev.toLocaleString()}g net of remaining cut costs'>${sign}${gold(Math.abs(ev))}</span>`;};
+  h+=`<div><div style='font-weight:600;margin-bottom:6px'>${ACC_NAME[acc]}</div><table><thead><tr><th>After cut 1 was&hellip;</th>`+
+     STAT_LABS.map((_,i)=>`<th class='num'>${statSpan(acc,i)}</th>`).join('')+"</tr></thead><tbody>";
+  for(const cat of order){ if(!dec.some(d=>d[cat]))continue;
+   const cls=cat.startsWith('dps')?'th':cat.startsWith('sup')?'tl':cat.startsWith('flat')?'tm':'tu';
+   h+=`<tr><td class='${cls}'>${cat}</td>`+dec.map(d=>`<td class='num'>${disp(d[cat])}</td>`).join('')+"</tr>";}
+  h+=`</tbody></table><div class='note' style='margin-top:6px'>After cut 2: continue in ${c2pct.join(' / ')}% of states (min&rarr;max).</div></div>`;
+ }
+ $('policy').innerHTML=h+"</div>";
+}
+// ---------------- upgrade order / budget planner ----------------
+let PLAN=null;
+function buildUpgradePlan(market){
+ const cand={};
+ for(const acc of ['neck','earring','ring']){
+  const lo=MAIN_RANGE[acc][0], lv=msLevels(acc);
+  const baseD=quality(acc,lo,refSets(acc,market).base,market);
+  let pts=[{junk:true,cost:0,D:baseD}];
+  for(const r of catalogRows(acc,market)){ if(!keepPair(acc,market,r.pair[0],r.pair[1]))continue;
+   r.d.forEach((d,si)=>pts.push({pair:r.pair,flat:r.third,stat:lv[si].lab,statV:lv[si].v,cost:valueAt(acc,d,market),D:d})); }
+  pts.sort((a,b)=>a.cost-b.cost||a.D-b.D);
+  let front=[],maxD=-1e9; for(const p of pts){ if(p.D>maxD+1e-9){front.push(p);maxD=p.D;} }
+  let changed=true; while(changed){changed=false;
+   for(let i=1;i<front.length-1;i++){const a=front[i-1],b=front[i],c=front[i+1];
+    if((c.D-b.D)/(c.cost-b.cost) >= (b.D-a.D)/(b.cost-a.cost)){front.splice(i,1);changed=true;break;}}}
+  cand[acc]=front;
+ }
+ const slots=[['Neck','neck'],['Earring 1','earring'],['Earring 2','earring'],['Ring 1','ring'],['Ring 2','ring']];
+ const steps=[];
+ slots.forEach((sl,si)=>{const h=cand[sl[1]];
+  for(let i=1;i<h.length;i++) steps.push({slot:si,slotName:sl[0],to:h[i],dcost:h[i].cost-h[i-1].cost,ddmg:h[i].D-h[i-1].D,eff:(h[i].cost-h[i-1].cost)/(h[i].D-h[i-1].D),toIdx:i});});
+ steps.sort((a,b)=>a.eff-b.eff);
+ const maxCost=slots.reduce((s,sl)=>s+cand[sl[1]][cand[sl[1]].length-1].cost,0);
+ return {cand,slots,steps,maxCost};
+}
+function primCell(n){if(n.junk)return "<span class='tn'>junk</span>"; return n.pair[1]==='-'?`<span class='${tc(n.pair[0])}'>${n.pair[0]}</span>`:pairHTML(n.pair[0],n.pair[1]);}
+function flatCell(n){if(n.junk)return "<span class='tn'>&mdash;</span>"; if(n.flat==='useless')return "<span class='tn'>none</span>"; return `<span class='${tc(n.flat)}'>${n.flat}</span>`;}
+function statCell(n){if(n.junk)return "<span class='tn'>&mdash;</span>"; return `<span class='${STATC[n.stat]}' title='${n.statV.toLocaleString()} main stat'>${n.stat}</span>`;}
+function renderBudget(){
+ const B=budgetFromPos(); $('budgetlbl').textContent=gold(B)+' gold';
+ // global efficiency-ordered upgrade path (per-slot order respected by the convex hull)
+ const t2=PLAN.slots.map(()=>0); let cum=0; const ord=[];
+ for(const s of PLAN.steps){ if(t2[s.slot]!==s.toIdx-1)continue; t2[s.slot]=s.toIdx; cum+=s.dcost; ord.push({s,cum,rank:ord.length+1}); }
+ // take the prefix that fits the budget (stop at first unaffordable)
+ let cut=ord.findIndex(o=>o.cum>B+1); if(cut<0)cut=ord.length;
+ const tier=PLAN.slots.map(()=>0); let spent=0;
+ for(let i=0;i<cut;i++){tier[ord[i].s.slot]=ord[i].s.toIdx; spent=ord[i].cum;}
+ const upEff=cut<ord.length?ord[cut].s.eff:Infinity, downEff=cut>0?ord[cut-1].s.eff:0;
+ let totD=0,h="<table><thead><tr><th>Slot</th><th>Primary</th><th>Flat</th><th>Main</th><th class='num'>Cost</th><th class='num'>Dmg</th></tr></thead><tbody>";
+ PLAN.slots.forEach((sl,si)=>{const n=PLAN.cand[sl[1]][tier[si]]; totD+=n.D;
+  h+=`<tr><td>${sl[0]}</td><td>${primCell(n)}</td><td>${flatCell(n)}</td><td>${statCell(n)}</td><td class='num'>${n.cost?gold(n.cost):'free'}</td><td class='num'>${((Math.exp(n.D/100)-1)*100).toFixed(2)}%</td></tr>`;});
+ const totPct=(Math.exp(totD/100)-1)*100;
+ h+=`</tbody></table><div class='note' style='margin-top:6px'>Spent <b>${gold(spent)}</b> &mdash; full set damage <b>${totPct.toFixed(2)}%</b>.<br>`+
+   `Next upgrade: <b>${isFinite(upEff)?gold(upEff)+' / 1% dmg':'&mdash; maxed'}</b> &nbsp;|&nbsp; cheapest equipped: <b>${downEff>0?gold(downEff)+' / 1% dmg':'&mdash;'}</b>.</div>`;
+ $('loadout').innerHTML=h;
+ const start=Math.max(0,cut-22), end=Math.min(ord.length,cut+12);
+ let h2="<table><thead><tr><th>#</th><th>Slot</th><th>Primary</th><th>Flat</th><th>Main</th><th class='num'>Cost</th><th class='num'>+Dmg</th><th class='num'>Gold/1%</th></tr></thead><tbody>";
+ if(start>0)h2+=`<tr><td colspan='8' class='note'>&hellip; ${start} cheaper upgrades above (bought)</td></tr>`;
+ for(let i=start;i<end;i++){const o=ord[i],s=o.s,dim=o.cum>B?"opacity:.45":"";
+  h2+=`<tr style='${dim}'><td>${o.rank}</td><td>${s.slotName}</td><td>${primCell(s.to)}</td><td>${flatCell(s.to)}</td><td>${statCell(s.to)}</td><td class='num'>${gold(s.dcost)}</td><td class='num'>${((Math.exp(s.ddmg/100)-1)*100).toFixed(2)}%</td><td class='num'>${gold(s.eff)}</td></tr>`;}
+ if(end<ord.length)h2+=`<tr><td colspan='8' class='note'>+${ord.length-end} more upgrades beyond</td></tr>`;
+ $('upgorder').innerHTML=h2+"</tbody></table>";
+}
+function renderGrid(){
+ const g=primGrid('neck'), labs=['high','mid','low','none'];
+ let h="<table><thead><tr><th></th>"+labs.map(c=>`<th class='num ${tc(c)}'>${c}</th>`).join('')+"</tr></thead><tbody>";
+ for(const r of labs) h+=`<tr><td class='${tc(r)}'>${r}</td>`+labs.map(c=>`<td class='num'>${pct(g[r+'/'+c]||0)}</td>`).join('')+"</tr>";
+ const none=(g['none/none']||0), hh=(g['high/high']||0);
+ h+=`</tbody></table><div class='note' style='margin-top:8px'><b>${(none*100).toFixed(0)}%</b> roll neither primary; only <b>${(hh*100).toFixed(3)}%</b> are high/high (1/${Math.round(1/hh).toLocaleString()}). Line odds are independent of main stat &mdash; each stat quintile (min/low/mid/high/max) is a flat 20% of drops.</div>`;
+ $('grid4').innerHTML=h;
+}
+
+function clampAnchor(v){v=Math.round(v||0);return Math.max(10000,Math.min(10000000,v));}
+function readParams(){
+ const A={dps:{hm:clampAnchor(+$('a_dps_hm').value),hh:clampAnchor(+$('a_dps_hh').value)},
+          support:{hm:clampAnchor(+$('a_sup_hm').value),hh:clampAnchor(+$('a_sup_hh').value)}};
+ P={anchors:A,
+  baseAdd:(+$('p_baseAdd').value)/100, baseAtk:(+$('p_baseAtk').value)/100,
+  baseCR:(+$('p_baseCR').value)/100, baseCD:(+$('p_baseCD').value)/100, critX:DEFAULTS.critX,
+  baseWP:+$('p_baseWP').value, baseMS:+$('p_baseMS').value,
+  tax:Math.max(0,+$('p_tax').value), baseFlatAtk:DEFAULTS.baseFlatAtk,
+  supBrand:+$('p_supBrand').value, supAtkEnh:+$('p_supAtkEnh').value,
+  supAllyDmg:+$('p_supAllyDmg').value, supSerenDmg:+$('p_supSerenDmg').value,
+  upBrand:+$('p_upBrand').value, upAp:+$('p_upAp').value, upSeren:+$('p_upSeren').value, upTskill:+$('p_upTskill').value};
+ // DPS support-atk contribution derived from AP uptime + ally-atk-enh (no separate field)
+ P.supMult=0.22*(1+P.supAtkEnh/100)*(P.upAp/100);
+ $('a_dps_hm').value=A.dps.hm;$('a_dps_hh').value=A.dps.hh;$('a_sup_hm').value=A.support.hm;$('a_sup_hh').value=A.support.hh;
+}
+function setDefaultsToInputs(){
+ $('a_dps_hm').value=DEFAULTS.anchors.dps.hm;$('a_dps_hh').value=DEFAULTS.anchors.dps.hh;
+ $('a_sup_hm').value=DEFAULTS.anchors.support.hm;$('a_sup_hh').value=DEFAULTS.anchors.support.hh;
+ $('p_baseAdd').value=DEFAULTS.baseAdd;$('p_baseAtk').value=DEFAULTS.baseAtk;
+ $('p_baseCR').value=DEFAULTS.baseCR;$('p_baseCD').value=DEFAULTS.baseCD;
+ $('p_baseWP').value=DEFAULTS.baseWP;$('p_baseMS').value=DEFAULTS.baseMS;
+ $('p_tax').value=DEFAULTS.tax;
+ $('p_supBrand').value=DEFAULTS.supBrand;$('p_supAtkEnh').value=DEFAULTS.supAtkEnh;
+ $('p_supAllyDmg').value=DEFAULTS.supAllyDmg;$('p_supSerenDmg').value=DEFAULTS.supSerenDmg;
+ $('p_upBrand').value=DEFAULTS.upBrand;$('p_upAp').value=DEFAULTS.upAp;
+ $('p_upSeren').value=DEFAULTS.upSeren;$('p_upTskill').value=DEFAULTS.upTskill;
+}
+function resetDefaults(){setDefaultsToInputs();}
+function recalc(){
+ const t0=performance.now();
+ readParams(); MODEL={};
+ $('p_supMultView').value=P.supMult.toFixed(4)+'  (0.22×(1+'+P.supAtkEnh+'%)×'+P.upAp+'%)';
+ for(const acc of ['neck','earring','ring'])for(const mk of ['dps','support'])
+  MODEL[acc+'_'+mk]=calibrate(acc,mk,buildSupply(acc,mk));
+ renderDmg();renderPrice();renderCatalog();renderEV();renderGrid();renderPolicy();renderHighlight();
+ PLAN=buildUpgradePlan(curMarket);
+ const sl=$('budget'); const hadVal=sl.value!=='';
+ clampBudget();
+ if(!hadVal) sl.value=500;   // ~midpoint of the log scale (~1M) — a typical low budget
+ renderBudget();
+ $('status').textContent='Recalculated in '+(performance.now()-t0).toFixed(0)+' ms.';
+ $('foot').innerHTML="Closed-form model: all 3-cut outcomes enumerated; multiplicative (log) damage; DPS via the sqrt attack-power model, Support via party-damage buff contribution. Per-slot Pareto demand fit to necklace anchors (earring/ring derived by damage ratio), value above baseline minus pheon tax. Cut EV uses max(DPS, Support). Everything recomputes in-browser.";
+}
+window.onload=function(){setDefaultsToInputs();recalc();toggleInputs();};  // start collapsed
+</script>
+</div><script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body></html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOA DPS Tier Lists — rDPS per Combat Power</title>
+  <meta name="description" content="Lost Ark DPS tier lists for every raid, gate and difficulty — classes ranked by their strongest engraving's rDPS per point of Combat Power. Data: lostark.bible (LOA Logs).">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+  <meta name="theme-color" content="#0C0E13">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">Lost Ark &#183; DPS tier lists &#183; rDPS per Combat Power</p>
+      <nav id="raid-rail" class="rail" aria-label="Raid"></nav>
+      <nav id="sub-rail" class="rail sub" aria-label="Gate and difficulty"></nav>
+      <h1 id="combo-title">&#8230;</h1>
+      <p class="sub"><b>Every class enters at the stronger of its two engravings.</b> The number on each card is
+        its players&#8217; average rDPS divided by their Combat Power, so gear cancels out and only the kit
+        remains. Tiers are fixed bands of #1&#8217;s value: S &#8805;98% &#183; A &#8805;95% &#183; B &#8805;90% &#183;
+        C &#8805;85% &#183; D &#8805;80% &#183; F below.</p>
+      <div id="meta" class="meta"></div>
+    </header>
+
+    <main id="content"></main>
+
+    <footer>
+      <h2>Method &amp; fine print</h2>
+      <ul>
+        <li><b>Metric.</b> &#8220;rDPS by Combat Power&#8221; from lostark.bible raid statistics (self-reported
+          LOA Logs data): average rDPS &#247; Combat Power per logged player. Data refreshes on demand through a
+          Cloudflare worker cache; the worker re-pulls anything older than 24 hours when you look it up.</li>
+        <li><b>One class, one row.</b> We rank each class by its strongest engraving; hover a card for the
+          other engraving&#8217;s value.</li>
+        <li><b>Exclusions.</b> We leave out Bard and Artist, along with support specs (Blessed Aura, Desperate
+          Salvation, Full Bloom, Liberator, &#8220;Princess&#8221; Gunlancer) &#8212; support rDPS is buff
+          attribution on a different scale.</li>
+        <li><b>Tiers.</b> Fixed percentage bands of the #1 class&#8217;s value &#8212; the dashed lines on the
+          spread. A tier can be empty; that is information, not an error.</li>
+        <li><b>&#8224; Small sample.</b> Entries with n &lt; 300 rest on few logs &#8212; read those
+          placements loosely.</li>
+        <li><b>Retired raids</b> (Behemoth, Aegir, Brelshaza, Mordum, Extreme Thaemine, Tarkal) stopped
+          accepting stats before Combat-Power data collection began &#8212; no chart exists for them.</li>
+        <li>Icons from the <a href="https://github.com/shizukaziye/astrogem-calculator">astrogem calculator</a>.
+          Site source: <a href="https://github.com/shizukaziye/loa-tierlist">github.com/shizukaziye/loa-tierlist</a>.
+          Not affiliated with Smilegate or lostark.bible.</li>
+      </ul>
+    </footer>
+  </div>
+  <!-- bump ?v= together on every deploy (GitHub Pages caches assets for 10 min; stale tabs lie) -->
+  <script src="config.js?v=3"></script>
+  <script src="icons.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>

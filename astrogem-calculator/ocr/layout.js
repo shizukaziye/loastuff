@@ -1,0 +1,668 @@
+/**
+ * ocr/layout.js — the structural parser's pure image-analysis core.
+ *
+ * Environment-agnostic: every function works on a plain raster object
+ *   { width, height, data: Uint8ClampedArray (RGBA) }
+ * so the SAME decision logic runs in the browser (canvas ImageData) and in Node
+ * (sharp -> raw RGBA), keeping tools/eval-ocr.js scores honest about what ships.
+ *
+ * What lives here:
+ *   - downsample(raster, maxDim)           box-filter downscale
+ *   - hueClass(r,g,b)                      the proven bucket classifier (red / gold /
+ *                                          green / blue / violet / grey by hue+sat)
+ *   - medianPatch(raster, cx, cy, half)    robust patch color (median per channel)
+ *   - findPanel(raster)                    locate the Processing modal: the RED
+ *                                          (Willpower, N) diamond above the GOLD
+ *                                          (Points, S) diamond is a stat-independent
+ *                                          signature; panel rect derives from their
+ *                                          geometry. Works for cropped modals AND
+ *                                          full-screen captures.
+ *   - ROI                                  the panel-normalized region model measured
+ *                                          from the real samples (tools/dump-structural.js
+ *                                          is the calibration/debug harness)
+ *   - roiRect(panel, key)                  ROI -> absolute pixel rect
+ *   - crop(raster, rect)                   raster excerpt
+ *   - chromaMask(raster, opts)             binarize colored text (gold digits, green ▲)
+ *   - colorClusterStats(raster, classFn)   pixel-count + centroid per hue class (▲/▼
+ *                                          detection without glyph OCR)
+ *
+ * The wheel-pair signature: on EVERY Processing screen the North diamond is Willpower
+ * (red) and the South diamond is Order/Chaos Points (gold), vertically aligned through
+ * the wheel center with a stable gap ratio. Measured on the 3 real samples (2 crop
+ * resolutions): red center ≈ (0.494, 0.398), gold ≈ (0.494, 0.578) of the MODAL, i.e.
+ * gap ≈ 0.180 of modal height; modal aspect ≈ 0.90 (w/h).
+ */
+(function (root) {
+  "use strict";
+
+  // ---- basic raster ops ----
+  function downsample(img, maxDim) {
+    var w = img.width, h = img.height;
+    var scale = Math.max(w, h) / maxDim;
+    if (scale <= 1) return { width: w, height: h, data: img.data, scale: 1 };
+    var nw = Math.max(1, Math.round(w / scale)), nh = Math.max(1, Math.round(h / scale));
+    var out = new Uint8ClampedArray(nw * nh * 4);
+    for (var y = 0; y < nh; y++) {
+      var sy0 = Math.floor(y * h / nh), sy1 = Math.max(sy0 + 1, Math.floor((y + 1) * h / nh));
+      for (var x = 0; x < nw; x++) {
+        var sx0 = Math.floor(x * w / nw), sx1 = Math.max(sx0 + 1, Math.floor((x + 1) * w / nw));
+        var r = 0, g = 0, b = 0, n = 0;
+        for (var sy = sy0; sy < sy1; sy++) {
+          var row = sy * w;
+          for (var sx = sx0; sx < sx1; sx++) {
+            var i = (row + sx) * 4;
+            r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++;
+          }
+        }
+        var o = (y * nw + x) * 4;
+        out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+      }
+    }
+    return { width: nw, height: nh, data: out, scale: scale };
+  }
+
+  function crop(img, rect) {
+    var x0 = Math.max(0, Math.round(rect.x)), y0 = Math.max(0, Math.round(rect.y));
+    var w = Math.min(img.width - x0, Math.round(rect.w)), h = Math.min(img.height - y0, Math.round(rect.h));
+    w = Math.max(1, w); h = Math.max(1, h);
+    var out = new Uint8ClampedArray(w * h * 4);
+    for (var y = 0; y < h; y++) {
+      var src = ((y0 + y) * img.width + x0) * 4;
+      out.set(img.data.subarray(src, src + w * 4), y * w * 4);
+    }
+    return { width: w, height: h, data: out };
+  }
+
+  // ---- color science ----
+  // Hue/sat/val from 0-255 RGB. Hue in degrees [0,360), sat/val in [0,1].
+  function hsv(r, g, b) {
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    var v = mx / 255, s = mx ? d / mx : 0, hDeg = 0;
+    if (d > 0) {
+      if (mx === r) hDeg = 60 * (((g - b) / d) % 6);
+      else if (mx === g) hDeg = 60 * ((b - r) / d + 2);
+      else hDeg = 60 * ((r - g) / d + 4);
+      if (hDeg < 0) hDeg += 360;
+    }
+    return { h: hDeg, s: s, v: v };
+  }
+
+  // The proven bucket classifier (validated 12/12 on the real outcome icons across two
+  // capture resolutions). Buckets: red / gold / green / blue / violet / grey.
+  function hueClass(r, g, b) {
+    var c = hsv(r, g, b);
+    if (c.s < 0.18) return "grey";
+    if (c.h < 20 || c.h >= 340) return "red";
+    if (c.h < 55) return "gold";
+    if (c.h < 170) return "green";
+    if (c.h < 260) return "blue";
+    if (c.h < 340) return "violet";
+    return "grey";
+  }
+
+  function medianPatch(img, cx, cy, half) {
+    var R = [], G = [], B = [];
+    var x0 = Math.max(0, Math.round(cx - half)), x1 = Math.min(img.width - 1, Math.round(cx + half));
+    var y0 = Math.max(0, Math.round(cy - half)), y1 = Math.min(img.height - 1, Math.round(cy + half));
+    for (var y = y0; y <= y1; y++) {
+      for (var x = x0; x <= x1; x++) {
+        var i = (y * img.width + x) * 4;
+        R.push(img.data[i]); G.push(img.data[i + 1]); B.push(img.data[i + 2]);
+      }
+    }
+    function med(a) { a.sort(function (p, q) { return p - q; }); return a[a.length >> 1]; }
+    return R.length ? [med(R), med(G), med(B)] : [0, 0, 0];
+  }
+
+  // ---- panel detection: the red-over-gold wheel signature ----
+  // Scan a downsampled frame for saturated RED and GOLD blobs; accept a (red, gold)
+  // pair that is vertically aligned (|dx| small vs the gap) with gold BELOW red.
+  // Panel rect derives from the measured geometry:
+  //   wheelCenter = midpoint(red, gold); gap = goldY - redY
+  //   modalHeight = gap / GAP_RATIO; modalWidth = modalHeight * ASPECT
+  //   modalTop = redY - RED_Y * modalHeight ... etc (constants below).
+  // Measured from FULL-RES REFINED diamond centers on the 3 real samples
+  // (tools/dump-structural.js prints these): red=(0.495,0.405), gold_y=0.569,
+  // gapFrac 0.1628/0.1676/0.1617 → 0.164. (The first seeds came from downsampled
+  // blob centroids and ran ~10% hot on the gap — glow and the gold level digit
+  // drag centroids; always calibrate against the refined centers.)
+  var SIG = {
+    RED_X: 0.495, RED_Y: 0.405, GOLD_Y: 0.569,   // stat-node CENTERS in modal units
+    GAP_RATIO: 0.164,                             // (GOLD_Y - RED_Y)
+    ASPECT: 0.91                                  // modal w/h (0.901 / 0.916 / 0.921 across samples)
+  };
+
+  function findBlobs(small, wantClass, minSat, minVal) {
+    // connected-components on the class mask (4-neighborhood, iterative flood).
+    // wantClass "sat" accepts ANY saturated non-grey class (the W/E effect faces can
+    // be green/blue/violet/orange depending on the rolled effects).
+    var w = small.width, h = small.height, N = w * h;
+    var mask = new Uint8Array(N);
+    for (var i = 0; i < N; i++) {
+      var o = i * 4;
+      var c = hsv(small.data[o], small.data[o + 1], small.data[o + 2]);
+      if (c.s < minSat || c.v < minVal) continue;
+      var cls = hueClass(small.data[o], small.data[o + 1], small.data[o + 2]);
+      if (wantClass === "sat" ? cls !== "grey" : cls === wantClass) mask[i] = 1;
+    }
+    var seen = new Uint8Array(N), blobs = [], stack = [];
+    for (var s0 = 0; s0 < N; s0++) {
+      if (!mask[s0] || seen[s0]) continue;
+      var minX = w, maxX = 0, minY = h, maxY = 0, cnt = 0, sx = 0, sy = 0;
+      stack.length = 0; stack.push(s0); seen[s0] = 1;
+      while (stack.length) {
+        var p = stack.pop();
+        var px = p % w, py = (p / w) | 0;
+        cnt++; sx += px; sy += py;
+        if (px < minX) minX = px; if (px > maxX) maxX = px;
+        if (py < minY) minY = py; if (py > maxY) maxY = py;
+        if (px > 0 && mask[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
+        if (px < w - 1 && mask[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
+        if (py > 0 && mask[p - w] && !seen[p - w]) { seen[p - w] = 1; stack.push(p - w); }
+        if (py < h - 1 && mask[p + w] && !seen[p + w]) { seen[p + w] = 1; stack.push(p + w); }
+      }
+      if (cnt >= 12) blobs.push({
+        cx: sx / cnt, cy: sy / cnt, count: cnt,
+        w: maxX - minX + 1, h: maxY - minY + 1,
+        // bbox center: symmetric even when the interior mask is patchy (the level
+        // digit punches a hole that drags the CENTROID but not the bbox)
+        bx: (minX + maxX) / 2, by: (minY + maxY) / 2
+      });
+    }
+    blobs.sort(function (a, b) { return b.count - a.count; });
+    return blobs.slice(0, 12);
+  }
+
+  // findPanel(raster) -> { rect:{x,y,w,h}, method, score, anchors } or null.
+  // `anchors` carries the FULL-RES red (Willpower/N) and gold (Points/S) diamond
+  // centers — the whole downstream geometry is derived from them (self-locating),
+  // so slightly different crop margins between captures cannot shift the sampling.
+  function findPanel(img) {
+    var small = downsample(img, 640);
+    var k = small.scale;
+    var reds = findBlobs(small, "red", 0.42, 0.25);
+    var golds = findBlobs(small, "gold", 0.42, 0.25);
+    var best = null;
+    for (var i = 0; i < reds.length; i++) {
+      for (var j = 0; j < golds.length; j++) {
+        var R = reds[i], G = golds[j];
+        var gap = G.cy - R.cy;
+        if (gap <= 0) continue;
+        // vertical alignment: |dx| well under the gap; similar blob sizes (same-size diamonds)
+        var dx = Math.abs(G.cx - R.cx);
+        if (dx > gap * 0.25) continue;
+        var sizeRatio = Math.max(R.count, G.count) / Math.max(1, Math.min(R.count, G.count));
+        if (sizeRatio > 3.5) continue;
+        // diamond size vs gap — LOOSE band: coarse blob centroids under-estimate the
+        // true center-to-center gap (glow/digits merge into the blobs), so the ratio
+        // wobbles; the full-res refine below fixes precision, this only prunes junk.
+        var diaOverGap = Math.max(R.w, R.h) / gap;
+        if (diaOverGap < 0.08 || diaOverGap > 1.1) continue;
+        var modalH = gap / SIG.GAP_RATIO;
+        var modalW = modalH * SIG.ASPECT;
+        var cx = (R.cx + G.cx) / 2;
+        var top = R.cy - SIG.RED_Y * modalH;
+        var left = cx - SIG.RED_X * modalW;
+        // plausibility: the modal must mostly fit the frame
+        var fitPenalty = 0;
+        if (left < -modalW * 0.1 || top < -modalH * 0.1) fitPenalty += 0.3;
+        if (left + modalW > small.width + modalW * 0.1 || top + modalH > small.height + modalH * 0.1) fitPenalty += 0.3;
+        var score = Math.min(1, (R.count + G.count) / 600) * (1 - dx / Math.max(1, gap)) - fitPenalty;
+        if (!best || score > best.score) {
+          best = {
+            score: score,
+            rect: { x: left * k, y: top * k, w: modalW * k, h: modalH * k },
+            anchors: { red: { x: R.cx * k, y: R.cy * k }, gold: { x: G.cx * k, y: G.cy * k } }
+          };
+        }
+      }
+    }
+    if (!best || best.score < 0.15) return null;
+
+    // ---- FULL-RES anchor refine ----
+    // The coarse anchors are downsampled blob CENTROIDS (glow / the gold level digit
+    // drag them off the diamond centers). Re-locate each diamond precisely: crop a
+    // window around the coarse anchor at full resolution, find the largest matching
+    // blob, take ITS centroid. The diamond dwarfs any digit in the window.
+    function refine(anchor, wantClass, winHalf) {
+      var rect = { x: anchor.x - winHalf, y: anchor.y - winHalf, w: winHalf * 2, h: winHalf * 2 };
+      var x0 = Math.max(0, Math.round(rect.x)), y0 = Math.max(0, Math.round(rect.y));
+      var sub = crop(img, rect);
+      // work at ≤200px for speed; blob centroid maps back through the sub-scale
+      var subSmall = downsample(sub, 200);
+      var blobs = findBlobs(subSmall, wantClass, 0.40, 0.22);
+      if (!blobs.length) return anchor;
+      var b = blobs[0];
+      return { x: x0 + b.cx * subSmall.scale, y: y0 + b.cy * subSmall.scale };
+    }
+    var coarseGap = best.anchors.gold.y - best.anchors.red.y;
+    var winHalf = Math.max(24, coarseGap * 0.45);
+    var redC = refine(best.anchors.red, "red", winHalf);
+    var goldC = refine(best.anchors.gold, "gold", winHalf);
+    // rebuild the panel rect from the REFINED centers (the modal model)
+    var gap = goldC.y - redC.y;
+    if (gap > 4) {
+      var modalH2 = gap / SIG.GAP_RATIO, modalW2 = modalH2 * SIG.ASPECT;
+      var cx2 = (redC.x + goldC.x) / 2;
+      best.rect = { x: cx2 - SIG.RED_X * modalW2, y: redC.y - SIG.RED_Y * modalH2, w: modalW2, h: modalH2 };
+      best.anchors = { red: redC, gold: goldC };
+    }
+
+    // clamp to the frame
+    var r = best.rect;
+    var x0c = Math.max(0, r.x), y0c = Math.max(0, r.y);
+    var x1c = Math.min(img.width, r.x + r.w), y1c = Math.min(img.height, r.y + r.h);
+    return { rect: { x: x0c, y: y0c, w: x1c - x0c, h: y1c - y0c }, method: "hue", score: Math.max(0, Math.min(1, best.score)), anchors: best.anchors };
+  }
+
+  // Anchor-derived geometry: everything the parser samples, positioned from the
+  // MEASURED red/gold diamond centers (gap = their vertical distance). All ratios in
+  // GAP units, measured against the refined centers on the real samples — this makes
+  // the wheel and the outcome row independent of crop margins entirely.
+  //   W/E nodes: vertical midpoint, ±0.70·gap horizontally.
+  //   outcome icon row: 0.975·gap below the gold node; icons at cx + {-1.39,-0.47,
+  //   +0.46,+1.39}·gap. Reroll pill center ≈ (cx + 2.30·gap, gold.y + 0.956·gap).
+  function wheelGeometry(anchors) {
+    var gap = anchors.gold.y - anchors.red.y;
+    var cx = (anchors.red.x + anchors.gold.x) / 2;
+    var cy = (anchors.red.y + anchors.gold.y) / 2;
+    var iconY = anchors.gold.y + 0.975 * gap;
+    return {
+      gap: gap,
+      nodeN: { x: anchors.red.x, y: anchors.red.y },
+      nodeS: { x: anchors.gold.x, y: anchors.gold.y },
+      nodeW: { x: cx - 0.70 * gap, y: cy },
+      nodeE: { x: cx + 0.70 * gap, y: cy },
+      outIconY: iconY,
+      outIconXs: [cx - 1.39 * gap, cx - 0.47 * gap, cx + 0.46 * gap, cx + 1.39 * gap],
+      rerollPill: { x: cx + 2.30 * gap, y: anchors.gold.y + 0.956 * gap },
+      // "Reset (x/1)" button, centered above the N (Willpower/red) node. Measured
+      // 2026-07-20 on 2 real samples, then trimmed tighter (2026-07-20 follow-up):
+      // the original 0.30·gap-tall box included the ornate border glow directly
+      // above the button, whose highlight streaks pass the dim-text mask as
+      // false-positive glyphs and wreck PSM-7's single-line read. Tightened to
+      // just the button band: center y = red.y - 0.756·gap, half-extents
+      // 0.85·gap wide / 0.11·gap tall.
+      resetPill: { x: cx, y: anchors.red.y - 0.756 * gap }
+    };
+  }
+
+  // Whole-image shortcut: an already-cropped modal (all three real samples) has aspect
+  // ≈ 0.88-0.94 and its own red/gold pair at the expected relative spot. Anchors ride
+  // along in every path (null only on the blind assume-whole fallback).
+  function panelOrWhole(img) {
+    var aspect = img.width / img.height;
+    var found = findPanel(img);
+    if (found) {
+      // if the found rect ≈ the whole image, treat as whole (higher confidence)
+      var r = found.rect;
+      var cover = (r.w * r.h) / (img.width * img.height);
+      if (cover > 0.82 && aspect > 0.84 && aspect < 0.98) {
+        return { rect: { x: 0, y: 0, w: img.width, h: img.height }, method: "whole+hue", score: Math.max(found.score, 0.9), anchors: found.anchors };
+      }
+      return found;
+    }
+    if (aspect > 0.84 && aspect < 0.98) {
+      return { rect: { x: 0, y: 0, w: img.width, h: img.height }, method: "assume-whole", score: 0.4, anchors: null };
+    }
+    return null;
+  }
+
+  // ---- the panel-normalized region model ----
+  // Fractions of the PANEL rect (x, y, w, h). Seeded from the session's image reads;
+  // tools/dump-structural.js re-measures and these constants get updated from evidence.
+  var ROI = {
+    gemName:   { x: 0.15, y: 0.155, w: 0.70, h: 0.055 },
+    points:    { x: 0.28, y: 0.208, w: 0.44, h: 0.042 },
+    // wheel node centers (points, not rects)
+    nodeN:     { cx: 0.494, cy: 0.398 },
+    nodeW:     { cx: 0.355, cy: 0.478 },
+    nodeE:     { cx: 0.635, cy: 0.478 },
+    nodeS:     { cx: 0.494, cy: 0.578 },
+    // level-text bands under/inside each node
+    lvlN:      { x: 0.42, y: 0.408, w: 0.15, h: 0.035 },
+    lvlW:      { x: 0.28, y: 0.487, w: 0.16, h: 0.035 },
+    lvlE:      { x: 0.56, y: 0.487, w: 0.16, h: 0.035 },
+    lvlS:      { x: 0.42, y: 0.588, w: 0.15, h: 0.035 },
+    divider:   { x: 0.10, y: 0.645, w: 0.80, h: 0.045 },
+    // outcome columns: icon centers + caption bands
+    outIconY:  0.728,
+    outIconXs: [0.243, 0.410, 0.578, 0.746],
+    outText:   [
+      { x: 0.135, y: 0.700, w: 0.215, h: 0.075 },
+      { x: 0.305, y: 0.700, w: 0.215, h: 0.075 },
+      { x: 0.470, y: 0.700, w: 0.215, h: 0.075 },
+      { x: 0.640, y: 0.700, w: 0.215, h: 0.075 }
+    ],
+    rerollPill:{ x: 0.845, y: 0.705, w: 0.135, h: 0.040 },
+    // "Reset (x/1)" button between the gem-name/points block and the wheel.
+    // Measured 2026-07-20, then trimmed to exclude the border-glow band directly
+    // above the button (see wheelGeometry's resetPill for why): x0=0.342,
+    // y0=0.264, w=0.307, h=0.035.
+    resetPill: { x: 0.342, y: 0.264, w: 0.307, h: 0.035 },
+    costRow:   { x: 0.10, y: 0.800, w: 0.80, h: 0.042 },
+    balanceRow:{ x: 0.10, y: 0.842, w: 0.80, h: 0.042 },
+    processBtn:{ x: 0.50, y: 0.925, w: 0.46, h: 0.055 }
+  };
+
+  function roiRect(panel, key) {
+    var r = ROI[key];
+    return { x: panel.x + r.x * panel.w, y: panel.y + r.y * panel.h, w: r.w * panel.w, h: r.h * panel.h };
+  }
+  function roiPoint(panel, key) {
+    var r = ROI[key];
+    return { x: panel.x + r.cx * panel.w, y: panel.y + r.cy * panel.h };
+  }
+
+  // ---- chroma-mask binarization (colored text on dark art) ----
+  // Returns a NEW raster: white where the predicate matches, black elsewhere —
+  // exactly what a whitelist OCR pass wants.
+  function chromaMask(img, pred) {
+    var out = new Uint8ClampedArray(img.data.length);
+    for (var i = 0; i < img.data.length; i += 4) {
+      var keep = pred(img.data[i], img.data[i + 1], img.data[i + 2]);
+      var v = keep ? 0 : 255;      // dark text on white bg (Tesseract's preference)
+      out[i] = v; out[i + 1] = v; out[i + 2] = v; out[i + 3] = 255;
+    }
+    return { width: img.width, height: img.height, data: out };
+  }
+  // Common predicates
+  function isGoldText(r, g, b) { var c = hsv(r, g, b); return c.h >= 30 && c.h < 60 && c.s > 0.45 && c.v > 0.55; }
+  function isWhiteText(r, g, b) { var c = hsv(r, g, b); return c.s < 0.25 && c.v > 0.72; }
+  // outcome-caption amounts ("Lv. 2" / "+1") render CHARTREUSE (h≈70-90, measured on
+  // turn3), a different pigment from the wheel's level gold (h≈50)
+  function isAmountText(r, g, b) { var c = hsv(r, g, b); return c.h >= 55 && c.h < 95 && c.s > 0.5 && c.v > 0.45; }
+  // wheel level digits: gold, but downscaled captures blend the thin strokes with the
+  // diamond face behind them (gold-over-green shifts h up to ~80) — wider than
+  // isGoldText, still excluding true face greens (h≥100) and reds (h<20)
+  // (isWheelLevelText removed 2026-07-18 — dead export; the engine reads wheel
+  // levels through isGoldText and its own local predicates.)
+  // LOWER-outcome amounts ("Lv. 1"/"−1" beside a ▼) render RED, not chartreuse
+  // (measured on the 2026-07-16 corpus). Hue reaches ~22 when the red text blends
+  // with a gold icon face behind it (red-on-gold rows).
+  function isRedAmountText(r, g, b) { var c = hsv(r, g, b); return (c.h < 22 || c.h >= 340) && c.s > 0.45 && c.v > 0.4; }
+
+  // Smooth resample (bilinear), fractional factors in BOTH directions: f>1 upscales
+  // (half-res captures starve the micro-OCR — glyphs drop to ~10px), f<1 downscales
+  // (4K captures waste compute; interpolated point-sampling is adequate for f ≥ 0.5).
+  // Bilinear (not nearest): Tesseract reads smooth edges far better than blocky ones.
+  function upscaleBilinear(img, f) {
+    var w = Math.round(img.width * f), h = Math.round(img.height * f);
+    var out = new Uint8ClampedArray(w * h * 4);
+    var sw = img.width, sh = img.height, d = img.data;
+    for (var y = 0; y < h; y++) {
+      var sy = Math.min(sh - 1.001, y / f);
+      var y0 = sy | 0, fy = sy - y0, y1 = Math.min(sh - 1, y0 + 1);
+      for (var x = 0; x < w; x++) {
+        var sx = Math.min(sw - 1.001, x / f);
+        var x0 = sx | 0, fx = sx - x0, x1 = Math.min(sw - 1, x0 + 1);
+        var i00 = (y0 * sw + x0) * 4, i10 = (y0 * sw + x1) * 4, i01 = (y1 * sw + x0) * 4, i11 = (y1 * sw + x1) * 4;
+        var di = (y * w + x) * 4;
+        for (var ch = 0; ch < 3; ch++) {
+          var top = d[i00 + ch] + (d[i10 + ch] - d[i00 + ch]) * fx;
+          var bot = d[i01 + ch] + (d[i11 + ch] - d[i01 + ch]) * fx;
+          out[di + ch] = top + (bot - top) * fy;
+        }
+        out[di + 3] = 255;
+      }
+    }
+    return { width: w, height: h, data: out };
+  }
+  // (isGreenUp/isRedDown removed 2026-07-18 — dead exports; the engine's arrow
+  // classifier uses its own tuned inline predicates next to the density gates.)
+
+  // Pixel-count + centroid + bbox for a predicate — the ▲/▼ detector (color, not
+  // glyph). `density` (count / bbox area) separates a solid arrow blob (~0.5) from
+  // diffuse icon-face bleed spread across the whole box (~0.05).
+  function colorClusterStats(img, pred) {
+    var n = 0, sx = 0, sy = 0, x0 = img.width, x1 = -1, y0 = img.height, y1 = -1;
+    for (var y = 0; y < img.height; y++) {
+      for (var x = 0; x < img.width; x++) {
+        var i = (y * img.width + x) * 4;
+        if (pred(img.data[i], img.data[i + 1], img.data[i + 2])) {
+          n++; sx += x; sy += y;
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+    }
+    var bboxArea = n ? (x1 - x0 + 1) * (y1 - y0 + 1) : 1;
+    return {
+      count: n, cx: n ? sx / n : 0, cy: n ? sy / n : 0,
+      frac: n / (img.width * img.height),
+      density: n ? n / bboxArea : 0
+    };
+  }
+
+  // Locate the BOTTOM-most text-like line of `pred` pixels inside `rect` (full-image
+  // coords) and return a tight padded {x,y,w,h}, or null. Row-projection scan: a text
+  // line is a thin horizontal band whose per-row coverage stays well under maxRowFill —
+  // a solid color face (the gold S diamond) saturates its rows and is rejected, and
+  // opts.rejectFill bails out early when the whole box is mostly mask (gold-on-gold:
+  // the digit is unrecoverable by color, the checksum solves it instead).
+  function findMaskedTextLine(img, rect, pred, opts) {
+    opts = opts || {};
+    var sub = crop(img, rect);
+    var w = sub.width, h = sub.height, d = sub.data;
+    var minH = Math.max(4, opts.minH || Math.round(h * 0.08));
+    var maxH = opts.maxH || Math.round(h * 0.55);
+    var maxRowFill = opts.maxRowFill != null ? opts.maxRowFill : 0.6;
+    var minRowPx = Math.max(2, opts.minRowPx || Math.round(w * 0.02));
+    var pad = opts.pad != null ? opts.pad : 3;
+    var rows = new Array(h), total = 0;
+    for (var y = 0; y < h; y++) {
+      var c = 0;
+      for (var x = 0; x < w; x++) {
+        var i = (y * w + x) * 4;
+        if (pred(d[i], d[i + 1], d[i + 2])) c++;
+      }
+      rows[y] = c; total += c;
+    }
+    if (opts.rejectFill != null && total / (w * h) > opts.rejectFill) return null;
+    var accept = opts.accept || function () { return true; };
+    function finish(yTop, yBot) {
+      var x0 = w, x1 = -1;
+      for (var yy = yTop; yy <= yBot; yy++) {
+        for (var x = 0; x < w; x++) {
+          var i = (yy * w + x) * 4;
+          if (pred(d[i], d[i + 1], d[i + 2])) { if (x < x0) x0 = x; if (x > x1) x1 = x; }
+        }
+      }
+      if (x1 <= x0) return null;
+      return { x: rect.x + x0 - pad, y: rect.y + yTop - pad, w: (x1 - x0 + 1) + pad * 2, h: (yBot - yTop + 1) + pad * 2 };
+    }
+    var yEnd = -1;
+    for (var yy2 = h - 1; yy2 >= 0; yy2--) {
+      var on = rows[yy2] >= minRowPx && rows[yy2] <= w * maxRowFill;
+      if (on && yEnd === -1) yEnd = yy2;
+      else if (!on && yEnd !== -1) {
+        var bandH = yEnd - yy2;
+        if (bandH >= minH && bandH <= maxH) {
+          var r = finish(yy2 + 1, yEnd);
+          if (r && accept(r)) return r;   // rejected candidates keep the scan moving up
+        }
+        yEnd = -1;
+      }
+    }
+    if (yEnd !== -1 && yEnd + 1 >= minH && yEnd + 1 <= maxH) {
+      var rTop = finish(0, yEnd);
+      if (rTop && accept(rTop)) return rTop;
+    }
+    return null;
+  }
+
+  // (refineWheelAnchors removed 2026-07-18 — four generations of vertical-scan
+  // anchor refinement all measured net-negative and were superseded by fitWheel
+  // below, which cross-validates two independent rulers. Nothing called it.)
+  // Fit the wheel from ALL FOUR diamond faces at FULL resolution, with a built-in
+  // cross-check: the red→gold vertical distance and the W→E horizontal distance
+  // measure the SAME gap (W/E sit at ±0.70·gap), so the two estimates must agree.
+  // Uses blob BBOX CENTERS (symmetric under interior holes), replacing the two
+  // downsampled centroids whose glow-bias squeezed the gap 15-20% on some captures.
+  // Returns corrected anchors, or the originals when the fit isn't trustworthy.
+  function fitWheel(img, anchors) {
+    var cx0 = (anchors.red.x + anchors.gold.x) / 2;
+    var cy0 = (anchors.red.y + anchors.gold.y) / 2;
+    var gap0 = Math.max(8, anchors.gold.y - anchors.red.y);
+    var region = {
+      x: cx0 - gap0 * 1.6, y: cy0 - gap0 * 1.45,
+      w: gap0 * 3.2, h: gap0 * 2.9
+    };
+    var ox = Math.max(0, Math.round(region.x)), oy = Math.max(0, Math.round(region.y));
+    var sub = crop(img, region);
+    var minArea = gap0 * gap0 * 0.08, maxArea = gap0 * gap0 * 1.1;
+    function pick(blobs, tx, ty, maxDist) {
+      var best = null;
+      for (var i = 0; i < blobs.length; i++) {
+        var b = blobs[i];
+        if (b.count < minArea || b.count > maxArea) continue;
+        var d = Math.hypot(b.bx + ox - tx, b.by + oy - ty);
+        if (d > maxDist) continue;
+        if (!best || d < best.d) best = { b: b, d: d };
+      }
+      return best && best.b;
+    }
+    var reds = findBlobs(sub, "red", 0.42, 0.22);
+    var golds = findBlobs(sub, "gold", 0.42, 0.25);
+    var sats = findBlobs(sub, "sat", 0.42, 0.22);
+    var N = pick(reds, cx0, cy0 - gap0 * 0.5, gap0 * 0.45);
+    var S = pick(golds, cx0, cy0 + gap0 * 0.5, gap0 * 0.45);
+    var W = pick(sats, cx0 - gap0 * 0.70, cy0, gap0 * 0.5);
+    var E = pick(sats, cx0 + gap0 * 0.70, cy0, gap0 * 0.5);
+    if (!N || !S || !W || !E) return anchors;
+    var gapV = S.by - N.by;
+    var gapH = (E.bx - W.bx) / 1.40;
+    if (gapV <= 0 || gapH <= 0) return anchors;
+    // the cross-check: both rulers must measure the same wheel
+    if (Math.abs(gapV - gapH) / Math.max(gapV, gapH) > 0.08) return anchors;
+    var gap = (gapV + gapH) / 2;
+    if (!(gap > gap0 * 0.7 && gap < gap0 * 1.6)) return anchors;
+    var cx = ((N.bx + S.bx) / 2 + (W.bx + E.bx) / 2) / 2 + ox;
+    var cy = ((N.by + S.by) / 2 + (W.by + E.by) / 2) / 2 + oy;
+    return {
+      red: { x: cx, y: cy - gap / 2 },
+      gold: { x: cx, y: cy + gap / 2 }
+    };
+  }
+
+  // ---- glyph template matching ----
+  // The game renders its digits from ONE fixed font at (post-normalization) one
+  // fixed size — so the closed-vocabulary reads (levels 1-5, Process x/N, points,
+  // reroll pill, cost) don't need OCR at all: segment the masked line into glyph
+  // boxes and compare pixels against stored templates of the game's own digits.
+
+  // Segment a chroma mask (dark-text-on-white, as produced by chromaMask) into
+  // per-glyph boxes via column projection. Returns [{x,y,w,h}] in mask coords,
+  // left to right, tight on both axes.
+  function segmentGlyphs(mask, opts) {
+    opts = opts || {};
+    var w = mask.width, h = mask.height, d = mask.data;
+    var minColPx = opts.minColPx || 1;
+    var gapCols = opts.gapCols != null ? opts.gapCols : 1;
+    var cols = new Array(w);
+    for (var x = 0; x < w; x++) {
+      var c = 0;
+      for (var y = 0; y < h; y++) if (d[(y * w + x) * 4] < 128) c++;
+      cols[x] = c;
+    }
+    var boxes = [], run = null, gap = 0;
+    for (var x2 = 0; x2 <= w; x2++) {
+      var on = x2 < w && cols[x2] >= minColPx;
+      if (on) { if (run == null) run = x2; gap = 0; }
+      else if (run != null) {
+        gap++;
+        if (gap > gapCols || x2 === w) {
+          var x0 = run, x1 = x2 - gap;
+          run = null; gap = 0;
+          var y0 = h, y1 = -1;
+          for (var yy = 0; yy < h; yy++) {
+            for (var xx = x0; xx <= x1; xx++) {
+              if (d[(yy * w + xx) * 4] < 128) { if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; break; }
+            }
+          }
+          if (y1 >= y0) boxes.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+        }
+      }
+    }
+    return boxes;
+  }
+
+  // Resample a glyph box out of a mask into a normalized W×H binary bitmap
+  // (Float64Array of 0/1) for comparison.
+  var GLYPH_W = 12, GLYPH_H = 16;
+  // ASPECT-PRESERVING: normalize HEIGHT to GLYPH_H, keep width proportional, center in
+  // a GLYPH_W frame. Digit width is the strongest cue in a fixed font (a "1" is narrow,
+  // a "5" wide) — the old stretch-to-fill threw it away, making 1/2/3 near-identical.
+  function glyphBitmap(mask, box) {
+    var out = new Float64Array(GLYPH_W * GLYPH_H);
+    // scaled width at height GLYPH_H, clamped to the frame
+    var sw = Math.max(1, Math.min(GLYPH_W, Math.round(GLYPH_H * box.w / Math.max(1, box.h))));
+    var x0 = ((GLYPH_W - sw) / 2) | 0;   // centered
+    for (var gy = 0; gy < GLYPH_H; gy++) {
+      var sy = box.y + (gy + 0.5) / GLYPH_H * box.h;
+      for (var gx = 0; gx < sw; gx++) {
+        var sx = box.x + (gx + 0.5) / sw * box.w;
+        var i = ((sy | 0) * mask.width + (sx | 0)) * 4;
+        out[(gy * GLYPH_W) + x0 + gx] = mask.data[i] < 128 ? 1 : 0;
+      }
+    }
+    return out;
+  }
+
+  // Similarity of two normalized bitmaps: 1 − mean absolute difference.
+  function bitmapSim(a, b) {
+    var n = Math.min(a.length, b.length), diff = 0;
+    for (var i = 0; i < n; i++) diff += Math.abs(a[i] - b[i]);
+    return 1 - diff / n;
+  }
+
+  // Match one glyph box against a template atlas {char: bitmapArray}. Returns
+  // {ch, score, margin} — margin = best minus runner-up (the honest confidence).
+  function matchGlyph(mask, box, atlas) {
+    var bm = glyphBitmap(mask, box);
+    var best = null, second = 0;
+    for (var ch in atlas) {
+      if (!atlas.hasOwnProperty(ch)) continue;
+      var s = bitmapSim(bm, atlas[ch]);
+      if (!best || s > best.score) { if (best) second = Math.max(second, best.score); best = { ch: ch, score: s }; }
+      else if (s > second) second = s;
+    }
+    if (!best) return null;
+    return { ch: best.ch, score: best.score, margin: best.score - second };
+  }
+
+  // ---- exports ----
+  var API = {
+    downsample: downsample,
+    crop: crop,
+    hsv: hsv,
+    hueClass: hueClass,
+    medianPatch: medianPatch,
+    findBlobs: findBlobs,
+    findPanel: findPanel,
+    panelOrWhole: panelOrWhole,
+    fitWheel: fitWheel,
+    wheelGeometry: wheelGeometry,
+    ROI: ROI,
+    SIG: SIG,
+    roiRect: roiRect,
+    roiPoint: roiPoint,
+    chromaMask: chromaMask,
+    isGoldText: isGoldText,
+    isWhiteText: isWhiteText,
+    isAmountText: isAmountText,
+    isRedAmountText: isRedAmountText,
+    upscaleBilinear: upscaleBilinear,
+    colorClusterStats: colorClusterStats,
+    findMaskedTextLine: findMaskedTextLine,
+    segmentGlyphs: segmentGlyphs,
+    glyphBitmap: glyphBitmap,
+    bitmapSim: bitmapSim,
+    matchGlyph: matchGlyph,
+    GLYPH_W: GLYPH_W,
+    GLYPH_H: GLYPH_H
+  };
+
+  if (typeof module !== "undefined" && module.exports) module.exports = API;
+  else { root.OcrLayout = API; }
+})(typeof globalThis !== "undefined" ? globalThis : this);

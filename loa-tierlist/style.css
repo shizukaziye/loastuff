@@ -1,0 +1,115 @@
+:root{
+  --bg:#0C0E13; --panel:#151A26; --card-line:#242B3D; --line:#2A3040;
+  --ink:#EAE4D3; --muted:#A79F90; --gold:#D2A85C; --ember:#E25C55;
+  --mono:"Cascadia Code","Consolas","SF Mono",ui-monospace,monospace;
+}
+html{background:var(--bg)}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:36px 28px 60px}
+
+/* masthead */
+header{border-bottom:1px solid var(--line); padding-bottom:24px}
+.eyebrow{font-size:11px; letter-spacing:.32em; text-transform:uppercase; color:var(--muted); margin:0 0 14px}
+h1{
+  font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  font-size:clamp(30px,5.4vw,52px); font-weight:900; line-height:1.04; margin:14px 0 0;
+  letter-spacing:.01em; text-transform:uppercase; text-wrap:balance;
+}
+h1 .nm{color:var(--ember); text-shadow:0 0 26px rgba(226,92,85,.30)}
+.sub{margin:12px 0 0; font-size:14.5px; color:var(--muted); max-width:70ch; line-height:1.5}
+.sub b{color:var(--ink); font-weight:600}
+.meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; min-height:27px}
+.meta span{
+  font-family:var(--mono); font-size:11px; color:var(--muted);
+  border:1px solid var(--line); border-radius:4px; padding:4px 9px; letter-spacing:.02em;
+}
+
+/* tab rails */
+.rail{display:flex; flex-wrap:wrap; gap:6px; margin-top:4px}
+.rail.sub{margin-top:10px; gap:14px}
+.railgroup{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.raillabel{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-right:2px}
+.rtab,.stab{
+  background:none; border:1px solid var(--line); color:var(--muted); border-radius:5px;
+  font:600 12.5px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  padding:6px 11px; cursor:pointer; letter-spacing:.02em;
+}
+.rtab:hover,.stab:hover{border-color:var(--gold); color:var(--ink)}
+.rtab.cur,.stab.cur{background:var(--panel); border-color:var(--gold); color:var(--ink)}
+.rtab.dead{opacity:.42; border-style:dashed}
+.rtab:focus-visible,.stab:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+
+/* strip */
+.strip{padding:24px 0 4px; border-bottom:1px solid var(--line)}
+.striphead{display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap}
+.striphead h2{font-size:13px; letter-spacing:.22em; text-transform:uppercase; margin:0; color:var(--ink); font-weight:700}
+.striphead p{margin:0; font-size:12.5px; color:var(--muted)}
+.strip svg{width:100%; height:auto; display:block; margin-top:6px}
+.strip .ax,.strip .cap{font-family:var(--mono); font-size:10.5px; fill:var(--muted)}
+.strip .endlabel{font-family:var(--mono); font-size:11px; fill:var(--ink)}
+.strip .regionletter{font-size:16px; font-weight:800; font-family:"Segoe UI Variable Display","Segoe UI",sans-serif}
+
+/* tiers */
+.tier{display:grid; grid-template-columns:64px 1fr; gap:16px; padding:20px 0; border-bottom:1px solid var(--line)}
+.tier:last-of-type{border-bottom:none}
+.chip{align-self:start; position:sticky; top:12px}
+.chip span{
+  display:flex; width:64px; height:64px; align-items:center; justify-content:center;
+  background:var(--tier); color:var(--bg); border-radius:6px;
+  font-family:"Segoe UI Variable Display","Segoe UI",sans-serif; font-size:30px; font-weight:900;
+}
+.chip-z span{box-shadow:0 0 26px rgba(232,205,138,.38)}
+.cards{display:flex; flex-wrap:wrap; gap:10px}
+.tierempty{
+  align-self:center; font-family:var(--mono); font-size:11px; color:var(--muted);
+  opacity:.7; padding:10px 2px; letter-spacing:.03em;
+}
+.card{
+  flex:1 1 158px; max-width:220px; min-width:148px;
+  background:var(--panel); border:1px solid var(--card-line); border-radius:6px;
+  padding:12px 13px 11px;
+}
+@media (prefers-reduced-motion:no-preference){
+  .card{transition:border-color .15s ease, transform .15s ease}
+  .card:hover{border-color:var(--gold); transform:translateY(-2px)}
+}
+.cardtop{display:flex; justify-content:space-between; align-items:flex-start}
+.rank{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.06em; padding-top:2px}
+.icon{width:42px; height:42px; color:var(--ink)}
+.icon svg{width:100%; height:100%; display:block}
+.cls{margin:8px 0 1px; font-size:14px; font-weight:700; letter-spacing:.01em}
+.spec{margin:0; font-size:11px; color:var(--gold); line-height:1.35; min-height:2.7em}
+.val{margin:6px 0 0; font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums}
+.valmeta{display:block; font-size:10px; color:var(--muted); margin-top:3px; letter-spacing:.02em}
+
+/* states */
+.empty{
+  margin:28px 0; padding:22px; border:1px dashed var(--line); border-radius:6px;
+  color:var(--muted); font-size:13.5px; line-height:1.6; max-width:70ch;
+}
+.empty b{color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){
+  .pulse{animation:pulse 1.2s ease-in-out infinite alternate}
+  @keyframes pulse{from{opacity:.45}to{opacity:.9}}
+}
+
+/* footer */
+footer{margin-top:26px; color:var(--muted); font-size:12.5px; line-height:1.65}
+footer h2{font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink); margin:0 0 10px}
+footer ul{margin:0; padding-left:18px}
+footer li{margin-bottom:5px}
+footer li::marker{color:var(--gold)}
+footer b{color:var(--ink); font-weight:600}
+footer a{color:var(--gold); text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media (max-width:560px){
+  .wrap{padding:26px 16px 44px}
+  .tier{grid-template-columns:44px 1fr; gap:10px}
+  .chip span{width:44px; height:44px; font-size:22px; border-radius:5px}
+  .card{min-width:132px}
+}

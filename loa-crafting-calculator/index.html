@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang='en'><head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Lost Ark Stronghold Crafting — Profit Calculator</title>
+<meta name='description' content='Rank every Lost Ark stronghold craft by net gold per craft, per hour, and ROI. Priced on a robust 14-day market average with a live price watch and per-craft material breakdowns.'>
+<meta property='og:title' content='Lost Ark Stronghold Crafting — Profit Calculator'>
+<meta property='og:description' content='Rank every Lost Ark stronghold craft by net gold per craft, per hour, and ROI — robust 14-day pricing, a price watch, and full material breakdowns.'>
+<meta property='og:type' content='website'>
+<meta property='og:url' content='https://www.loseii.com/loa-crafting-calculator/'>
+<meta name='twitter:card' content='summary_large_image'>
+<meta property='og:image' content='https://www.loseii.com/loa-crafting-calculator/og.png'>
+<meta name='twitter:image' content='https://www.loseii.com/loa-crafting-calculator/og.png'>
+<!-- inline themed favicon: accent-blue mortar bowl + gold pestle (no external file) -->
+<link rel='icon' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1017'/%3E%3Cpath d='M7 16h18a9 9 0 0 1-18 0z' fill='%2366c7ff'/%3E%3Crect x='5' y='14.5' width='22' height='2.4' rx='1.2' fill='%2366c7ff'/%3E%3Cline x1='20' y1='4' x2='14.5' y2='15' stroke='%23ffb86b' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<!-- SELF-CONTAINED: all CSS + JS inline, no build step, no deps. Deploys to GitHub Pages as-is.
+     Engine is a faithful port of loa-buddy.pages.dev's verified profit math, plus two meals it lacks. -->
+<style>
+:root{
+  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
+  --dim:#97a0b4;--accent:#66c7ff;--high:#ffb86b;--mid:#c78cff;--low:#6ad4ff;
+  --none:#4f5666;--useless:#707788;--good:#6ee7a8;--bad:#ff7f7f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 18px 80px}
+h1{font-size:25px;margin:0 0 4px;letter-spacing:-.02em}
+.tag{color:var(--dim);font-size:13px;margin-bottom:18px}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:26px 0 10px;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.panel+.panel{margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.good{color:var(--good)}.bad{color:var(--bad)}.accent{color:var(--accent)}.dim{color:var(--dim)}
+code,.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:12px}
+.formula{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-family:"SF Mono",Menlo,monospace;font-size:12.5px;overflow-x:auto;white-space:pre}
+.grid{display:grid;gap:12px}
+.inputs{position:sticky;top:0;z-index:20;background:rgba(13,16,23,.97);
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px)}
+.ihdr{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;user-select:none;margin-bottom:10px}
+.ihdr .tgl{cursor:pointer}
+.ihdr #caret{display:inline-block;width:12px}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px 14px}
+.fld{display:flex;flex-direction:column;gap:2px}
+.fld label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.fld input{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-family:inherit;width:100%}
+.fld input:disabled{color:var(--accent);opacity:1;cursor:not-allowed;border-style:dashed}
+.fld input:focus{outline:1px solid var(--accent)}
+.pxgrid{display:flex;flex-wrap:wrap;gap:9px}
+.pxgroup{flex:1 1 210px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);padding:7px 9px 8px}
+.pxgroup.wide{flex-basis:100%}
+.pxgroup .gh{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;margin-bottom:6px}
+.pxgroup .gf{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px 8px}
+.subh{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700;margin:12px 0 6px}
+.barrow{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+button{background:var(--accent);color:#06121f;border:none;border-radius:7px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+button:hover{filter:brightness(1.08)}
+.mbtn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--dim)}
+.mbtn.active{color:#06121f;background:var(--accent)}
+.note{color:var(--dim);font-size:11px;margin-top:6px}
+.redux{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.redux .rc{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px}
+.redux .rc h4{margin:0 0 8px;font-size:12px;color:var(--text)}
+.redux .rc .fld{margin-bottom:6px}
+.toprow{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.toprow .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin-right:4px}
+tr.click{cursor:pointer}
+.mlink{cursor:pointer;border-bottom:1px dotted var(--dim)}
+.mlink:hover{color:var(--accent);border-color:var(--accent)}
+.pathpick{cursor:pointer;color:var(--text);border-bottom:1px dotted var(--dim);white-space:nowrap}
+.pathpick:hover{color:var(--accent);border-color:var(--accent)}
+.pathpick.ov{color:var(--high);border-color:var(--high)}
+tr.click:hover{background:var(--panel2)}
+tr.sel{background:#22304a}
+th.so{cursor:pointer}th.so:hover{color:var(--text)}
+th.so.act{color:var(--accent)}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.04em}
+.pill.cooking{background:#3a2a16;color:var(--high)}
+.pill.special{background:#2a2140;color:var(--mid)}
+.pill.battle{background:#10303a;color:var(--low)}
+.big{font-size:15px}
+.hl{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;font-size:14px}
+.warn{color:var(--high)}
+details.method{margin-top:26px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px 16px}
+details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
+details.method p,details.method li{font-size:13px;color:var(--text)}
+details.prices{margin-top:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:4px 12px}
+details.prices summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;padding:6px 0}
+.ninp{width:62px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-family:inherit;font-size:13px}
+.knob{display:inline-flex;align-items:center;gap:6px}
+.spark{display:inline-block;cursor:crosshair}
+#sparktip{position:fixed;display:none;z-index:200;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:12px/1.6 "SF Mono",Menlo,monospace;color:var(--text);pointer-events:none;max-width:320px;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+#table tr:nth-child(2n) td,#watch tr:nth-child(2n) td{background:rgba(255,255,255,.022)}
+.xlink{font-size:12px;color:var(--dim);margin:-8px 0 18px}
+.xlink a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+.xlink a:hover{border-bottom-color:var(--accent)}
+footer{margin:34px 0 0;padding-top:16px;border-top:1px solid var(--border);text-align:center;color:var(--dim);font-size:11.5px;line-height:1.7}
+footer a{color:var(--dim);text-decoration:underline;text-underline-offset:2px}
+footer a:hover{color:var(--accent)}
+footer .fineprint{margin-top:6px;font-size:11px;color:var(--none)}
+.badge{display:inline-flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--dim);line-height:1.4}
+.badge b{color:var(--accent);font-weight:700}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
+.badge.stale .dot{background:var(--high)}
+.heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:12px}
+.hero{background:var(--panel);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:9px;padding:13px 15px}
+.hero.loss{border-top-color:var(--bad)}
+.hero .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700}
+.hero.loss .k{color:var(--bad)}
+.hero .n{font-size:16px;font-weight:700;margin:5px 0 3px;letter-spacing:-.01em}
+.hero .big{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.hero .big small{font-size:13px;color:var(--dim);font-weight:600}
+.hero .sub{font-size:12px;color:var(--dim);margin-top:4px}
+td.barcell{position:relative;text-align:right}
+td.barcell .dbar{position:absolute;right:0;top:50%;transform:translateY(-50%);height:64%;border-radius:3px;background:var(--good);opacity:.22;pointer-events:none}
+td.barcell .dbar.neg{background:var(--bad)}
+td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:700}
+.ihdr #syncStatus{text-transform:none;letter-spacing:normal;font-weight:400}
+@media(max-width:760px){.redux{grid-template-columns:repeat(2,1fr)}.panel{overflow-x:auto}table{font-size:12px}}
+@media(max-width:430px){
+  .wrap{padding:18px 12px 64px}
+  h1{font-size:21px}
+  .inputs{overflow-x:hidden}
+  .toprow{gap:10px 14px}
+  .ig{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+  .pxgroup{flex-basis:100%}
+  .redux{grid-template-columns:repeat(2,1fr);gap:8px}
+  .mbtn{padding:6px 10px}
+  th,td{padding:6px 7px}
+}
+@media(max-width:640px){
+  #table thead{display:none}
+  #table,#table tbody,#table tr,#table td{display:block}
+  #table tr{border:1px solid var(--border);border-radius:8px;margin:0 0 8px;padding:4px 2px;background:var(--panel)}
+  #table tbody tr:nth-child(2n) td{background:none}
+  #table td{display:flex;justify-content:space-between;align-items:center;gap:14px;border:none;padding:5px 11px;text-align:right}
+  #table td::before{content:attr(data-label);color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap}
+  #table td:first-child{display:block;text-align:left;font-size:15px;font-weight:700;border-bottom:1px solid var(--border);padding:6px 11px 7px;margin-bottom:3px}
+  #table td:first-child::before{content:''}
+  td.barcell{justify-content:space-between;position:static}
+  td.barcell .dbar{display:none}
+}
+</style>
+</head><body>
+<div class='wrap'>
+  <div id='sparktip'></div>
+  <h1>Lost Ark Stronghold Crafting &mdash; Profit Calculator</h1>
+  <div class='tag'>Every stronghold craft ranked by net gold &mdash; per craft, per hour, ROI. Priced at a robust <b>14-day average</b> (not the live spot) so a bought-out market can't distort it. Method &amp; setup in the dropdown at the bottom.</div>
+  <div class='xlink'>Looking to flip on the market instead? Try the <a href='https://www.loseii.com/loa-deal-finder/'>Lost Ark Deal Finder &rarr;</a></div>
+  <div id='updated' class='note' style='margin:6px 0 14px'></div>
+
+  <!-- INPUTS: sticky, collapsible, default collapsed -->
+  <div class='inputs'>
+    <div class='ihdr'>
+      <span class='tgl' onclick='toggleInputs()'><span id='caret'>&#9662;</span> Inputs &amp; settings</span>
+      <span id='syncStatus' class='note' style='margin:0'></span>
+    </div>
+    <div id='infields'>
+      <div class='toprow'>
+        <span><span class='lbl'>Region</span>
+          <button class='mbtn active' data-rg='nae' onclick='setRegion("nae")'>NA East</button>
+          <button class='mbtn' data-rg='euc' onclick='setRegion("euc")'>EU Central</button></span>
+        <span><span class='lbl'>Great Success</span>
+          <button class='mbtn active' id='gsBtn' onclick='toggleGS()'>On</button></span>
+        <span><span class='lbl'>Pricing</span>
+          <button class='mbtn active' data-bs='m' onclick='setBasis("m")'>Robust (14d)</button>
+          <button class='mbtn' data-bs='y' onclick='setBasis("y")'>Yesterday</button>
+          <button class='mbtn' data-bs='s' onclick='setBasis("s")'>Spot (now)</button></span>
+        <span><button onclick='syncPrices()'>&#8635; Sync live prices</button></span>
+      </div>
+      <div class='toprow' style='margin-top:8px'>
+        <span class='lbl'>Robust price</span>
+        <span class='knob'><span class='lbl' style='margin:0'>drop hi/lo</span><input id='p_trim' type='number' min='0' step='1' class='ninp' oninput='setRobustParams()'></span>
+        <span class='knob'><span class='lbl' style='margin:0'>decay</span><input id='p_decay' type='number' min='0.5' max='1' step='0.01' class='ninp' oninput='setRobustParams()'></span>
+        <span class='note' id='decayNote' style='margin:0'></span>
+      </div>
+
+      <details class='prices'>
+        <summary>Crafting reductions (%)</summary>
+        <div class='note' style='margin:2px 0 8px'>General stacks onto the category-specific column. Edits apply instantly.</div>
+        <div class='redux'>
+          <div class='rc'><h4>General</h4>
+            <div class='fld'><label>Cost</label><input id='r_general_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Time</label><input id='r_general_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Great Success</label><input id='r_general_gs' type='number' step='1' oninput='recalc()'></div></div>
+          <div class='rc'><h4>Battle</h4>
+            <div class='fld'><label>Cost</label><input id='r_battle_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Time</label><input id='r_battle_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Great Success</label><input id='r_battle_gs' type='number' step='1' oninput='recalc()'></div></div>
+          <div class='rc'><h4>Cooking</h4>
+            <div class='fld'><label>Cost</label><input id='r_cooking_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Time</label><input id='r_cooking_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Great Success</label><input id='r_cooking_gs' type='number' step='1' oninput='recalc()'></div></div>
+          <div class='rc'><h4>Special (fusion)</h4>
+            <div class='fld'><label>Cost</label><input id='r_special_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Time</label><input id='r_special_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label>Great Success</label><input id='r_special_gs' type='number' step='1' oninput='recalc()'></div></div>
+        </div>
+        <div class='barrow'><button onclick='resetDefaults();recalc()' style='background:var(--panel2);color:var(--text)'>Reset reductions &amp; robust knobs</button></div>
+      </details>
+
+      <details class='prices'>
+        <summary id='pxSummary'>Market prices &amp; live-sync</summary>
+        <div class='note' style='margin:2px 0 8px'>Prices are per <b>bundle</b> (gathered mats = per 100, crafted = per 1). Edit any cell to override.</div>
+        <div class='subh'>Gathered materials (per 100)</div>
+        <div class='pxgrid' id='pxRaw'></div>
+        <div class='subh'>Crafted items &amp; outputs (per 1)</div>
+        <div class='pxgrid' id='pxCraft'></div>
+        <div class='subh'>Live-sync proxy (optional)</div>
+        <div class='ig' style='grid-template-columns:1fr'>
+          <div class='fld'><label>Proxy URL &mdash; paste your CORS worker for in-browser "Sync live prices" (see Method). Blank = use the baked snapshot or edit by hand.</label><input id='p_proxy' type='text' placeholder='https://your-worker.workers.dev/v1/prices/latest'></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <h2>Best craft right now</h2>
+  <div id='summary'></div>
+
+  <h2>All crafts &mdash; ranked</h2>
+  <div class='toprow' style='margin:0 0 8px'>
+    <span><span class='lbl'>Show</span>
+      <button class='mbtn active' data-ft='all' onclick='setFilter("all")'>All</button>
+      <button class='mbtn' data-ft='cooking' onclick='setFilter("cooking")'>Cooking</button>
+      <button class='mbtn' data-ft='special' onclick='setFilter("special")'>Fusion</button>
+      <button class='mbtn' data-ft='battle' onclick='setFilter("battle")'>Battle</button></span>
+    <span><span class='lbl'>Columns</span>
+      <button class='mbtn active' data-cm='simple' onclick='setColMode("simple")'>Simple</button>
+      <button class='mbtn' data-cm='advanced' onclick='setColMode("advanced")'>Advanced</button></span>
+    <span class='note' style='margin:0'>Click a row for the full material breakdown.</span>
+  </div>
+  <div class='panel'><table id='table'></table></div>
+
+  <div id='breakdown'></div>
+  <div id='matdetail'></div>
+
+  <h2>Price watch &mdash; recent movers</h2>
+  <div class='note' style='margin:-4px 0 8px'>Split into <b>craftable outputs</b> (you sell) and <b>materials</b> (you buy) &mdash; items above ~50g whose <b>yesterday's average</b> or <b>live spot</b> sits &ge;15% off the fair (robust) price. The deal column judges the spot from your side of the trade (pricey = good to sell, cheap = good to buy) and shows where spot falls in the 14-day range. History runs today &rarr; oldest (today's live value dimmed, excluded from fair).</div>
+  <div class='panel' id='watch' style='overflow-x:auto'></div>
+
+  <details class='method'>
+    <summary>Method &amp; setup</summary>
+    <p>Your browser recomputes every number from the reductions above and current market prices. The engine mirrors <b>loa-buddy.pages.dev</b> exactly (verified against its code), so results match the tool you already trust.</p>
+    <div class='formula'>adjustedGold = floor( craftingCost x (1 - (general.cost + category.cost)/100) )
+adjustedTime = craftingTime x (1 - (general.time + category.time)/100)
+GSC (great success chance) = enabled ? 5 x (1 + (general.GS + category.GS)/100) : 0
+EY  (expected yield)       = baseQuantity x (1 + GSC/100)
+materialCost = SUM  qty x (marketPrice / bundleSize)      (cheapest gathering path is auto-picked)
+totalCost    = materialCost + adjustedGold
+tax          = sellPrice &lt;= 1 ? 0 : ceil(sellPrice x 0.05)      (5%, rounded UP to nearest gold)
+NET PROFIT / craft = EY x (sellPrice - tax) - totalCost
+NET / hour = netProfit / (adjustedTime / 60)
+ROI %      = netProfit / totalCost</div>
+    <ul>
+      <li><b>Great Success</b> doubles a craft's output, and happens <code>GSC%</code> of the time &mdash; that's why expected yield is <code>qty x (1 + GSC/100)</code>. The "x2" badge in-game refers to this doubling. Toggle it off to see worst-case.</li>
+      <li><b>Cheapest path &mdash; click to switch:</b> fusion materials can be made from several gathering types (Fishing / Hunting / Mining...). The tool prices each path and uses the <b>cheapest</b> by default; the chosen one shows in the Path column. <b>Click the Path cell</b> to cycle paths, or click a row in a recipe's &ldquo;Gathering paths&rdquo; breakdown to force one &mdash; handy for matching another tool's selected path. Your choice persists; &ldquo;reset to cheapest&rdquo; clears it.</li>
+      <li><b>Robust vs spot pricing.</b> Each item carries a current <i>spot</i> (lowest listing) and 14 days of daily average prices. The default <b>robust</b> price <b>excludes the current (live, in-progress) day</b> entirely, then drops the highest &amp; lowest few of the completed days and takes a <i>recency-weighted</i> mean of the rest (newest completed day &times;1, each older &times;<code>decay</code>) &mdash; so it tracks genuine moves but the live spike (or a lowball) can never enter. Tune <b>drop hi/lo</b> and <b>decay</b> live above; the breakdown flags any item whose spot is &ge;15% off its robust price (&#9888;). Toggle <b>Pricing &rarr; Spot</b> for the live lowest price, or <b>Pricing &rarr; Yesterday</b> to value everything at the most recent <i>completed</i> day&rsquo;s average &mdash; more accurate than the robust mean when a market has fallen for many days in a row (the 14-day average then lags above where prices actually are).</li>
+      <li><b>Mats are valued at market price</b> (true opportunity cost). If you farm a mat yourself, edit its price toward 0 to see your effective profit.</li>
+      <li><b>Two added meals</b> (Virtuoso's Striploin, Specialist's Beef Tenderloin) aren't in loa-buddy. Their recipes come from in-game. <span class='warn'>Their craft times are assumed (75 / 60 min) &mdash; confirm them in-game; this only affects the per-hour column, not per-craft.</span></li>
+      <li><b>Prices</b> come from the same market feed loa-buddy uses, baked in as a snapshot and auto-refreshed every 6 hours by a GitHub Action (both spot &amp; median). In-browser "Sync live prices" (needs a proxy worker) refreshes spot only; the median comes from the scheduled refresh.</li>
+    </ul>
+    <p><b>Enable one-click live sync (optional).</b> The market API only answers loa-buddy's own domain (CORS), so this page can't call it directly. Deploy this ~20-line Cloudflare Worker (free), then paste its URL into the Proxy field above:</p>
+    <div class='formula'>// worker.js  -- deploy at dash.cloudflare.com &gt; Workers &gt; Create
+export default {
+  async fetch(req) {
+    const cors = { "Access-Control-Allow-Origin": "*",
+                   "Access-Control-Allow-Methods": "POST,OPTIONS",
+                   "Access-Control-Allow-Headers": "Content-Type" };
+    if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+    const body = await req.text();
+    const r = await fetch("https://marketdata-api.yrzhao1068589.workers.dev/v1/prices/latest",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    return new Response(await r.text(),
+      { headers: { ...cors, "Content-Type": "application/json" } });
+  }
+};</div>
+  </details>
+
+  <footer>
+    <div>Market prices from the community feed <a href='https://loa-buddy.pages.dev' rel='noopener'>loa-buddy</a> uses. Also try the <a href='https://www.loseii.com/loa-deal-finder/'>Lost Ark Deal Finder</a>.</div>
+    <div class='fineprint'>Unofficial, fan-made tool. Not affiliated with Smilegate RPG or Amazon Games. Lost Ark is a trademark of its respective owners.</div>
+  </footer>
+</div>
+
+<script>
+"use strict";
+// ====== embedded data (recipes, item catalog, baked price snapshot) ======
+const RECIPES=[{"id":"superior_abidos_fusion_material","name":"Superior Abidos Fusion Material","type":"special","craftingCost":520,"quantity":10,"craftingTime":75,"materialOptions":[{"category":"Fishing","items":[{"id":"fish","quantity":112},{"id":"redflesh_fish","quantity":59},{"id":"abidos_solar_carp","quantity":43}]},{"category":"Hunting","items":[{"id":"thick_raw_meat","quantity":112},{"id":"treated_meat","quantity":59},{"id":"abidos_thick_raw_meat","quantity":43}]},{"category":"Excavating","items":[{"id":"ancient_relic","quantity":112},{"id":"rare_relic","quantity":59},{"id":"abidos_relic","quantity":43}]},{"category":"Foraging","items":[{"id":"wild_flower","quantity":112},{"id":"shy_wild_flower","quantity":59},{"id":"abidos_wild_flower","quantity":43}]},{"category":"Logging","items":[{"id":"timber","quantity":112},{"id":"tender_timber","quantity":59},{"id":"abidos_timber","quantity":43}]},{"category":"Mining","items":[{"id":"iron_ore","quantity":112},{"id":"heavy_iron_ore","quantity":59},{"id":"abidos_iron_ore","quantity":43}]}]},{"id":"abidos_fusion_material","name":"Abidos Fusion Material","type":"special","craftingCost":400,"quantity":10,"craftingTime":60,"materialOptions":[{"category":"Fishing","items":[{"id":"fish","quantity":86},{"id":"redflesh_fish","quantity":45},{"id":"abidos_solar_carp","quantity":33}]},{"category":"Hunting","items":[{"id":"thick_raw_meat","quantity":86},{"id":"treated_meat","quantity":45},{"id":"abidos_thick_raw_meat","quantity":33}]},{"category":"Excavating","items":[{"id":"ancient_relic","quantity":86},{"id":"rare_relic","quantity":45},{"id":"abidos_relic","quantity":33}]},{"category":"Foraging","items":[{"id":"wild_flower","quantity":86},{"id":"shy_wild_flower","quantity":45},{"id":"abidos_wild_flower","quantity":33}]},{"category":"Logging","items":[{"id":"timber","quantity":86},{"id":"tender_timber","quantity":45},{"id":"abidos_timber","quantity":33}]},{"category":"Mining","items":[{"id":"iron_ore","quantity":86},{"id":"heavy_iron_ore","quantity":45},{"id":"abidos_iron_ore","quantity":33}]}]},{"id":"prime_oreha_fusion_material","name":"Prime Oreha Fusion Material","type":"special","craftingCost":300,"quantity":15,"craftingTime":75,"materialOptions":[{"category":"Fishing","items":[{"id":"fish","quantity":142},{"id":"redflesh_fish","quantity":69},{"id":"oreha_solar_carp","quantity":52}]},{"category":"Excavating","items":[{"id":"ancient_relic","quantity":107},{"id":"rare_relic","quantity":51},{"id":"oreha_relic","quantity":52}]},{"category":"Hunting","items":[{"id":"thick_raw_meat","quantity":142},{"id":"treated_meat","quantity":69},{"id":"oreha_thick_meat","quantity":52}]}]},{"id":"superior_oreha_fusion_material","name":"Superior Oreha Fusion Material","type":"special","craftingCost":250,"quantity":20,"craftingTime":60,"materialOptions":[{"category":"Hunting","items":[{"id":"oreha_thick_meat","quantity":16},{"id":"treated_meat","quantity":64},{"id":"thick_raw_meat","quantity":128}]},{"category":"Fishing","items":[{"id":"oreha_solar_carp","quantity":16},{"id":"redflesh_fish","quantity":64},{"id":"fish","quantity":128}]},{"category":"Excavating","items":[{"id":"oreha_relic","quantity":16},{"id":"rare_relic","quantity":29},{"id":"ancient_relic","quantity":94}]}]},{"id":"oreha_fusion_material","name":"Oreha Fusion Material","type":"special","craftingCost":205,"quantity":30,"craftingTime":45,"materialOptions":[{"category":"Hunting","items":[{"id":"oreha_thick_meat","quantity":10},{"id":"treated_meat","quantity":40},{"id":"thick_raw_meat","quantity":80}]},{"category":"Fishing","items":[{"id":"oreha_solar_carp","quantity":10},{"id":"redflesh_fish","quantity":40},{"id":"fish","quantity":80}]},{"category":"Excavating","items":[{"id":"oreha_relic","quantity":8},{"id":"rare_relic","quantity":26},{"id":"ancient_relic","quantity":64}]}]},{"id":"atropine_potion","name":"Atropine Potion","type":"battle","craftingCost":30,"quantity":3,"craftingTime":60,"materialOptions":[{"category":"default","items":[{"id":"exotic_relic","quantity":6},{"id":"rare_relic","quantity":17},{"id":"shy_wild_flower","quantity":8},{"id":"ancient_relic","quantity":75}]}]},{"id":"stimulant","name":"Stimulant","type":"battle","craftingCost":30,"quantity":3,"craftingTime":60,"materialOptions":[{"category":"default","items":[{"id":"exotic_relic","quantity":8},{"id":"rare_relic","quantity":24},{"id":"ancient_relic","quantity":32}]}]},{"id":"elemental_hp_potion","name":"Elemental HP Potion","type":"battle","craftingCost":30,"quantity":3,"craftingTime":60,"materialOptions":[{"category":"default","items":[{"id":"bright_wild_flower","quantity":8},{"id":"shy_wild_flower","quantity":25},{"id":"wild_flower","quantity":33}]}]},{"id":"splendid_elemental_hp_potion","name":"Splendid Elemental HP Potion","type":"battle","craftingCost":30,"quantity":2,"craftingTime":75,"materialOptions":[{"category":"default","items":[{"id":"elemental_hp_potion","quantity":3},{"id":"bright_wild_flower","quantity":8}]}]},{"id":"dark_grenade","name":"Dark Grenade","type":"battle","craftingCost":15,"quantity":3,"craftingTime":30,"materialOptions":[{"category":"default","items":[{"id":"sturdy_timber","quantity":4},{"id":"tender_timber","quantity":12},{"id":"timber","quantity":17}]}]},{"id":"splendid_dark_grenade","name":"Splendid Dark Grenade","type":"battle","craftingCost":15,"quantity":2,"craftingTime":45,"materialOptions":[{"category":"default","items":[{"id":"dark_grenade","quantity":3},{"id":"sturdy_timber","quantity":4}]}]},{"id":"sacred_bomb","name":"Sacred Bomb","type":"battle","craftingCost":15,"quantity":3,"craftingTime":30,"materialOptions":[{"category":"default","items":[{"id":"strong_iron_ore","quantity":4},{"id":"heavy_iron_ore","quantity":15},{"id":"iron_ore","quantity":30}]}]},{"id":"splendid_sacred_bomb","name":"Splendid Sacred Bomb","type":"battle","craftingCost":15,"quantity":2,"craftingTime":45,"materialOptions":[{"category":"default","items":[{"id":"sacred_bomb","quantity":3},{"id":"strong_iron_ore","quantity":4}]}]},{"id":"masters_chewy_grilled","name":"Master's Chewy Grilled Skewers","type":"cooking","quantity":1,"craftingTime":45,"craftingCost":35,"materialOptions":[{"category":"default","items":[{"id":"oreha_thick_meat","quantity":6},{"id":"oreha_solar_carp","quantity":7},{"id":"treated_meat","quantity":22},{"id":"redflesh_fish","quantity":26},{"id":"thick_raw_meat","quantity":45},{"id":"fish","quantity":53}]}]},{"id":"masters_herb_steak","name":"Master's Herb Steak Meal","type":"cooking","quantity":1,"craftingTime":60,"craftingCost":50,"materialOptions":[{"category":"default","items":[{"id":"oreha_thick_meat","quantity":12},{"id":"oreha_solar_carp","quantity":13},{"id":"treated_meat","quantity":44},{"id":"redflesh_fish","quantity":50},{"id":"thick_raw_meat","quantity":88},{"id":"fish","quantity":100}]}]},{"id":"sacred_charm","name":"Sacred Charm","type":"battle","craftingCost":15,"quantity":3,"craftingTime":30,"materialOptions":[{"category":"default","items":[{"id":"strong_iron_ore","quantity":4},{"id":"heavy_iron_ore","quantity":14},{"id":"iron_ore","quantity":28}]}]},{"id":"splendid_sacred_charm","name":"Splendid Sacred Charm","type":"battle","craftingCost":15,"quantity":2,"craftingTime":45,"materialOptions":[{"category":"default","items":[{"id":"sacred_charm","quantity":3},{"id":"strong_iron_ore","quantity":4}]}]},{"id":"virtuoso_striploin","name":"Virtuoso's Striploin Steak Meal","type":"cooking","craftingCost":80,"quantity":1,"craftingTime":54,"materialOptions":[{"category":"default","items":[{"id":"abidos_thick_raw_meat","quantity":65},{"id":"abidos_solar_carp","quantity":75},{"id":"treated_meat","quantity":84},{"id":"redflesh_fish","quantity":97},{"id":"thick_raw_meat","quantity":112},{"id":"fish","quantity":129}]}]},{"id":"specialist_beef","name":"Specialist's Beef Tenderloin Steak Meal","type":"cooking","craftingCost":65,"quantity":1,"craftingTime":60,"timeAssumed":true,"materialOptions":[{"category":"default","items":[{"id":"oreha_thick_meat","quantity":53},{"id":"oreha_solar_carp","quantity":60},{"id":"treated_meat","quantity":68},{"id":"redflesh_fish","quantity":77},{"id":"thick_raw_meat","quantity":90},{"id":"fish","quantity":103}]}]}];
+const ITEMS={"masters_herb_steak":{"slug":"masters-herb-steak","name":"Master's Herb Steak Meal","bundle":1},"stimulant":{"slug":"stimulant","name":"Stimulant","bundle":1},"atropine_potion":{"slug":"atropine-potion","name":"Atropine Potion","bundle":1},"timber":{"slug":"timber","name":"Timber","bundle":100},"oreha_relic":{"slug":"oreha-relic","name":"Oreha Relic","bundle":100},"bright_wild_flower":{"slug":"bright-wild-flower","name":"Bright Wild Flower","bundle":100},"specialist_beef":{"slug":"specialist-beef","name":"Specialist Beef Tenderloin Steak Meal","bundle":1},"strong_iron_ore":{"slug":"strong-iron-ore","name":"Strong Iron Ore","bundle":100},"treated_meat":{"slug":"treated-meat","name":"Treated Meat","bundle":100},"prime_oreha_fusion_material":{"slug":"prime-oreha-fusion-material","name":"Prime Oreha Fusion Material","bundle":1},"splendid_sacred_bomb":{"slug":"splendid-sacred-bomb","name":"Splendid Sacred Bomb","bundle":1},"splendid_sacred_charm":{"slug":"splendid-sacred-charm","name":"Splendid Sacred Charm","bundle":1},"heavy_iron_ore":{"slug":"heavy-iron-ore","name":"Heavy Iron Ore","bundle":100},"tender_timber":{"slug":"tender-timber","name":"Tender Timber","bundle":100},"oreha_thick_meat":{"slug":"oreha-thick-meat","name":"Oreha Thick Meat","bundle":100},"exotic_relic":{"slug":"exotic-relic","name":"Exotic Relic","bundle":100},"fish":{"slug":"fish","name":"Fish","bundle":100},"sacred_bomb":{"slug":"sacred-bomb","name":"Sacred Bomb","bundle":1},"thick_raw_meat":{"slug":"thick-raw-meat","name":"Thick Raw Meat","bundle":100},"dark_grenade":{"slug":"dark-grenade","name":"Dark Grenade","bundle":1},"abidos_relic":{"slug":"abidos-relic","name":"Abidos Relic","bundle":100},"elemental_hp_potion":{"slug":"elemental-hp-potion","name":"Elemental HP Potion","bundle":1},"superior_abidos_fusion_material":{"slug":"superior-abidos-fusion-material","name":"Superior Abidos Fusion Material","bundle":1},"oreha_solar_carp":{"slug":"oreha-solar-carp","name":"Oreha Solar Carp","bundle":100},"abidos_solar_carp":{"slug":"abidos-solar-carp","name":"Abidos Solar Carp","bundle":100},"abidos_fusion_material":{"slug":"abidos-fusion-material","name":"Abidos Fusion Material","bundle":1},"superior_oreha_fusion_material":{"slug":"superior-oreha-fusion-material","name":"Superior Oreha Fusion Material","bundle":1},"redflesh_fish":{"slug":"redflesh-fish","name":"Redflesh Fish","bundle":100},"rare_relic":{"slug":"rare-relic","name":"Rare Relic","bundle":100},"abidos_wild_flower":{"slug":"abidos-wild-flower","name":"Abidos Wild Flower","bundle":100},"sacred_charm":{"slug":"sacred-charm","name":"Sacred Charm","bundle":1},"splendid_elemental_hp_potion":{"slug":"splendid-elemental-hp-potion","name":"Splendid Elemental HP Potion","bundle":1},"ancient_relic":{"slug":"ancient-relic","name":"Ancient Relic","bundle":100},"shy_wild_flower":{"slug":"shy-wild-flower","name":"Shy Wild Flower","bundle":100},"sturdy_timber":{"slug":"sturdy-timber","name":"Sturdy Timber","bundle":100},"virtuoso_striploin":{"slug":"virtuoso-striploin","name":"Virtuoso Striploin Steak Meal","bundle":1},"masters_chewy_grilled":{"slug":"masters-chewy-grilled","name":"Master's Chewy Grilled Skewers","bundle":1},"abidos_iron_ore":{"slug":"abidos-iron-ore","name":"Abidos Iron Ore","bundle":100},"oreha_fusion_material":{"slug":"oreha-fusion-material","name":"Oreha Fusion Material","bundle":1},"wild_flower":{"slug":"wild-flower","name":"Wild Flower","bundle":100},"abidos_thick_raw_meat":{"slug":"abidos-thick-raw-meat","name":"Abidos Thick Raw Meat","bundle":100},"iron_ore":{"slug":"iron-ore","name":"Iron Ore","bundle":100},"abidos_timber":{"slug":"abidos-timber","name":"Abidos Timber","bundle":100},"splendid_dark_grenade":{"slug":"splendid-dark-grenade","name":"Splendid Dark Grenade","bundle":1}};
+const SNAPSHOT={"nae":{"abidos-fusion-material":{"s":103,"h":[105,110,111,111,114,108,98,99,104,99,102,107,98,97]},"abidos-iron-ore":{"s":1175,"h":[1165,1199,1268,1122,1230,1243,1200,1315,1418,1335,1410,1593,1229,1091]},"abidos-relic":{"s":992,"h":[1015,966,1112,949,976,916,937,948,955,974,976,986,1016,1004]},"abidos-solar-carp":{"s":1099,"h":[1121,1199,1256,1319,1411,1370,1090,1070,1141,1199,1136,1080,1327,1188]},"abidos-thick-raw-meat":{"s":1299,"h":[1341,1449,1704,1286,1469,1424,1396,1325,1282,1383,1596,2024,1442,1485]},"abidos-timber":{"s":999,"h":[1029,1029,1120,988,1061,1085,989,988,1054,1079,1101,1110,1096,992]},"abidos-wild-flower":{"s":869,"h":[901,819,888,919,956,930,775,911,903,1098,1028,1075,870,859]},"ancient-relic":{"s":161,"h":[161,164,191,164,222,212,188,190,202,205,199,219,217,181]},"atropine-potion":{"s":148,"h":[150,151,155,162,178,170,164,166,168,174,178,182,170,157]},"bright-wild-flower":{"s":2000,"h":[2302,2578,2069,2203,2031,2061,1945,2238,2155,1940,2232,2341,2104,2327]},"dark-grenade":{"s":89,"h":[92,91,97,99,105,99,97,105,124,141,136,189,90,91]},"elemental-hp-potion":{"s":169,"h":[170,170,171,171,172,171,171,171,170,172,173,173,173,172]},"exotic-relic":{"s":14,"h":[11,15,19,93,12,33,4,5,29,464,5,12,14,8]},"fish":{"s":96,"h":[96,98,102,104,114,106,161,94,94,97,113,118,95,97]},"heavy-iron-ore":{"s":190,"h":[194,192,207,221,324,335,167,174,180,191,188,191,196,191]},"iron-ore":{"s":95,"h":[97,99,106,112,171,167,84,89,87,91,91,93,101,103]},"masters-chewy-grilled":{"s":892,"h":[916,944,971,991,1039,1066,1129,1159,1218,1283,1324,1358,1008,628]},"masters-herb-steak":{"s":1299,"h":[1405,1494,2187,2451,1563,1202,1212,1223,1229,1277,1351,1410,1535,1668]},"oreha-fusion-material":{"s":4,"h":[4,5,4,4,76,93,95,22,3,10,4,2,3,4]},"oreha-relic":{"s":1400,"h":[1610,1500,1108,815,973,968,966,1016,1162,1122,1188,1112,1064,1362]},"oreha-solar-carp":{"s":48,"h":[49,52,60,37,40,41,43,44,47,47,53,55,60,70]},"oreha-thick-meat":{"s":1868,"h":[2007,1680,1675,1346,2074,2164,1483,1663,1814,2009,2665,2661,2213,2519]},"prime-oreha-fusion-material":{"s":68,"h":[77,72,65,65,72,78,75,61,45,48,51,51,59,59]},"rare-relic":{"s":191,"h":[198,202,235,214,302,213,196,194,206,583,216,223,252,260]},"redflesh-fish":{"s":179,"h":[182,189,209,225,182,188,211,232,185,180,182,169,180,187]},"sacred-bomb":{"s":109,"h":[110,110,104,104,113,113,115,106,112,111,116,117,118,118]},"sacred-charm":{"s":1000,"h":[1000,1000,138,61,95,95,95,75,79,101,99,93,92,94]},"shy-wild-flower":{"s":650,"h":[549,570,597,614,636,654,561,584,570,605,611,599,580,587]},"specialist-beef":{"s":2999,"h":[3000,3000,1500,1500,2250,3000,3000,2999,2290,2290]},"splendid-dark-grenade":{"s":335,"h":[339,336,292,292,338,303,296,239,210,238,229,222,239,200]},"splendid-elemental-hp-potion":{"s":447,"h":[448,449,434,391,337,295,292,300,309,313,321,324,334,318]},"splendid-sacred-bomb":{"s":217,"h":[222,222,236,249,262,260,278,283,309,221,222,222,233,236]},"splendid-sacred-charm":{"s":327,"h":[331,337,344,333,252,252,256,254,262,271,279,282,287,291]},"stimulant":{"s":120,"h":[119,116,129,146,186,193,111,111,111,117,126,131,172,137]},"strong-iron-ore":{"s":1148,"h":[1228,1293,1500,989,1140,1437,1031,1171,1306,962,994,995,1048,1068]},"sturdy-timber":{"s":830,"h":[838,843,865,804,840,856,832,845,857,867,899,909,917,885]},"superior-abidos-fusion-material":{"s":149,"h":[148,147,149,148,148,147,140,143,143,144,142,140,140,135]},"superior-oreha-fusion-material":{"s":30,"h":[31,32,38,40,39,40,1605,34,23,16,19,22,20,1253]},"tender-timber":{"s":225,"h":[228,229,259,276,211,215,234,212,212,210,218,223,242,245]},"thick-raw-meat":{"s":164,"h":[190,219,171,192,307,300,158,164,168,180,216,252,205,156]},"timber":{"s":88,"h":[90,90,94,92,85,86,90,87,88,87,93,95,128,93]},"treated-meat":{"s":324,"h":[335,334,301,341,461,450,269,278,285,309,339,367,311,262]},"virtuoso-striploin":{"s":3948,"h":[3983,4054,4049,4010,4051,3996,4110,4228,4276,4355,4551,4655,4764,4882]},"wild-flower":{"s":198,"h":[193,205,210,218,230,234,184,209,201,199,222,212,197,214]}},"euc":{"abidos-fusion-material":{"s":124,"h":[124,126,130,134,133,133,119,120,125,138,133,130,126,126]},"abidos-iron-ore":{"s":1545,"h":[1499,1456,1462,1534,1664,1659,1892,1719,1771,2034,1921,1756,1842,1887]},"abidos-relic":{"s":1421,"h":[1527,1498,1337,1374,1402,1412,1466,1480,1422,1440,1533,1481,1481,1441]},"abidos-solar-carp":{"s":1499,"h":[1505,1538,1599,1636,1737,1708,1559,1590,1614,1716,1849,1708,1529,1588]},"abidos-thick-raw-meat":{"s":1595,"h":[1558,1598,1778,2033,2417,2359,2862,1888,1818,1926,2098,2436,1567,1554]},"abidos-timber":{"s":1499,"h":[1523,1550,1481,1415,1393,1396,1469,1462,1535,1569,1622,1634,1561,1469]},"abidos-wild-flower":{"s":1400,"h":[1536,1525,1252,1317,1491,1559,1855,1556,1709,1559,1506,1474,1634,1674]},"ancient-relic":{"s":155,"h":[163,151,154,160,166,172,158,162,167,166,171,179,199,179]},"atropine-potion":{"s":172,"h":[177,182,193,196,191,194,178,182,193,204,204,212,185,176]},"bright-wild-flower":{"s":1777,"h":[1698,1805,2199,2387,3236,2407,1891,1901,2088,2136,2157,2186,2185,2236]},"dark-grenade":{"s":116,"h":[119,120,106,108,121,133,108,105,102,110,117,125,122,95]},"elemental-hp-potion":{"s":207,"h":[205,196,205,203,208,215,188,190,190,203,235,249,190,197]},"exotic-relic":{"s":6,"h":[5,6,12,14,5,6,7,8,6,8,9,8,13,7]},"fish":{"s":164,"h":[171,154,163,165,180,178,164,188,150,145,154,159,169,173]},"heavy-iron-ore":{"s":280,"h":[268,286,285,228,245,246,298,239,238,259,256,231,242,259]},"iron-ore":{"s":120,"h":[121,116,173,148,128,129,120,120,117,119,128,133,137,158]},"masters-chewy-grilled":{"s":999,"h":[1189,1289,1344,1374,1520,1090,1093,1096,1162,1257,1324,1248,1128,1199]},"masters-herb-steak":{"s":1876,"h":[1914,1989,1996,1552,1539,1552,1925,1985,1992,1964,1999,1864,1770,1692]},"oreha-fusion-material":{"s":3,"h":[3,3,6,3,3,3,2,3,3,4,5,6,4,4]},"oreha-relic":{"s":1190,"h":[1513,1574,2229,2054,1685,2166,1471,1494,1564,1554,1663,1732,1672,1807]},"oreha-solar-carp":{"s":260,"h":[278,288,258,261,271,278,264,278,308,300,274,282,281,285]},"oreha-thick-meat":{"s":2400,"h":[2442,2667,2952,3108,3170,2998,2634,2712,2701,3000,3275,3152,2891,2668]},"prime-oreha-fusion-material":{"s":71,"h":[70,73,88,94,76,70,79,80,75,65,67,66,73,78]},"rare-relic":{"s":230,"h":[224,222,222,224,233,238,226,226,238,230,239,252,256,262]},"redflesh-fish":{"s":224,"h":[229,230,238,249,279,275,288,246,229,235,252,296,255,238]},"sacred-bomb":{"s":115,"h":[119,122,124,126,132,133,141,157,166,172,146,127,127,134]},"sacred-charm":{"s":105,"h":[108,110,119,114,115,119,133,96,69,79,116,126,89,90]},"shy-wild-flower":{"s":449,"h":[443,453,477,479,483,475,483,473,488,503,528,567,574,511]},"specialist-beef":{"s":3000,"h":[2998,3000,3000,3000,1000,1555,1500,1500]},"splendid-dark-grenade":{"s":359,"h":[364,369,340,341,356,366,348,353,368,384,393,377,330,295]},"splendid-elemental-hp-potion":{"s":586,"h":[532,497,503,469,464,466,389,394,407,440,436,396,401,419]},"splendid-sacred-bomb":{"s":360,"h":[390,503,389,425,359,341,367,418,484,446,434,421,361,364]},"splendid-sacred-charm":{"s":398,"h":[385,382,386,392,403,393,349,386,380,379,407,400,348,342]},"stimulant":{"s":131,"h":[132,135,124,119,132,137,127,125,130,137,136,148,132,132]},"strong-iron-ore":{"s":1135,"h":[1173,1190,1191,1088,1179,1187,1288,1376,1388,1455,1571,1501,1689,1930]},"sturdy-timber":{"s":1182,"h":[1169,1170,1159,1212,1187,1175,1189,1177,1165,1179,1250,1316,1547,1194]},"superior-abidos-fusion-material":{"s":176,"h":[174,173,174,174,174,176,169,168,169,172,173,175,172,168]},"superior-oreha-fusion-material":{"s":28,"h":[28,18,18,13,37,55,16,20,36,40,49,36,46,23]},"tender-timber":{"s":239,"h":[236,237,232,247,255,260,232,238,237,250,262,259,277,279]},"thick-raw-meat":{"s":198,"h":[197,209,251,298,324,203,200,202,205,222,250,249,229,225]},"timber":{"s":120,"h":[117,125,115,123,138,143,119,120,115,122,126,128,127,121]},"treated-meat":{"s":407,"h":[394,397,394,426,470,432,431,401,414,441,490,494,493,451]},"virtuoso-striploin":{"s":4493,"h":[4495,4499,4573,4576,4657,4683,4742,4805,4869,4886,4895,4924,4999,5567]},"wild-flower":{"s":160,"h":[159,165,177,166,191,175,248,160,185,193,179,192,196,212]}}};
+const SNAP_TS=1784576994;
+// ====== helpers ======
+const $=id=>document.getElementById(id);
+const g=v=>Math.round(v).toLocaleString('en-US');                 // gold, integer w/ commas (force en-US so it's never locale '1.416')
+const sg=v=>(v>=0?'+':'')+g(v);                                  // signed gold
+const pct=v=>(v*100).toFixed(1)+'%';
+const u2=v=>v.toFixed(2);
+const fmtTime=m=>m<60?Math.round(m)+'m':(m/60).toFixed(1)+'h';
+const TYPE={cooking:'Cooking',special:'Fusion',battle:'Battle'};
+// safe localStorage — file:// and some privacy modes throw on access; never let that blank the page
+const LS_get=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const LS_set=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+// signed % colored by direction (up=high, down=low, small=dim) — one consistent token
+const moveTag=(f,thr)=>{const c=Math.abs(f)>=(thr||0.08)?(f>0?'--high':'--low'):'--dim';return `<span style='color:var(${c})'>${f>0?'+':''}${Math.round(f*100)}%</span>`;};
+// compact inline sparkline; the wrapping span is the hover target -> custom tooltip shows the values
+function sparkline(h){
+  if(!h||h.length<2) return "<span class='dim'>&mdash;</span>";
+  const a=h.slice().reverse(), mn=Math.min(...a), mx=Math.max(...a), rng=(mx-mn)||1, W=120,H=22,P=2,n=a.length;
+  const X=i=>(P+i/(n-1)*(W-2*P)), Y=v=>(H-P-(v-mn)/rng*(H-2*P));
+  const pts=a.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ');
+  return `<span class='spark' data-h='${h.join(',')}' onmousemove='sparkTip(event)' onmouseleave='sparkTipHide()'>`
+    +`<svg width='${W}' height='${H}' viewBox='0 0 ${W} ${H}' style='vertical-align:middle;pointer-events:none'>`
+    +`<polyline points='${pts}' style='fill:none;stroke:var(--accent);stroke-width:1.5'/>`
+    +`<circle class='sphi' r='3' style='fill:var(--accent);display:none'/>`
+    +`<circle cx='${X(n-1).toFixed(1)}' cy='${Y(a[n-1]).toFixed(1)}' r='2.2' style='fill:var(--high)'/></svg></span>`;
+}
+// hovering a sparkline highlights the day under the cursor and shows that day's price
+function sparkTip(e){
+  const sp=e.currentTarget, t=$('sparktip'); if(!t) return;
+  const h=(sp.getAttribute('data-h')||'').split(',').map(Number); if(h.length<2) return;
+  const a=h.slice().reverse(), n=a.length, mn=Math.min(...a), mx=Math.max(...a), rng=(mx-mn)||1, W=120,H=22,P=2;
+  const rect=sp.getBoundingClientRect();
+  let frac=(e.clientX-rect.left)/(rect.width||W); frac=Math.max(0,Math.min(1,frac));
+  const idx=Math.round(frac*(n-1)), val=a[idx], daysAgo=n-1-idx;
+  const hi=sp.querySelector('.sphi');
+  if(hi){ hi.setAttribute('cx',(P+idx/(n-1)*(W-2*P)).toFixed(1)); hi.setAttribute('cy',(H-P-(val-mn)/rng*(H-2*P)).toFixed(1)); hi.style.display='block'; }
+  const lbl=daysAgo===0?'today (live)':daysAgo===1?'yesterday':daysAgo+' days ago';
+  t.innerHTML=`<b>${lbl}</b> &middot; ${g(val)}g`;
+  t.style.display='block';
+  const w=t.offsetWidth||110;
+  t.style.left=Math.max(6,Math.min(e.clientX+14,(window.innerWidth||900)-w-10))+'px';
+  t.style.top=(e.clientY+16)+'px';
+}
+function sparkTipHide(){ const t=$('sparktip'); if(t) t.style.display='none'; document.querySelectorAll('.sphi').forEach(c=>c.style.display='none'); }
+
+// ====== defaults (from the user's reduction screenshot) ======
+const DEFAULTS={
+  general:{cost:7,time:10,gs:5}, battle:{cost:0,time:0,gs:0},
+  cooking:{cost:0,time:0,gs:0},  special:{cost:10,time:0,gs:9}
+};
+
+// ====== MODEL: pure functions, no DOM. (mirrors loa-buddy; mirrored in ref.py) ======
+function adjGold(r,R){ const c=R.general.cost+(R[r.type]?R[r.type].cost:0); return Math.floor(r.craftingCost*(1-c/100)); }
+function adjTime(r,R){ const t=R.general.time+(R[r.type]?R[r.type].time:0); return r.craftingTime*(1-t/100); } // minutes
+function gscOf(r,R,enable){ if(!enable) return 0; const x=R.general.gs+(R[r.type]?R[r.type].gs:0); return 5*(1+x/100); }
+function taxOf(p){ return p<=1?0:Math.ceil(p*0.05); }
+function unitPrice(id,prices){ const m=ITEMS[id]; return (prices[m.slug]||0)/m.bundle; }
+function optionCost(opt,prices){ let s=0; for(const it of opt.items) s+=it.quantity*unitPrice(it.id,prices); return s; }
+// all gathering paths for a recipe, priced & sorted cheapest-first
+function pathsOf(r,prices){ return r.materialOptions.map(o=>({cat:o.category,cost:optionCost(o,prices),opt:o})).sort((a,b)=>a.cost-b.cost); }
+// chosen path: a manual override (pathOverride) if set & still valid, else the cheapest. auto=true means no override is active.
+function bestOption(r,prices){
+  const ps=pathsOf(r,prices), ov=pathOverride[r.id];
+  const ch=(ov!=null)?ps.find(p=>p.cat===ov):null;
+  return ch?{cat:ch.cat,cost:ch.cost,opt:ch.opt,auto:false}:{cat:ps[0].cat,cost:ps[0].cost,opt:ps[0].opt,auto:true};
+}
+function evalRecipe(r,prices,R,enable){
+  const gold=adjGold(r,R), bo=bestOption(r,prices), total=bo.cost+gold;
+  const GSC=gscOf(r,R,enable), EY=r.quantity*(1+GSC/100);
+  const sell=prices[ITEMS[r.id].slug]||0, tax=taxOf(sell), revenue=EY*(sell-tax);
+  const net=revenue-total, time=adjTime(r,R);
+  return { gold, path:bo.cat, auto:bo.auto, matCost:bo.cost, total, GSC, EY, sell, tax, revenue, net,
+           time, perHr: time>0?net/(time/60):0, roi: total>0?net/total:0 };
+}
+
+// ====== state + lifecycle ======
+let P=null, PRICES={}, SNAP={}, basis='m', decay=0.90, trimEach=2, curRegion='nae', enableGS=true, curFilter='all',
+    sortKey='net', sortDir=-1, selId=null, inputsCollapsed=false, pathOverride={}, colMode='simple';
+
+function setDefaultsToInputs(){
+  for(const cat of ['general','battle','cooking','special'])
+    for(const k of [['cost','cost'],['time','time'],['gs','gs']])
+      $('r_'+cat+'_'+k[0]).value=DEFAULTS[cat][k[1]];
+  $('p_trim').value=2; $('p_decay').value=0.90; trimEach=2; decay=0.90;
+  const _hl=Math.log(0.5)/Math.log(0.90), _dn=$('decayNote'); if(_dn) _dn.innerHTML='weight halves ~'+_hl.toFixed(1)+' days back';
+}
+function resetDefaults(){ setDefaultsToInputs(); }
+
+function readParams(){
+  const rd=c=>({cost:+$('r_'+c+'_cost').value||0, time:+$('r_'+c+'_time').value||0, gs:+$('r_'+c+'_gs').value||0});
+  P={ R:{general:rd('general'),battle:rd('battle'),cooking:rd('cooking'),special:rd('special')}, enable:enableGS };
+}
+
+function computeAll(){ return RECIPES.map(r=>({r, e:evalRecipe(r,PRICES,P.R,P.enable)})); }
+
+function recalc(){
+  readParams();
+  const rows=computeAll();
+  renderBadge();
+  renderSummary(rows);
+  renderWatch();
+  renderTable(rows);
+  if(selId) renderBreakdown(selId);
+  saveSettings();
+}
+
+// ====== render ======
+// freshness of the baked snapshot, in friendly relative form
+function freshness(){ const s=Date.now()/1000-SNAP_TS; if(s<60)return'just now'; if(s<3600)return Math.round(s/60)+'m ago'; if(s<86400)return Math.round(s/3600)+'h ago'; return Math.round(s/86400)+'d ago'; }
+// prominent status badge: which price basis + region + how fresh (exact time in the tooltip)
+function renderBadge(){ const u=$('updated'); if(!u) return;
+  const stale=(Date.now()/1000-SNAP_TS)>8*3600, reg=curRegion==='nae'?'NA East':'EU Central';
+  u.className='badge'+(stale?' stale':'');
+  u.title='Price snapshot: '+new Date(SNAP_TS*1000).toLocaleString()+' (your local time) · auto-refreshed every 6h';
+  u.innerHTML=`<span class='dot'></span> Pricing: <b>${basis==='m'?'robust 14-day':basis==='y'?'yesterday':'spot (live)'}</b> &middot; ${reg} &middot; updated ${freshness()}${(P&&!P.enable)?` &middot; <span class='warn'>great success off</span>`:''}`;
+}
+function renderSummary(rows){
+  const prof=rows.filter(x=>x.e.net>0).length;
+  const byHr =rows.slice().sort((a,b)=>b.e.perHr-a.e.perHr);
+  const byNet=rows.slice().sort((a,b)=>b.e.net-a.e.net);
+  const best=byHr[0];
+  let second=null, secondLabel='Best per craft', secondMetric='net';
+  if(byNet[0] && byNet[0].r.id!==best.r.id){ second=byNet[0]; }   // different recipe tops per-craft
+  else if(byHr[1]){ second=byHr[1]; secondLabel='Runner-up / hour'; secondMetric='hr'; }  // same one wins both → show next best
+  const card=(k,x,metric)=>{ const r=x.r,e=x.e;
+    const tail=`${pct(e.roi)} ROI${e.path!=='default'?' &middot; '+e.path:''} &middot; ${fmtTime(e.time)}`;
+    return `<div class='hero${e.net<0?' loss':''}'><div class='k'>${k}</div><div class='n'>${r.name}</div>`+
+      `<div class='big ${e.net>=0?'good':'bad'}'>${metric==='hr'?`${sg(e.perHr)} <small>g/hr</small>`:`${sg(e.net)} <small>g/craft</small>`}</div>`+
+      `<div class='sub'>${metric==='hr'?`${sg(e.net)}/craft`:`${sg(e.perHr)}/hr`} &middot; ${tail}</div></div>`; };
+  let h='<div class="heroes">'+card('Best per hour',best,'hr')+(second?card(secondLabel,second,secondMetric):'')+'</div>';
+  h+=`<div class='note' style='margin:9px 0 0'>${prof} of ${rows.length} crafts profitable at current prices.</div>`;
+  $('summary').innerHTML=h;
+}
+
+// Price watch: items that are trending, or whose live spot diverges from fair (robust).
+// shared market read for an item slug — used by both the price watch and the breakdown
+function recipeOutputs(){ return recipeOutputs._s || (recipeOutputs._s=new Set(RECIPES.map(r=>ITEMS[r.id].slug))); }
+function dealInfo(slug){
+  const dd=SNAP[slug]||{}, hh=dd.h||[], fair=robustOf(slug), spot=spotOf(slug);
+  const yest=hh.length>1?hh[1]:(hh[0]??spot);               // yesterday = most recent COMPLETED day (h[0] is today/live)
+  const yestGap=fair?(yest-fair)/fair:0, spotGap=fair?(spot-fair)/fair:0;
+  const comp=hh.slice(1).filter(x=>x>0); let pct=null;      // where spot sits in the completed 14-day range
+  if(comp.length){ const mn=Math.min(...comp), mx=Math.max(...comp); pct=mx>mn?Math.round((spot-mn)/(mx-mn)*100):50; }
+  const isOut=recipeOutputs().has(slug), cheap=spotGap<=-0.07, pricey=spotGap>=0.07;
+  let verdict, cls;
+  if(isOut){ if(pricey){verdict='good to sell';cls='good';} else if(cheap){verdict='weak sell price';cls='bad';} else {verdict='fair to sell';cls='dim';} }
+  else      { if(cheap){verdict='good to buy';cls='good';}  else if(pricey){verdict='costly to buy';cls='bad';}  else {verdict='fair to buy';cls='dim';} }
+  const mark=cls==='good'?'✓':cls==='bad'?'✗':'~';
+  const rb=pct==null?'':(pct<0?'below 14d low':pct>100?'above 14d high':pct<=25?'near 14d low':pct>=75?'near 14d high':'mid 14d range');
+  return {fair,yest,spot,yestGap,spotGap,pct,isOut,verdict,cls,mark,rb};
+}
+function watchRow(name, di, hist){
+  const deal=`<span class='${di.cls}'>${di.mark} ${di.verdict}</span> <span class='dim'>(${di.spotGap>0?'+':''}${Math.round(di.spotGap*100)}% vs fair${di.rb?', '+di.rb:''})</span>`;
+  return `<tr><td>${name}</td><td class='num'>${g(di.fair)}</td><td class='num'>${g(di.yest)}</td><td class='num dim'>${g(di.spot)}</td><td class='num'>${moveTag(di.yestGap,0.15)}</td><td>${deal}</td><td>${sparkline(hist)}</td></tr>`;
+}
+function watchTable(rows, dealHdr){
+  let h=`<table><tr><th>Item</th><th class='num'>Fair</th><th class='num'>Yesterday</th><th class='num'>Spot</th><th class='num'>Yest vs fair</th><th>${dealHdr}</th><th>14-day trend</th></tr>`;
+  for(const r of rows) h+=watchRow(r.name, r.di, r.hist);
+  return h+'</table>';
+}
+function renderWatch(){
+  const FLAG=0.15, MINVAL=50, crafts=[], mats=[];
+  for(const id in ITEMS){
+    const sl=ITEMS[id].slug, d=SNAP[sl]; if(!d) continue;
+    const di=dealInfo(sl); if(di.fair<MINVAL) continue;     // skip sub-50g items: noisy %, negligible gold
+    if(Math.abs(di.yestGap)<FLAG && Math.abs(di.spotGap)<FLAG) continue;
+    (di.isOut?crafts:mats).push({name:ITEMS[id].name, hist:d.h||[], di, sig:Math.max(Math.abs(di.yestGap),Math.abs(di.spotGap))});
+  }
+  crafts.sort((a,b)=>b.sig-a.sig); mats.sort((a,b)=>b.sig-a.sig);
+  let h=`<div class='subh' style='margin-top:0'>Craftable outputs &mdash; you sell (${crafts.length})</div>`;
+  h+= crafts.length ? watchTable(crafts,'Good to sell?') : "<div class='note' style='margin:0 0 6px'>No craftable output is &ge;15% off fair right now.</div>";
+  h+=`<div class='subh'>Materials &mdash; inputs you buy (${mats.length})</div>`;
+  h+= mats.length ? watchTable(mats,'Good to buy?') : "<div class='note' style='margin:0'>No material is &ge;15% off fair right now.</div>";
+  $('watch').innerHTML=h;
+}
+
+// [key, label, numeric-align, advanced-only, header tooltip]
+const COLS=[
+  ['name','Recipe',false,false,'Stronghold craft'],
+  ['type','Type',false,false,'Cooking / Fusion / Battle'],
+  ['path','Path',false,false,'Cheapest gathering path — click to switch'],
+  ['matCost','Mat cost',true,true,'Material cost at current prices'],
+  ['gold','Gold',true,true,'Crafting fee after cost reduction'],
+  ['total','Total cost',true,true,'Materials + gold'],
+  ['EY','Yield',true,true,'Expected output incl. great success'],
+  ['sell','Sells @',true,false,'Unit sell price (before 5% tax)'],
+  ['net','Net / craft',true,false,'Profit per craft, after tax'],
+  ['perHr','Net / hr',true,false,'Profit per hour of craft time'],
+  ['roi','ROI',true,false,'Profit ÷ total cost']
+];
+function setColMode(m){ colMode=m; document.querySelectorAll('[data-cm]').forEach(b=>b.classList.toggle('active',b.dataset.cm===m)); recalc(); }
+function pathCell(r,e){ return r.materialOptions.length>1
+  ? `<span class='pathpick${e.auto?'':' ov'}' title='${e.auto?'Cheapest path — click to switch':'Manually set — click to switch'}' onclick='cyclePath("${r.id}",event)'>${e.path} &#8644;</span>`
+  : `<span class='dim'>${e.path==='default'?'—':e.path}</span>`; }
+function barCell(v,maxAbs){ const w=maxAbs>0?Math.max(3,Math.min(100,Math.abs(v)/maxAbs*100)):0;
+  return `<span class='dbar${v<0?' neg':''}' style='width:${Math.round(w)}%'></span><span class='dv ${v>=0?'good':'bad'}'>${sg(v)}</span>`; }
+function cellFor(k,r,e,maxHr){ switch(k){
+  case 'name':   return `<td data-label='Recipe'>${r.name}</td>`;
+  case 'type':   return `<td data-label='Type'><span class='pill ${r.type}'>${TYPE[r.type]}</span></td>`;
+  case 'path':   return `<td data-label='Path'>${pathCell(r,e)}</td>`;
+  case 'matCost':return `<td data-label='Mat cost' class='num'>${g(e.matCost)}</td>`;
+  case 'gold':   return `<td data-label='Gold' class='num dim'>${g(e.gold)}</td>`;
+  case 'total':  return `<td data-label='Total cost' class='num'>${g(e.total)}</td>`;
+  case 'EY':     return `<td data-label='Yield' class='num dim'>${e.EY.toFixed(2)}</td>`;
+  case 'sell':   return `<td data-label='Sells @' class='num'>${g(e.sell)}</td>`;
+  case 'net':    return `<td data-label='Net / craft' class='num ${e.net>=0?'good':'bad'}'><b>${sg(e.net)}</b></td>`;
+  case 'perHr':  return `<td data-label='Net / hr' class='barcell'>${barCell(e.perHr,maxHr)}${r.timeAssumed?'<span class="warn" title="craft time assumed">*</span>':''}</td>`;
+  case 'roi':    return `<td data-label='ROI' class='num ${e.roi>=0?'good':'bad'}'>${pct(e.roi)}</td>`;
+} return ''; }
+function sortBy(k){ if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==='name'||k==='type'||k==='path')?1:-1; } recalc(); }
+function renderTable(rows){
+  let view=rows.filter(x=>curFilter==='all'||x.r.type===curFilter);
+  const cols=COLS.filter(c=>colMode==='advanced'||!c[3]);
+  const key=sortKey;
+  view.sort((a,b)=>{
+    const va=key==='name'||key==='type'||key==='path'?(key==='type'?TYPE[a.r.type]:key==='name'?a.r.name:a.e.path):a.e[key];
+    const vb=key==='name'||key==='type'||key==='path'?(key==='type'?TYPE[b.r.type]:key==='name'?b.r.name:b.e.path):b.e[key];
+    if(typeof va==='string') return sortDir*va.localeCompare(vb);
+    return sortDir*(va-vb);
+  });
+  const maxHr=Math.max(1,...view.map(x=>Math.abs(x.e.perHr)));
+  let head='<tr>';
+  for(const c of cols) head+=`<th class='so${c[2]?' num':''}${sortKey===c[0]?' act':''}' title='${c[4]||''}' onclick='sortBy("${c[0]}")'>${c[1]}${sortKey===c[0]?(sortDir<0?' ▾':' ▴'):''}</th>`;
+  head+='</tr>';
+  let body='';
+  for(const {r,e} of view){
+    body+=`<tr class='click${selId===r.id?' sel':''}' onclick='selectRow("${r.id}")'>`;
+    for(const c of cols) body+=cellFor(c[0],r,e,maxHr);
+    body+='</tr>';
+  }
+  $('table').innerHTML=`<thead>${head}</thead><tbody>${body}</tbody>`;
+}
+
+function selectRow(id){ selId=(selId===id?null:id); const md=$('matdetail'); if(md) md.innerHTML=''; recalc(); if(selId) $('breakdown').scrollIntoView({behavior:'smooth',block:'nearest'}); }
+// switch which gathering path a recipe uses (manual override; persists). cat=null clears it (back to cheapest).
+function setPath(id,cat){ if(cat==null) delete pathOverride[id]; else pathOverride[id]=cat; recalc(); }
+function cyclePath(id,ev){ if(ev) ev.stopPropagation();
+  const r=RECIPES.find(x=>x.id===id); if(!r||r.materialOptions.length<2) return;
+  const ps=pathsOf(r,PRICES), i=ps.findIndex(p=>p.cat===bestOption(r,PRICES).cat);
+  setPath(id, ps[(i+1)%ps.length].cat);
+}
+// clicking a material in a breakdown opens its own price detail (same read as the price watch)
+function showMatDetail(id){
+  const m=ITEMS[id]; if(!m) return;
+  const di=dealInfo(m.slug), hh=(SNAP[m.slug]||{}).h||[];
+  let h=`<h2>${m.name} &mdash; price detail</h2><div class='panel'><table>`;
+  h+=`<tr><td>Fair (robust 14-day)</td><td class='num'><b>${g(di.fair)}</b>${m.bundle>1?` <span class='dim'>(${u2(di.fair/m.bundle)}/unit)</span>`:''}</td></tr>`;
+  h+=`<tr><td>Yesterday (last completed day)</td><td class='num'>${g(di.yest)} ${moveTag(di.yestGap)} vs fair</td></tr>`;
+  h+=`<tr><td>Spot (live lowest)</td><td class='num'>${g(di.spot)} &middot; <span class='${di.cls}'>${di.mark} ${di.verdict}</span> <span class='dim'>(${di.spotGap>0?'+':''}${Math.round(di.spotGap*100)}% vs fair${di.rb?', '+di.rb:''})</span></td></tr>`;
+  h+=`</table><div class='subh'>14-day trend</div>`;
+  h+=`<div>${sparkline(hh)} <span class='dim' style='font-size:11px'>hover for daily values</span></div>`;
+  h+=`<div class='note'>Same read as the price watch &mdash; fair is the robust price used in the calculator; yesterday-vs-fair is the recent move; the spot verdict says whether buying now is good.</div></div>`;
+  $('matdetail').innerHTML=h; $('matdetail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function renderBreakdown(id){
+  const r=RECIPES.find(x=>x.id===id); if(!r){ $('breakdown').innerHTML=''; return; }
+  const e=evalRecipe(r,PRICES,P.R,P.enable), bo=bestOption(r,PRICES);
+  let h=`<h2>${r.name} &mdash; breakdown</h2><div class='panel'>`;
+  if(r.materialOptions.length>1){
+    const ps=pathsOf(r,PRICES), ov=pathOverride[r.id]!=null;
+    h+=`<div class='subh' style='display:flex;gap:8px;align-items:baseline;flex-wrap:wrap'>Gathering paths <span class='note' style='margin:0;font-weight:400;text-transform:none;letter-spacing:0'>&mdash; click a row to use that path${ov?` &middot; <span class='mlink' onclick='setPath("${r.id}",null)'>reset to cheapest</span>`:' &middot; cheapest auto-selected'}</span></div>`;
+    h+=`<table><tr><th>Path</th><th class='num'>Material cost</th><th class='num'>vs cheapest</th></tr>`;
+    ps.forEach(o=>{ const used=o.cat===bo.cat, extra=o.cost-ps[0].cost;
+      h+=`<tr class='click${used?' sel':''}' onclick='setPath("${r.id}","${o.cat}")'><td>${o.cat}${used?` <span class='accent'>&larr; used${bo.auto?' &middot; cheapest':''}</span>`:''}</td><td class='num'>${g(o.cost)}</td><td class='num dim'>${extra<1?'&mdash;':'+'+g(extra)}</td></tr>`; });
+    h+=`</table>`;
+  }
+  h+=`<div class='subh'>Materials (${bo.cat==='default'?'recipe':bo.cat+' path'})</div>`;
+  h+=`<table><tr><th>Material</th><th class='num'>Qty</th><th class='num'>Unit price</th><th class='num'>Line cost</th><th class='num'>Yest vs fair</th></tr>`;
+  for(const it of bo.opt.items){
+    const up=unitPrice(it.id,PRICES), di=dealInfo(ITEMS[it.id].slug);
+    const ann=(di.fair && di.cls!=='dim') ? ` <span class='${di.cls}' style='font-size:11px' title='spot ${g(di.spot)} vs fair ${g(di.fair)}${di.rb?' · '+di.rb:''}'>${di.mark} ${di.verdict} ${di.spotGap>0?'+':''}${Math.round(di.spotGap*100)}%</span>` : '';
+    const yvf=moveTag(di.yestGap);
+    h+=`<tr><td><span class='mlink' onclick='showMatDetail("${it.id}")'>${ITEMS[it.id].name}</span>${ann}</td><td class='num'>${it.quantity}</td><td class='num dim'>${u2(up)}</td><td class='num'>${g(it.quantity*up)}</td><td class='num'>${yvf}</td></tr>`;
+  }
+  h+=`<tr><td class='dim'>Crafting gold (after cost reduction)</td><td class='num'></td><td class='num'></td><td class='num dim'>${g(e.gold)}</td><td class='num'></td></tr>`;
+  h+=`<tr><td><b>Total cost</b></td><td class='num'></td><td class='num'></td><td class='num'><b>${g(e.total)}</b></td><td class='num'></td></tr></table>`;
+  h+=`<div class='note'><b>Yest vs fair</b> = yesterday's avg vs the smoothed fair price (cost &amp; revenue use whichever basis you pick under Pricing). A large value flags a recent move making this craft better or worse than its 2-week norm &mdash; for example an input well below fair (cheap lately) or an output above fair (selling high lately).</div>`;
+  h+=`<div class='subh'>Result</div><table>`;
+  h+=`<tr><td>Base yield x great-success</td><td class='num'>${r.quantity} x (1+${e.GSC.toFixed(2)}%) = <b>${e.EY.toFixed(3)}</b></td></tr>`;
+  const di=dealInfo(ITEMS[r.id].slug);
+  h+=`<tr><td>Fair (robust) &middot; yesterday &middot; spot</td><td class='num'>${g(di.fair)} &middot; ${g(di.yest)} &middot; ${g(di.spot)}</td></tr>`;
+  h+=`<tr><td>Yesterday vs fair <span class='dim'>(recent move)</span></td><td class='num'>${moveTag(di.yestGap)}</td></tr>`;
+  h+=`<tr><td>Sell now? &mdash; spot vs fair</td><td class='num'><span class='${di.cls}'>${di.mark} ${di.verdict}</span> <span class='dim'>(${di.spotGap>0?'+':''}${Math.round(di.spotGap*100)}%${di.rb?', '+di.rb:''})</span></td></tr>`;
+  h+=`<tr><td>Sells for (each, after 5% tax)</td><td class='num'>${g(e.sell)} &minus; ${e.tax} = ${g(e.sell-e.tax)}</td></tr>`;
+  h+=`<tr><td>Revenue (EY x after-tax)</td><td class='num'>${g(e.revenue)}</td></tr>`;
+  h+=`<tr><td><b>Net profit / craft</b></td><td class='num ${e.net>=0?'good':'bad'}'><b>${sg(e.net)}</b></td></tr>`;
+  h+=`<tr><td>Craft time${r.timeAssumed?" <span class='warn'>(assumed)</span>":''} &rarr; per hour</td><td class='num ${e.perHr>=0?'good':'bad'}'>${fmtTime(e.time)} &rarr; ${sg(e.perHr)}/hr</td></tr>`;
+  h+=`<tr><td>ROI on gold invested</td><td class='num ${e.roi>=0?'good':'bad'}'>${pct(e.roi)}</td></tr></table></div>`;
+  $('breakdown').innerHTML=h;
+}
+
+// ====== prices: build editable grid once; edits update PRICES live ======
+// gathering profession for a raw mat (by name) — same names the recipe "path" column uses
+const GATHER=[['Foraging',/flower/],['Logging',/timber/],['Mining',/iron ore/],['Hunting',/meat/],['Fishing',/fish|carp/],['Excavating',/relic/]];
+function gatherCat(nm){ const n=nm.toLowerCase(); for(const [c,re] of GATHER) if(re.test(n)) return c; return 'Other'; }
+function gatherRank(nm){ const n=nm.toLowerCase();   // tier within a profession: base→uncommon→rare→oreha→abidos
+  return /abidos/.test(n)?4:/oreha/.test(n)?3:/strong|sturdy|bright|exotic/.test(n)?2:/heavy|tender|treated|shy|redflesh|rare/.test(n)?1:0; }
+const RMAP={}; RECIPES.forEach(r=>{RMAP[r.id]=r;});                  // id -> recipe (type, craftingCost)
+const CTYPE=[['special','Fusion'],['cooking','Cooking'],['battle','Battle']];   // crafted group order + labels
+// drop words the group header already implies (full name stays in the tooltip)
+function shortName(id){ let n=ITEMS[id].name; const t=RMAP[id]&&RMAP[id].type;
+  if(t==='special') n=n.replace(/ Fusion Material$/,'');
+  else if(t==='cooking') n=n.replace(/ Steak Meal$/,'').replace(/ Meal$/,'');
+  return n; }
+function fldCell(id,disp){ return `<div class='fld'><label title='${ITEMS[id].name.replace(/'/g,'&#39;')}'>${disp||ITEMS[id].name}</label>`+
+  `<input id='px_${ITEMS[id].slug}' type='number' step='1' oninput='editPrice("${ITEMS[id].slug}",this.value)'></div>`; }
+function renderGroups(elId,groups){                                 // one labeled card per group; cards flow & pack
+  $(elId).innerHTML = groups.filter(g=>g.ids.length).map(g=>
+    `<div class='pxgroup${g.ids.length>=7?' wide':''}'><div class='gh'>${g.title}</div><div class='gf'>`+
+    g.ids.map(id=>fldCell(id,g.disp?g.disp(id):null)).join('')+`</div></div>`).join('');
+}
+function priceFields(){
+  const raw=[],craft=[];
+  for(const id in ITEMS){ (ITEMS[id].bundle>1?raw:craft).push(id); }
+  // gathered: a card per profession, tier-sorted inside (full names)
+  const seen=new Set();
+  const rawGroups=GATHER.map(([cat])=>{ const ids=raw.filter(id=>gatherCat(ITEMS[id].name)===cat)
+      .sort((a,b)=>gatherRank(ITEMS[a].name)-gatherRank(ITEMS[b].name)||ITEMS[a].name.localeCompare(ITEMS[b].name));
+      ids.forEach(id=>seen.add(id)); return {title:cat, ids}; });
+  const otherR=raw.filter(id=>!seen.has(id)); if(otherR.length) rawGroups.push({title:'Other', ids:otherR});
+  renderGroups('pxRaw', rawGroups);
+  // crafted: a card per recipe type; sort by crafting cost, pairing base/Splendid; short labels
+  const strip=n=>n.replace(/^Splendid /,'');
+  const csort=(a,b)=>((RMAP[a]?RMAP[a].craftingCost:0)-(RMAP[b]?RMAP[b].craftingCost:0))
+      || strip(ITEMS[a].name).localeCompare(strip(ITEMS[b].name)) || ITEMS[a].name.localeCompare(ITEMS[b].name);
+  const cseen=new Set();
+  const craftGroups=CTYPE.map(([t,label])=>{ const ids=craft.filter(id=>RMAP[id]&&RMAP[id].type===t).sort(csort);
+      ids.forEach(id=>cseen.add(id)); return {title:label, disp:shortName, ids}; });
+  const otherC=craft.filter(id=>!cseen.has(id)); if(otherC.length) craftGroups.push({title:'Other', disp:shortName, ids:otherC});
+  renderGroups('pxCraft', craftGroups);
+}
+// robust price = trimmed, recency-weighted mean of daily history (newest-first):
+// drop the `te` highest & lowest days, then weight survivors 1, d, d^2, ... by recency.
+function robustPrice(h, te, d){
+  if(!h||!h.length) return null;
+  let a = h.length>1 ? h.slice(1) : h.slice();   // drop the current/live day — completed history only
+  if(te>0 && a.length>2*te){ const idx=a.map((v,i)=>i).sort((x,y)=>a[x]-a[y]);
+    const drop=new Set([...idx.slice(0,te),...idx.slice(idx.length-te)]); a=a.filter((v,i)=>!drop.has(i)); }
+  let num=0,den=0,w=1; for(const v of a){ num+=v*w; den+=w; w*=d; }
+  return den?Math.round(num/den):null;
+}
+function robustOf(slug){ const dd=SNAP[slug]; return dd?(robustPrice(dd.h,trimEach,decay)??dd.s):0; }
+function spotOf(slug){ const dd=SNAP[slug]; return dd?dd.s:0; }
+function yestOf(slug){ const dd=SNAP[slug]; if(!dd) return 0; const h=dd.h||[]; return (h.length>1?h[1]:(h[0]??dd.s))||dd.s||0; }  // most recent COMPLETED day's avg
+function priceAt(slug){ return basis==='s'?spotOf(slug):basis==='y'?yestOf(slug):robustOf(slug); }   // active basis value
+function buildPrices(){ PRICES={}; for(const s in SNAP) PRICES[s]=priceAt(s); }          // active flat map
+function loadRegion(region){ curRegion=region; SNAP=JSON.parse(JSON.stringify(SNAPSHOT[region]||{})); buildPrices(); updatePxSummary(); }
+function setPriceInputs(){ for(const id in ITEMS){ const f=$('px_'+ITEMS[id].slug); if(f) f.value=PRICES[ITEMS[id].slug]??0; } }
+function editPrice(slug,v){ PRICES[slug]=+v||0; recalc(); }                             // transient override; resets on region/basis switch
+function updatePxSummary(){ $('pxSummary').innerHTML=`Market prices (editable) &mdash; ${curRegion.toUpperCase()}, <b>${basis==='m'?('robust: drop '+trimEach+' hi/lo, decay '+decay):basis==='y'?"yesterday's avg":'spot (now)'}</b> &middot; snapshot ${new Date(SNAP_TS*1000).toLocaleDateString()}`; }
+
+// ====== toggles ======
+function setRegion(rg){ document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===rg));
+  loadRegion(rg); setPriceInputs(); recalc(); }
+function setBasis(b){ basis=b; document.querySelectorAll('[data-bs]').forEach(x=>x.classList.toggle('active',x.dataset.bs===b)); buildPrices(); setPriceInputs(); updatePxSummary(); recalc(); }
+function setRobustParams(){
+  trimEach=Math.max(0,Math.round(+$('p_trim').value||0));
+  decay=Math.min(1,Math.max(0.5,+$('p_decay').value||0.9));
+  const hl=decay<1?Math.log(0.5)/Math.log(decay):Infinity;
+  const dn=$('decayNote'); if(dn) dn.innerHTML='weight halves '+(isFinite(hl)?'~'+hl.toFixed(1)+' days back':'never');
+  buildPrices(); setPriceInputs(); updatePxSummary(); recalc();
+}
+function setFilter(f){ curFilter=f; document.querySelectorAll('[data-ft]').forEach(b=>b.classList.toggle('active',b.dataset.ft===f)); recalc(); }
+function toggleGS(){ enableGS=!enableGS; $('gsBtn').classList.toggle('active',enableGS); $('gsBtn').textContent=enableGS?'On':'Off'; recalc(); }
+function toggleInputs(){ inputsCollapsed=!inputsCollapsed; $('infields').style.display=inputsCollapsed?'none':''; $('caret').innerHTML=inputsCollapsed?'&#9656;':'&#9662;'; }
+
+// ====== live sync via user-supplied CORS proxy ======
+async function syncPrices(){
+  const proxy=$('p_proxy').value.trim();
+  const st=$('syncStatus');
+  if(proxy) LS_set('loa_proxy',proxy);
+  if(!proxy){ st.innerHTML=''; return; }
+  st.textContent='Syncing spot '+curRegion.toUpperCase()+'…';
+  try{
+    const slugs=[...new Set(Object.keys(ITEMS).map(id=>ITEMS[id].slug))];
+    const res=await fetch(proxy,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({region_slug:curRegion,item_slugs:slugs})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const arr=await res.json(); arr.forEach(x=>{ if(SNAP[x.item_slug]) SNAP[x.item_slug].s=x.price; }); // sync refreshes SPOT only
+    buildPrices(); setPriceInputs(); recalc();
+    st.innerHTML='Synced '+arr.length+' <b>spot</b> prices • '+new Date().toLocaleTimeString()+(basis==='m'?" &mdash; you're on median basis; switch to Spot to use them":'');
+  }catch(err){ st.innerHTML="<span class='warn'>Sync failed ("+err.message+")</span> &mdash; check the proxy URL."; }
+}
+
+// ====== boot ======
+// remember the user's settings across reloads (prices stay snapshot-driven; only settings persist)
+function saveSettings(){
+  try{
+    const red={}; for(const c of ['general','battle','cooking','special']) for(const k of ['cost','time','gs']) red[c+'_'+k]=$('r_'+c+'_'+k).value;
+    LS_set('loa_settings', JSON.stringify({region:curRegion, basis, decay, trim:trimEach, gs:enableGS, red, paths:pathOverride, cm:colMode}));
+  }catch(e){}
+}
+function loadSettings(){
+  let s=null; try{ s=JSON.parse(LS_get('loa_settings')||'null'); }catch(e){}
+  if(!s) return;
+  if(s.region) curRegion=s.region;
+  if(s.basis) basis=s.basis;
+  if(typeof s.decay==='number') decay=s.decay;
+  if(typeof s.trim==='number') trimEach=s.trim;
+  if(typeof s.gs==='boolean') enableGS=s.gs;
+  if(s.paths && typeof s.paths==='object') pathOverride=s.paths;
+  if(s.cm){ colMode=s.cm; document.querySelectorAll('[data-cm]').forEach(b=>b.classList.toggle('active',b.dataset.cm===colMode)); }
+  if(s.red) for(const k in s.red){ const el=$('r_'+k); if(el) el.value=s.red[k]; }
+  $('p_trim').value=trimEach; $('p_decay').value=decay;
+  document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===curRegion));
+  document.querySelectorAll('[data-bs]').forEach(b=>b.classList.toggle('active',b.dataset.bs===basis));
+  const gb=$('gsBtn'); if(gb){ gb.classList.toggle('active',enableGS); gb.textContent=enableGS?'On':'Off'; }
+  const hl=decay<1?Math.log(0.5)/Math.log(decay):Infinity, dn=$('decayNote'); if(dn) dn.innerHTML='weight halves '+(isFinite(hl)?'~'+hl.toFixed(1)+' days back':'never');
+}
+function boot(){
+  try{
+    setDefaultsToInputs();
+    loadSettings();                              // restore saved region/basis/decay/trim/reductions
+    const px=LS_get('loa_proxy'); if(px) $('p_proxy').value=px;
+    priceFields();
+    loadRegion(curRegion); setPriceInputs();
+  }catch(e){
+    if(!Object.keys(PRICES).length){ SNAP=SNAPSHOT[curRegion]||{}; buildPrices(); } // ensure results still compute
+    const st=$('syncStatus'); if(st) st.innerHTML="<span class='warn'>Startup notice: "+e.message+"</span>";
+  }
+  try{ recalc(); }catch(e){ const s=$('summary'); if(s) s.innerHTML="<span class='bad'>Couldn't render: "+e.message+"</span>"; }
+  try{ toggleInputs(); }catch(e){}   // collapse so results show first
+  try{ syncPrices(); }catch(e){}     // auto-refresh only if a proxy is configured
+}
+// run now if the document is already parsed (script is at end of body), else on load
+if(document.readyState==='loading') window.addEventListener('DOMContentLoaded',boot); else boot();
+</script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body></html>
