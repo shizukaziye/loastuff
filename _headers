@@ -1,0 +1,5 @@
+# Shared chrome must update immediately across every page — always revalidate.
+/nav.js
+  Cache-Control: no-cache
+/social-bar.js
+  Cache-Control: no-cache
