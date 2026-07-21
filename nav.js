@@ -27,23 +27,11 @@
       items: [
         { name: "DPS Tier List",        url: "https://www.loseii.com/loa-tierlist/" },
         { name: "Accessory Calculator", url: "https://www.loseii.com/lost-ark-accessories/" },
-        { name: "Astrogem Calculator",  url: "https://www.loseii.com/astrogem-calculator/" },
+        { name: "Astrogem Calculator",  url: "https://www.loseii.com/loa-astrogem-calc/" },
         { name: "Crafting Profit",      url: "https://www.loseii.com/loa-crafting-calculator/" },
         { name: "Deal Finder",          url: "https://www.loseii.com/loa-deal-finder/" },
         { name: "LOA ON Bingo",         url: "https://loa-on-bingo.shizukaziye.workers.dev/" },
         { name: "LOA ON 2026 Summer",   url: "https://www.loseii.com/loa-on-2026-summer/" }
-      ]
-    },
-    {
-      label: "League of Legends",
-      items: [
-        { name: "Champion Pool Coverage", url: "https://shizukaziye.github.io/lol-pool-coverage/" }
-      ]
-    },
-    {
-      label: "Finance",
-      items: [
-        { name: "FIRE Calculator", url: "https://shizukaziye.github.io/fire-calculator/" }
       ]
     }
   ];
@@ -73,7 +61,7 @@
 
   root.innerHTML =
     "<style>" +
-    ":host{all:initial}" +
+    ":host{all:initial;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}" +
     "*{box-sizing:border-box}" +
     ".bar{" +
       "position:fixed;top:0;left:0;right:0;z-index:2147482000;" +
