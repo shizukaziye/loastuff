@@ -104,7 +104,7 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 72;   // MUST match this file's ?v= in index.html on every deploy
+  var CLIENT_V = 73;   // MUST match this file's ?v= in index.html on every deploy
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -170,7 +170,11 @@
 '  @media(max-width:1150px){#tab-advisor .av-cards{grid-template-columns:1fr 1fr}}' +
 '  #tab-advisor .av-cols{display:flex;gap:16px;align-items:flex-start;margin-top:14px}' +
 '  #tab-advisor .av-col-l{flex:0 0 470px;max-width:470px;min-width:0}' +
-'  #tab-advisor .av-col-r{flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px}' +
+'  #tab-advisor .av-col-r{flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px}' +
+// controls row: toggles left, actions pushed right so Get advice sits with them
+// (or wraps as a pair) instead of orphaning a line below a wide toggle
+'  #tab-advisor .av-ctrlrow{margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}' +
+'  #tab-advisor .av-ctrlrow #av-go{margin-left:auto}' +
 '  @media(max-width:880px){#tab-advisor .av-cols{flex-direction:column}#tab-advisor .av-col-l{flex:1 1 auto;max-width:none;width:100%}#tab-advisor .av-col-r{width:100%}}' +
 '  #tab-advisor .av-result-empty{border:1px dashed var(--border);border-radius:10px;background:var(--panel2);color:var(--dim);font-size:13px;text-align:center;padding:26px 16px}' +
 '  #tab-advisor .av-ctrlbar{padding:10px 12px}' +
@@ -224,9 +228,9 @@
 '    <div class="av-status" id="av-status"></div>' +
 '    <div class="panel av-ctrlbar">' +
 '      <div id="av-setup"></div>' +
-'      <div class="barrow" style="margin-top:8px;padding-top:10px;border-top:1px solid var(--border)">' +
-'        <button class="mbtn" id="av-sim2" data-on="1">Consider Complete: on</button>' +
-'        <button class="mbtn" id="av-bound" data-on="0">Roster bound: no</button>' +
+'      <div class="barrow av-ctrlrow">' +
+'        <button class="mbtn" id="av-sim2" data-on="1" title="Rank Complete (stop and keep the gem) against Process and Reroll. On by default.">Consider Complete: on</button>' +
+'        <button class="mbtn" id="av-bound" data-on="0" title="Roster-bound gem — processing costs no gold; rerolls and Reset still cost normal gold.">Roster bound: off</button>' +
 '        <button class="primary" id="av-go">Get advice</button>' +
 '        <button class="primary" id="av-read" type="button" style="display:none" title="Grabs the current frame, reads it, and shows advice">📷 Read screen now</button>' +
 '      </div>' +
@@ -1023,7 +1027,10 @@
     renderShareBar();
 
     // simple on/off toggles
-    [["av-sim2", "Consider Complete: ", ["off", "on"]], ["av-bound", "Roster bound: ", ["no", "yes (free)"]]].forEach(function (t) {
+    // Constant-width labels (2026-07-21): "yes (free)"/"no" jumped the button
+    // width on every toggle and pushed Get advice onto its own line. on/off keeps
+    // width stable; the "free" detail lives in the button's title tooltip.
+    [["av-sim2", "Consider Complete: ", ["off", "on"]], ["av-bound", "Roster bound: ", ["off", "on"]]].forEach(function (t) {
       var b = $(t[0]);
       b.addEventListener("click", function () {
         b.dataset.on = b.dataset.on === "1" ? "0" : "1";

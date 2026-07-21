@@ -30,9 +30,13 @@
 "use strict";
 
 const ALLOW_ORIGINS = [
-  "https://shizukaziye.github.io",
+  "https://www.loseii.com",          // canonical site (monorepo → Cloudflare Pages)
+  "https://loseii.com",              // apex (redirects to www, but be safe)
+  "https://shizukaziye.github.io",   // legacy standalone (redirect stub, kept for old tabs)
   "http://localhost:8080",
-  "http://127.0.0.1:8080"
+  "http://127.0.0.1:8080",
+  "http://localhost:8799",           // local verify server (this repo's test port)
+  "http://127.0.0.1:8799"
 ];
 const GATE_TOKEN = "6104928cd0cc5374f5330e63e6a834f99aef7579db15c77d9d154932bf7a8ced";
 // MEASURED 2026-07-19: bodies ≥6MB kill the free-tier isolate mid-read — Cloudflare

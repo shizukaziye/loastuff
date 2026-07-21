@@ -208,9 +208,10 @@
   // ---------------- the Solver (holds memo + caches for one query) ----------------
 
   // baseline, goldPerDamage, AND rosterBound are fixed for the life of a Solver, so
-  // they are NOT part of the memo key. rosterBound makes processing/reroll FREE
-  // (matching nested.js), which genuinely changes the optimal policy — so the costs
-  // used inside W must reflect it. Each advice query builds its own Solver.
+  // they are NOT part of the memo key. rosterBound makes PROCESSING free (only) —
+  // rerolls (incl. the paid final one) and Reset still cost gold, matching the game
+  // (Shizu, 2026-07-21) and nested.js. This changes the optimal policy, so the
+  // process cost used inside W must reflect it. Each advice query builds its own Solver.
   function Solver(baseline, goldPerDamage, rosterBound, opts) {
     this.baseline = baseline;
     this.gpd = goldPerDamage;
@@ -236,9 +237,10 @@
     this.nodes = 0;                      // diagnostic: nodes actually computed
   }
 
-  // Cost of a process / reroll under this Solver's roster-bound setting.
+  // Process is free when roster-bound; reroll is NOT (only processing is free —
+  // Shizu 2026-07-21). Reset likewise stays paid (see topLevelAdvice).
   Solver.prototype.procCost = function (cm) { return this.rb ? 0 : procCost(cm); };
-  Solver.prototype.rerollCost = function (r) { return this.rb ? 0 : rerollCost(r); };
+  Solver.prototype.rerollCost = function (r) { return rerollCost(r); };
 
   // Terminal gem value (direct or fusion-fodder) — SAME as nested.calculateGemValue.
   Solver.prototype.gemValue = function (config) {
@@ -682,7 +684,7 @@
     // 2026-07-17 — this corrects an earlier wrong reading). Mirrors W()/chooseAction.
     var rerollNet = -Infinity, rerollScore = NaN, rerollCost_ = 0, rerollAbove = 0;
     if (r >= 1 && t >= 1 && !isFirstTurn) {
-      var rc = rb ? 0 : rerollCost(r);
+      var rc = rerollCost(r);   // reroll costs gold even roster-bound (only processing is free)
       var rch = solver._node(config, t, r - 1, cm);
       rerollNet = -rc + rch.v;
       rerollScore = rch.expScore;
