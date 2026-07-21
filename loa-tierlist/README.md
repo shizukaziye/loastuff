@@ -7,7 +7,10 @@ classes ranked by their strongest engraving's **average rDPS per point of Combat
 
 ## Methodology
 
-- Each class enters at the **stronger of its two engravings** (hover a card for the other one).
+- Each class enters at the **stronger of its two engravings**; the hover panel shows both
+  engravings with each one's own tier pill. An **Engraving: Strongest only / All engravings**
+  toggle switches to ranking every DPS engraving as its own entry — strong and weak builds in
+  one list. An engraving's band is the same in both views (% of the same #1).
 - The metric is `avg rDPS ÷ Combat Power` per logged player — gear cancels out.
 - Tiers are **fixed bands of the #1 class's value**:
   `S ≥98% · A ≥95% · B ≥90% · C ≥85% · D ≥80% · F <80%`. Empty tiers are information.
