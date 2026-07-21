@@ -32,18 +32,57 @@
   // ---- state (module-singleton: the advisor has one setup section) ----
   var host = null, onChangeCb = null;
   var axis = "dps";
-  // Advisor default: 10M gold per 1% damage (Shizu 2026-07-19 — endgame pricing;
-  // the chip row still offers every tier, and combat-power auto-set overrides).
-  // The choice isn't persisted, so the default IS the working value most sessions.
-  var gpd = 10000000;
+  // Defaults (Shizu 2026-07-21): 1.5M gpd (= Econ.GPD_DEFAULT) and baseline A.
+  // Combat-power auto-set on character pick still overrides; every choice now
+  // PERSISTS (localStorage, see saveState/loadState) so it survives revisits.
+  var DEFAULT_BASE_IDX = 7;        // GRADE_ROWS index 7 = grade 75 = "A"
+  var gpd = Econ ? Econ.GPD_DEFAULT : 1500000;
   var gpdAuto = false;             // true while the chip was set from combat power
-  var baseIdx = 5;                 // GRADE_ROWS index; 5 = grade 65 = B+ (≈ the old 1.0 default)
+  var baseIdx = DEFAULT_BASE_IDX;  // GRADE_ROWS index
   var baseShift = 0;               // manual ◀ ▶ offset vs the character-derived index
   var charSel = null;              // { region, name, class, gems, combatPower?, itemLevel? }
   var charStatus = "";             // status note under the selected-character line
   var searchRows = null;           // decoded snapshot (lazy)
   var searchOpen = false;
   var debounceT = null;
+
+  // ---- persistence ("don't make me reselect" — Shizu 2026-07-21) ----
+  // localStorage, same mechanism as Favorites. The restored character is a
+  // lightweight identity snapshot (no gems, no re-fetch): the saved axis/gpd/
+  // baseline are the user's FINAL choices and must not be overwritten by a
+  // fetch's auto-set on every page load. Picking a character fresh still runs
+  // the full enrich flow.
+  var STORE_KEY = "astrogem-advisor-setup";
+  function saveState() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        v: 1, axis: axis, gpd: gpd, baseIdx: baseIdx,
+        char: charSel ? {
+          region: charSel.region, name: charSel.name, class: charSel.class || null,
+          itemLevel: charSel.itemLevel != null ? charSel.itemLevel : null,
+          combatPower: charSel.combatPower != null ? charSel.combatPower : null
+        } : null
+      }));
+    } catch (e) {}
+  }
+  function loadState() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (!s || s.v !== 1) return;
+      axis = (s.axis === "support" && supportAxisAvailable()) ? "support" : "dps";
+      if (Econ.GPD_TIERS.indexOf(s.gpd) !== -1) gpd = s.gpd;
+      if (s.char && s.char.name && s.char.region) {
+        charSel = { region: s.char.region, name: s.char.name, class: s.char.class || null,
+          itemLevel: s.char.itemLevel != null ? s.char.itemLevel : undefined,
+          combatPower: s.char.combatPower != null ? s.char.combatPower : null,
+          gems: [], _fetched: true };
+      }
+      var bi = parseInt(s.baseIdx, 10);
+      // restored char carries no gems → applyBaseline runs in manual mode, so the
+      // shift lands exactly on the saved index
+      if (bi >= 0 && bi < Econ.GRADE_ROWS.length) baseShift = bi - DEFAULT_BASE_IDX;
+    } catch (e) {}
+  }
 
   function supportAxisAvailable() { return typeof root.supportGradeToScore === "function" || (A && typeof A.supportGradeToScore === "function"); }
   function g2s(grade) { return (A.gradeToScore || root.gradeToScore)(grade); }
@@ -69,11 +108,23 @@
   // Recompute baseIdx from the character (if any) + the manual shift.
   function applyBaseline() {
     var ci = charBaseIdx();
-    var idx = (ci != null ? ci : 5) + baseShift;
+    var idx = (ci != null ? ci : DEFAULT_BASE_IDX) + baseShift;
     baseIdx = Math.max(0, Math.min(Econ.GRADE_ROWS.length - 1, idx));
   }
 
-  function emit() { if (onChangeCb) try { onChangeCb(getMarket()); } catch (e) {} }
+  // Jump the baseline to an absolute GRADE_ROWS index (arrows + the badge picker).
+  function setBaseIdx(want) {
+    var ci = charBaseIdx();
+    baseShift += (want - baseIdx);
+    if (ci == null) baseShift = want - DEFAULT_BASE_IDX;   // manual mode: absolute
+    applyBaseline();
+    render(); emit();
+  }
+
+  function emit() {
+    saveState();   // every mutation persists — revisits restore the last setup
+    if (onChangeCb) try { onChangeCb(getMarket()); } catch (e) {}
+  }
 
   function getMarket() {
     var info = charBaseInfo();
@@ -186,6 +237,15 @@
       '#av-setup .avs-microlab{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700}' +
       '#av-setup .avs-baseline{display:inline-flex;align-items:center;gap:5px}' +
       '#av-setup .avs-gpdval{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}' +
+      // the VALUES are clickable pickers too (arrows still step): a value button
+      // opens a mini popover with every option laid out
+      '#av-setup .avs-popwrap{position:relative;display:inline-flex}' +
+      '#av-setup .avs-valbtn{background:none;border:0;padding:1px 3px;margin:0;cursor:pointer;font:inherit;color:inherit;display:inline-flex;align-items:center;border-radius:6px}' +
+      '#av-setup .avs-valbtn:hover{background:rgba(102,199,255,.12)}' +
+      '#av-setup .avs-minipop{position:absolute;z-index:45;left:50%;transform:translateX(-50%);top:calc(100% + 6px);background:var(--panel2);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.5);padding:8px;display:grid;gap:5px;width:max-content}' +
+      '#av-setup .avs-rankopt{background:none;border:1px solid transparent;border-radius:8px;padding:3px;cursor:pointer}' +
+      '#av-setup .avs-rankopt:hover{border-color:var(--border)}' +
+      '#av-setup .avs-rankopt.on{border-color:var(--accent)}' +
       '#av-setup .avs-row{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);color:var(--text);padding:7px 10px;cursor:pointer;font:13px inherit}' +
       '#av-setup .avs-row:hover{background:rgba(102,199,255,.08)}' +
       '#av-setup .avs-row .rg{font-size:10px;font-weight:700;letter-spacing:.05em;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--dim)}' +
@@ -245,13 +305,27 @@
       '  <span class="avs-baseline" title="Gold per 1% damage tier' + (gpdAuto ? " — auto-set from combat power" : "") + '">' +
       '    <span class="avs-microlab">gold</span>' +
       '    <button type="button" id="avs-gpd-dn" class="avs-arrow"' + (gpdIdx <= 0 ? " disabled" : "") + '>&#9664;</button>' +
-      '    <span class="avs-gpdval">' + Econ.gpdLabel(gpd) + '/1%</span>' +
+      '    <span class="avs-popwrap">' +
+      '      <button type="button" id="avs-gpd-val" class="avs-valbtn" title="Click to pick a tier"><span class="avs-gpdval">' + Econ.gpdLabel(gpd) + '/1%</span></button>' +
+      '      <div id="avs-gpd-pop" class="avs-minipop" style="display:none;grid-template-columns:repeat(4,auto)">' +
+      Econ.GPD_TIERS.map(function (g) {
+        return '<button type="button" class="mbtn avs-mini avs-gpd' + (g === gpd ? " active" : "") + '" data-gpd="' + g + '">' + Econ.gpdLabel(g) + '</button>';
+      }).join("") +
+      '      </div>' +
+      '    </span>' +
       '    <button type="button" id="avs-gpd-up" class="avs-arrow"' + (gpdIdx >= Econ.GPD_TIERS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
       '  </span>' +
       '  <span class="avs-baseline" title="Baseline — ' + esc(m.provenance.baseNote) + '">' +
       '    <span class="avs-microlab">base</span>' +
       '    <button type="button" id="avs-base-dn" class="avs-arrow"' + (baseIdx <= 0 ? " disabled" : "") + '>&#9664;</button>' +
-      rankBadge(m.baselineRank) +
+      '    <span class="avs-popwrap">' +
+      '      <button type="button" id="avs-base-val" class="avs-valbtn" title="Click to pick a baseline rank">' + rankBadge(m.baselineRank) + '</button>' +
+      '      <div id="avs-base-pop" class="avs-minipop" style="display:none;grid-template-columns:repeat(6,auto)">' +
+      Econ.GRADE_ROWS.map(function (g, i) {
+        return '<button type="button" class="avs-rankopt' + (i === baseIdx ? " on" : "") + '" data-bi="' + i + '">' + rankBadge(rankOf(g)) + '</button>';
+      }).join("") +
+      '      </div>' +
+      '    </span>' +
       '    <button type="button" id="avs-base-up" class="avs-arrow"' + (baseIdx >= Econ.GRADE_ROWS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
       '  </span>' +
       '</div>' +
@@ -261,6 +335,7 @@
     renderFavs();
     wire();
     searchOpen = false;   // results dropdown always rebuilds hidden
+    gpdPopOpen = false; basePopOpen = false;   // value pickers likewise
   }
 
   function renderStatus() {
@@ -315,6 +390,11 @@
     box._hits = top;
   }
 
+  // ---- mini-popovers on the gold/baseline VALUES (render rebuilds them closed) ----
+  var gpdPopOpen = false, basePopOpen = false;
+  function setGpdPop(open) { gpdPopOpen = open; var p = host && host.querySelector("#avs-gpd-pop"); if (p) p.style.display = open ? "" : "none"; }
+  function setBasePop(open) { basePopOpen = open; var p = host && host.querySelector("#avs-base-pop"); if (p) p.style.display = open ? "" : "none"; }
+
   // ---- event wiring (onclick assignment on the persistent host — no stacking) ----
   function wire() {
     var inp = host.querySelector("#avs-search");
@@ -328,14 +408,27 @@
     }
     host.onclick = function (ev) {
       var t = ev.target;
-      // FIRST: any click outside the search wrap closes the results dropdown —
-      // checked before the control branches, because several of them
-      // early-return (an already-active chip) and would otherwise strand it open.
+      // FIRST: any click outside a popover's own wrap closes it — checked before
+      // the control branches, because several of them early-return (an
+      // already-active chip) and would otherwise strand it open.
       if (searchOpen && !(t.closest && t.closest(".avs-searchwrap"))) {
         var rb = host.querySelector("#avs-results");
         if (rb) rb.style.display = "none";
         searchOpen = false;
       }
+      if (gpdPopOpen && !(t.closest && (t.closest("#avs-gpd-val") || t.closest("#avs-gpd-pop")))) setGpdPop(false);
+      if (basePopOpen && !(t.closest && (t.closest("#avs-base-val") || t.closest("#avs-base-pop")))) setBasePop(false);
+      // the values toggle their pickers
+      if (t.closest && t.closest("#avs-gpd-val")) { setGpdPop(!gpdPopOpen); return; }
+      if (t.closest && t.closest("#avs-base-val")) { setBasePop(!basePopOpen); return; }
+      // picker options
+      if (t.classList && t.classList.contains("avs-gpd")) {
+        gpd = parseInt(t.getAttribute("data-gpd"), 10);
+        gpdAuto = false;                       // manual pick clears the auto flag
+        render(); emit(); return;
+      }
+      var bopt = t.closest ? t.closest(".avs-rankopt") : null;
+      if (bopt) { setBaseIdx(parseInt(bopt.getAttribute("data-bi"), 10)); return; }
       var row = t.closest ? t.closest(".avs-row") : null;
       if (row) {
         var box = host.querySelector("#avs-results");
@@ -367,13 +460,8 @@
       }
       if (t.id === "avs-base-dn" || t.id === "avs-base-up") {
         var d = t.id === "avs-base-up" ? 1 : -1;
-        var ci = charBaseIdx();
-        var cur = baseIdx;
-        var want = Math.max(0, Math.min(Econ.GRADE_ROWS.length - 1, cur + d));
-        baseShift += (want - cur);
-        if (ci == null) baseShift = want - 5;  // manual mode: shift is relative to the B+ default
-        applyBaseline();
-        render(); emit(); return;
+        setBaseIdx(Math.max(0, Math.min(Econ.GRADE_ROWS.length - 1, baseIdx + d)));
+        return;
       }
     };
   }
@@ -384,6 +472,7 @@
       host = hostEl;
       onChangeCb = (opts && opts.onChange) || null;
       if (root.Favorites && root.Favorites.onChange) root.Favorites.onChange(function () { renderFavs(); });
+      loadState();   // restore last visit's character + market choices
       applyBaseline();
       render();
       emit();
