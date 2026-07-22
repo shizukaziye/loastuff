@@ -367,8 +367,12 @@
 '  #tab-grader #gr-queued-timer{color:var(--axis,var(--accent))}' +
 '  #tab-grader #gr-refresh-banner:empty{display:none}' +
 '  #tab-grader .gr-refresh-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 13px;border-radius:9px;background:rgba(127,127,127,0.10);border:1px solid var(--axis,var(--accent));font-size:13px}' +
-'  #tab-grader .gr-unavail{margin:0 0 14px;padding:12px 15px;border-radius:10px;background:rgba(232,181,74,0.10);border:1px solid rgba(232,181,74,0.5);font-size:13px;line-height:1.5}' +
-'  #tab-grader .gr-unavail b{color:#e8b54a}' +
+'  #tab-grader .gr-unavail{margin:0 0 18px;padding:20px 22px;border-radius:14px;background:rgba(232,181,74,0.13);border:1px solid rgba(232,181,74,0.55)}' +
+'  #tab-grader .gr-unavail-hd{font-size:17px;font-weight:800;color:#e8b54a;line-height:1.35;margin:0 0 8px}' +
+'  #tab-grader .gr-unavail-bd{font-size:13.5px;line-height:1.6;color:var(--text);margin:0}' +
+'  #tab-grader .gr-unavail-bd b{color:#e8b54a}' +
+'  #tab-grader .gr-unavail-btn{margin-top:15px;padding:12px 20px;border-radius:10px;background:#e8b54a;color:#1a1205;font-weight:800;font-size:14.5px;border:0;cursor:pointer}' +
+'  #tab-grader .gr-unavail-btn:hover{filter:brightness(1.08)}' +
 '  #tab-grader .gr-refresh-bar b{color:var(--axis,var(--accent))}' +
 '  #tab-grader .gr-rb-dim{color:var(--dim)}' +
 '  #tab-grader .gr-rb-spin{display:inline-block;animation:gr-rb-spin 1.1s linear infinite}' +
@@ -1693,8 +1697,15 @@ presetToggleHtml(data) +
   function setUnavailable(on, msg) {
     var el = $("gr-unavailable"); if (!el) return;
     if (on) {
-      el.innerHTML = '<b>&#9888;&#65039; ' + esc(msg || "Character lookups are temporarily unavailable") + '</b>';
+      el.innerHTML =
+        '<div class="gr-unavail-hd">&#9888;&#65039; ' + esc(msg || "Character lookups are temporarily unavailable") + '</div>' +
+        '<div class="gr-unavail-bd">lostark.bible is blocking our server right now, so looking a character up by name won’t work. ' +
+        'You can still grade <b>any</b> character with the <b>Bookmarklet</b> &mdash; it reads the loadout from a lostark.bible page in your own browser, no server needed. ' +
+        '(Already-cached characters still load normally.)</div>' +
+        '<button type="button" class="gr-unavail-btn" id="gr-unavail-bm">&#9889; Use the Bookmarklet instead</button>';
       el.style.display = "";
+      var b = $("gr-unavail-bm");
+      if (b) b.addEventListener("click", function () { selectMode("bookmarklet"); });
     } else { el.style.display = "none"; }
   }
   function checkLookupStatus() {
