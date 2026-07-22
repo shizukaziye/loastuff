@@ -3,3 +3,6 @@
   Cache-Control: no-cache
 /social-bar.js
   Cache-Control: no-cache
+# Retired tier list — never long-cache the redirect stub (clears a stale 7-day copy).
+/loa-tierlist/*
+  Cache-Control: no-cache
