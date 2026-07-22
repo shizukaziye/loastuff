@@ -210,6 +210,115 @@
       .catch(function () { cpCache[key] = null; return null; });
   }
 
+  // Everything this token can see about one character, plus the token's own terms.
+  //
+  // The point is the `gemFields` list. lostark.bible carries no astrogem / ark-grid data over
+  // OAuth today, so we grade from bookmarklet imports instead; they have said they may expose
+  // it here later. Rather than poll for that on a timer, we recompute it whenever the user
+  // looks at one of their own characters — if a gem-shaped field ever appears, it shows up in
+  // the rundown the next time they open that character.
+  //
+  // Matching must be narrow or this cries wolf forever. Two traps, both hit in testing:
+  // "gearScore" ENDS in the letters c-o-r-e, and "gem"/"core" are too short to substring
+  // safely. So: distinctive words may appear anywhere, but the bare ones have to be the
+  // whole final segment of the key path.
+  const GEM_ANYWHERE = /arkgrid|astrogem|corepoints|costreduc|willpower/i;
+  const GEM_EXACT = /^(gems?|cores?|opts?)$/i;
+
+  function isGemField(p) {
+    var seg = String(p).split(".").pop().replace(/\[\]$/, "");
+    return GEM_ANYWHERE.test(p) || GEM_EXACT.test(seg);
+  }
+
+  function keyPaths(v, prefix, out) {
+    out = out || [];
+    if (Array.isArray(v)) {
+      if (v.length) keyPaths(v[0], prefix + "[]", out);
+    } else if (v && typeof v === "object") {
+      Object.keys(v).forEach(function (k) {
+        const p = prefix ? prefix + "." + k : k;
+        out.push(p);
+        keyPaths(v[k], p, out);
+      });
+    }
+    return out;
+  }
+
+  // Endpoints that do not exist today. If lostark.bible adds a gear/grid route, one of these
+  // is the likely shape. They are CORS-enabled like the documented ones, so a fetch that
+  // RESOLVES means the route now exists; a 404 has no CORS headers and rejects instead.
+  const PROBES = [
+    "/api/oauth/character/{n}?region={r}",
+    "/api/oauth/gear/{n}?region={r}",
+    "/api/oauth/arkgrid/{n}?region={r}",
+    "/api/oauth/gems/{n}?region={r}",
+    "/api/oauth/loadout/{n}?region={r}"
+  ];
+
+  function rundown(region, name) {
+    const tok = read();
+    if (!tok) return Promise.resolve(null);
+    const reg = String(region || "").toUpperCase();
+    const canLog = (reg === "NA" || reg === "CE");
+    const out = {
+      scope: tok.scope,
+      expiresAt: tok.expires_at,
+      daysLeft: Math.max(0, Math.round((tok.expires_at - Date.now()) / 86400000)),
+      fields: [],        // every distinct key path seen across every endpoint
+      gemFields: [],
+      liveProbes: [],
+      raw: {}
+    };
+    const seen = {};
+    function note(paths) {
+      paths.forEach(function (p) { if (!seen[p]) { seen[p] = 1; out.fields.push(p); } });
+    }
+
+    function probe(tpl) {
+      const u = tpl.replace("{n}", encodeURIComponent(name)).replace("{r}", reg);
+      return api(u).then(
+        function (body) { out.liveProbes.push(u); note(keyPaths(body, u.split("?")[0])); },
+        function () { /* still absent — the expected answer */ }
+      );
+    }
+
+    return Promise.all([
+      api("/api/oauth/user").catch(function () { return null; }),
+      api("/api/oauth/rosters").catch(function () { return null; }),
+      canLog ? api("/api/oauth/logs/" + encodeURIComponent(name) + "?region=" + reg).catch(function () { return null; })
+             : Promise.resolve(null)
+    ].concat(PROBES.map(probe))).then(function (r) {
+      const user = r[0], ros = r[1], logs = r[2];
+
+      // Scan the WHOLE payloads, not just this character's slice — a gem field could arrive
+      // on a sibling object, and a claim of "nothing here" has to cover everything returned.
+      if (user) { out.raw.user = user; note(keyPaths(user, "user")); }
+      if (ros) {
+        note(keyPaths(ros, "rosters"));
+        (ros.rosters || []).forEach(function (x) {
+          (x.characters || []).forEach(function (c) {
+            note(keyPaths(c, "rosters.characters[]"));
+            if (String(c.name).toLowerCase() === String(name).toLowerCase()) {
+              out.roster = c;
+              out.world = x.world;
+              out.raw.rosterCharacter = c;
+            }
+          });
+        });
+      }
+      if (Array.isArray(logs)) {
+        out.logCount = logs.length;
+        // EVERY entry, not just the newest — a field present on one rare encounter counts.
+        logs.forEach(function (e) { note(keyPaths(e, "logs[]")); });
+        if (logs.length) { out.latestLog = logs[0]; out.raw.latestLog = logs[0]; }
+      }
+
+      out.fields.sort();
+      out.gemFields = out.fields.filter(isGemField);
+      return out;
+    });
+  }
+
   root.BibleOAuth = {
     configured: function () { return !!CLIENT_ID; },
     signedIn: function () { return !!read(); },
@@ -220,6 +329,7 @@
     user: function () { return api("/api/oauth/user"); },
     rosters: function () { return api("/api/oauth/rosters"); },
     combatPower: combatPower,
+    rundown: rundown,
     onChange: function (fn) { listeners.push(fn); }
   };
 })(window);

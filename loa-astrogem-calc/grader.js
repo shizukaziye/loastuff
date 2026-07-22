@@ -330,6 +330,19 @@
 // class icon inside a saved-character button; an <img> can't inherit the SVG's
 // fill="currentColor", so flatten it to black and invert it to white
 '  #tab-grader .gr-favbtn .gr-classicon{width:16px;height:16px;object-fit:contain;flex:0 0 auto;margin-right:7px;filter:brightness(0) invert(1)}' +
+// the "what does my sign-in see?" panel under a loadout
+'  #tab-grader .gr-oauth{margin-top:14px;background:var(--panel2);border:1px solid var(--border);border-radius:8px}' +
+'  #tab-grader .gr-oauth>summary{cursor:pointer;padding:10px 14px;font-size:12.5px;font-weight:600}' +
+'  #tab-grader .gr-oauth>summary .ok{color:var(--good,#7ddb9a);font-weight:700}' +
+'  #tab-grader .gr-oauth>summary .no{color:var(--dim);font-weight:400}' +
+'  #tab-grader .gr-oauthbody{padding:0 14px 12px}' +
+'  #tab-grader .gr-oauthgems{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--good,#7ddb9a)}' +
+'  #tab-grader .gr-oauthtab{border-collapse:collapse;font-size:12px;margin:8px 0}' +
+'  #tab-grader .gr-oauthtab th{text-align:left;padding:3px 16px 3px 0;color:var(--dim);font-weight:600;white-space:nowrap}' +
+'  #tab-grader .gr-oauthtab td{padding:3px 0}' +
+'  #tab-grader .gr-oauthsub{margin:8px 0}' +
+'  #tab-grader .gr-oauthsub>summary{cursor:pointer;font-size:12px;color:var(--dim);padding:2px 0}' +
+'  #tab-grader .gr-oauthraw{max-height:300px;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.5;white-space:pre;margin:6px 0}' +
 // the row is space-between, so without this the icon and name would drift apart
 '  #tab-grader .gr-favs .gr-favbtn .nm{margin-right:auto}' +
 '  #tab-grader .gr-pullgrid{display:grid;grid-template-columns:auto 1fr;gap:14px 32px;align-items:start}' +
@@ -1255,6 +1268,7 @@ presetToggleHtml(data) +
     });
 
     fillFieldRank(data, sup, rankDmg); // async: fills #gr-fieldrank once the field snapshot arrives
+    renderOAuthRundown(data);          // async: appends the OAuth panel for your own characters
 
     // Weakest-3 rows scroll to + flash their gem card
     Array.prototype.forEach.call(out.querySelectorAll(".wk-row[data-target]"), function (row) {
@@ -1820,6 +1834,81 @@ presetToggleHtml(data) +
       });
     });
     return out;
+  }
+
+  // ---- WHAT THE OAUTH TOKEN SEES FOR THIS CHARACTER ----
+  // Shown under the loadout, and only when the signed-in user is looking at one of their OWN
+  // roster characters — the API can't return anyone else's. It replaces what would otherwise
+  // be a background poll: the check for "have they exposed the ark grid yet?" runs whenever
+  // you open a character, and the answer is the GEM DATA line.
+  function renderOAuthRundown(data) {
+    var out = $("gr-result");
+    if (!out || !data || !data.name) return;
+    var O = window.BibleOAuth;
+    if (!O || !O.signedIn() || !authRosters) return;
+    var mine = flattenRosters(authRosters).some(function (c) {
+      return charKey(c.region, c.name) === charKey(data.region, data.name);
+    });
+    if (!mine) return;
+
+    O.rundown(data.region, data.name).then(function (rd) {
+      if (!rd || !out.isConnected) return;
+      if (lastLoadout && charKey(lastLoadout.region, lastLoadout.name) !== charKey(data.region, data.name)) return; // superseded
+
+      var gems = rd.gemFields.length;
+      var box = document.createElement("details");
+      box.className = "gr-oauth";
+      box.innerHTML =
+        '<summary>lostark.bible account data for ' + esc(data.name) +
+        ' <span class="' + (gems ? 'ok' : 'no') + '">' +
+        (gems ? 'gem data available' : 'no gem data') + '</span></summary>' +
+        '<div class="gr-oauthbody">' +
+        '<p class="note">What your lostark.bible sign-in returns for this character. ' +
+        (gems
+          ? 'Gem fields have appeared in the API &mdash; the Grader can read loadouts directly now, no bookmarklet needed.'
+          : 'The API carries no astrogem or ark-grid data, so loadouts still come from the Bookmarklet import.') +
+        '</p>' +
+        (gems ? '<p class="gr-oauthgems">' + rd.gemFields.map(esc).join('<br>') + '</p>' : '') +
+        rundownRows(rd, data) +
+        rundownEvidence(rd) +
+        '<p class="note">Token: ' + esc(rd.scope) + ' &middot; ' + rd.daysLeft + ' days left' +
+        (rd.daysLeft <= 14 ? ' &mdash; sign in again soon to renew it' : '') + '</p>' +
+        '</div>';
+      out.appendChild(box);
+    }).catch(function () { /* the panel is a nicety; never break the loadout over it */ });
+  }
+
+  // The receipts behind the "no gem data" verdict: every key the API returned, and the raw
+  // payloads themselves. A verdict about absence is only worth anything if you can check it.
+  function rundownEvidence(rd) {
+    var probes = rd.liveProbes && rd.liveProbes.length
+      ? '<p class="note">Gear endpoints now answering: ' + rd.liveProbes.map(esc).join(", ") + '</p>'
+      : '<p class="note">Probed 5 gear/grid endpoints (<code>/character</code>, <code>/gear</code>, ' +
+        '<code>/arkgrid</code>, <code>/gems</code>, <code>/loadout</code>) &mdash; none exist.</p>';
+
+    return '<details class="gr-oauthsub"><summary>Every field the API returned (' + rd.fields.length + ')</summary>' +
+      '<p class="note">Union across <code>/user</code>, the whole <code>/rosters</code> payload, and all ' +
+      (rd.logCount || 0) + ' encounters &mdash; not a sample.</p>' +
+      '<pre class="gr-oauthraw">' + esc(rd.fields.join("\n")) + '</pre>' + probes + '</details>' +
+      '<details class="gr-oauthsub"><summary>Raw JSON</summary>' +
+      '<pre class="gr-oauthraw">' + esc(JSON.stringify(rd.raw, null, 2)) + '</pre></details>';
+  }
+
+  function rundownRows(rd, data) {
+    var r = rd.roster || {};
+    var lg = rd.latestLog || {};
+    var rows = [
+      ["Roster", (rd.world || "?") + " &middot; " + esc(data.region)],
+      ["Class", esc(lg.class || r.class || "—") + (lg.spec ? " &middot; " + esc(lg.spec) : "")],
+      ["Item level", r.ilvl != null ? esc(Math.round(r.ilvl * 100) / 100) : "—"],
+      ["Combat power", lg.combatPower != null ? esc(Math.round(lg.combatPower * 100) / 100) : "—"],
+      ["Last scanned", r.lastUpdate ? esc(new Date(r.lastUpdate * 1000).toLocaleString()) : "—"],
+      ["Encounters", rd.logCount != null ? esc(rd.logCount) + (lg.boss ? " &middot; latest " + esc(lg.boss) : "") : "—"],
+      ["Fields returned", esc(rd.fields.length)]
+    ];
+    return '<table class="gr-oauthtab"><tbody>' + rows.map(function (kv) {
+      return '<tr><th>' + kv[0] + '</th><td>' + kv[1] + '</td></tr>';
+    }).join("") + '</tbody></table>';
   }
 
   // ---- IMPORT a lostark.bible / lopec.kr loadout WITHOUT the Worker (drop / paste / bookmarklet) ----
