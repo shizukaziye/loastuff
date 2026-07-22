@@ -668,10 +668,51 @@
     "S":  { bg: "#c95f85", fg: "#ffffff" },
     "S+": { bg: "#e8e2cc", fg: "#1a1a1a" }
   };
+  // Mix a hex toward white (amt > 0) or black (amt < 0). amt is 0..1.
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16);
+    var p = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (c) {
+      return Math.max(0, Math.min(255, Math.round(amt >= 0 ? c + (255 - c) * amt : c * (1 + amt))));
+    });
+    return "#" + p.map(function (c) { return (c < 16 ? "0" : "") + c.toString(16); }).join("");
+  }
+
+  // Mix two hexes: t=0 gives a, t=1 gives b.
+  function mix(a, b, t) {
+    var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
+    var p = [16, 8, 0].map(function (sh) {
+      var ca = (x >> sh) & 255, cb = (y >> sh) & 255;
+      return Math.max(0, Math.min(255, Math.round(ca + (cb - ca) * t)));
+    });
+    return "#" + p.map(function (c) { return (c < 16 ? "0" : "") + c.toString(16); }).join("");
+  }
+
+  // The colored ranks are evenly spaced points on ONE ramp: D grey -> C green -> B blue ->
+  // A purple -> S- orange, so the whole ladder reads as a single gradient.
+  //
+  // Each third is a fixed fraction of the step between two anchors, so C+ (1/3 of C->B) and
+  // B- (2/3 of that same step) are two readings of one green-blue transition. A->S- holds
+  // only ONE intermediate rank, so A+ sits at the halfway mark rather than a third.
+  var RANK_STOPS = {
+    "C-": ["D", "C", 2 / 3],
+    "C+": ["C", "B", 1 / 3],
+    "B-": ["C", "B", 2 / 3],
+    "B+": ["B", "A", 1 / 3],
+    "A-": ["B", "A", 2 / 3],
+    "A+": ["A", "S-", 1 / 2]
+  };
+  var RANK_TILT = 0.28;   // fallback for D/F, whose neighbours are the same grey
+
   function rankColor(rank) {
     if (!rank) return RANK_COLORS.F;
+    // S-, S and S+ already separate their thirds by hue (orange / pink / cream) — leave them.
     if (rank.charAt(0) === "S") return RANK_COLORS[rank] || RANK_COLORS.S;
-    return RANK_COLORS[rank.charAt(0)] || RANK_COLORS.F;
+    var stop = RANK_STOPS[rank];
+    if (stop) return { bg: mix(RANK_COLORS[stop[0]].bg, RANK_COLORS[stop[1]].bg, stop[2]), fg: "#ffffff" };
+    var base = RANK_COLORS[rank.charAt(0)] || RANK_COLORS.F;
+    var mod = rank.charAt(1);
+    if (mod !== "+" && mod !== "-") return base;
+    return { bg: shade(base.bg, mod === "+" ? RANK_TILT : -RANK_TILT), fg: base.fg };
   }
   function gradeColor(g) { return rankColor(rankFromGrade(g)); }
 
