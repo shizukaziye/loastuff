@@ -14,6 +14,12 @@
 // Caching: KV, 24 hours. Stale entries are kept and served (stale: true) if upstream fails.
 // Every response — including every error — carries CORS headers; a throw that escapes
 // without them shows up in the browser as a bare "network error" and is undebuggable.
+//
+// Rate-limiting lostark.bible: we throttle the *attempt*, not just the success. Each combo
+// reaches upstream at most once per 24h whether the last try worked or failed (a cache entry
+// carries `at` = last attempt time). Without this, a 429/erroring upstream never refreshes the
+// cache, so every page view retries — the exact opposite of backing off. The discovery sweep
+// (up to ~42 upstream requests) is likewise globally throttled to once per 24h.
 
 const UPSTREAM = 'https://lostark.bible';
 const SEED_HASH = '1ranzqj'; // last known remote hash (2026-07-20); auto-rediscovered on 404
@@ -67,6 +73,15 @@ async function fetchUpstream(hash, boss, difficulty, type, patch) {
 // scanning for the literal next to the remote function name. The node index is cached
 // so the next rotation checks the right chunk first.
 async function discoverHash(env) {
+  // Global daily throttle: the sweep below costs up to ~42 upstream requests, so run it at
+  // most once per TTL no matter how many combos 404 at once. If throttled, fall back to the
+  // last known hash — a stale hash just yields a 404 that the caller handles as a failure.
+  const meta = await env.STATS_KV.get('h:v1', 'json');
+  const now = Date.now();
+  if (meta && meta.dt && now - meta.dt < TTL_MS) return (meta && meta.hash) || SEED_HASH;
+  // Stamp the discovery attempt up front so concurrent 404s don't each launch a sweep.
+  await env.STATS_KV.put('h:v1', JSON.stringify({ ...(meta || {}), dt: now }));
+
   const html = await (await fetch(`${UPSTREAM}/stats/raids`, { headers: UA })).text();
   const appRef = (html.match(/_app\/immutable\/entry\/app\.[A-Za-z0-9_-]+\.js/) || [])[0];
   if (!appRef) throw new Error('discovery: app entry not found in HTML');
@@ -90,7 +105,7 @@ async function discoverHash(env) {
     catch { continue; }
     const m = txt.match(/([a-z0-9]{4,16})\/combatPowerDPSSearch/);
     if (m) {
-      const found = { hash: m[1], num: num(ref), t: Date.now() };
+      const found = { hash: m[1], num: num(ref), t: now, dt: now };
       await env.STATS_KV.put('h:v1', JSON.stringify(found));
       return found.hash;
     }
@@ -114,31 +129,51 @@ async function handleStats(url, env) {
 
   const key = `s:v1:${boss}|${difficulty}|${patch}|${type}`;
   const cached = await env.STATS_KV.get(key, 'json');
-  if (cached && Date.now() - cached.t < TTL_MS) {
+  const now = Date.now();
+
+  // Fresh data: serve it, no upstream request.
+  if (cached && cached.rows && now - cached.t < TTL_MS) {
     return json({ rows: cached.rows, fetchedAt: cached.t, patch, cached: true });
   }
+
+  // Attempt throttle: reach out to lostark.bible at most once per TTL per combo, whether the
+  // last attempt succeeded or failed. `at` (last attempt) falls back to `t` for pre-throttle
+  // entries. This is what stops an erroring/rate-limited upstream from being hammered by every view.
+  const lastAttempt = cached ? (cached.at || cached.t || 0) : 0;
+  if (cached && now - lastAttempt < TTL_MS) {
+    return json({
+      rows: cached.rows || [], fetchedAt: cached.t || null, patch,
+      cached: true, stale: true, error: cached.err || 'refresh throttled — retry after 24h',
+    });
+  }
+
+  // Record the attempt time BEFORE fetching so a burst of concurrent misses collapses toward
+  // one upstream refresh per day rather than a thundering herd.
+  const base = cached || { rows: null, t: 0 };
+  await env.STATS_KV.put(key, JSON.stringify({ ...base, at: now }));
 
   let upstreamErr = null;
   try {
     let res = await fetchUpstream(await getHash(env), boss, difficulty, type, patch);
     if (res.status === 404) {
-      // hash rotated with a site deploy — rediscover and retry once
+      // hash rotated with a site deploy — rediscover (globally throttled) and retry once
       const fresh = await discoverHash(env);
       res = await fetchUpstream(fresh, boss, difficulty, type, patch);
     }
     if (!res.ok) throw new Error('upstream HTTP ' + res.status);
     const rows = decodeRows(await res.text());
-    const entry = { t: Date.now(), rows };
-    await env.STATS_KV.put(key, JSON.stringify(entry));
-    return json({ rows, fetchedAt: entry.t, patch, cached: false });
+    await env.STATS_KV.put(key, JSON.stringify({ t: now, at: now, rows }));
+    return json({ rows, fetchedAt: now, patch, cached: false });
   } catch (e) {
     upstreamErr = String(e && e.message || e);
   }
 
-  if (cached) {
-    return json({ rows: cached.rows, fetchedAt: cached.t, patch, cached: true, stale: true, error: upstreamErr });
+  // Failure: keep the attempt stamp (so we won't retry for 24h) and record the error.
+  await env.STATS_KV.put(key, JSON.stringify({ ...base, at: now, err: upstreamErr }));
+  if (base.rows) {
+    return json({ rows: base.rows, fetchedAt: base.t, patch, cached: true, stale: true, error: upstreamErr });
   }
-  return json({ error: 'upstream fetch failed: ' + upstreamErr }, 502);
+  return json({ error: 'upstream fetch failed: ' + upstreamErr, retryAfterHours: 24 }, 502);
 }
 
 export default {
