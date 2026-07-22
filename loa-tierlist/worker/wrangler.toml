@@ -1,7 +1,0 @@
-name = "loa-tierlist-stats"
-main = "stats-proxy.js"
-compatibility_date = "2026-06-01"
-
-[[kv_namespaces]]
-binding = "STATS_KV"
-id = "86efe878b0104160b1b64a3824f14b99"

@@ -25,7 +25,6 @@
     {
       label: "Lost Ark",
       items: [
-        { name: "DPS Tier List",        url: "https://www.loseii.com/loa-tierlist/" },
         { name: "Accessory Calculator", url: "https://www.loseii.com/lost-ark-accessories/" },
         { name: "Astrogem Calculator",  url: "https://www.loseii.com/loa-astrogem-calc/" },
         { name: "Crafting Profit",      url: "https://www.loseii.com/loa-crafting-calculator/" },
