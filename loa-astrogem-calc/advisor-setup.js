@@ -196,6 +196,9 @@
         if (cpG) { gpd = cpG; gpdAuto = true; }
         applyBaseline();
         charStatus = "";
+        // Bookmarklet-imported records carry gems but no combat power. For a signed-in user's
+        // own character we can still get it from lostark.bible's OAuth logs endpoint.
+        if (charSel.combatPower == null) fillCombatPowerFromOAuth(row);
       } else if (d.queued) {
         charStatus = "not cached yet — queued (position " + (d.position || "?") + "). Values stay manual until fetched.";
       } else {
@@ -206,6 +209,21 @@
       if (!charSel) return;
       charSel._fetched = true;
       charStatus = "couldn't reach the worker — set the tier and baseline manually.";
+      render(); emit();
+    });
+  }
+
+  // Last resort for combat power: the signed-in user's own encounter logs. Silent on every
+  // failure (not signed in, no logs, missing scope) — the manual tier stays exactly as it is.
+  function fillCombatPowerFromOAuth(row) {
+    var O = window.BibleOAuth;
+    if (!O || !O.signedIn()) return;
+    O.combatPower(row.region, row.name).then(function (cp) {
+      if (cp == null) return;
+      if (!charSel || charSel.name !== row.name || charSel.region !== row.region) return; // superseded
+      charSel.combatPower = cp;
+      var cpG = Econ.cpToGpd(cp);
+      if (cpG) { gpd = cpG; gpdAuto = true; }
       render(); emit();
     });
   }

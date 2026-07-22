@@ -323,6 +323,15 @@
 '  #tab-grader.axis-support{--axis:#66c7ff}' +
 // pull mode: saved-character chips sit at the TOP (right under the mode toggle); the
 // region + name controls go on ONE short row below — no dead space, no side column.
+'  #tab-grader .gr-auth{margin:0 0 12px}' +
+// auth buttons ride at the far END of the mode row, so the mode toggles keep their group
+'  #tab-grader .gr-authbtns{display:flex;gap:8px;margin-left:auto}' +
+'  @media(max-width:560px){#tab-grader .gr-authbtns{margin-left:0}}' +
+// class icon inside a saved-character button; an <img> can't inherit the SVG's
+// fill="currentColor", so flatten it to black and invert it to white
+'  #tab-grader .gr-favbtn .gr-classicon{width:16px;height:16px;object-fit:contain;flex:0 0 auto;margin-right:7px;filter:brightness(0) invert(1)}' +
+// the row is space-between, so without this the icon and name would drift apart
+'  #tab-grader .gr-favs .gr-favbtn .nm{margin-right:auto}' +
 '  #tab-grader .gr-pullgrid{display:grid;grid-template-columns:auto 1fr;gap:14px 32px;align-items:start}' +
 '  @media(max-width:560px){#tab-grader .gr-pullgrid{grid-template-columns:1fr}}' +
 '  #tab-grader .gr-pullleft{min-width:0}' +
@@ -539,6 +548,7 @@
 '      <button class="mbtn active" id="gr-mode-pull" type="button">Pull from lostark.bible</button>' +
 '      <button class="mbtn" id="gr-mode-custom" type="button">Custom input</button>' +
 '      <button class="mbtn" id="gr-mode-bookmarklet" type="button">Bookmarklet</button>' +
+'      <span class="gr-authbtns" id="gr-authbtns"></span>' +
 '    </div>' +
 
 // --- custom mode ---
@@ -558,6 +568,7 @@
 
 // --- pull mode: compact controls LEFT, saved characters as a vertical list RIGHT ---
 '    <div class="gr-modebody" id="gr-body-pull">' +
+'      <div class="gr-auth" id="gr-auth"></div>' +
 '      <div class="gr-pullgrid">' +
 '        <div class="gr-pullleft">' +
 '          <div class="gr-pullctl">' +
@@ -1322,6 +1333,32 @@ presetToggleHtml(data) +
   // Render the row of quick-pick buttons (one per saved character) in pull mode.
   // Clicking a button loads that character; empty -> a faint hint. Re-run on
   // Favorites.onChange and whenever pull mode is (re)entered.
+  // ---- class per saved character (for the row's icon) ----
+  // charKey() -> English class name. Filled from the Worker's cached snapshot (which stores
+  // the English name) and from a signed-in user's roster (which stores the internal slug).
+  var favClasses = {};
+  var favClassFetch = false;   // the snapshot is fetched at most once per session
+
+  function favClass(region, name) { return favClasses[charKey(region, name)] || null; }
+
+  // Fetch the cached-character snapshot only if some saved character's class is still
+  // unknown — the promise is session-cached in LoadoutEcon, so this costs one request at
+  // most, and nothing at all for a user whose classes we already know.
+  function ensureFavClasses(favs) {
+    if (favClassFetch) return;
+    var unknown = favs.some(function (f) { return !favClass(f.region, f.name); });
+    if (!unknown) return;
+    favClassFetch = true;
+    Econ.fieldSnapshot().then(function (snap) {
+      if (!snap || !snap.length) return;
+      var before = JSON.stringify(favClasses);
+      snap.forEach(function (s) {
+        if (s && s.class) favClasses[charKey(s.region, s.name)] = s.class;
+      });
+      if (JSON.stringify(favClasses) !== before) renderFavRow(); // repaint with the icons
+    }).catch(function () { /* no snapshot — rows just show no icon */ });
+  }
+
   function renderFavRow() {
     var host = $("gr-favs");
     if (!host) return; // only present in pull mode markup
@@ -1336,10 +1373,12 @@ presetToggleHtml(data) +
       return '<div class="gr-favrow" data-fi="' + i + '">' +
         '<button type="button" class="gr-favstar" title="Unsave ' + esc(f.name) + '" aria-label="Unsave ' + esc(f.name) + '">&#9733;</button>' +
         '<button type="button" class="gr-favbtn" title="Load ' + esc(f.name) + ' (' + esc(f.region) + ')">' +
+        classIconHtml(favClass(f.region, f.name)) +
         '<span class="nm">' + esc(f.name) + '</span>' +
         '<span class="rg">' + esc(f.region) + '</span></button>' +
         '</div>';
     }).join("") + '</div>';
+    ensureFavClasses(favs);
     Array.prototype.forEach.call(host.querySelectorAll(".gr-favrow"), function (rowEl) {
       var f = favs[parseInt(rowEl.getAttribute("data-fi"), 10)];
       if (!f) return;
@@ -1651,6 +1690,138 @@ presetToggleHtml(data) +
     }).catch(function () { /* network blip — leave the notice as-is */ });
   }
 
+  // ---- SIGN IN WITH LOSTARK.BIBLE (OAuth) ----
+  // lostark.bible asked us to stop scraping pages and move to their opt-in OAuth flow, so a
+  // user signs in and we read THEIR OWN roster. Nobody else's characters are reachable — the
+  // name box above only still works for records already cached before the change.
+  var authRosters = null; // last /api/oauth/rosters payload
+  var authCached = {};    // charKey() -> true for characters the Worker already has gems for
+
+  // The rosters endpoint returns the game's INTERNAL class slug ("devil_hunter_female"), not
+  // the English name the icon files are keyed on. Every slug below was read back from the API
+  // itself (the logs endpoint reports the English name for the same character), so the eight
+  // on Shizu's own roster are verified; the rest follow the same Korean-original naming and
+  // are unverified. An unknown slug renders no icon rather than a wrong one.
+  var CLASS_SLUG = {
+    devil_hunter_female: "Gunslinger",  // verified
+    alchemist: "Wildsoul",              // verified
+    dragon_knight: "Guardianknight",    // verified
+    arcana: "Arcanist",                 // verified
+    soul_eater: "Souleater",            // verified
+    blade: "Deathblade",                // verified
+    reaper: "Reaper",                   // verified
+    bard: "Bard",                       // verified
+    warrior: "Berserker", destroyer: "Destroyer", warlord: "Gunlancer", holyknight: "Paladin",
+    berserker_female: "Slayer", valkyrie: "Valkyrie",
+    battle_master: "Wardancer", infighter: "Scrapper", force_master: "Soulfist",
+    lance_master: "Glaivier", battle_master_male: "Striker", infighter_male: "Breaker",
+    devil_hunter: "Deadeye", blaster: "Artillerist", hawk_eye: "Sharpshooter", scouter: "Machinist",
+    summoner: "Summoner", elemental_master: "Sorceress", demonic: "Shadowhunter",
+    weather_artist: "Aeromancer", yinyangshi: "Artist"
+  };
+
+  // Sign-in / load / sign-out live in the mode-toggle row. There is no separate roster list:
+  // every roster character is saved as a favorite, so the existing saved-characters row is
+  // the one place they appear.
+  function renderAuth() {
+    var btns = $("gr-authbtns"), el = $("gr-auth");
+    if (!btns) return;
+    var O = window.BibleOAuth;
+    if (!O || !O.configured()) { btns.innerHTML = ""; if (el) el.innerHTML = ""; return; }
+    if (!O.signedIn()) {
+      btns.innerHTML = '<button class="mbtn" id="gr-auth-in" type="button">Sign in with lostark.bible</button>';
+      if (el) el.innerHTML = "";
+      $("gr-auth-in").addEventListener("click", function () {
+        try { window.BibleOAuth.login(); } catch (e) { setPullStatus(String(e.message || e), "err"); }
+      });
+      return;
+    }
+    btns.innerHTML =
+      '<button class="mbtn" id="gr-auth-load" type="button">Load my characters</button>' +
+      '<button class="mbtn" id="gr-auth-out" type="button">Sign out</button>';
+    if (el) el.innerHTML = "";
+    $("gr-auth-load").addEventListener("click", loadRosters);
+    $("gr-auth-out").addEventListener("click", function () {
+      window.BibleOAuth.logout().then(function () { authRosters = null; renderAuth(); });
+    });
+  }
+
+  // Load the roster AND the Worker's cached-character snapshot together, so each character
+  // can say up front whether we already hold its gem grid. Every roster character is also
+  // saved as a favorite — Favorites is the spine the Grader's saved row, the Advisor's
+  // character picker and the Leaderboard's ★ section all read, so favouriting here is what
+  // gives a signed-in user those three tabs without any per-tab wiring.
+  function loadRosters() {
+    setPullStatus("Loading your roster…", "working");
+    Promise.all([
+      window.BibleOAuth.rosters(),
+      Econ.fieldSnapshot().catch(function () { return null; })
+    ]).then(function (r) {
+      authRosters = r[0];
+      authCached = {};
+      (r[1] || []).forEach(function (s) {
+        authCached[charKey(s.region, s.name)] = true;
+        if (s.class) favClasses[charKey(s.region, s.name)] = s.class;   // English name, for the icon
+      });
+      var chars = flattenRosters(authRosters);
+      // The roster's own class slug covers anyone the snapshot doesn't know yet.
+      chars.forEach(function (c) {
+        var k = charKey(c.region, c.name);
+        if (!favClasses[k] && CLASS_SLUG[String(c.cls || "").toLowerCase()]) {
+          favClasses[k] = CLASS_SLUG[String(c.cls).toLowerCase()];
+        }
+      });
+      var added = favoriteRoster();          // Favorites.onChange repaints the saved row
+      renderFavRow();                        // ...and again for the classes we just learned
+      var have = chars.filter(function (c) { return authCached[charKey(c.region, c.name)]; }).length;
+      setPullStatus(chars.length + " characters · " + have + " with cached loadouts" +
+        (added ? " · " + added + " added to saved characters" : ""), "ok");
+    }).catch(function (e) {
+      setPullStatus("Couldn't load your roster: " + (e && (e.description || e.error) || e), "err");
+      renderAuth();
+    });
+  }
+
+  function charKey(region, name) {
+    return String(region || "").toUpperCase() + "|" + String(name || "").toLowerCase();
+  }
+
+  // Save every roster character as a favorite. Additive only — nothing the user starred
+  // by hand is touched, and re-loading the roster is a no-op. Returns how many were new.
+  function favoriteRoster() {
+    if (!Favs) return 0;
+    var n = 0;
+    flattenRosters(authRosters).forEach(function (c) {
+      if (!c.name || !c.region) return;
+      if (Favs.has(c.region, c.name)) return;
+      Favs.add(c.region, c.name);
+      n++;
+    });
+    return n;
+  }
+
+  // Flatten whatever the rosters endpoint returns into [{region, name, ...}]. The payload
+  // shape isn't documented; this handles the obvious nestings and falls back to showing the
+  // raw JSON so an unexpected shape is visible rather than silently empty.
+  function flattenRosters(j) {
+    var rosters = Array.isArray(j) ? j : (j && (j.rosters || j.data)) || [];
+    var out = [];
+    (Array.isArray(rosters) ? rosters : []).forEach(function (ros) {
+      var chars = (ros && (ros.characters || ros.chars)) || [];
+      (Array.isArray(chars) ? chars : []).forEach(function (c) {
+        if (!c) return;
+        out.push({
+          region: String(c.region || ros.region || "").toUpperCase(),
+          name: c.name || c.characterName || "",
+          cls: c.class || c.className || "",
+          itemLevel: c.itemLevel || c.ilvl || null,
+          raw: c
+        });
+      });
+    });
+    return out;
+  }
+
   // ---- IMPORT a lostark.bible / lopec.kr loadout WITHOUT the Worker (drop / paste / bookmarklet) ----
   // lostark.bible blocks our Worker and sends no CORS, so the user brings the page SOURCE over and we
   // parse it client-side via window.BibleImport, then render through the normal renderLoadout path.
@@ -1772,6 +1943,16 @@ presetToggleHtml(data) +
     $("gr-pull-go").addEventListener("click", function () { runPull(false); });
     $("gr-pull-refresh").addEventListener("click", function () { runPull(true); });
     $("gr-name").addEventListener("keydown", function (e) { if (e.key === "Enter" && WORKER_URL) runPull(false); });
+
+    // OAuth: finish a redirect back from the consent screen, then paint the sign-in row.
+    if (window.BibleOAuth) {
+      window.BibleOAuth.onChange(renderAuth);
+      window.BibleOAuth.handleRedirect().then(function (res) {
+        if (res && !res.ok) setPullStatus("Sign-in failed: " + res.error, "err");
+        renderAuth();
+        if (res && res.ok) loadRosters();
+      });
+    }
 
     checkLookupStatus();                            // show the "lookups unavailable" notice if the queue is paused
     // Re-check only when the user opens or returns to the tab — NOT on a 60s interval. Idle/background
