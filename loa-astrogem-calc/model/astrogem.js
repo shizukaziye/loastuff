@@ -675,13 +675,14 @@
     A:    { bg: "#7e5cc0", fg: "#ffffff" }
   };
   // The TOP of the ladder (A+ and the three S ranks) leaves the ramp and runs a smooth
-  // cool-elite arc — A purple -> A+ violet -> S- orchid -> S rose -> S+ red, the hot end of
-  // the spectrum. These are explicit points, not ramp mixes, so they read cleanly.
+  // cool-elite arc — A purple -> A+ violet -> S- orchid -> S rose -> S+ pale champagne (the
+  // near-perfect tier). Explicit points, not ramp mixes, so they read cleanly. Dark fg on
+  // the light champagne.
   var TOP_TIER = {
     "A+": { bg: "#a660be", fg: "#ffffff" },
     "S-": { bg: "#c15cad", fg: "#ffffff" },
     "S":  { bg: "#cc5c81", fg: "#ffffff" },
-    "S+": { bg: "#d0524e", fg: "#ffffff" }
+    "S+": { bg: "#e6d5a6", fg: "#4a3a1e" }
   };
   // A PERFECT gem (grade 100) transcends the spectrum with the animated pastel rainbow from
   // the old tier list — bg is a GRADIENT, not a hex, dropped straight into `background:`, and
