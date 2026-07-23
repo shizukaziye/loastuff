@@ -134,14 +134,16 @@ footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--border);color
     <div class='ig'>
       <div class='fld'><label>Brand power</label><input id='p_supBrand' type='number' step='0.1'></div>
       <div class='fld'><label>Ally atk enh</label><input id='p_supAtkEnh' type='number' step='0.1'></div>
-      <div class='fld'><label>Ally dmg</label><input id='p_supAllyDmg' type='number' step='0.1'></div>
-      <div class='fld'><label>Serenade dmg</label><input id='p_supSerenDmg' type='number' step='0.1'></div>
+      <div class='fld'><label>Ally dmg (identity)</label><input id='p_supAllyDmg' type='number' step='0.1'></div>
+      <div class='fld'><label>Ally dmg (t-skill)</label><input id='p_supAllyDmgT' type='number' step='0.1'></div>
+      <div class='fld'><label>Spec</label><input id='p_spec' type='number' step='1'></div>
     </div>
     <div class='subh'>Support buff uptime / coverage (% of party damage)</div>
     <div class='ig'>
       <div class='fld'><label>Brand uptime</label><input id='p_upBrand' type='number' step='1'></div>
       <div class='fld'><label>AP buff uptime</label><input id='p_upAp' type='number' step='1'></div>
       <div class='fld'><label>Serenade uptime</label><input id='p_upSeren' type='number' step='1'></div>
+      <div class='fld'><label>Major Chord uptime</label><input id='p_upChord' type='number' step='1'></div>
       <div class='fld'><label>T-skill uptime</label><input id='p_upTskill' type='number' step='1'></div>
       <div class='fld'><label>AP mult to DPS (derived)</label><input id='p_supMultView' type='text' disabled></div>
     </div>
@@ -201,13 +203,14 @@ Each line's marginal % feeds <code>D</code>; main stat runs through the same atk
 
 <h4>3. Support value = party-damage contribution</h4>
 We grade a support's lines by how much party damage their buffs add (contribution above a no-accessory support),
-on the same log scale. Four buff buckets, each applied to its <i>uptime</i> share of damage:
+on the same log scale. Three channels &mdash; AP buff, brand, and the identity bracket &mdash; each applied to its <i>uptime</i> share:
+<div class='formula'>ap&nbsp;&nbsp;&nbsp;&nbsp;= 1 + up<sub>a</sub>(apMult &minus; 1),&nbsp; apMult from the support's base atk &times; 0.22(1 + ally_atk_enh)</div>
 <div class='formula'>brand&nbsp;= 1 + up<sub>b</sub>&middot;0.10(1 + brand_power)</div>
-<div class='formula'>t&middot;skill = 1 + up<sub>t</sub>&middot;0.10(1 + ally_dmg)</div>
-<div class='formula'>serenade = 1 + up<sub>s</sub>(1 + 0.5&middot;gain)&middot;0.15(1 + ally_dmg + serenade_dmg)</div>
-<div class='formula'>ap&nbsp;&nbsp;&nbsp;= 1 + up<sub>a</sub>(apMult &minus; 1),&nbsp; apMult from the support's base atk &times; 0.22(1 + ally_atk_enh)</div>
-<code>Q = 100&middot;ln(brand&middot;tskill&middot;serenade&middot;ap)</code>. Accessory lines feed: Stigma&rarr;brand power,
-Gauge&rarr;serenade gain (half-effective uptime), Ally Dmg&rarr;t-skill+serenade, Ally Atk&rarr;ap,
+<div class='formula'>ser = 0.15(1 + ally_dmg)(1 + spec&middot;class_coeff),&nbsp; chord = 0.02(&hellip;same&hellip;),&nbsp; tsk = 0.10(1 + ally_dmg_t)</div>
+<div class='formula'>identity = 1 + (up<sub>s</sub>&middot;ser + up<sub>c</sub>&middot;chord + up<sub>t</sub>&middot;tsk) / (1 + base_additional)</div>
+<code>Q = 100&middot;ln(ap&middot;brand&middot;identity)</code>. Serenade, Major Chord and the t-skill all raise the dealer's Additional Damage,
+so they share one bracket and are diluted by its base additional. Accessory lines feed: Stigma&rarr;brand power,
+Gauge&rarr;serenade gain (half-effective uptime), Ally Dmg&rarr;identity bracket (serenade / chord / t-skill), Ally Atk&rarr;ap,
 Weapon% / Weapon-flat / main stat&rarr;the support's base atk (bigger ap buff).
 
 <h4>4. The support's buff to your DPS (k)</h4>
@@ -320,8 +323,9 @@ const DEFAULTS={
  anchors:{dps:{hm:500000,hh:3200000}, support:{hm:250000,hh:1200000}}, // NECK only per market
  baseAdd:35.85, baseAtk:13.33, baseCR:90, baseCD:280, critX:1.12,
  baseWP:250000, baseMS:750000, tax:60000, baseFlatAtk:2700,
- supBrand:48.8, supAtkEnh:63.55, supAllyDmg:7.66, supSerenDmg:88.03,
- upBrand:100, upAp:95, upSeren:70, upTskill:40
+ supBrand:43.13, supAtkEnh:68.25, supAllyDmg:37.13, supAllyDmgT:7.13,
+ spec:1100, supClassCoeff:0.0005005722461,
+ upBrand:100, upAp:95, upSeren:70, upChord:70, upTskill:40
 };
 let P=null, MODEL={};
 const _distCache={};
@@ -381,15 +385,20 @@ function supExtract(lines){let brand=0,gain=0,allydmg=0,atkenh=0,wp=0,wpflat=0;
   else if(e==='Weapon Attack Power %')wp+=v/100;else if(e==='Weapon Attack Power+')wpflat+=v;}
  return {brand,gain,allydmg,atkenh,wp,wpflat};}
 function supContribMult(x,ms){ // party-damage multiplier from buffs given accessory deltas x and acc main stat
- const ally_dmg=P.supAllyDmg/100+x.allydmg, atkenh=P.supAtkEnh/100+x.atkenh, serdmg=P.supSerenDmg/100, bp=P.supBrand/100;
- const brand=1+(P.upBrand/100)*(0.10*(1+bp+x.brand));
- const tskill=1+(P.upTskill/100)*(0.10*(1+ally_dmg));
- const serenade=1+(P.upSeren/100)*(1+0.5*x.gain)*(0.15*(1+ally_dmg+serdmg));
+ // ally-dmg feeds the identity bracket (serenade + Major Chord) and the t-skill's own bracket; ring lines add to both
+ const ally_dmg=P.supAllyDmg/100+x.allydmg, ally_dmg_t=P.supAllyDmgT/100+x.allydmg;
+ const atkenh=P.supAtkEnh/100+x.atkenh, bp=P.supBrand/100, specEff=P.spec*P.supClassCoeff;
  const supWP=P.baseWP*(1+x.wp)+x.wpflat, supMS=P.baseMS+ms, supBaseAp=Math.sqrt(supWP*supMS/6);
  const dpsBase=Math.sqrt(P.baseWP*P.baseMS/6), dpsMults=1+P.baseAtk, dpsFlats=P.baseFlatAtk;
  const apMult=((dpsBase+supBaseAp*0.22*(1+atkenh))*dpsMults+dpsFlats)/(dpsBase*dpsMults+dpsFlats);
  const ap=1+(P.upAp/100)*(apMult-1);
- return brand*tskill*serenade*ap;
+ const brand=1+(P.upBrand/100)*(0.10*(1+bp+x.brand));
+ // serenade + Major Chord + t-skill all raise the DPS's Additional Damage: add, then dilute by base additional
+ const seren=0.15*(1+ally_dmg)*(1+specEff)*(1+0.5*x.gain);
+ const chord=0.02*(1+ally_dmg)*(1+specEff);
+ const tsk=0.10*(1+ally_dmg_t);
+ const identity=1+((P.upSeren/100)*seren+(P.upChord/100)*chord+(P.upTskill/100)*tsk)/(1+P.baseAdd);
+ return ap*brand*identity;
 }
 const _ZERO={brand:0,gain:0,allydmg:0,atkenh:0,wp:0,wpflat:0};
 function supportQuality(slot,ms,lines){
@@ -764,8 +773,10 @@ function readParams(){
   baseWP:+$('p_baseWP').value, baseMS:+$('p_baseMS').value,
   tax:Math.max(0,+$('p_tax').value), baseFlatAtk:DEFAULTS.baseFlatAtk,
   supBrand:+$('p_supBrand').value, supAtkEnh:+$('p_supAtkEnh').value,
-  supAllyDmg:+$('p_supAllyDmg').value, supSerenDmg:+$('p_supSerenDmg').value,
-  upBrand:+$('p_upBrand').value, upAp:+$('p_upAp').value, upSeren:+$('p_upSeren').value, upTskill:+$('p_upTskill').value};
+  supAllyDmg:+$('p_supAllyDmg').value, supAllyDmgT:+$('p_supAllyDmgT').value,
+  spec:+$('p_spec').value, supClassCoeff:DEFAULTS.supClassCoeff,
+  upBrand:+$('p_upBrand').value, upAp:+$('p_upAp').value, upSeren:+$('p_upSeren').value,
+  upChord:+$('p_upChord').value, upTskill:+$('p_upTskill').value};
  // DPS support-atk contribution derived from AP uptime + ally-atk-enh (no separate field)
  P.supMult=0.22*(1+P.supAtkEnh/100)*(P.upAp/100);
  $('a_dps_hm').value=A.dps.hm;$('a_dps_hh').value=A.dps.hh;$('a_sup_hm').value=A.support.hm;$('a_sup_hh').value=A.support.hh;
@@ -778,9 +789,10 @@ function setDefaultsToInputs(){
  $('p_baseWP').value=DEFAULTS.baseWP;$('p_baseMS').value=DEFAULTS.baseMS;
  $('p_tax').value=DEFAULTS.tax;
  $('p_supBrand').value=DEFAULTS.supBrand;$('p_supAtkEnh').value=DEFAULTS.supAtkEnh;
- $('p_supAllyDmg').value=DEFAULTS.supAllyDmg;$('p_supSerenDmg').value=DEFAULTS.supSerenDmg;
+ $('p_supAllyDmg').value=DEFAULTS.supAllyDmg;$('p_supAllyDmgT').value=DEFAULTS.supAllyDmgT;
+ $('p_spec').value=DEFAULTS.spec;
  $('p_upBrand').value=DEFAULTS.upBrand;$('p_upAp').value=DEFAULTS.upAp;
- $('p_upSeren').value=DEFAULTS.upSeren;$('p_upTskill').value=DEFAULTS.upTskill;
+ $('p_upSeren').value=DEFAULTS.upSeren;$('p_upChord').value=DEFAULTS.upChord;$('p_upTskill').value=DEFAULTS.upTskill;
 }
 function resetDefaults(){setDefaultsToInputs();}
 function recalc(){

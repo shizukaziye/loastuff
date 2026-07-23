@@ -215,31 +215,52 @@ Brand Power, Ally Damage Enh.** are the "damage" lines; Attack/Additional/Boss �
 A support gem buffs all 3 DPS in the party, so its *raw* party value is ~3× a single
 DPS buff. To keep per-gem grades and the leaderboard on a comparable per-character
 scale, every support coefficient is stored **÷3** (the ×3 party benefit is reapplied
-only at the gold step, `SUPPORT_GPD_MULTIPLIER = 3`):
+only at the gold step, `SUPPORT_GPD_MULTIPLIER = 3`).
 
-| Support line | per-level value (per-DPS) |
-|---|---:|
-| Ally Attack Enh. | 0.0596 / 3 |
-| Brand Power | 0.0434 / 3 |
-| Ally Damage Enh. | 0.0195 / 3 |
-| Order/Chaos (avg) | 0.0747 / 3 = 0.0249 |
-| Willpower | **(2/3)** × the DPS willpower contribution |
+Each coefficient is a **per-level** party-damage value: one level of the effect grants
+a fixed number of buff-stat percentage points (Ally Atk 0.13, Brand 0.167, Ally Dmg
+0.052 per level), times how much party damage one such point adds. The second factor
+comes straight from the accessory calc's support model (`~/lost-ark-accessories`
+METHODOLOGY §3) — so when that model changes, these move with it.
+
+> **Re-derived against the corrected support model (Bebkok sup-buff sheet).** The
+> identity channel now runs serenade, **Major Chord** and the t-skill through one
+> bracket `base·(1 + ally_dmg)·(1 + spec_eff)`, summed and diluted by the dealer's own
+> additional damage. Net effect on per-point party damage: ally-attack ×0.98, brand
+> ×1.01, ally-damage **×1.10** (ally damage rides the bracket size, so higher spec
+> lifts it further). Values below are the corrected numbers. **⚠ Pending: the code
+> constants in `model/astrogem.js` and the baked `data/pipeline-support.json` still
+> hold the old values — apply + re-bake before this doc and the tool agree (see the
+> audit / METHODOLOGY "Regenerate").**
+
+| Support line | per-level value (per-DPS) | was |
+|---|---:|---:|
+| Ally Attack Enh. | 0.0586 / 3 | 0.0596 |
+| Brand Power | 0.0437 / 3 | 0.0434 |
+| Ally Damage Enh. | 0.0214 / 3 | 0.0195 |
+| Order/Chaos (avg) | 0.0769 / 3 = 0.0256 | 0.0747 |
+| Willpower | **(2/3)** × the DPS willpower contribution | — |
 
 **Per-core order values.** Unlike DPS, a support gem's order points are worth
 different amounts by core, because each core grants a different party buff. A
-*standalone* support gem grade uses the average (0.0747/3); the *whole grid* uses
+*standalone* support gem grade uses the average (0.0769/3); the *whole grid* uses
 the per-core value (`SUPPORT_ORDER_PER_CORE`, base values shown, stored ÷3):
 
-| Core | Buff it grants | per-point value (base) |
-|---|---|---:|
-| Order Sun | Ally Attack | 0.0694 |
-| Order Moon | Ally Damage | 0.0640 |
-| Order Star | Serenade | 0.0486 |
-| Chaos Sun | Ally Damage | 0.0753 |
-| **Chaos Moon** | **Brand (strongest)** | **0.1044** |
-| Chaos Star | Weapon Power | 0.0869 |
+| Core | Buff it grants | per-point value | was |
+|---|---|---:|---:|
+| Order Sun | Ally Attack | 0.0682 | 0.0694 |
+| Order Moon | Ally Damage | 0.0702 | 0.0640 |
+| Order Star | Serenade | 0.0486 † | 0.0486 |
+| Chaos Sun | Ally Damage | 0.0826 | 0.0753 |
+| **Chaos Moon** | **Brand (strongest)** | **0.1052** | 0.1044 |
+| Chaos Star | Weapon Power | 0.0869 | 0.0869 |
 
-So a support point in Chaos Moon (Brand) is worth ~2.1× one in Order Star.
+† **Order Star (serenade) is held provisional.** It scores identity-meter generation,
+which the sheet models as bar-count steps (5/10/15% base), not a smooth per-point curve
+— re-deriving it properly is a separate task from the three buff-stat lines. Chaos Star
+(weapon power → support base atk → AP buff) is unchanged: the AP channel kept its shape.
+
+So a support point in Chaos Moon (Brand) is worth ~2.2× one in Order Star.
 
 Everything else (the willpower multiplier, the global grade normalization, the
 ranks) works identically — just with `supportValue` instead of `gemValue`. The

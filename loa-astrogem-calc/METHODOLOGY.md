@@ -243,6 +243,15 @@ terminal value is `supportValue`, the twelve grade baselines come from
 `supportGradeToScore`, and the ×3 party gpd applies at the gold step. The tab's
 DPS/Support toggle picks which file it reads.
 
+> **Support coefficients re-derived (corrected model).** The `SUPPORT_SCORING`
+> per-level and `SUPPORT_ORDER_PER_CORE` per-point values (grading doc §8) come from
+> the accessory calc's support model, which was corrected against the Bebkok sup-buff
+> sheet — the identity channel now carries **Major Chord** and treats spec as a
+> multiplier. Ally-damage lines rise ~10%, brand and ally-attack barely move. **After
+> the code constants change, `data/pipeline-support.json` MUST be re-baked** (§Regenerate;
+> ~45 min) and the support refs re-frozen. The **leaderboard** re-ranks on its own —
+> it computes `gridDamage(support)` live in the browser, so a redeploy is enough.
+
 ### Per cost-cell rendering
 
 Each `(rarity, cost)` cell stacks the **four buckets** (2D / Op / Sub / No). Per

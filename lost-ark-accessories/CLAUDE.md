@@ -24,10 +24,12 @@ markets, recommends what to cut, and plans purchases against a budget.
   `total_atk = (atk + sup·k)(1+atk%) + flat`; crit via `cr·cd·1.12 + (1-cr)`.
   `k` (support's atk buff to you) is **derived**: `0.22·(1+ally_atk_enh)·ap_uptime`.
 - **Support quality** = party-damage contribution (above a no-accessory support):
-  `Q = 100·ln(brand·tskill·serenade·ap)`, each buff scaled by an editable uptime
-  (brand/AP/serenade/t-skill; AP default 95%). Lines: Stigma→brand, Gauge→
-  serenade gain (half-effective uptime), Ally Dmg→t-skill+serenade, Ally Atk→ap,
-  Weapon%/flat/main-stat→support base atk.
+  `Q = 100·ln(ap·brand·identity)`, each channel scaled by an editable uptime
+  (AP default 95%). Serenade, **Major Chord** and the t-skill share one *identity
+  bracket* that raises the dealer's Additional Damage — `base·(1+ally_dmg)·(1+spec_eff)`,
+  summed then diluted by the dealer's base additional. Lines: Stigma→brand, Gauge→
+  serenade gain (half-effective uptime), Ally Dmg→identity bracket (serenade/chord/
+  t-skill), Ally Atk→ap, Weapon%/flat/main-stat→support base atk.
 - **Pricing**: supply `F(D)` = share of full cuts (all 19,440 outcomes × 5
   main-stat quintiles min/low/mid/high/max, 20% each — `msLevels`/`ms_levels`) scoring ≤ D. Demand = 80/20 Pareto `pmin·(1−F)^(−1/a)`.
   Value = ∫ price over [baseline, D] − pheon tax, floored at 0. Baseline =

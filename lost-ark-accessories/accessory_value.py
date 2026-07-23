@@ -25,8 +25,9 @@ P = dict(
              "support": {"hm": 250000, "hh": 1200000}},   # NECK only per market
     baseAdd=0.3585, baseAtk=0.1333, baseCR=0.90, baseCD=2.80, critX=1.12,
     baseWP=250000, baseMS=750000, tax=60000, baseFlatAtk=2700,
-    supBrand=48.8, supAtkEnh=63.55, supAllyDmg=7.66, supSerenDmg=88.03,   # %
-    upBrand=100, upAp=95, upSeren=70, upTskill=40,                        # %
+    supBrand=43.13, supAtkEnh=68.25, supAllyDmg=37.13, supAllyDmgT=7.13,  # % (identity-bracket / t-skill-bracket ally-dmg base)
+    spec=1100, supClassCoeff=0.0005005722461,                            # Bard: spec -> identity-buff efficiency multiplier
+    upBrand=100, upAp=95, upSeren=70, upChord=70, upTskill=40,            # %
     hpAsWp=False,  # toggle: value Max HP+ flats exactly like Weapon Attack Power+ (both markets)
 )
 DEMAND_MAX = 6e7   # cap: 60M gold per 1% damage (final pricing only; calibration is cap-free)
@@ -173,13 +174,14 @@ def sup_extract(lines):
 
 
 def sup_contrib_mult(x, ms):
-    ally_dmg = P["supAllyDmg"] / 100 + x["allydmg"]
+    # ally-dmg feeds two brackets: the identity bracket (serenade + Major Chord) and
+    # the t-skill's own bracket. Ring Ally Dmg lines (x["allydmg"]) add to both.
+    ally_dmg = P["supAllyDmg"] / 100 + x["allydmg"]      # identity bracket: ark grid + gem + rings
+    ally_dmg_t = P["supAllyDmgT"] / 100 + x["allydmg"]   # t-skill bracket: ark grid + rings (no gem)
     atkenh = P["supAtkEnh"] / 100 + x["atkenh"]
-    serdmg = P["supSerenDmg"] / 100
     bp = P["supBrand"] / 100
-    brand = 1 + (P["upBrand"] / 100) * (0.10 * (1 + bp + x["brand"]))
-    tskill = 1 + (P["upTskill"] / 100) * (0.10 * (1 + ally_dmg))
-    serenade = 1 + (P["upSeren"] / 100) * (1 + 0.5 * x["gain"]) * (0.15 * (1 + ally_dmg + serdmg))
+    spec_eff = P["spec"] * P["supClassCoeff"]            # identity-buff multiplier from spec
+    # AP buff: support adds 0.22·(1+ally_atk_enh) of its base atk to yours
     sup_wp = P["baseWP"] * (1 + x["wp"]) + x["wpflat"]
     sup_ms = P["baseMS"] + ms
     sup_base_ap = math.sqrt(sup_wp * sup_ms / 6)
@@ -188,7 +190,15 @@ def sup_contrib_mult(x, ms):
     dps_flats = P["baseFlatAtk"]
     ap_mult = ((dps_base + sup_base_ap * 0.22 * (1 + atkenh)) * dps_mults + dps_flats) / (dps_base * dps_mults + dps_flats)
     ap = 1 + (P["upAp"] / 100) * (ap_mult - 1)
-    return brand * tskill * serenade * ap
+    brand = 1 + (P["upBrand"] / 100) * (0.10 * (1 + bp + x["brand"]))
+    # identity channel: serenade + Major Chord + t-skill all raise the DPS's Additional
+    # Damage, so they add up and are then diluted by the DPS's own base additional.
+    seren = 0.15 * (1 + ally_dmg) * (1 + spec_eff) * (1 + 0.5 * x["gain"])
+    chord = 0.02 * (1 + ally_dmg) * (1 + spec_eff)
+    tsk = 0.10 * (1 + ally_dmg_t)
+    identity = 1 + ((P["upSeren"] / 100) * seren + (P["upChord"] / 100) * chord
+                    + (P["upTskill"] / 100) * tsk) / (1 + P["baseAdd"])
+    return ap * brand * identity
 
 
 _ZERO = dict(brand=0.0, gain=0.0, allydmg=0.0, atkenh=0.0, wp=0.0, wpflat=0.0)
@@ -468,14 +478,14 @@ def cmd_value(args):
 REFS = {  # captured from the live JS site (index.html) for parity
     "dps_neck_hh": 3200000, "dps_neck_hm": 500000,
     "sup_neck_hh": 1200000, "sup_neck_hm": 250000,
-    "dps_earring_hh": 1844253, "dps_ring_hh": 1901534, "sup_ring_hh": 1816879,
+    "dps_earring_hh": 1831054, "dps_ring_hh": 1901534, "sup_ring_hh": 2276999,
     # (5 main-stat quintile levels; mid = ms_levels("neck")[2] = 16518)
-    "supRoll_best": 1345695, "ev_neck_mid_opt": 2134,
-    "neck_dps_a": 1.35068, "neck_dps_pmin": 11220.513,
+    "supRoll_best": 1403073, "ev_neck_mid_opt": 2036,
+    "neck_dps_a": 1.35085, "neck_dps_pmin": 11215.585,
     # hpAsWp toggle ON (Max HP+ valued as Weapon Attack Power+):
-    "hp_ev_neck_mid_opt": 2209,
-    "hp_neck_dps_a": 1.35090, "hp_neck_dps_pmin": 11357.753,
-    "hp_neck_hh_hp3": 4336495,   # Outgoing high / Additional high / Max HP+ high, min stat
+    "hp_ev_neck_mid_opt": 2116,
+    "hp_neck_dps_a": 1.35108, "hp_neck_dps_pmin": 11351.826,
+    "hp_neck_hh_hp3": 4326673,   # Outgoing high / Additional high / Max HP+ high, min stat
 }
 
 

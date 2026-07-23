@@ -285,17 +285,20 @@ def gem_rank(config):
 # scale: the earlier x3 (3 DPS in the party) double-counts under the multiplicative
 # model, so every damage coefficient is its base party-buff value / 3. Willpower is a
 # per-DPS efficiency ratio (not a party buff), so it is NOT divided.
-#   Effect per-level: Ally Attack Enh. 0.0596/3, Brand Power 0.0434/3, Ally Damage
-#     Enh. 0.0195/3; DPS effects (Attack Power / Additional Damage / Boss Damage) -> 0.
-#   Order: 0.0747/3 = 0.0249 per orderLevel point.
+# Re-derived on the corrected support model (Bebkok sup-buff sheet): identity channel
+# runs serenade + Major Chord + t-skill through one bracket with spec as a multiplier,
+# so per-point party damage moved ally-attack x0.98, brand x1.01, ally-damage x1.10.
+#   Effect per-level: Ally Attack Enh. 0.0586/3, Brand Power 0.0437/3, Ally Damage
+#     Enh. 0.0214/3; DPS effects (Attack Power / Additional Damage / Boss Damage) -> 0.
+#   Order: 0.0769/3 = 0.0256 per orderLevel point (avg of the 6 cores).
 #   Willpower: exactly (2/3) x the DPS willpower contribution (same willpower_score
 #     mechanic, same willpowerCost = baseCost - wpLevel, same 4.25 neutral; not / 3).
 SUPPORT_SCORING = {
-    "orderPerPoint": 0.0747 / 3,
+    "orderPerPoint": 0.0769 / 3,
     "willpowerFactor": 2 / 3,
-    "allyAttackEnh": 0.0596 / 3,
-    "brandPower": 0.0434 / 3,
-    "allyDamageEnh": 0.0195 / 3,
+    "allyAttackEnh": 0.0586 / 3,
+    "brandPower": 0.0437 / 3,
+    "allyDamageEnh": 0.0214 / 3,
     "attackPower": 0,
     "additionalDamage": 0,
     "bossDamage": 0,
@@ -351,11 +354,11 @@ def support_rel_value(config):
 
 # ---- SUPPORT multiplicative grading (parallel to the DPS gem_value model) ----
 SUPPORT_ORDER_PER_CORE = {
-    10001: 0.0694 / 3,  # Order Sun   (Ally Attack)
-    10002: 0.0640 / 3,  # Order Moon  (Ally Damage)
-    10003: 0.0486 / 3,  # Order Star  (serenade)
-    10004: 0.0753 / 3,  # Chaos Sun   (Ally Damage)
-    10005: 0.1044 / 3,  # Chaos Moon  (Brand - strongest)
+    10001: 0.0682 / 3,  # Order Sun   (Ally Attack)          was 0.0694
+    10002: 0.0702 / 3,  # Order Moon  (Ally Damage)          was 0.0640
+    10003: 0.0486 / 3,  # Order Star  (serenade - provisional)
+    10004: 0.0826 / 3,  # Chaos Sun   (Ally Damage)          was 0.0753
+    10005: 0.1052 / 3,  # Chaos Moon  (Brand - strongest)    was 0.1044
     10006: 0.0869 / 3,  # Chaos Star  (Weapon Power)
 }
 

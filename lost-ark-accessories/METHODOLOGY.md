@@ -88,18 +88,31 @@ mid-tier values and cut EV shift (neck optimal EV ≈ 2,134 → 2,209 at default
 ## 3. Support value = party-damage contribution
 
 We grade a support's lines by how much **party damage** their buffs add, on the
-same log scale (contribution *above* a no-accessory support). Four buff buckets,
-each applied to its **uptime / coverage** share of party damage:
+same log scale (contribution *above* a no-accessory support). A support has three
+damage channels, each applied to its **uptime / coverage** share:
 
 ```
-brand    = 1 + up_brand · 0.10·(1 + brand_power + acc_brand)
-tskill   = 1 + up_tskill · 0.10·(1 + ally_dmg)
-serenade = 1 + up_seren · (1 + 0.5·acc_gain) · 0.15·(1 + ally_dmg + serenade_dmg)
-ap       = 1 + up_ap · (apMult − 1)
+ap     = 1 + up_ap · (apMult − 1)
    apMult = ((dps_base + sup_base·0.22·(1 + ally_atk_enh))·(1+atk%) + flat)
             / ((dps_base)·(1+atk%) + flat)
-Q = 100 · ln( brand · tskill · serenade · ap )        (above no-accessory)
+
+brand  = 1 + up_brand · 0.10·(1 + brand_power + acc_brand)
+
+# Serenade of Courage, Major Chord and the T-skill are the support's identity
+# buffs. All three raise the damage dealer's Additional Damage, so they share
+# one bracket, add up, and are then diluted by the dealer's own base additional:
+   ser   = 0.15·(1 + ally_dmg + acc_ally_dmg)·(1 + spec_eff)
+   chord = 0.02·(1 + ally_dmg + acc_ally_dmg)·(1 + spec_eff)
+   tsk   = 0.10·(1 + ally_dmg_t + acc_ally_dmg)
+   identity = 1 + (up_seren·ser + up_chord·chord + up_tskill·tsk) / (1 + base_add)
+   spec_eff = spec · class_coeff          (Bard 0.0005006 per point of spec)
+
+Q = 100 · ln( ap · brand · identity )        (above no-accessory)
 ```
+
+The identity bracket is the key correction over the earlier model: a point of
+ally-damage enhancement sits *inside* `(1 + ally_dmg …)`, so its worth rides on how
+big that bracket already is (spec, gems, ark grid), not on a fixed 15% buff.
 
 ### Support line mapping & raw values
 
@@ -111,25 +124,34 @@ Q = 100 · ln( brand · tskill · serenade · ap )        (above no-accessory)
 
 The **only support flat** is Weapon Power+ (195/480/960) — it raises the support's
 base atk → bigger AP buff, on any slot. Accessory lines feed:
-Stigma→brand power, Gauge→serenade **gain** (uptime, half-effective; calibrated so
-a gain line ≈ 75% of a brand line), Ally Dmg→t-skill **and** serenade, Ally Atk→ap
-coefficient, Weapon% / Weapon-flat / main stat→the support's base atk.
+Stigma→brand power, Gauge→serenade **gain** (a meter-gen input that moves the Bard's
+identity base in 5/10/15% bar steps; modelled here as half-effective uptime, an
+acknowledged approximation), Ally Dmg (`acc_ally_dmg`)→the identity bracket (serenade,
+chord **and** t-skill), Ally Atk→the ap coefficient, Weapon% / Weapon-flat / main
+stat→the support's base atk.
 
 ### Buff mechanics & non-accessory bases (editable)
-- **Brand**: 10% damage buff, scaled by brand power. base brand_power **48.8%**
-  (ark grid 10 + echoing brand 4.8 + evolution 34). Applies to **100%** of damage.
 - **AP buff (ally atk enhancement)**: support adds `0.22·(1 + ally_atk_enh)` of its
-  base atk to yours. base ally_atk_enh **63.55%** (ark grid 7.8 + cores 1.75 +
-  luminary 22 + pray 22 + gems 10). Applies to **95%** (default uptime).
-- **T-skill**: 10% outgoing buff, scaled by ally dmg. Applies to **40%**.
-- **Serenade (Bard, representative support)**: 15% buff, scaled additively by ally
-  dmg + serenade dmg. base ally_dmg **7.66%** (order moon 2.01 + faith 2.5 + ark
-  grid 3.15); base serenade_dmg **88.03%** (spec 58.03 + gems 10 + cores 20).
-  Applies to **70%** (the 70% already bakes in the 46.42% stat gain; accessory
-  gauge gain adds at half effectiveness).
+  base atk to yours. base ally_atk_enh **68.25%** (ark grid 8.25 + evolution T4 44 +
+  gems 10 + bracelet 6). Applies to **95%** (default uptime).
+- **Brand**: 10% damage buff, scaled by brand power. base brand_power **43.13%**
+  (ark grid 13.13 + evolution T4 4 + karmic rank 6 + karmic T4 20). Applies to **100%**.
+- **Serenade of Courage (Bard, representative support)**: 15% buff (3 bars), through
+  the identity bracket `(1 + ally_dmg)·(1 + spec_eff)`. Applies to **70%**.
+- **Major Chord**: the Bard's Tier-4 identity node — a **2%** buff sharing the same
+  identity bracket as serenade. Applies to **70%**. (Was missing from the old model.)
+- **T-skill**: 10% buff through its **own** ark-grid bracket. base ally_dmg_t **7.13%**
+  (t-skill ark grid). Applies to **40%**.
+- **Identity bracket base**: base ally_dmg **37.13%** (identity ark grid 27.13 + gems 10);
+  spec_eff **55.06%** (spec 1100 × the Bard coefficient); base_add **35.6%** (the damage
+  dealer's own additional damage, which dilutes all three identity buffs).
 
-Rough high-tier party-damage contributions: brand ≈ +0.69%, ally-atk-enh ≈ +0.81%,
-ally-dmg ≈ +0.94%, serenade-gain ≈ +0.51%, all comparable to DPS lines.
+Rough high-tier party-damage contributions (Bard, spec 1100, uptimes above):
+brand-neck ≈ +0.70%, ally-atk ring ≈ +0.75%, ally-dmg ring ≈ +1.01%. Per point:
+ally-atk ≈ 0.150, ally-dmg ≈ 0.136, brand ≈ 0.087 — all comparable to DPS lines.
+Spec and class scale these: at higher spec every identity-bracket line (ally-dmg,
+serenade, chord, t-skill) is worth more; non-Bard classes swap the coefficient and
+identity base.
 
 ---
 
@@ -240,5 +262,11 @@ cheapest equipped" show the efficiency right at your budget. The budget slider i
 - **Support**: added the full party-damage-contribution model (brand / AP /
   serenade / t-skill) with editable uptimes (AP default 95%); the DPS support term
   `k` is now derived from those fields rather than a hardcoded 0.382.
+- **Support identity rework** (from the Bebkok sup-buff sheet): serenade, **Major
+  Chord** (previously missing) and the t-skill now share one identity bracket that
+  raises the dealer's Additional Damage — each is `base·(1 + ally_dmg)·(1 + spec_eff)`,
+  summed, then diluted by the dealer's own base additional. This replaces the old
+  additive `serenade_dmg` bag (spec is now a multiplier, not a summand) and fixes
+  ally-damage enhancement, whose worth now rides on the bracket size and spec.
 - **Catalog**: collapsed to gold-prominent / damage-small cells, three accessories
   side by side. Cut EV folds in `max(DPS, Support)`.

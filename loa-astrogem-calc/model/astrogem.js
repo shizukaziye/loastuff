@@ -458,22 +458,27 @@
   // gold, leaderboard party%, and grade thresholds all scale down by 3. Willpower is a
   // per-DPS efficiency ratio (NOT a party buff), so it is NOT divided.
   //
-  // Mapping to the DPS structure:
+  // Mapping to the DPS structure. Values re-derived against the corrected support
+  // model (Bebkok sup-buff sheet): the identity channel runs serenade, Major Chord
+  // and the t-skill through one bracket, with spec as a multiplier — so per-point
+  // party damage moved ally-attack ×0.98, brand ×1.01, ally-damage ×1.10 (see the
+  // accessory calc METHODOLOGY §3 and grading doc §8). Baseline: Bard spec 1100,
+  // uptimes AP 95 / brand 100 / serenade 70 / chord 70 / t-skill 40.
   //   * Effect per-level values (additive, like the DPS D-values), base ÷3:
-  //       Ally Attack Enh.  0.0596/3   (party attack buff)
-  //       Brand Power       0.0434/3   (brand amp)
-  //       Ally Damage Enh.  0.0195/3   (party damage buff)
+  //       Ally Attack Enh.  0.0586/3   (party attack buff)   was 0.0596
+  //       Brand Power       0.0437/3   (brand amp)           was 0.0434
+  //       Ally Damage Enh.  0.0214/3   (party damage buff)   was 0.0195
   //     The DPS effects (Attack Power / Additional Damage / Boss Damage) -> 0.
-  //   * Order/Chaos point: 0.0747/3 = 0.0249 per orderLevel point.
+  //   * Order/Chaos point: 0.0769/3 = 0.0256 per orderLevel point (avg of the 6 cores).
   //   * Willpower: exactly (2/3) × the DPS willpower contribution — same
   //     willpowerScore mechanic, same willpowerCost = baseCost − wpLevel, same 4.25
   //     neutral, just scaled by 2/3 (not party-scaled, so not ÷3).
   var SUPPORT_SCORING = {
-    orderPerPoint: 0.0747 / 3,             // support order: flat per point (party buff ÷3 = 0.0249)
+    orderPerPoint: 0.0769 / 3,             // support order: flat per point (party buff ÷3 = 0.0256)
     willpowerFactor: 2 / 3,                // support willpower = (2/3) × DPS willpower (not party-scaled)
-    allyAttackEnh: 0.0596 / 3,
-    brandPower: 0.0434 / 3,
-    allyDamageEnh: 0.0195 / 3,
+    allyAttackEnh: 0.0586 / 3,
+    brandPower: 0.0437 / 3,
+    allyDamageEnh: 0.0214 / 3,
     // DPS-only effects contribute nothing to support:
     attackPower: 0,
     additionalDamage: 0,
@@ -539,12 +544,16 @@
   // so a support gem's order points are worth different amounts by core. A standalone
   // gem grade uses the AVERAGE (SUPPORT_SCORING.orderPerPoint ≈ 0.0747); the whole-grid
   // total (the leaderboard) uses the PER-CORE value (keyed by core base id 10001-10006).
+  // Re-derived on the corrected support model (see SUPPORT_SCORING note). Order Star
+  // (serenade) and Chaos Star (weapon power) are unchanged: serenade is held provisional
+  // (it scores meter generation, a bar-step channel — a separate re-derive), and the AP
+  // channel that weapon power feeds kept its shape.
   var SUPPORT_ORDER_PER_CORE = {
-    10001: 0.0694 / 3, // Order Sun   (Ally Attack)
-    10002: 0.0640 / 3, // Order Moon  (Ally Damage)
-    10003: 0.0486 / 3, // Order Star  (serenade)
-    10004: 0.0753 / 3, // Chaos Sun   (Ally Damage)
-    10005: 0.1044 / 3, // Chaos Moon  (Brand — strongest)
+    10001: 0.0682 / 3, // Order Sun   (Ally Attack)          was 0.0694
+    10002: 0.0702 / 3, // Order Moon  (Ally Damage)          was 0.0640
+    10003: 0.0486 / 3, // Order Star  (serenade — provisional)
+    10004: 0.0826 / 3, // Chaos Sun   (Ally Damage)          was 0.0753
+    10005: 0.1052 / 3, // Chaos Moon  (Brand — strongest)    was 0.1044
     10006: 0.0869 / 3  // Chaos Star  (Weapon Power)
   };
   function supportOrderValueForCore(coreBase) {
