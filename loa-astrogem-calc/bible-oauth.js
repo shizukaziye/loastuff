@@ -326,6 +326,9 @@
     login: login,
     logout: logout,
     handleRedirect: handleRedirect,
+    // Raw access token, for handing to OUR OWN Worker (e.g. the drain/probe credential). Only
+    // same-origin app code calls this; the token still never goes to any third party.
+    accessToken: function () { const t = read(); return t ? t.access_token : ""; },
     user: function () { return api("/api/oauth/user"); },
     rosters: function () { return api("/api/oauth/rosters"); },
     combatPower: combatPower,

@@ -367,12 +367,20 @@
 '  #tab-grader #gr-queued-timer{color:var(--axis,var(--accent))}' +
 '  #tab-grader #gr-refresh-banner:empty{display:none}' +
 '  #tab-grader .gr-refresh-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 13px;border-radius:9px;background:rgba(127,127,127,0.10);border:1px solid var(--axis,var(--accent));font-size:13px}' +
-'  #tab-grader .gr-unavail{margin:0 0 18px;padding:20px 22px;border-radius:14px;background:rgba(232,181,74,0.13);border:1px solid rgba(232,181,74,0.55)}' +
-'  #tab-grader .gr-unavail-hd{font-size:17px;font-weight:800;color:#e8b54a;line-height:1.35;margin:0 0 8px}' +
+// Informational (blue), not a warning: signing in is how lookups work from now on.
+// Two variants share this layout; the accent (--gu/--gutext/--gubg/--gubd) is set by a modifier
+// class: .blue = "lookups are back" (running), .amber = "temporarily unavailable" (probe/off).
+'  #tab-grader .gr-unavail{--gu:#60a5fa;--gutext:#06172e;--gubg:rgba(96,165,250,0.11);--gubd:rgba(96,165,250,0.5);margin:0 0 18px;padding:20px 22px;border-radius:14px;background:var(--gubg);border:1px solid var(--gubd)}' +
+'  #tab-grader .gr-unavail.amber{--gu:#e8b54a;--gutext:#1a1205;--gubg:rgba(232,181,74,0.13);--gubd:rgba(232,181,74,0.55)}' +
+'  #tab-grader .gr-unavail-hd{font-size:17px;font-weight:800;color:var(--gu);line-height:1.35;margin:0 0 8px}' +
 '  #tab-grader .gr-unavail-bd{font-size:13.5px;line-height:1.6;color:var(--text);margin:0}' +
-'  #tab-grader .gr-unavail-bd b{color:#e8b54a}' +
-'  #tab-grader .gr-unavail-btn{margin-top:15px;padding:12px 20px;border-radius:10px;background:#e8b54a;color:#1a1205;font-weight:800;font-size:14.5px;border:0;cursor:pointer}' +
+'  #tab-grader .gr-unavail-bd b{color:var(--gu)}' +
+'  #tab-grader .gr-unavail-steps{margin:10px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7;color:var(--text)}' +
+'  #tab-grader .gr-unavail-steps b{color:var(--gu)}' +
+'  #tab-grader .gr-unavail-note{margin-top:10px;font-size:12.5px;color:var(--dim);line-height:1.55}' +
+'  #tab-grader .gr-unavail-btn{margin-top:15px;padding:12px 20px;border-radius:10px;background:var(--gu);color:var(--gutext);font-weight:800;font-size:14.5px;border:0;cursor:pointer}' +
 '  #tab-grader .gr-unavail-btn:hover{filter:brightness(1.08)}' +
+'  #tab-grader .gr-unavail-btn.ghost{background:transparent;color:var(--gu);border:1px solid var(--gubd);margin-left:8px}' +
 '  #tab-grader .gr-refresh-bar b{color:var(--axis,var(--accent))}' +
 '  #tab-grader .gr-rb-dim{color:var(--dim)}' +
 '  #tab-grader .gr-rb-spin{display:inline-block;animation:gr-rb-spin 1.1s linear infinite}' +
@@ -1452,7 +1460,7 @@ presetToggleHtml(data) +
     stopPoll(); clearRefreshBanner(); // cancel any in-flight queue poll + clear a prior refresh banner
     Econ.fetchCharacter(region, name, { refresh: refresh }).then(function (r) {
       var d = r.data || {};
-      if (d.unavailable) { setUnavailable(true, d.error); setPullStatus(d.error || "Lookups are temporarily unavailable.", "err"); return; }
+      if (d.unavailable) { renderLookupPanel("paused"); setPullStatus(d.error || "Lookups are temporarily unavailable.", "err"); return; }  // still paused -> amber warning + inline error
       // The cached loadout to SHOW (if any): from this response (Grade loadout on a cached char),
       // or the one already on screen (manual Refresh, answered with a queued response). Flow: cached
       // data renders whenever we have it; a queue banner/panel layers on whenever it's queued.
@@ -1694,26 +1702,64 @@ presetToggleHtml(data) +
   };
 
   // ---- "Lookups temporarily unavailable" notice (worker-reported queue pause) ----
-  function setUnavailable(on, msg) {
+  // Three states for the panel above the pull form:
+  //   "paused" -> amber WARNING: lostark.bible is blocking our server (drain in probe/off).
+  //   "back"   -> blue INFO: lookups work again, sign in to use them.
+  //   null     -> hidden (running AND already signed in — nothing to say).
+  function renderLookupPanel(state) {
     var el = $("gr-unavailable"); if (!el) return;
-    if (on) {
+    if (state !== "paused" && state !== "back") { el.style.display = "none"; return; }
+
+    if (state === "paused") {
+      el.className = "gr-unavail amber";
       el.innerHTML =
-        '<div class="gr-unavail-hd">&#9888;&#65039; ' + esc(msg || "Character lookups are temporarily unavailable") + '</div>' +
-        '<div class="gr-unavail-bd">lostark.bible is blocking our server right now, so looking a character up by name won’t work. ' +
-        'You can still grade <b>any</b> character with the <b>Bookmarklet</b> &mdash; it reads the loadout from a lostark.bible page in your own browser, no server needed. ' +
+        '<div class="gr-unavail-hd">&#9888;&#65039; Character lookups are temporarily unavailable</div>' +
+        '<div class="gr-unavail-bd">lostark.bible is blocking our server right now, so looking a character up by name won’t work yet. ' +
+        'You can still grade <b>any</b> character with the <b>Bookmarklet</b> &mdash; it reads the loadout from a lostark.bible page open in your own browser, no server needed. ' +
         '(Already-cached characters still load normally.)</div>' +
         '<button type="button" class="gr-unavail-btn" id="gr-unavail-bm">&#9889; Use the Bookmarklet instead</button>';
-      el.style.display = "";
-      var b = $("gr-unavail-bm");
-      if (b) b.addEventListener("click", function () { selectMode("bookmarklet"); });
-    } else { el.style.display = "none"; }
+    } else {
+      el.className = "gr-unavail blue";
+      el.innerHTML =
+        '<div class="gr-unavail-hd">Character lookups are back &mdash; sign in with lostark.bible</div>' +
+        '<div class="gr-unavail-bd">lostark.bible now asks that character pages be read on behalf of a signed-in account. ' +
+        'Sign in once and you can look up <b>the characters in your roster</b> by name, the same as before.</div>' +
+        '<ol class="gr-unavail-steps">' +
+          '<li>Click <b>Sign in with lostark.bible</b> and approve the access request.</li>' +
+          '<li>You land back here signed in &mdash; nothing else to set up.</li>' +
+          '<li>Pick a <b>region</b>, type a <b>character name</b> from your roster, and hit <b>Grade loadout</b>.</li>' +
+        '</ol>' +
+        '<div class="gr-unavail-note">Only your own linked roster is readable, and only to look up gems &mdash; we never see anyone else’s characters. ' +
+        'For a character outside your roster, use the <b>Bookmarklet</b>: it reads the loadout from a lostark.bible page open in your own browser. ' +
+        'Already-cached characters keep loading for everyone, signed in or not.</div>' +
+        '<button type="button" class="gr-unavail-btn" id="gr-unavail-in">Sign in with lostark.bible</button>' +
+        '<button type="button" class="gr-unavail-btn ghost" id="gr-unavail-bm">Use the Bookmarklet</button>';
+    }
+    el.style.display = "";
+    var si = $("gr-unavail-in");
+    if (si) si.addEventListener("click", function () {
+      if (window.BibleOAuth && window.BibleOAuth.login) window.BibleOAuth.login();
+    });
+    var b = $("gr-unavail-bm");
+    if (b) b.addEventListener("click", function () { selectMode("bookmarklet"); });
   }
-  function checkLookupStatus() {
-    if (!WORKER_URL) return;
+  // The panel is no longer a "we're broken" warning tied to the drain being paused — it's the
+  // standing explanation of how lookups work now. Show it whenever the visitor isn't signed in;
+  // once they are, they already know, so it gets out of the way.
+  // The blue "lookups are back — sign in" panel only makes sense once lookups actually work
+  // again. While the Worker is still paused (probe/off — lostark.bible blocking us) it would be
+  // a false promise, so we hide it then. Once the Worker is running, show it to visitors who
+  // haven't signed in yet (signed-in users have already done what it asks).
+  function refreshLookupPanel() {
+    if (!WORKER_URL) { renderLookupPanel(null); return; }
     fetch(WORKER_URL.replace(/\/+$/, "") + "/?status=1").then(function (r) { return r.json(); }).then(function (j) {
-      setUnavailable(!!(j && j.paused), j && j.message);
-    }).catch(function () { /* network blip — leave the notice as-is */ });
+      if (j && j.paused) { renderLookupPanel("paused"); return; }   // probe/off -> amber warning
+      var O = window.BibleOAuth;
+      var signedIn = !!(O && O.signedIn && O.signedIn());
+      renderLookupPanel(signedIn ? null : "back");                  // running -> blue info (if signed out)
+    }).catch(function () { /* network blip — leave the panel as-is */ });
   }
+  function checkLookupStatus() { refreshLookupPanel(); }
 
   // ---- SIGN IN WITH LOSTARK.BIBLE (OAuth) ----
   // lostark.bible asked us to stop scraping pages and move to their opt-in OAuth flow, so a
@@ -1783,6 +1829,7 @@ presetToggleHtml(data) +
       Econ.fieldSnapshot().catch(function () { return null; })
     ]).then(function (r) {
       authRosters = r[0];
+      maybePostProbeToken(authRosters);      // if this account owns the probe canary, arm the drain
       authCached = {};
       (r[1] || []).forEach(function (s) {
         authCached[charKey(s.region, s.name)] = true;
@@ -1828,6 +1875,25 @@ presetToggleHtml(data) +
   // Flatten whatever the rosters endpoint returns into [{region, name, ...}]. The payload
   // shape isn't documented; this handles the obvious nestings and falls back to showing the
   // raw JSON so an unexpected shape is visible rather than silently empty.
+  // Keep the drain/probe's stored token fresh. If THIS signed-in account owns the probe canary
+  // (Paroxysmal, NA), hand the Worker its token so the background probe can fetch Paroxysmal and
+  // detect when lostark.bible is reachable again. The ownership check happens HERE, client-side,
+  // so a non-owner's token is never sent to the Worker (it also re-checks server-side before storing).
+  function maybePostProbeToken(rosters) {
+    try {
+      if (!WORKER_URL || !window.BibleOAuth || !window.BibleOAuth.accessToken) return;
+      var owns = flattenRosters(rosters).some(function (c) {
+        return c.region === "NA" && String(c.name).toLowerCase() === "paroxysmal";
+      });
+      if (!owns) return;
+      var tok = window.BibleOAuth.accessToken();
+      if (!tok) return;
+      fetch(WORKER_URL.replace(/\/+$/, "") + "/oauth/probe-token", {
+        method: "POST", headers: { Authorization: "Bearer " + tok }
+      }).catch(function () {});   // fire-and-forget; the probe validates the token regardless
+    } catch (e) {}
+  }
+
   function flattenRosters(j) {
     var rosters = Array.isArray(j) ? j : (j && (j.rosters || j.data)) || [];
     var out = [];
@@ -2046,7 +2112,7 @@ presetToggleHtml(data) +
 
     // OAuth: finish a redirect back from the consent screen, then paint the sign-in row.
     if (window.BibleOAuth) {
-      window.BibleOAuth.onChange(renderAuth);
+      window.BibleOAuth.onChange(function () { renderAuth(); refreshLookupPanel(); });
       window.BibleOAuth.handleRedirect().then(function (res) {
         if (res && !res.ok) setPullStatus("Sign-in failed: " + res.error, "err");
         renderAuth();
