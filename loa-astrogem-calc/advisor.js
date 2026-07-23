@@ -104,7 +104,7 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 74;   // MUST match this file's ?v= in index.html on every deploy
+  var CLIENT_V = 75;   // MUST match this file's ?v= in index.html on every deploy
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -201,6 +201,10 @@
 '  #tab-advisor .av-bar.av-bar-indeterminate > i{width:40%;animation:av-bar-slide 1.1s ease-in-out infinite}' +
 '  @keyframes av-bar-slide{0%{margin-left:-40%}100%{margin-left:100%}}' +
 '  #tab-advisor .av-warn{font-size:12px;color:#e8b84a;margin-top:6px}' +
+// Brightness banner: on the 241-frame corpus, in-game brightness was the single
+// biggest source of misreads. 70 is the setting the reader was tuned against.
+'  #tab-advisor .av-tip{border:1px solid var(--accent);border-radius:8px;background:rgba(102,199,255,.09);color:var(--text);font-size:12.5px;line-height:1.5;padding:9px 12px;margin-bottom:10px}' +
+'  #tab-advisor .av-tip b{color:var(--accent)}' +
 '  #tab-advisor .linklike{background:none;border:0;color:var(--accent);cursor:pointer;font-size:12px;padding:0 2px;text-decoration:underline}' +
 '  #tab-advisor .av-share{display:flex;gap:10px;align-items:center;margin-top:8px}' +
 // Minimize toggle for the captured screenshot: the preview can eat a large
@@ -220,6 +224,7 @@
 '    <div id="av-window"></div>' +
 '  </div>' +
 '  <div class="av-col-r">' +
+'    <div class="av-tip">💡 Set your in-game <b>brightness to 70</b> before screenshotting — the reader is tuned for it, and other settings are the main cause of misread fields.</div>' +
 '    <div class="av-drop" id="av-drop">' +
 '      <span class="hint"><b>Drop or paste</b> — a Processing screenshot prefills the window. Or just tap the fields.</span>' +
 '      <img id="av-preview" class="av-preview" alt="screenshot preview">' +
