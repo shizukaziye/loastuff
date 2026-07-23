@@ -303,7 +303,12 @@
       "&queue=1&pos=1" +
       (opts && opts.refresh ? "&refresh=1" : "") +
       (k ? "&k=" + encodeURIComponent(k) : "");
-    return fetch(url).then(function (resp) {
+    // Pull on the signed-in user's behalf: send THEIR lostark.bible token so the Worker scrapes as
+    // them. No token = not signed in; the Worker serves cache but refuses a new pull (needSignIn).
+    var headers = {};
+    var bt = (typeof window !== "undefined" && window.BibleOAuth && window.BibleOAuth.accessToken) ? window.BibleOAuth.accessToken() : "";
+    if (bt) headers["Authorization"] = "Bearer " + bt;
+    return fetch(url, { headers: headers }).then(function (resp) {
       return resp.json().then(function (data) { return { ok: resp.ok, status: resp.status, data: data }; });
     });
   }

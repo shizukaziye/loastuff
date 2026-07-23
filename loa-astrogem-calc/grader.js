@@ -1461,6 +1461,12 @@ presetToggleHtml(data) +
     Econ.fetchCharacter(region, name, { refresh: refresh }).then(function (r) {
       var d = r.data || {};
       if (d.unavailable) { renderLookupPanel("paused"); setPullStatus(d.error || "Lookups are temporarily unavailable.", "err"); return; }  // still paused -> amber warning + inline error
+      if (d.needSignIn) {   // not signed in: a fresh pull needs the visitor's own lostark.bible token
+        renderLookupPanel("back");
+        setPullStatus("Sign in with lostark.bible to look up a character.", "err");
+        $("gr-result").innerHTML = '<div class="panel"><div class="gr-status err">Sign in with lostark.bible to look up <b>' + esc(name) + '</b>. Already-cached characters and the Bookmarklet work without signing in.</div></div>';
+        return;
+      }
       // The cached loadout to SHOW (if any): from this response (Grade loadout on a cached char),
       // or the one already on screen (manual Refresh, answered with a queued response). Flow: cached
       // data renders whenever we have it; a queue banner/panel layers on whenever it's queued.
@@ -1611,7 +1617,10 @@ presetToggleHtml(data) +
       if (!grWatching) return;
       var k = (window.astrogemGate && window.astrogemGate.token && window.astrogemGate.token()) || "";
       var url = WORKER_URL.replace(/\/+$/, "") + "/?region=" + encodeURIComponent(region) + "&name=" + encodeURIComponent(name) + "&queue=1&wait=1&since=" + since + (k ? "&k=" + encodeURIComponent(k) : "");
-      fetch(url).then(function (resp) { return resp.json(); }).then(function (d) {
+      var hdrs = {};
+      var bt = (window.BibleOAuth && window.BibleOAuth.accessToken) ? window.BibleOAuth.accessToken() : "";
+      if (bt) hdrs["Authorization"] = "Bearer " + bt;
+      fetch(url, { headers: hdrs }).then(function (resp) { return resp.json(); }).then(function (d) {
         if (!grWatching) return;
         if (d && d.done && Array.isArray(d.gems)) finishWatch(d);   // drain completed -> refresh now
         else if (d && d.notFound) endWatch(d.error);                // dropped (404/422) -> stop + show why
