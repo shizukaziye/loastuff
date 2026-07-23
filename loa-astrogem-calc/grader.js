@@ -259,7 +259,7 @@
   }
   function rankBadge(rank, extra) {
     var c = rankColorOf(rank);
-    return '<span class="rank-badge' + (extra ? " " + extra : "") +
+    return '<span class="rank-badge' + (extra ? " " + extra : "") + (c.cls ? " " + c.cls : "") +
       '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
 

@@ -87,3 +87,13 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
   .tab{padding:9px 11px;font-size:12.5px;flex:0 0 auto;white-space:nowrap}
   th,td{padding:5px 6px}
 }
+
+/* Top-tier S+ rainbow badge (from the decommissioned tier list). The rank color's
+   inline `background:` sets the pastel gradient; these add the 400% tiling and the
+   seamless 8s slide. background-size needs !important because the inline background
+   shorthand resets it to auto. Static gradient under reduced-motion. */
+.rank-rainbow{background-size:400% 100% !important}
+@media (prefers-reduced-motion:no-preference){
+  .rank-rainbow{animation:rank-rainbow-slide 8s linear infinite}
+  @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
+}

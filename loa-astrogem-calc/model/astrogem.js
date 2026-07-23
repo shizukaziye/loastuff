@@ -665,17 +665,27 @@
     return b.min + (Math.max(0, Math.min(100, g)) / 100) * (b.max - b.min);
   }
 
-  // Grade-tier colors (owner's percentile palette): F/D gray, C green, B blue,
-  // A purple, S- orange, S pink, S+ white. rank = "S+"|"S"|"S-"|"A+"|"A"|… .
+  // Grade-tier colors (owner's percentile palette): F/D gray, C green, B blue, A purple.
+  // These five are the ramp ANCHORS; C- through A- are read off the ramp (RANK_STOPS).
   var RANK_COLORS = {
     F:    { bg: "#6f747a", fg: "#ffffff" },
     D:    { bg: "#6f747a", fg: "#ffffff" },
     C:    { bg: "#4f9d5d", fg: "#ffffff" },
     B:    { bg: "#3b7fd0", fg: "#ffffff" },
-    A:    { bg: "#7e5cc0", fg: "#ffffff" },
-    "S-": { bg: "#dd8a2e", fg: "#ffffff" },
-    "S":  { bg: "#c95f85", fg: "#ffffff" },
-    "S+": { bg: "#e8e2cc", fg: "#1a1a1a" }
+    A:    { bg: "#7e5cc0", fg: "#ffffff" }
+  };
+  // The TOP of the ladder (A+ and the three S ranks) leaves the ramp and runs a smooth
+  // cool-elite arc — A purple -> A+ violet -> S- orchid -> S rose -> S+ pinnacle. S+ is the
+  // animated pastel rainbow lifted from the old tier list: its bg is a GRADIENT, not a hex,
+  // which the consumers drop straight into `background:`; the `rank-rainbow` class in
+  // styles.css adds the tiling size and the seamless slide. Dark fg for legibility on the
+  // light rainbow. These are explicit points, not ramp mixes, so they read cleanly.
+  var RAINBOW_BG = "linear-gradient(90deg,#FF8A80,#FFC46B,#F8E081,#8CE99A,#7FD0FF,#C9A2FF,#FF8A80)";
+  var TOP_TIER = {
+    "A+": { bg: "#a660be", fg: "#ffffff" },
+    "S-": { bg: "#c15cad", fg: "#ffffff" },
+    "S":  { bg: "#cc5c81", fg: "#ffffff" },
+    "S+": { bg: RAINBOW_BG, fg: "#2b2440", cls: "rank-rainbow" }
   };
   // Mix a hex toward white (amt > 0) or black (amt < 0). amt is 0..1.
   function shade(hex, amt) {
@@ -696,26 +706,23 @@
     return "#" + p.map(function (c) { return (c < 16 ? "0" : "") + c.toString(16); }).join("");
   }
 
-  // The colored ranks are evenly spaced points on ONE ramp: D grey -> C green -> B blue ->
-  // A purple -> S- orange, so the whole ladder reads as a single gradient.
-  //
-  // Each third is a fixed fraction of the step between two anchors, so C+ (1/3 of C->B) and
-  // B- (2/3 of that same step) are two readings of one green-blue transition. A->S- holds
-  // only ONE intermediate rank, so A+ sits at the halfway mark rather than a third.
+  // The mid ranks are evenly spaced points on ONE ramp: D grey -> C green -> B blue ->
+  // A purple, so C- through A- read as a single gradient. Each third is a fixed fraction of
+  // the step between two anchors, so C+ (1/3 of C->B) and B- (2/3 of that same step) are two
+  // readings of one green-blue transition. A+ and the S ranks are handled by TOP_TIER above.
   var RANK_STOPS = {
     "C-": ["D", "C", 2 / 3],
     "C+": ["C", "B", 1 / 3],
     "B-": ["C", "B", 2 / 3],
     "B+": ["B", "A", 1 / 3],
-    "A-": ["B", "A", 2 / 3],
-    "A+": ["A", "S-", 1 / 2]
+    "A-": ["B", "A", 2 / 3]
   };
   var RANK_TILT = 0.28;   // fallback for D/F, whose neighbours are the same grey
 
   function rankColor(rank) {
     if (!rank) return RANK_COLORS.F;
-    // S-, S and S+ already separate their thirds by hue (orange / pink / cream) — leave them.
-    if (rank.charAt(0) === "S") return RANK_COLORS[rank] || RANK_COLORS.S;
+    // A+ and the S ranks leave the ramp for the explicit cool-elite arc (S+ is the rainbow).
+    if (TOP_TIER[rank]) return TOP_TIER[rank];
     var stop = RANK_STOPS[rank];
     if (stop) return { bg: mix(RANK_COLORS[stop[0]].bg, RANK_COLORS[stop[1]].bg, stop[2]), fg: "#ffffff" };
     var base = RANK_COLORS[rank.charAt(0)] || RANK_COLORS.F;

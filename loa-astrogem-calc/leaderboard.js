@@ -160,7 +160,7 @@
 
   function rankBadge(rank) {
     var c = rankColorOf(rank);
-    return '<span class="lb-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
+    return '<span class="lb-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
 
   // Compact relative age, matching grader.js's ageLabel.

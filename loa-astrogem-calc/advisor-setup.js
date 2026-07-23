@@ -288,7 +288,7 @@
 
   function rankBadge(rank) {
     var c = rankColor(rank);
-    return '<span class="rank-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
+    return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
 
   function render() {

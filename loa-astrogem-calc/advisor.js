@@ -910,7 +910,7 @@
   }
   function rankBadge(rank) {
     var c = (window.Astrogem && window.Astrogem.rankColor) ? window.Astrogem.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
-    return '<span class="rank-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
+    return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
   }
 
   function renderResult(result, state, market, includeSim2, engineUsed) {

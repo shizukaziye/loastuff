@@ -146,7 +146,7 @@
   // Grade-tier colored pill for a rank string (uses the shared Astrogem.rankColor palette).
   function rankBadge(rank) {
     var c = (window.Astrogem && window.Astrogem.rankColor) ? window.Astrogem.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
-    return '<span class="rank-badge" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
+    return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
   }
   function fmtPct(p) { return (p == null || !isFinite(p)) ? "—" : (p * 100).toFixed(1) + "%"; }
   function fmtNum(x, dp) { return (x == null || !isFinite(x)) ? "—" : Number(x).toFixed(dp == null ? 2 : dp); }
