@@ -93,12 +93,14 @@
   // to the loadout/leaderboard total. Measuring above the baseline keeps the total in the
   // familiar ~10% range instead of the raw ~26% (each gem otherwise carries a ~0.68% order
   // floor). Willpower is NOT damage here (it lives in the grade). DPS subtracts the order
-  // 4.25 floor; support subtracts the per-CORE order 4.25 floor, shown ÷3 (per-ally).
+  // 4.25 floor; support subtracts the per-CORE order 4.25 floor, shown ×3 as the FULL
+  // party value (the coefficients are per-ally, so ×3 = the whole 3-DPS party buff — same
+  // number the leaderboard shows; the gold/grade path keeps the per-ally coefficients).
   function gRel(cfg) {
     if (isSupport()) {
       var ov = (A && A.supportOrderValueForCore) ? A.supportOrderValueForCore(A.coreKeyOf ? A.coreKeyOf(cfg) : cfg.coreBase) : null;
-      if (A && A.supportDamage && ov != null) return (A.supportDamage(cfg, ov) - 4.25 * ov) / 3;
-      return supportRelValue(cfg) / 3;
+      if (A && A.supportDamage && ov != null) return (A.supportDamage(cfg, ov) - 4.25 * ov) * 3;
+      return supportRelValue(cfg) * 3;
     }
     if (A && A.gemDamage && A.orderScore) return A.gemDamage(cfg) - A.orderScore(4.25);
     return relDamage(cfg);
@@ -647,7 +649,7 @@
 '  <p><b>Willpower is efficiency, not damage.</b> It <i>reduces</i> the gem’s cost (<code>effective cost = base cost &minus; willpower level</code>), and a cheaper gem of the same damage is strictly better. It enters as a multiplier on the damage, calibrated so a <b>perfect gem of every base cost ties at grade 100</b> (a perfect 8 / 9 / 10 with willpower 5 sits at effective cost 3 / 4 / 5, and the multiplier makes those three equal). The multiplier punishes low willpower hard.</p>' +
 '  <p><b>Grade &amp; rank.</b> The grade is that willpower-adjusted value, normalized 0&ndash;100 over <i>every</i> possible gem: <b>100</b> = a perfect gem (any cost), <b>0</b> = the worst legal gem. The rank bands it &mdash; <b>S&nbsp;85 / A&nbsp;70 / B&nbsp;55 / C&nbsp;40 / D&nbsp;20 / F&nbsp;0</b> &mdash; each split into &minus;/&nbsp;/+ thirds (55&ndash;60 = B&minus;, 60&ndash;65 = B, 65&ndash;70 = B+).</p>' +
 '  <p><b>The loadout total (“% total dmg”)</b> answers a different question: the real damage your <i>whole 6-core grid</i> adds over having no grid. Effect levels pool into stat buckets that multiply over your gear (so two of the same stat give <b>diminishing returns</b>), and order/chaos is counted <i>per core</i> above a ~17-point floor, the six cores multiplying. Because of that, the per-gem numbers <b>don’t sum to the total &mdash; by design</b>: a gem is rated standalone, the total accounts for the whole grid.</p>' +
-'  <p><b>Support.</b> Flip <b>Grade as &rarr; Support</b> for support classes &mdash; a parallel axis where Ally Attack / Brand / Ally Damage are the &ldquo;damage&rdquo; lines and order points are worth different amounts per core (Brand on Chaos Moon is the strongest). The total shows &divide;3 as per-ally party %.</p>' +
+'  <p><b>Support.</b> Flip <b>Grade as &rarr; Support</b> for support classes &mdash; a parallel axis where Ally Attack / Brand / Ally Damage are the &ldquo;damage&rdquo; lines and order points are worth different amounts per core (Brand on Chaos Moon is the strongest). The party&nbsp;% is the full 3-DPS party buff &mdash; the same figure the leaderboard shows.</p>' +
 '  <p class="note">Pulling a character fetches the loadout from lostark.bible (cached 7 days; &ldquo;Re-pull&rdquo; forces fresh). Effect ids and each gem’s cost/type are decoded from the page’s grid data &mdash; check a gem or two against the in-game display.</p>' +
 '</details>';
   }
@@ -1214,9 +1216,9 @@
     // floor), NOT Σ per-gem — per-gem figures are standalone and won't sum to it exactly.
     var gridOk = !!(A && A.gridDamage);
     var sumDmg = gridOk
-      ? (sup ? A.gridDamage(valid, "support") / 3 : A.gridDamage(valid, "dps"))
+      ? (sup ? A.gridDamage(valid, "support") * 3 : A.gridDamage(valid, "dps"))
       : valid.reduce(function (s, x) { return s + gRel(x); }, 0); // legacy-model fallback: a per-gem SUM, not the true grid total — flagged in the UI below
-    var rankDmg = gridOk ? (sup ? sumDmg * 3 : sumDmg) : null;    // RAW gridDamage for rank-vs-field (same scale the comparison loop uses)
+    var rankDmg = gridOk ? (sup ? sumDmg / 3 : sumDmg) : null;    // RAW gridDamage for rank-vs-field (the comparison loop uses the per-ally gridDamage; sumDmg is the ×3 party display)
     var avgGrade = valid.length ? sumGrade / valid.length : 0;
     var avgRank = rankFromGrade(avgGrade);
     var totalLabel = sup ? "Total % party dmg" : "Total % dmg";

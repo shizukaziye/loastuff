@@ -199,13 +199,14 @@
     if (A && A.gridDamage) return A.gridDamage(g, "dps");          // true lvl-0 grid damage
     var s = 0; for (var i = 0; i < g.length; i++) s += relDamage(g[i]); return s; // old-model fallback
   }
-  // SUPPORT total: the lvl-0 grid party damage. The support coefficients are now PER-ALLY
-  // (per-DPS; the ×3 was removed from the model), so gridDamage(support) is already the
-  // per-ally contribution — no extra ÷3 here (old party/3 == new per-DPS, so display is unchanged).
+  // SUPPORT total: the FULL party damage. The support coefficients are PER-ALLY (per-DPS),
+  // so gridDamage(support) is one ally's share; ×3 shows the whole 3-DPS party buff — the
+  // same number the grader shows. The gold/grade path keeps the per-ally coefficients
+  // untouched, so this is a display scale only.
   function totalPartyDmgOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
-    if (A && A.gridDamage) return A.gridDamage(g, "support");
-    var s = 0; for (var i = 0; i < g.length; i++) s += supportRelValue(g[i]); return s; // fallback
+    if (A && A.gridDamage) return A.gridDamage(g, "support") * 3;
+    var s = 0; for (var i = 0; i < g.length; i++) s += supportRelValue(g[i]) * 3; return s; // fallback
   }
   // "Quality" grade (0-100): the PAIRING-INVARIANT cost-fair quality — the geometric
   // mean of gem values (exp of mean ln-value) mapped to 0-100. Unlike a plain mean of
