@@ -144,8 +144,10 @@
   }
   function fmtGoldFull(g) { return (g == null || !isFinite(g)) ? "—" : Math.round(g).toLocaleString("en-US"); }
   // Grade-tier colored pill for a rank string (uses the shared Astrogem.rankColor palette).
-  function rankBadge(rank) {
-    var c = (window.Astrogem && window.Astrogem.rankColor) ? window.Astrogem.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
+  function rankBadge(rank, grade) {
+    var A2 = window.Astrogem;
+    var c = (grade != null && A2 && A2.gradeColor) ? A2.gradeColor(grade)
+      : (A2 && A2.rankColor) ? A2.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
     return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
   }
   function fmtPct(p) { return (p == null || !isFinite(p)) ? "—" : (p * 100).toFixed(1) + "%"; }
@@ -673,7 +675,7 @@
     if (g == null) return "—";
     var gr = Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
     var rk = (typeof window.rankFromGrade === "function") ? window.rankFromGrade(gr) : "";
-    return gr.toFixed(1) + (rk ? " " + rankBadge(rk) : "");
+    return gr.toFixed(1) + (rk ? " " + rankBadge(rk, gr) : "");
   }
 
   // Popup HTML registry: gemCell stores the rich tip keyed by a cell id; the shared
@@ -826,7 +828,7 @@
       var grade = GRADE_ROWS[bi];
       var blPct = bakedBaselineForRow(bi, grade);
       var rank = window.rankFromGrade(grade);
-      var row = '<tr><td class="pipe blcell"><b>' + grade + '</b> ' + rankBadge(rank) + '</td>';
+      var row = '<tr><td class="pipe blcell"><b>' + grade + '</b> ' + rankBadge(rank, grade) + '</td>';
 
       var uf = unopenedFusion(function (rs, r, c, b) {
         var rec = bakedBucket(r, c, b, blPct, gpd, rs);
@@ -916,7 +918,7 @@
         }
         return bc;
       }
-      body += '<tr><td class="pipe blcell"><b>' + grade + '</b> ' + rankBadge(rank) + '</td>'
+      body += '<tr><td class="pipe blcell"><b>' + grade + '</b> ' + rankBadge(rank, grade) + '</td>'
         + '<td class="pipe num sep legendary">' + fmtGold(fodL) + '</td><td class="pipe num relic">' + fmtGold(fodR) + '</td><td class="pipe num ancient">' + fmtGold(fodA) + '</td>'
         + '<td class="pipe num sep legendary">' + fmtGold(evL) + '</td><td class="pipe num relic">' + fmtGold(evR) + '</td><td class="pipe num ancient">' + fmtGold(evA) + '</td>'
         + '<td class="pipe num sep">' + fmtPct(hL) + '</td><td class="pipe num">' + fmtPct(hR) + '</td><td class="pipe num">' + fmtPct(hA) + '</td>'

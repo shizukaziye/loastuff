@@ -257,8 +257,8 @@
     return (A && A.rankColor) ? A.rankColor(rank)
       : (typeof window.rankColor === "function" ? window.rankColor(rank) : { bg: "#6f747a", fg: "#fff" });
   }
-  function rankBadge(rank, extra) {
-    var c = rankColorOf(rank);
+  function rankBadge(rank, extra, grade) {
+    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade) : rankColorOf(rank);
     return '<span class="rank-badge' + (extra ? " " + extra : "") + (c.cls ? " " + c.cls : "") +
       '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
@@ -692,7 +692,7 @@
 '<div class="panel">' +
 '  <h2>Grade</h2>' +
 '  <div class="gr-headline">' +
-'    <div class="gr-badge ' + cls + '">' + rankBadge(rank) +
+'    <div class="gr-badge ' + cls + '">' + rankBadge(rank, null, g) +
 '      <span class="gd">grade <b>' + g.toFixed(1) + '</b> / 100</span></div>' +
 '    <div class="gr-dmg">% damage<br><b>' + dmg.toFixed(3) + '%</b></div>' +
 '  </div>' +
@@ -782,7 +782,7 @@
     var g, rank, dmg, cls;
     if (v.valid) { g = gGrade(cfg); rank = gRank(cfg); dmg = gRel(cfg); cls = rankClass(rank); }
     var rkHtml = v.valid
-      ? rankBadge(rank) + '<div class="gd">' + g.toFixed(0) + '</div>'
+      ? rankBadge(rank, null, g) + '<div class="gd">' + g.toFixed(0) + '</div>'
       : '<div class="rk">?</div>';
     var idAttr = (cfg._gidx != null) ? ' id="gr-gem-' + cfg._gidx + '"' : '';
     var topRight = v.valid
@@ -818,7 +818,7 @@
         var slot = e.gem.slot || ("Core " + (e.gem.coreBase || "?"));
         var tgt = (e.gem._gidx != null) ? ' data-target="gr-gem-' + e.gem._gidx + '"' : '';
         return '<div class="wk-row"' + tgt + ' title="Jump to this gem">' +
-          rankBadge(rankFromGrade(e.g)) +
+          rankBadge(rankFromGrade(e.g), null, e.g) +
           '<span class="wk-slot">' + esc(slot) + '</span>' +
           '<span class="wk-dmg">' + e.dmg.toFixed(3) + '%</span>' +
           '</div>';
@@ -1244,7 +1244,7 @@ presetToggleHtml(data) +
 '  </div>' +
 '  <div class="gr-sum">' +
 '    <div class="stat"><span class="k">Avg grade</span><span class="v" style="color:var(--axis,var(--accent))">' + avgGrade.toFixed(1) + '</span></div>' +
-'    <div class="stat"><span class="k">Avg rank</span><span class="v">' + rankBadge(avgRank) + '</span></div>' +
+'    <div class="stat"><span class="k">Avg rank</span><span class="v">' + rankBadge(avgRank, null, avgGrade) + '</span></div>' +
 '    <div class="stat"><span class="k">' + totalLabel + (gridOk ? '' : ' <span title="Grid-total model unavailable — showing the per-gem sum, which overstates the true total. Hard-refresh to load the latest model.">⚠ estimate</span>') + '</span><span class="v" style="color:var(--axis,var(--accent))">' + sumDmg.toFixed(2) + '%</span></div>' +
 '  </div>' +
 '  <div class="gr-fieldrank" id="gr-fieldrank" style="margin-top:6px;font-size:12px;opacity:.75"></div>';

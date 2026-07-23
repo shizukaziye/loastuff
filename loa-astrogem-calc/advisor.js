@@ -908,8 +908,10 @@
     var sign = v >= 0 ? "+" : "−";
     return sign + Math.abs(Math.round(v)).toLocaleString() + "g";
   }
-  function rankBadge(rank) {
-    var c = (window.Astrogem && window.Astrogem.rankColor) ? window.Astrogem.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
+  function rankBadge(rank, grade) {
+    var A2 = window.Astrogem;
+    var c = (grade != null && A2 && A2.gradeColor) ? A2.gradeColor(grade)
+      : (A2 && A2.rankColor) ? A2.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
     return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
   }
 
@@ -925,7 +927,7 @@
     var gemRk = (typeof gRankFn === "function") ? gRankFn(state.config) : null;
     $("av-best-line").innerHTML = "Best: <b>" + best.name + "</b> &nbsp;·&nbsp; "
       + "net " + fmtGold(best.value) + " EV"
-      + (gemGrade != null ? ' &nbsp;·&nbsp; gem ' + (gemRk ? rankBadge(gemRk) + ' · ' : "") + gemGrade.toFixed(1) + '/100' : "");
+      + (gemGrade != null ? ' &nbsp;·&nbsp; gem ' + (gemRk ? rankBadge(gemRk, gemGrade) + ' · ' : "") + gemGrade.toFixed(1) + '/100' : "");
 
     // Heuristic one-liner (a plain-English SUMMARY of this query's DP numbers, NOT
     // the decision source). It states the margin by which the best beats the runner-up.

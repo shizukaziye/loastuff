@@ -158,8 +158,8 @@
       '" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
   }
 
-  function rankBadge(rank) {
-    var c = rankColorOf(rank);
+  function rankBadge(rank, grade) {
+    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade) : rankColorOf(rank);
     return '<span class="lb-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
 
@@ -378,7 +378,7 @@
     var avg = support ? c._savg : c._avg;
     var dmg = support ? c._pdmg : c._dmg;
     var gradeTxt = avg == null ? "—" : avg.toFixed(1);
-    var badge = avg == null ? "" : rankBadge(rankFromGrade(avg));
+    var badge = avg == null ? "" : rankBadge(rankFromGrade(avg), avg);
     var dmgTxt = dmg == null ? "—" : dmg.toFixed(2) + "%";
     return '<tr data-i="' + i + '">' +
       starCell(c, i) +

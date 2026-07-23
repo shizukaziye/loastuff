@@ -675,18 +675,20 @@
     A:    { bg: "#7e5cc0", fg: "#ffffff" }
   };
   // The TOP of the ladder (A+ and the three S ranks) leaves the ramp and runs a smooth
-  // cool-elite arc — A purple -> A+ violet -> S- orchid -> S rose -> S+ pinnacle. S+ is the
-  // animated pastel rainbow lifted from the old tier list: its bg is a GRADIENT, not a hex,
-  // which the consumers drop straight into `background:`; the `rank-rainbow` class in
-  // styles.css adds the tiling size and the seamless slide. Dark fg for legibility on the
-  // light rainbow. These are explicit points, not ramp mixes, so they read cleanly.
-  var RAINBOW_BG = "linear-gradient(90deg,#FF8A80,#FFC46B,#F8E081,#8CE99A,#7FD0FF,#C9A2FF,#FF8A80)";
+  // cool-elite arc — A purple -> A+ violet -> S- orchid -> S rose -> S+ red, the hot end of
+  // the spectrum. These are explicit points, not ramp mixes, so they read cleanly.
   var TOP_TIER = {
     "A+": { bg: "#a660be", fg: "#ffffff" },
     "S-": { bg: "#c15cad", fg: "#ffffff" },
     "S":  { bg: "#cc5c81", fg: "#ffffff" },
-    "S+": { bg: RAINBOW_BG, fg: "#2b2440", cls: "rank-rainbow" }
+    "S+": { bg: "#d0524e", fg: "#ffffff" }
   };
+  // A PERFECT gem (grade 100) transcends the spectrum with the animated pastel rainbow from
+  // the old tier list — bg is a GRADIENT, not a hex, dropped straight into `background:`, and
+  // the `rank-rainbow` class in styles.css adds the tiling + seamless slide. This is
+  // GRADE-gated (only a true 100), NOT rank-gated: the "S+" rank spans 95-100, so 95-99.99
+  // shows the solid red above and only 100 gets the rainbow (see gradeColor).
+  var RAINBOW = { bg: "linear-gradient(90deg,#FF8A80,#FFC46B,#F8E081,#8CE99A,#7FD0FF,#C9A2FF,#FF8A80)", fg: "#2b2440", cls: "rank-rainbow" };
   // Mix a hex toward white (amt > 0) or black (amt < 0). amt is 0..1.
   function shade(hex, amt) {
     var n = parseInt(hex.slice(1), 16);
@@ -730,7 +732,8 @@
     if (mod !== "+" && mod !== "-") return base;
     return { bg: shade(base.bg, mod === "+" ? RANK_TILT : -RANK_TILT), fg: base.fg };
   }
-  function gradeColor(g) { return rankColor(rankFromGrade(g)); }
+  // Grade -> color. A true 100 is the rainbow; everything else follows its rank band.
+  function gradeColor(g) { return (g != null && g >= 99.9995) ? RAINBOW : rankColor(rankFromGrade(g)); }
 
   function scoreBreakdown(config) {
     var wpc = willpowerCost(config.baseCost, config.willpowerLevel);
