@@ -240,15 +240,25 @@
   // Shared glossary for the calculator's abbreviations. gloss(key) wraps the label in a
   // dotted-underline span whose title= explains it on hover (see .gloss in styles.css).
   var ABBR = {
-    "2D": "Both effects deal damage",
-    "Op": "The better single damage effect — the other is dead",
-    "Sub": "The weaker single damage effect — the other is dead",
-    "No": "Neither effect deals damage (both dead)",
     "gpd": "Gold per 1% damage — the market value used to price a cut",
     "cp%": "Combat-power gain once all 24 grid slots clear the baseline"
   };
+  // Axis-aware definition for an effect-pair bucket (2D/Op/Sub/No). The "other" slot is the
+  // OPPOSITE line type to the current axis's damage lines: on the DPS axis a non-damage slot
+  // is a support line; on the support axis it's a DPS line. With a `pair` (cost known) it
+  // names the actual effects; without one it stays generic.
+  function bucketDef(label, pair) {
+    var other = isSupport() ? "DPS line" : "support line";
+    switch (label) {
+      case "2D": return pair ? "Both " + pair.op + " and " + pair.sub + " deal damage" : "Both effects deal damage";
+      case "Op": return pair ? "Only " + pair.op + " — the other is a " + other : "The better damage line — the other is a " + other;
+      case "Sub": return pair ? "Only " + pair.sub + " — the other is a " + other : "The weaker damage line — the other is a " + other;
+      case "No": return pair ? "Neither " + pair.op + " nor " + pair.sub + " — both are " + other + "s" : "Neither is a damage line — both are " + other + "s";
+      default: return ABBR[label] || label;
+    }
+  }
   function gloss(key, label) {
-    var def = ABBR[key]; if (!def) return esc(label != null ? label : key);
+    var def = bucketDef(key, null); if (!def) return esc(label != null ? label : key);
     return '<span class="gloss" data-gloss="' + esc(def) + '">' + esc(label != null ? label : key) + '</span>';
   }
   // The two damage effects for a cost, ranked optimal-first, on the CURRENT axis — so a
@@ -264,15 +274,7 @@
       .sort(function (a, b) { return scoreFn(b, 5) - scoreFn(a, 5); });
     return dmg.length >= 2 ? { op: dmg[0], sub: dmg[1] } : null;
   }
-  function bucketTip(label, cost) {
-    var p = damagePairFor(cost);
-    if (!p) return ABBR[label] || label;
-    if (label === "2D") return "Both " + p.op + " and " + p.sub + " deal damage";
-    if (label === "Op") return "Only " + p.op + " — the other effect is dead";
-    if (label === "Sub") return "Only " + p.sub + " — the other effect is dead";
-    if (label === "No") return "Neither " + p.op + " nor " + p.sub + " — both effects are dead";
-    return ABBR[label] || label;
-  }
+  function bucketTip(label, cost) { return bucketDef(label, damagePairFor(cost)); }
   function opts(list, sel) {
     return list.map(function (o) {
       var v = typeof o === "object" ? o.v : o;

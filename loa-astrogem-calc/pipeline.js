@@ -75,6 +75,31 @@
   var BUCKETS = ["2_damage", "optimal_damage", "suboptimal_damage", "no_damage"];
   var BUCKET_LABEL = { "2_damage": "2D", "optimal_damage": "Op", "suboptimal_damage": "Sub", "no_damage": "No" };
   var BUCKET_DESC = { "2_damage": "both effects damage", "optimal_damage": "best single damage + dead", "suboptimal_damage": "worse single damage + dead", "no_damage": "both effects dead" };
+  // The two damage effects for a cost, ranked optimal-first, on the current axis (AXIS) — so a
+  // hover popup can name the real effects behind each bucket (8-cost DPS = Additional Damage /
+  // Attack Power). Mirrors the grader's helper.
+  function damagePair(cost) {
+    var A = window.Astrogem;
+    if (!A || !A.EFFECT_POOLS) return null;
+    var pool = A.EFFECT_POOLS[cost]; if (!pool) return null;
+    var scoreFn = AXIS === "support" ? A.supportEffectScore : A.effectScore;
+    if (!scoreFn) return null;
+    var dmg = pool.filter(function (e) { return scoreFn(e, 5) > 0; })
+      .sort(function (a, b) { return scoreFn(b, 5) - scoreFn(a, 5); });
+    return dmg.length >= 2 ? { op: dmg[0], sub: dmg[1] } : null;
+  }
+  // Cost + axis-specific bucket description: names the effects when we know the cost (which the
+  // pipeline always does). The "other" slot is the OPPOSITE line type to the axis's damage lines.
+  function bucketDescFor(bk, cost) {
+    var p = damagePair(cost), other = AXIS === "support" ? "DPS" : "support";
+    switch (bk) {
+      case "2_damage": return p ? p.op + " + " + p.sub : "both damage lines";
+      case "optimal_damage": return (p ? p.op : "best damage line") + " + a " + other + " line";
+      case "suboptimal_damage": return (p ? p.sub : "weaker damage line") + " + a " + other + " line";
+      case "no_damage": return "two " + other + " lines";
+      default: return BUCKET_DESC[bk];
+    }
+  }
   var TIERS = ["legendary", "relic", "ancient"];
   var BW = { "2_damage": 1, "optimal_damage": 2, "suboptimal_damage": 2, "no_damage": 1 };
   var BW_TOTAL = 6;
@@ -703,7 +728,7 @@
       var spend = rec ? rec.expSpend : null;
       var esc = rec ? rec.expScore : null;
       if (cut != null) { avgAcc += BW[b] * cut; avgW += BW[b]; }
-      rowsHtml += '<tr><td class="pt-pair"><b>' + BUCKET_LABEL[b] + '</b> <span class="pt-dim">' + BUCKET_DESC[b] + '</span></td>'
+      rowsHtml += '<tr><td class="pt-pair"><b>' + BUCKET_LABEL[b] + '</b> <span class="pt-dim">' + bucketDescFor(b, cost) + '</span></td>'
         + '<td class="pt-num">' + fmtGold(cut) + '</td>'
         + '<td class="pt-num">' + fmtPct(pa) + '</td>'
         + '<td class="pt-num">' + (spend ? fmtGold(spend) : "—") + '</td>'
@@ -960,15 +985,16 @@
         + '<span class="bkt-val">' + r.val + '</span>'
         + '<span class="bkt-reset">' + r.glyph + '</span></div>';
     }
+    var otherLn = AXIS === "support" ? "DPS" : "support";
     return '<div class="lg-cellwrap">'
       + '<div class="lg-cell"><div class="lg-cell-hdr">Uncommon · 9-cost</div><div class="bkt-grid">' + rh + '</div></div>'
       + '<div class="lg-callouts">'
       + '<p class="lg-co">Every gem column is split into <b>four rows, one per effect pair</b>. The pair is fixed when the gem rolls, so each row answers: <i>if your gem ends up with this pair, is it worth cutting?</i></p>'
       + '<dl class="lg-defs">'
-      + '<dt>2D</dt><dd>both effects deal damage</dd>'
-      + '<dt>Op</dt><dd>the better single damage effect, other dead</dd>'
-      + '<dt>Sub</dt><dd>the weaker single damage effect, other dead</dd>'
-      + '<dt>No</dt><dd>both effects dead</dd>'
+      + '<dt>2D</dt><dd>both effects are damage lines</dd>'
+      + '<dt>Op</dt><dd>the better damage line — the other is a ' + otherLn + ' line</dd>'
+      + '<dt>Sub</dt><dd>the weaker damage line — the other is a ' + otherLn + ' line</dd>'
+      + '<dt>No</dt><dd>neither is a damage line — both are ' + otherLn + ' lines</dd>'
       + '</dl>'
       + '<p class="lg-co">The <b>number</b> is the cut’s expected gold after the cutting cost. <b>Higher is better</b>; the cell color tells you what to do:</p>'
       + '<div class="lg-keyrows">'
@@ -1011,8 +1037,8 @@
   function methodologyHtml() {
     return '<details class="method"><summary>How these tables are computed</summary>'
       + '<p><b>The cut decision is per BUCKET (effect pair).</b> A gem\'s two effects are its archetype: <b>2_damage</b> (both '
-      + 'damage), <b>optimal_damage</b> (better single damage + dead), <b>suboptimal_damage</b> (worse single + dead), '
-      + '<b>no_damage</b> (both dead). Each bucket\'s cut value is the exact Bellman-DP value of cutting a fresh level-1 gem of '
+      + 'damage lines), <b>optimal_damage</b> (better damage line + a dead line), <b>suboptimal_damage</b> (weaker damage line + a dead line), '
+      + '<b>no_damage</b> (both dead lines). Each bucket\'s cut value is the exact Bellman-DP value of cutting a fresh level-1 gem of '
       + 'that archetype (model/dp.js), read by direct key lookup from the baked exact-DP grid (data/pipeline.json) — no '
       + 'interpolation, every baseline shown is a baked grade row.</p>'
       + '<p><b>Scoring is real % damage.</b> Each gem line scores D = 100·ln(multiplier) (additive in log space). The baseline is '
