@@ -249,7 +249,7 @@
   };
   function gloss(key, label) {
     var def = ABBR[key]; if (!def) return esc(label != null ? label : key);
-    return '<span class="gloss" title="' + esc(def) + '">' + esc(label != null ? label : key) + '</span>';
+    return '<span class="gloss" data-gloss="' + esc(def) + '">' + esc(label != null ? label : key) + '</span>';
   }
   // The two damage effects for a cost, ranked optimal-first, on the CURRENT axis — so a
   // plan-table cell can name the real effects behind 2D/Op/Sub/No instead of "both effects"
@@ -971,7 +971,7 @@
     var meta = VERDICT_META[b.verdict] || VERDICT_META["dismantle"];
     var short = VERDICT_SHORT[b.verdict] || meta.label;
     var head = cost ? (cost + "-cost " + b.label + " — " + bucketTip(b.label, cost)) : b.label;
-    return '<td class="bktd" title="' + esc(head + " · " + short + " · " + fmtGoldShort(b.cut)) + '">'
+    return '<td class="bktd" data-gloss="' + esc(head + " · " + short + " · " + fmtGoldShort(b.cut)) + '">'
       + '<span class="vpill ' + meta.cls + '">' + short + '</span></td>';
   }
   function planActionCells(e) {

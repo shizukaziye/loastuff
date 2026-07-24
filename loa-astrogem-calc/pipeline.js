@@ -812,9 +812,9 @@
     // Abbreviation tooltips (dotted underline + hover; see .gloss in styles.css). Static
     // strings, so no escaping needed.
     var dmgAbbr = AXIS === "support"
-      ? '<span class="gloss" title="The full party-damage buff your support grid provides">party%</span>'
-      : '<span class="gloss" title="Total % damage your grid adds over having no grid">%dmg</span>';
-    var cpAbbr = '<span class="gloss" title="Combat-power gain once all 24 grid slots clear the baseline">cp%</span>';
+      ? '<span class="gloss" data-gloss="The full party-damage buff your support grid provides">party%</span>'
+      : '<span class="gloss" data-gloss="Total % damage your grid adds over having no grid">%dmg</span>';
+    var cpAbbr = '<span class="gloss" data-gloss="Combat-power gain once all 24 grid slots clear the baseline">cp%</span>';
     var head = '<table class="pipe-table"><thead>'
       + '<tr><th rowspan="2">Grade</th>'
       + '<th colspan="3" class="sep">Uncommon</th>'

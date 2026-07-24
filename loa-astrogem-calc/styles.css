@@ -102,3 +102,12 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
    meaning" (the definition rides in the title=). Used for 2D/Op/Sub/No, cp%, gpd, etc. */
 .gloss{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
 th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}
+
+/* Instant styled tooltip (no native-title delay). One floating node positioned by tip.js on
+   hover of any [data-gloss] element; data-gloss holds the text. Distinct from the pipeline's
+   data-tip (which drives its own rich .pl-pop popup). */
+#gm-tip{position:fixed;z-index:99999;max-width:290px;background:#10131c;border:1px solid var(--border);
+  color:var(--text);font-size:12px;line-height:1.45;padding:7px 10px;border-radius:7px;
+  box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
+#gm-tip.on{opacity:1;visibility:visible}
+.gloss[data-gloss]{cursor:help}
