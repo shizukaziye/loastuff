@@ -411,10 +411,14 @@
   }
 
   function headRow() {
-    var dmgHdr = mode === "support" ? "Party dmg%" : "Total dmg%";
+    // Abbreviation tooltips: dotted underline + hover (see .gloss in styles.css). Static strings.
+    var dmgHdr = mode === "support"
+      ? '<span class="gloss" title="The full party-damage buff this support grid provides">Party dmg%</span>'
+      : '<span class="gloss" title="Total % damage the grid adds over having no grid">Total dmg%</span>';
+    var iLvl = '<span class="gloss" title="Item level">iLvl</span>';
     return '<thead><tr>' +
       (Favs ? '<th class="lb-star" aria-label="Favorite"></th>' : '') +
-      '<th>Rank</th><th class="lb-ilvl">iLvl</th><th>Character</th><th>Quality</th><th>' + dmgHdr + '</th><th class="lb-age">Last pulled</th>' +
+      '<th>Rank</th><th class="lb-ilvl">' + iLvl + '</th><th>Character</th><th>Quality</th><th>' + dmgHdr + '</th><th class="lb-age">Last pulled</th>' +
       '</tr></thead>';
   }
 

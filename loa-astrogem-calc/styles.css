@@ -97,3 +97,8 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
   .rank-rainbow{animation:rank-rainbow-slide 8s linear infinite}
   @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
 }
+
+/* Abbreviation tooltip: a dotted underline + help cursor signals "hover for the full
+   meaning" (the definition rides in the title=). Used for 2D/Op/Sub/No, cp%, gpd, etc. */
+.gloss{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
+th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}

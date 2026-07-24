@@ -237,6 +237,20 @@
   // ---------------- DOM helpers ----------------
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  // Shared glossary for the calculator's abbreviations. gloss(key) wraps the label in a
+  // dotted-underline span whose title= explains it on hover (see .gloss in styles.css).
+  var ABBR = {
+    "2D": "Both effects deal damage",
+    "Op": "The better single damage effect — the other is dead",
+    "Sub": "The weaker single damage effect — the other is dead",
+    "No": "Neither effect deals damage (both dead)",
+    "gpd": "Gold per 1% damage — the market value used to price a cut",
+    "cp%": "Combat-power gain once all 24 grid slots clear the baseline"
+  };
+  function gloss(key, label) {
+    var def = ABBR[key]; if (!def) return esc(label != null ? label : key);
+    return '<span class="gloss" title="' + esc(def) + '">' + esc(label != null ? label : key) + '</span>';
+  }
   function opts(list, sel) {
     return list.map(function (o) {
       var v = typeof o === "object" ? o.v : o;
@@ -947,7 +961,7 @@
   function planTableHtml(adv) {
     if (!adv) return '<div class="gr-plan-card"><div class="empty">Pipeline data unavailable.</div></div>';
     var rows = '<table class="gr-ptab"><thead><tr>'
-      + '<th>Gem</th><th class="bh">2D</th><th class="bh">Op</th><th class="bh">Sub</th><th class="bh">No</th>'
+      + '<th>Gem</th><th class="bh">' + gloss("2D") + '</th><th class="bh">' + gloss("Op") + '</th><th class="bh">' + gloss("Sub") + '</th><th class="bh">' + gloss("No") + '</th>'
       + '<th class="r">Open value</th></tr></thead><tbody>';
     for (var i = 0; i < adv.plan.length; i++) {
       var e = adv.plan[i];

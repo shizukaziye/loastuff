@@ -809,6 +809,12 @@
   function gpdTable(gpd, roster) {
     // Pipeline economy columns are NRB BY NATURE (income/boxes/gold are not roster-bound),
     // so they show in BOTH views; only the gem-cell cut-EVs swap by roster.
+    // Abbreviation tooltips (dotted underline + hover; see .gloss in styles.css). Static
+    // strings, so no escaping needed.
+    var dmgAbbr = AXIS === "support"
+      ? '<span class="gloss" title="The full party-damage buff your support grid provides">party%</span>'
+      : '<span class="gloss" title="Total % damage your grid adds over having no grid">%dmg</span>';
+    var cpAbbr = '<span class="gloss" title="Combat-power gain once all 24 grid slots clear the baseline">cp%</span>';
     var head = '<table class="pipe-table"><thead>'
       + '<tr><th rowspan="2">Grade</th>'
       + '<th colspan="3" class="sep">Uncommon</th>'
@@ -820,7 +826,7 @@
       + '<th class="sep">8-cost</th><th>9-cost</th><th>10-cost</th>'
       + '<th class="sep">8-cost</th><th>9-cost</th><th>10-cost</th>'
       + '<th class="sep">Boxes</th><th>Direct<br>/wk</th><th>Fuse<br>/wk</th>'
-      + '<th>Total<br>/wk</th><th>Weeks</th><th>Gold</th><th>Avg<br>' + (AXIS === "support" ? "party%" : "%dmg") + '</th><th>Total<br>' + (AXIS === "support" ? "party%" : "%dmg") + '</th><th>cp%</th>'
+      + '<th>Total<br>/wk</th><th>Weeks</th><th>Gold</th><th>Avg<br>' + dmgAbbr + '</th><th>Total<br>' + dmgAbbr + '</th><th>' + cpAbbr + '</th>'
       + '</tr></thead><tbody>';
 
     var body = "";
