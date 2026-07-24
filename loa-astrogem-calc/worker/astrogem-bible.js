@@ -1587,6 +1587,37 @@ export default {
       return json({ ok: true, paused: cfg.mode !== "run", mode: cfg.mode, message: UNAVAILABLE_MSG }, 200, { "Cache-Control": "public, max-age=30" });
     }
 
+    // Owner-only: evict stuck/orphaned queue items and invalidate the order snapshot so the next
+    // drain re-lists. Lists at the EDGE (wrangler's KV CLI can't list/delete this namespace) and
+    // matches on a KEY SUBSTRING — encoding-proof, since some old items have a mojibake name whose
+    // key can't be rebuilt from a clean one. ?dequeue=1&k=OWNER&match=na:lari  (or &all=1 to clear,
+    // or &list=1 to just see the raw queue keys).
+    if (u.searchParams.get("dequeue") === "1") {
+      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
+      const listOnly = u.searchParams.get("list") === "1";
+      const all = u.searchParams.get("all") === "1";
+      const match = (u.searchParams.get("match") || "").toLowerCase();
+      if (!listOnly && !all && !match) return json({ error: "pass match=<key substring>, all=1, or list=1" }, 400);
+      const seen = [], removed = [];
+      for (const pfx of [QF, QP]) {
+        let cursor;
+        do {
+          const res = await env.CHARS.list({ prefix: pfx, cursor: cursor });
+          for (const k of res.keys) {
+            const md = k.metadata || {};
+            if (listOnly) { seen.push({ key: k.name, region: md.region, name: md.name, ts: md.ts }); continue; }
+            if (all || (match && k.name.toLowerCase().indexOf(match) !== -1)) {
+              try { await env.CHARS.delete(k.name); removed.push(k.name); } catch (e) {}
+            }
+          }
+          cursor = res.list_complete ? null : res.cursor;
+        } while (cursor);
+      }
+      if (listOnly) return json({ ok: true, queue: seen, count: seen.length });
+      try { await env.CHARS.delete(Q_ORDER_KEY); } catch (e) {}
+      return json({ ok: true, removed: removed, count: removed.length });
+    }
+
     // Owner-only feedback review (GET): list, mark-read, delete. Drives the queue-admin Feedback panel.
     if (u.searchParams.get("feedback") === "1") {
       if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);

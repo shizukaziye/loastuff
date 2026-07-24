@@ -33,6 +33,14 @@ compatibility_date = "2026-06-01"
 binding = "CHARS"
 id = "0f51c3b5ac6d45a59186375d62879ad7"
 
+# OAUTH: lostark.bible sign-in sessions (s:<sid>) + the drain's stored service/probe
+# token (probe:token, used to fetch on the canary owner's behalf). MUST be declared here:
+# a CLI `wrangler deploy` replaces the whole binding set, so a namespace bound only via the
+# Cloudflare dashboard is silently dropped on the next deploy (that happened once — 2026-07).
+[[kv_namespaces]]
+binding = "OAUTH"
+id = "288924b3208245e3920d1fb9cf3034cc"
+
 # Cron fires EVERY MINUTE to drain the lookup queue (budget guard + circuit
 # breaker inside). The leaderboard snapshot rebuild rides the same tick but is
 # dirty-gated and throttled in code (~30 min cadence at most) — see
