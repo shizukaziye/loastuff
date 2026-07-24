@@ -251,6 +251,28 @@
     var def = ABBR[key]; if (!def) return esc(label != null ? label : key);
     return '<span class="gloss" title="' + esc(def) + '">' + esc(label != null ? label : key) + '</span>';
   }
+  // The two damage effects for a cost, ranked optimal-first, on the CURRENT axis — so a
+  // plan-table cell can name the real effects behind 2D/Op/Sub/No instead of "both effects"
+  // (8-cost 2D on the DPS axis = Additional Damage + Attack Power). Support axis swaps in the
+  // support effects (Brand / Ally *). Ranks by the model's own per-level effect score.
+  function damagePairFor(cost) {
+    if (!A || !A.EFFECT_POOLS) return null;
+    var pool = A.EFFECT_POOLS[cost]; if (!pool) return null;
+    var scoreFn = isSupport() ? A.supportEffectScore : A.effectScore;
+    if (!scoreFn) return null;
+    var dmg = pool.filter(function (e) { return scoreFn(e, 5) > 0; })
+      .sort(function (a, b) { return scoreFn(b, 5) - scoreFn(a, 5); });
+    return dmg.length >= 2 ? { op: dmg[0], sub: dmg[1] } : null;
+  }
+  function bucketTip(label, cost) {
+    var p = damagePairFor(cost);
+    if (!p) return ABBR[label] || label;
+    if (label === "2D") return "Both " + p.op + " and " + p.sub + " deal damage";
+    if (label === "Op") return "Only " + p.op + " — the other effect is dead";
+    if (label === "Sub") return "Only " + p.sub + " — the other effect is dead";
+    if (label === "No") return "Neither " + p.op + " nor " + p.sub + " — both effects are dead";
+    return ABBR[label] || label;
+  }
   function opts(list, sel) {
     return list.map(function (o) {
       var v = typeof o === "object" ? o.v : o;
@@ -945,15 +967,16 @@
   // pill (+ recipe) spanning the four bucket columns. Otherwise ALWAYS the four per-
   // effect-pair cells (2D / Op / Sub / No), one verdict pill each — they live in real
   // table columns so they line up across every row.
-  function bucketCell(b) {
+  function bucketCell(b, cost) {
     var meta = VERDICT_META[b.verdict] || VERDICT_META["dismantle"];
     var short = VERDICT_SHORT[b.verdict] || meta.label;
-    return '<td class="bktd" title="' + esc(b.label + ': ' + short + ' · ' + fmtGoldShort(b.cut)) + '">'
+    var head = cost ? (cost + "-cost " + b.label + " — " + bucketTip(b.label, cost)) : b.label;
+    return '<td class="bktd" title="' + esc(head + " · " + short + " · " + fmtGoldShort(b.cut)) + '">'
       + '<span class="vpill ' + meta.cls + '">' + short + '</span></td>';
   }
   function planActionCells(e) {
     if (e.blockFuse) return '<td class="fusetd" colspan="4">' + verdictPill(e) + '</td>';
-    return e.buckets.map(bucketCell).join("");
+    return e.buckets.map(function (b) { return bucketCell(b, e.cost); }).join("");
   }
 
   // The single blanket-baseline recommendation table: 9 rows (rarity × cost), each with
