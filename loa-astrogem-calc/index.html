@@ -63,6 +63,7 @@
     <button class="tab" data-tab="pipeline" onclick="selectTab('pipeline')">Pipeline</button>
     <button class="tab" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
     <button class="tab" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
+    <button class="tab" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
   </div>
 
   <!-- Tab panes -->
@@ -70,6 +71,7 @@
   <section id="tab-pipeline" class="tabpane"></section>
   <section id="tab-advisor" class="tabpane"></section>
   <section id="tab-leaderboard" class="tabpane"></section>
+  <section id="tab-feedback" class="tabpane"></section>
 </div>
 
 <!-- Tab switching: toggle .active on the matching button + pane. -->
@@ -92,7 +94,8 @@ var LAZY_TABS = {
     "advisor-setup.js?v=46", "advisor-window.js?v=55",
     "advisor.js?v=75"
   ],
-  leaderboard: ["leaderboard.js?v=42"]
+  leaderboard: ["leaderboard.js?v=42"],
+  feedback: ["feedback.js?v=1"]
 };
 var lazyLoaded = {};
 function loadScriptsSeq(list, done){

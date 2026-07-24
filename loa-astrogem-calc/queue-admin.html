@@ -81,6 +81,10 @@
       <div id="qbody" style="max-height:58vh;overflow:auto"></div>
     </div>
     <div class="panel">
+      <h2 id="fbhead">Feedback</h2>
+      <div id="fbbody" style="max-height:58vh;overflow:auto;padding:4px 16px 14px"></div>
+    </div>
+    <div class="panel">
       <h2>Import bookmarklet</h2>
       <div id="bmbody" style="padding:14px 16px"></div>
     </div>
@@ -232,17 +236,53 @@
       if(!j || !j.ok) throw new Error("Bad response");
       $("auth").classList.add("hide"); $("app").classList.remove("hide");
       render(j);
+      if(Date.now() - lastFb > 30000) loadFeedback();   // refresh feedback at most every ~30s alongside the 2s metrics poll
     }).catch(function(e){
       lastErr = e.message || "error"; setStatus();
       if(e.forbidden){ localStorage.removeItem(TOKKEY); showAuth(); }
     });
   }
 
-  function start(){ poll(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
+  // ---- Feedback panel (owner-gated ?feedback=1) ----
+  var lastFb = 0;
+  function loadFeedback(){
+    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok) return;
+    var body = $("fbbody"); if(!body) return;
+    lastFb = Date.now();
+    fetch(WORKER + "/?feedback=1&k=" + encodeURIComponent(tok)).then(function(r){ return r.json(); }).then(function(j){
+      if(!j || !j.ok) return;
+      $("fbhead").textContent = "Feedback" + (j.count ? " (" + j.count + (j.unread ? " · " + j.unread + " new" : "") + ")" : "");
+      if(!j.items || !j.items.length){ body.innerHTML = '<p class="muted" style="margin:8px 0">No feedback yet.</p>'; return; }
+      body.innerHTML = j.items.map(function(it){
+        var when = new Date(it.ts).toLocaleString();
+        return '<div style="border-top:1px solid #2a3142;padding:10px 0;' + (it.read ? 'opacity:.55' : '') + '">'
+          + '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">'
+          + '<b>' + esc(it.type || "Other") + '</b>'
+          + (it.read ? '' : '<span style="color:#66c7ff;font-size:11px">● new</span>')
+          + '<span class="muted" style="font-size:12px">' + esc(when) + '</span>'
+          + (it.contact ? '<span class="muted" style="font-size:12px">· ' + esc(it.contact) + '</span>' : '')
+          + '<span style="flex:1 1 12px"></span>'
+          + (it.read ? '' : '<button class="ghost fb-read" data-id="' + esc(it.id) + '" style="font-size:12px;padding:3px 9px">Mark read</button>')
+          + '<button class="ghost fb-del" data-id="' + esc(it.id) + '" style="font-size:12px;padding:3px 9px">Delete</button>'
+          + '</div>'
+          + '<div style="white-space:pre-wrap;margin-top:5px;font-size:13px;line-height:1.5">' + esc(it.message) + '</div>'
+          + '</div>';
+      }).join("");
+      Array.prototype.forEach.call(body.querySelectorAll(".fb-del"), function(b){ b.addEventListener("click", function(){ fbAction("del", b.getAttribute("data-id")); }); });
+      Array.prototype.forEach.call(body.querySelectorAll(".fb-read"), function(b){ b.addEventListener("click", function(){ fbAction("read", b.getAttribute("data-id")); }); });
+    }).catch(function(){});
+  }
+  function fbAction(kind, id){
+    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok || !id) return;
+    if(kind === "del" && !confirm("Delete this feedback?")) return;
+    fetch(WORKER + "/?feedback=1&k=" + encodeURIComponent(tok) + "&" + kind + "=" + encodeURIComponent(id)).then(function(){ loadFeedback(); }).catch(function(){});
+  }
+
+  function start(){ poll(); loadFeedback(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
 
   $("connect").addEventListener("click", function(){ var t = $("tok").value.trim(); if(t){ localStorage.setItem(TOKKEY, t); lastErr=""; start(); } });
   $("tok").addEventListener("keydown", function(e){ if(e.key === "Enter") $("connect").click(); });
-  $("refresh").addEventListener("click", poll);
+  $("refresh").addEventListener("click", function(){ poll(); loadFeedback(); });
   $("logout").addEventListener("click", function(){ localStorage.removeItem(TOKKEY); lastOk=0; lastErr=""; showAuth(); });
   ["run","off","probe"].forEach(function(m){ $("m-"+m).addEventListener("click", function(){ applyControl("mode="+m); }); });
   $("rateapply").addEventListener("click", function(){ var v=parseInt($("rate").value,10); if(v>=1 && v<=30) applyControl("rate="+v); else $("ctlnote").textContent="Rate must be 1–30."; });

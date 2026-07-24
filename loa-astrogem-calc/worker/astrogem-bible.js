@@ -836,7 +836,8 @@ async function buildCharacterList(env) {
       // q:* queue items, whose VALUE now holds the requester's token (must never be read into the list).
       const n = k.name;
       if (n === INDEX_KEY || n.indexOf("q:") === 0 || n.indexOf("drain:") === 0 ||
-          n.indexOf("usage:") === 0 || n.indexOf("nf:") === 0 || n.indexOf("lb:") === 0) continue;
+          n.indexOf("usage:") === 0 || n.indexOf("nf:") === 0 || n.indexOf("lb:") === 0 ||
+          n.indexOf("fb:") === 0) continue;
       keys.push(n);
     }
     cursor = res.list_complete ? null : res.cursor;
@@ -850,6 +851,63 @@ async function buildCharacterList(env) {
     }
   }
   return characters;
+}
+
+// ---- Feedback (?feedback=1) ----
+// Public POST stores a note under "fb:<ts>-<rand>" in the CHARS KV. buildCharacterList
+// skips the fb: prefix (and these records carry no gems[], so the leaderboard ignores
+// them regardless). Owner GET (k=owner token) lists / marks-read / deletes. Everything is
+// trimmed + length-capped; a filled honeypot field is accepted-and-dropped silently.
+const FB_PREFIX = "fb:";
+const FB_MSG_MAX = 2000, FB_CONTACT_MAX = 80, FB_TYPE_MAX = 40;
+
+async function handleFeedbackSubmit(env, request) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: "Body must be JSON." }, 400); }
+  if (body && String(body.hp || "").trim()) return json({ ok: true });   // honeypot: a bot filled it — drop
+  const message = String((body && body.message) || "").trim().slice(0, FB_MSG_MAX);
+  if (!message) return json({ error: "Message is required." }, 400);
+  if (!env || !env.CHARS) return json({ error: "Feedback storage not configured." }, 503);
+  const rec = {
+    ts: Date.now(),
+    type: String((body && body.type) || "Other").trim().slice(0, FB_TYPE_MAX),
+    message: message,
+    contact: String((body && body.contact) || "").trim().slice(0, FB_CONTACT_MAX),
+    ua: (request.headers.get("User-Agent") || "").slice(0, 160),
+    read: false
+  };
+  const key = FB_PREFIX + rec.ts + "-" + Math.random().toString(36).slice(2, 8);
+  try { await env.CHARS.put(key, JSON.stringify(rec)); }
+  catch (e) { return json({ error: "Could not save." }, 500); }
+  return json({ ok: true });
+}
+
+// Owner-only (caller checks the token first).
+//   ?feedback=1&k=OWNER            -> { items:[{id,ts,type,message,contact,ua,read}], count, unread }
+//   ?feedback=1&k=OWNER&read=<id>  -> mark that note read
+//   ?feedback=1&k=OWNER&del=<id>   -> delete that note
+async function handleFeedbackAdmin(env, u) {
+  if (!env || !env.CHARS) return json({ error: "Not configured." }, 503);
+  const del = u.searchParams.get("del");
+  if (del) { try { await env.CHARS.delete(FB_PREFIX + del.replace(/^fb:/, "")); } catch (e) {} return json({ ok: true }); }
+  const read = u.searchParams.get("read");
+  if (read) {
+    const k = FB_PREFIX + read.replace(/^fb:/, "");
+    try { const r = await env.CHARS.get(k, "json"); if (r) { r.read = true; await env.CHARS.put(k, JSON.stringify(r)); } } catch (e) {}
+    return json({ ok: true });
+  }
+  const keys = [];
+  let cursor;
+  do {
+    const res = await env.CHARS.list({ prefix: FB_PREFIX, cursor: cursor, limit: 1000 });
+    for (const k of res.keys) keys.push(k.name);
+    cursor = res.list_complete ? null : res.cursor;
+  } while (cursor);
+  const recs = await Promise.all(keys.map(function (k) {
+    return kvGetJson(env, k).then(function (r) { return r ? Object.assign({ id: k.slice(FB_PREFIX.length) }, r) : null; });
+  }));
+  const items = recs.filter(Boolean).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+  return json({ ok: true, items: items, count: items.length, unread: items.filter(function (x) { return !x.read; }).length });
 }
 
 // ---- snapshot format v2 (compact) ----
@@ -1497,6 +1555,11 @@ export default {
       return storeProbeToken(env, request);
     }
 
+    // Public feedback submit (POST). Handled before the GET-only guard below.
+    if (u.searchParams.get("feedback") === "1" && request.method === "POST") {
+      return handleFeedbackSubmit(env, request);
+    }
+
     if (request.method !== "GET") {
       return json({ error: "Method not allowed (use GET ?region=&name=, or POST ?submit=1)." }, 405);
     }
@@ -1522,6 +1585,12 @@ export default {
       // SHORT browser cache: keeps the banner fresh (~30s, in line with the queue re-sync cadence) for
       // active users, while deduping rapid focus re-checks. paused = the drain isn't in "run" mode.
       return json({ ok: true, paused: cfg.mode !== "run", mode: cfg.mode, message: UNAVAILABLE_MSG }, 200, { "Cache-Control": "public, max-age=30" });
+    }
+
+    // Owner-only feedback review (GET): list, mark-read, delete. Drives the queue-admin Feedback panel.
+    if (u.searchParams.get("feedback") === "1") {
+      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
+      return handleFeedbackAdmin(env, u);
     }
 
     // Owner-only drain CONTROL: set the mode (run/off/probe) and/or the per-minute rate. Drives the
