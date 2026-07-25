@@ -10,3 +10,5 @@ worker/.wrangler/
 # Collected parse records (tools/pull-collected.js) — review locally, promote the
 # good ones into samples/ as named pairs; the raw feed stays out of the repo.
 samples/collected/
+__pycache__/
+*.pyc

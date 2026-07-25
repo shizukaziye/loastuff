@@ -29,8 +29,8 @@ import math
 #   bossDamage       other 0%,    +2.5% over 30 levels
 #   order            flat x1.0016 per point (orderScore = orderLevel * D, NOT vs lvl 4)
 #   willpower        2.4 * attack-per-level (old willpower:attack ratio), per cost-level
-# Numeric values (~): atk 0.032549, addDmg 0.059839, boss 0.082309, order 0.159872,
-# willpower 0.078119 per cost-level from 4.
+# Numeric values (~): atk 0.032386, addDmg 0.059287, boss 0.081268, order 0.159872,
+# willpower 0.077726 per cost-level from 4.
 
 STAT_BASELINES = {
     "attackPower":      {"other": 0.121,  "gridAdd": 0.011,  "levels": 30},
@@ -443,8 +443,8 @@ _SUPPORT_GRADE_BOUNDS = None
 
 
 def support_grade_bounds():
-    # Min-max over SUPPORT gems only. max = perfect support gem (10-cost Ally Attack
-    # Enh Lv5 + Brand Power Lv5, order 5, willpower 5 ~ 0.836). Mirrors grade_bounds.
+    # Min-max over SUPPORT gems only. max = perfect support gem (8-cost Brand Power
+    # Lv5 + Ally Damage Enh Lv5, order 5, willpower 5 ~ 0.28848). Mirrors grade_bounds.
     global _SUPPORT_GRADE_BOUNDS
     if _SUPPORT_GRADE_BOUNDS is not None:
         return _SUPPORT_GRADE_BOUNDS
@@ -512,6 +512,10 @@ def validate_config(config):
     pool = EFFECT_POOLS.get(config["baseCost"])
     if pool is None:
         return {"valid": False, "error": "Unknown base cost: %s" % config["baseCost"]}
+    gem_type = config.get("gemType")
+    if gem_type is not None and gem_type not in ("order", "chaos"):
+        return {"valid": False,
+                "error": 'Gem type must be "order" or "chaos" (got "%s")' % gem_type}
     e1 = config["effect1"]
     e2 = config["effect2"]
     e1ok = e1 in pool or e1 == "Random"

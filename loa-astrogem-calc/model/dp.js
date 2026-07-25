@@ -68,7 +68,7 @@
 
   // ---------------- cost helpers (match nested.js exactly) ----------------
 
-  // procCost(cm) = 900 * (1 + cm/100), floored at 100 and rounded (mirrors
+  // procCost(cm) = 900 * (1 + cm/100), clamped at >= 0 and rounded (mirrors
   // nested.js _applyProcessStep, which rounds and clamps the process cost).
   function procCost(cm) {
     // cm = -100 is REAL: the game's "-100% Processing Cost" outcome shows a

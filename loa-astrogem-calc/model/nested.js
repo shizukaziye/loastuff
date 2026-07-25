@@ -215,8 +215,10 @@
     var upside = best - current;
     // Plenty of rerolls per remaining turn and the best outcome adds little:
     // reroll for a better board. Thresholds chosen to be conservative.
+    // upside is in gemValue units (max single-outcome upside ≈ 0.76 on the
+    // current D scale); 0.05 ≈ the old additive-scale threshold of 1.0.
     var rerollsPerTurn = state.rerollsRemaining / turnsRemaining;
-    return upside < 1.0 && rerollsPerTurn >= 0.5;
+    return upside < 0.05 && rerollsPerTurn >= 0.5;
   }
 
   // ---------------- rollouts ----------------

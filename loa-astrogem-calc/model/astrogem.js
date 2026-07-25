@@ -82,11 +82,11 @@
   //                         Converted from the old abstract ±2.4 by the old
   //                         willpower-to-attack ratio (2.4 / 1.0 = 2.4): one
   //                         cost-level of willpower is worth 2.4 attack-levels, so
-  //                         D_WP = 2.4 · D_ATTACK_PER_LEVEL ≈ ±0.078119 per cost-level.
+  //                         D_WP = 2.4 · D_ATTACK_PER_LEVEL ≈ ±0.077726 per cost-level.
   //   * Brand Power / Ally Damage Enh. / Ally Attack Enh. — 0 (support, no DPS).
   //
-  // The numeric values these baselines yield (≈): atk 0.032549, addDmg 0.059839,
-  // boss 0.082309, order 0.159872, willpower 0.078119 (per cost-level from 4).
+  // The numeric values these baselines yield (≈): atk 0.032386, addDmg 0.059287,
+  // boss 0.081268, order 0.159872, willpower 0.077726 (per cost-level from 4).
 
   // Bucket baselines (edit these to retune the assumptions).
   var STAT_BASELINES = {
@@ -111,7 +111,7 @@
   var D_ORDER_PER_POINT   = 100 * Math.log(1 + STAT_BASELINES.order.perPoint); // ≈ 0.159872
   // Willpower keeps the old willpower:attack weight ratio (2.4 : 1.0) in D units.
   var WILLPOWER_OVER_ATTACK_RATIO = 2.4;
-  var D_WILLPOWER_PER_COSTLEVEL = WILLPOWER_OVER_ATTACK_RATIO * D_ATTACK_PER_LEVEL; // ≈ 0.078119
+  var D_WILLPOWER_PER_COSTLEVEL = WILLPOWER_OVER_ATTACK_RATIO * D_ATTACK_PER_LEVEL; // ≈ 0.077726
 
   var SCORING = {
     // All values are D = 100·ln(multiplier) ≈ % damage (ADDITIVE in log space).
@@ -425,7 +425,8 @@
   // SUPPORT grid total — same shape as the DPS total. Support EFFECTS stay linear (the
   // support per-level party values are flat — no bucket diminishing in this model), and
   // ORDER/chaos is per-CORE with the 17-point floor, the 6 cores MULTIPLYING (each core
-  // carries its own per-point party rate). Party scale; the UI shows ÷3 (per-ally).
+  // carries its own per-point party rate). Coefficients are already ÷3 (per-DPS-ally),
+  // so this returns the per-ally figure and the UI shows it as-is (no further ÷3).
   function supportGridDamage(gems) {
     var eff = 0, core = {};
     for (var i = 0; i < gems.length; i++) {
@@ -515,8 +516,8 @@
     return orderLevel * SUPPORT_SCORING.orderPerPoint;
   }
 
-  // Total SUPPORT score = supportWillpower + 0.0747·orderLevel + supportEff(e1) +
-  // supportEff(e2). Mirrors score(config) line-for-line with support coefficients.
+  // Total SUPPORT score = supportWillpower + orderPerPoint·orderLevel (≈ 0.0256) +
+  // supportEff(e1) + supportEff(e2). Mirrors score(config) with support coefficients.
   function supportScore(config) {
     var wpc = willpowerCost(config.baseCost, config.willpowerLevel);
     return supportWillpowerScore(wpc)
@@ -542,7 +543,7 @@
   // ---- SUPPORT multiplicative grading (parallel to the DPS gemValue model) ----
   // Per-core order/chaos point values: each core grants a different party-buff stat,
   // so a support gem's order points are worth different amounts by core. A standalone
-  // gem grade uses the AVERAGE (SUPPORT_SCORING.orderPerPoint ≈ 0.0747); the whole-grid
+  // gem grade uses the AVERAGE (SUPPORT_SCORING.orderPerPoint ≈ 0.0256); the whole-grid
   // total (the leaderboard) uses the PER-CORE value (keyed by core base id 10001-10006).
   // Re-derived on the corrected support model (see SUPPORT_SCORING note). Order Star
   // (serenade) and Chaos Star (weapon power) are unchanged: serenade is held provisional
@@ -621,8 +622,8 @@
   }
 
   // Min-max bounds for the SUPPORT grade, over SUPPORT gems only (the support-axis
-  // twin of valueBounds). min = worst support gem, max = the perfect support gem (10-cost
-  // Ally Attack Enh Lv5 + Brand Power Lv5, order 5, willpower 5 ≈ 0.836).
+  // twin of valueBounds). min = worst support gem, max = the perfect support gem (8-cost
+  // Brand Power Lv5 + Ally Damage Enh Lv5, order 5, willpower 5 ≈ 0.28848).
   var _supportGradeBounds = null;
   function supportGradeBounds() {
     if (_supportGradeBounds) return _supportGradeBounds;
