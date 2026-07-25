@@ -44,7 +44,7 @@
   <p class="sub">Private live view of the lostark.bible lookup queue. <span id="status"></span></p>
 
   <div class="row" id="auth">
-    <input id="tok" type="password" placeholder="Owner token (the k= value)" autocomplete="off" spellcheck="false">
+    <input id="tok" type="password" placeholder="Admin token (the ADMIN_TOKEN secret)" autocomplete="off" spellcheck="false">
     <button id="connect">Connect</button>
   </div>
 
@@ -100,6 +100,11 @@
   var TOKKEY = "astrogem_admin_token";
   var $ = function(id){ return document.getElementById(id); };
   var timer = null, lastOk = 0, lastErr = "", curMode = "", curRate = 0;
+
+  // Admin auth rides in the X-Admin-Token HEADER (the ADMIN_TOKEN Worker secret) — never in a
+  // URL, so it can't leak via logs or Referer. Mutations are POST; the Worker 405s admin GETs
+  // that try to mutate. A 403 clears the stored token and shows the sign-in box again.
+  function adminHeaders(){ var t = localStorage.getItem(TOKKEY) || ""; return t ? { "X-Admin-Token": t } : {}; }
 
   function fmtAgo(ms){
     if(!ms) return "never";
@@ -162,7 +167,7 @@
     setStatus();
   }
 
-  // Controls: reflect the live mode + rate, and POST changes to the owner-only ?control endpoint.
+  // Controls: reflect the live mode + rate, and POST changes to the admin-only ?control endpoint.
   function renderControls(j){
     var mode = j.mode || (j.paused ? "off" : "run");
     ["run","off","probe"].forEach(function(m){ var b=$("m-"+m); if(b) b.classList.toggle("on", m===mode); });
@@ -170,9 +175,9 @@
     if(rate != null && document.activeElement !== $("rate")) $("rate").value = rate;
   }
   function applyControl(qs){
-    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok) return;
+    if(!localStorage.getItem(TOKKEY)) return;
     $("ctlnote").textContent = "Applying…";
-    fetch(WORKER + "/?control=1&k=" + encodeURIComponent(tok) + "&" + qs).then(function(r){ return r.json(); }).then(function(j){
+    fetch(WORKER + "/?control=1&" + qs, { method: "POST", headers: adminHeaders() }).then(function(r){ return r.json(); }).then(function(j){
       if(j && j.ok){ $("ctlnote").textContent = "Set — mode: " + j.config.mode + " · " + j.config.drainPerMin + "/min."; poll(); }
       else { $("ctlnote").textContent = "Failed: " + ((j && j.error) || "error"); }
     }).catch(function(e){ $("ctlnote").textContent = "Failed: " + e.message; });
@@ -209,7 +214,12 @@
     if(!log.length){ $("hbody").innerHTML = '<p class="muted" style="padding:16px;margin:0">No drains logged yet (the cron runs every minute).</p>'; return; }
     var rows = log.slice().reverse().map(function(r){
       var c=(r.cached||[]).length, f=(r.failed||[]).length, dr=(r.dropped||[]).length;
-      var stopCls = r.stop==="upstream" ? "bad" : (r.stop==="budget"||r.stop==="time" ? "warn" : "muted");
+      // Real stop values (drainQueue): full/time/budget = ran out of quota; blocked/paused =
+      // the breaker tripped; probe = still down; resumed = probe succeeded. (The old map keyed
+      // on "upstream", which no drain ever emits — every stop rendered grey.)
+      var stopCls = (r.stop==="blocked"||r.stop==="paused") ? "bad"
+        : (r.stop==="budget"||r.stop==="time"||r.stop==="probe") ? "warn"
+        : (r.stop==="resumed") ? "good" : "muted";  // "full" + ok -> muted (normal)
       var stop = r.kick ? '<span class="good">kick</span>' : (r.stop ? '<span class="'+stopCls+'">'+esc(r.stop)+'</span>' : '<span class="muted">ok</span>');
       var names = (r.cached||[]).map(function(x){ var p=String(x).split(":"); return p[1]||x; }).join(", ");
       return '<tr><td class="muted" style="white-space:nowrap">'+fmtTime(r.t)+'</td>'+
@@ -228,7 +238,7 @@
   function poll(){
     var tok = localStorage.getItem(TOKKEY) || "";
     if(!tok){ showAuth(); return; }
-    fetch(WORKER + "/?metrics=1&k=" + encodeURIComponent(tok)).then(function(r){
+    fetch(WORKER + "/?metrics=1", { headers: adminHeaders() }).then(function(r){
       if(r.status === 403){ var e = new Error("Wrong token"); e.forbidden = true; throw e; }
       if(!r.ok) throw new Error("Worker " + r.status);
       return r.json();
@@ -243,15 +253,17 @@
     });
   }
 
-  // ---- Feedback panel (owner-gated ?feedback=1) ----
+  // ---- Feedback panel (admin-gated ?feedback=1: GET lists, POST read=/del= mutates) ----
   var lastFb = 0;
   function loadFeedback(){
-    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok) return;
+    if(!localStorage.getItem(TOKKEY)) return;
     var body = $("fbbody"); if(!body) return;
     lastFb = Date.now();
-    fetch(WORKER + "/?feedback=1&k=" + encodeURIComponent(tok)).then(function(r){ return r.json(); }).then(function(j){
+    fetch(WORKER + "/?feedback=1", { headers: adminHeaders() }).then(function(r){ return r.json(); }).then(function(j){
       if(!j || !j.ok) return;
-      $("fbhead").textContent = "Feedback" + (j.count ? " (" + j.count + (j.unread ? " · " + j.unread + " new" : "") + ")" : "");
+      // The Worker caps the list at the newest ~200 and reports `total` — say so when trimmed.
+      var shown = (j.total && j.total > j.count) ? "showing " + j.count + " of " + j.total : "" + (j.count || "");
+      $("fbhead").textContent = "Feedback" + (j.count ? " (" + shown + (j.unread ? " · " + j.unread + " new" : "") + ")" : "");
       if(!j.items || !j.items.length){ body.innerHTML = '<p class="muted" style="margin:8px 0">No feedback yet.</p>'; return; }
       body.innerHTML = j.items.map(function(it){
         var when = new Date(it.ts).toLocaleString();
@@ -273,9 +285,9 @@
     }).catch(function(){});
   }
   function fbAction(kind, id){
-    var tok = localStorage.getItem(TOKKEY) || ""; if(!tok || !id) return;
+    if(!localStorage.getItem(TOKKEY) || !id) return;
     if(kind === "del" && !confirm("Delete this feedback?")) return;
-    fetch(WORKER + "/?feedback=1&k=" + encodeURIComponent(tok) + "&" + kind + "=" + encodeURIComponent(id)).then(function(){ loadFeedback(); }).catch(function(){});
+    fetch(WORKER + "/?feedback=1&" + kind + "=" + encodeURIComponent(id), { method: "POST", headers: adminHeaders() }).then(function(){ loadFeedback(); }).catch(function(){});
   }
 
   function start(){ poll(); loadFeedback(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
@@ -308,7 +320,9 @@
       var cm = h.match(/bg-neutral-900 px-2 py-1 text-sm">[^<]+<\/p>/g);
       var meta = (im ? im[0] + ' ' : '') + (cm ? cm.join(' ') : '');
       var p = location.pathname.split('/');
-      var o = { src: meta + ' arkGridCores:' + h.slice(s, e), region: (p[2] || ''), name: decodeURIComponent(p[3] || '') };
+      var rg = (p[2] || '');
+      if (rg.toUpperCase() === 'CE') rg = 'EU'; // lostark.bible says CE for EU Central; the calculator says EU
+      var o = { src: meta + ' arkGridCores:' + h.slice(s, e), region: rg, name: decodeURIComponent(p[3] || '') };
       location.href = '__CALC__#import=' + encodeURIComponent(JSON.stringify(o));
     }
     var bm = "javascript:(" + bmSource.toString().split("__CALC__").join(calcUrl) + ")();";

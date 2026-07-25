@@ -79,7 +79,11 @@ function dayKey() { return "vb:" + new Date().toISOString().slice(0, 10); }
 
 async function readBudget(env) {
   const raw = await env.BUDGET.get(dayKey());
-  const b = raw ? JSON.parse(raw) : { calls: 0, estNeurons: 0 };
+  // Guarded parse: one corrupt vb: value used to throw here and take the WHOLE endpoint down
+  // (a CORS-less Cloudflare error page). A bad record now just reads as a fresh day.
+  let b = null;
+  if (raw) { try { b = JSON.parse(raw); } catch (e) { b = null; } }
+  if (!b || typeof b !== "object" || !isFinite(b.calls) || !isFinite(b.estNeurons)) b = { calls: 0, estNeurons: 0 };
   return b;
 }
 async function writeBudget(env, b) {
@@ -140,8 +144,20 @@ async function runVision(env, model, bytes, prompt) {
   return v || "";
 }
 
+// The whole handler runs behind this catch (same pattern as astrogem-data.js): an uncaught
+// throw — e.g. atob() choking on hand-mangled base64, or JSON.parse on a corrupt KV value —
+// would otherwise surface as a Cloudflare error page with NO CORS headers, which the browser
+// masks as a bare "network error". Behind the catch it's a CORS'd JSON 500 the client can show.
 export default {
   async fetch(request, env) {
+    try { return await handle(request, env); }
+    catch (e) {
+      return json(request, { error: "worker error: " + String(e && e.message || e).slice(0, 140) }, 500);
+    }
+  }
+};
+
+async function handle(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(request) });
 
     if (request.method === "GET") {
@@ -178,7 +194,10 @@ export default {
       return json(request, Object.assign(JSON.parse(cached), { cached: true, budget: { calls: b0.calls, estNeurons: b0.estNeurons, capNeurons: DAILY_NEURON_BUDGET } }));
     }
 
-    // budget gate — the hard 90% cap
+    // budget gate — the hard 90% cap.
+    // KNOWN small race (accepted): read-then-write with no lock, so two requests landing in the
+    // same instant can both pass the gate before either write — the counter can overshoot by a
+    // call or two. The 10% margin below the paid line exists exactly to absorb that.
     const b = await readBudget(env);
     if (b.estNeurons + EST_NEURONS_PER_CALL > DAILY_NEURON_BUDGET) {
       return json(request, {
@@ -222,5 +241,4 @@ export default {
     // only cache useful answers — an empty/transient failure must not poison 7 days
     if (Object.keys(values).length) await env.BUDGET.put(cacheKey, JSON.stringify(payload), { expirationTtl: CACHE_TTL });
     return json(request, Object.assign({}, payload, { cached: false, budget: { calls: b.calls, estNeurons: b.estNeurons, capNeurons: DAILY_NEURON_BUDGET } }));
-  }
-};
+}

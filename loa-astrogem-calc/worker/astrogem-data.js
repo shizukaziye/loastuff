@@ -13,19 +13,22 @@
  * cap at 25MB; a bounded webp capture is ~150-700KB). R2 was abandoned for KV
  * (dashboard-enable friction, code 10042); revisit only if volume demands it.
  *
- * Routes (all require the site token ?k= — but note the asymmetry: READING
- * (/list, /obj) is genuinely password-gated, while /collect's token arrives from
- * every client unconditionally (gate.js collectToken) because collection must
- * never be blocked by the lock (Shizu 2026-07-18: "only the AI-powered parsing
- * should be password locked"). The ?k on /collect only stops blind endpoint
- * scans; the real quota protection is DAILY_WRITE_CAP below — KV free tier
- * allows 1k writes/day and a record is one write):
+ * Auth. READING (/list, /obj) requires the ADMIN_TOKEN Worker secret as an
+ * `X-Admin-Token` header (adminOk below: fail-closed, constant-time). It used to
+ * check ?k=<gate hash> and call that "genuinely password-gated" — it wasn't: the
+ * hash ships to every browser in gate.js, so anyone could enumerate and download
+ * every collected screenshot. /collect takes NO token at all now (clients still
+ * send the old ?k=; it's ignored): collection must never be blocked by the lock
+ * (Shizu 2026-07-18: "only the AI-powered parsing should be password locked"),
+ * and the real quota protection is DAILY_WRITE_CAP below — KV free tier allows
+ * 1k writes/day and a record is one write.
  *   POST /collect      body: JSON { image, parse, final, changed, meta } -> { ok, id }
- *   GET  /list?cursor= -> { keys: [...], cursor }
- *   GET  /obj?key=     -> the stored record JSON
- *   GET  /health       -> ok (ungated)
+ *   GET  /list?cursor= -> { keys: [...], cursor }        (admin)
+ *   GET  /obj?key=     -> the stored record JSON          (admin)
+ *   GET  /health       -> ok (open)
  *
  * Deploy:  npx wrangler deploy -c wrangler-data.toml
+ * Secret:  wrangler secret put ADMIN_TOKEN -c wrangler-data.toml
  */
 "use strict";
 
@@ -38,7 +41,6 @@ const ALLOW_ORIGINS = [
   "http://localhost:8799",           // local verify server (this repo's test port)
   "http://127.0.0.1:8799"
 ];
-const GATE_TOKEN = "6104928cd0cc5374f5330e63e6a834f99aef7579db15c77d9d154932bf7a8ced";
 // MEASURED 2026-07-19: bodies ≥6MB kill the free-tier isolate mid-read — Cloudflare
 // then serves an HTML 500 WITHOUT CORS headers, which browsers mask as a bare
 // "network error" (exactly how a night of Shizu's records died: a pre-crop client
@@ -53,11 +55,29 @@ function cors(req) {
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token",
     "Access-Control-Max-Age": "86400"
   };
 }
-function gated(u) { return (u.searchParams.get("k") || "") === GATE_TOKEN; }
+// Admin auth for the read routes: the ADMIN_TOKEN Worker secret as an X-Admin-Token header.
+// Fail-closed (secret unset -> nobody is admin), constant-time compare, header-only (a token
+// in a URL lands in logs and Referer headers). Same helper style as astrogem-bible.js.
+function adminOk(req, env) {
+  const secret = (env && env.ADMIN_TOKEN) || "";
+  if (!secret) return false;                              // fail closed: no secret, no admin
+  const given = req.headers.get("X-Admin-Token") || "";
+  const enc = new TextEncoder();
+  const a = enc.encode(given), b = enc.encode(secret);
+  if (a.byteLength !== b.byteLength) return false;        // explicit pre-check: timingSafeEqual needs equal lengths
+  try {
+    if (crypto.subtle && typeof crypto.subtle.timingSafeEqual === "function") {
+      return crypto.subtle.timingSafeEqual(a, b);         // Workers-native constant-time compare
+    }
+  } catch (e) { /* fall through to the XOR loop */ }
+  let diff = 0;                                           // fallback: XOR-accumulate every byte, no early exit
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
 function json(obj, status, req) {
   return new Response(JSON.stringify(obj), {
     status: status || 200,
@@ -104,7 +124,6 @@ async function handle(req, env) {
     const u = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
     if (u.pathname === "/health") return json({ ok: true }, 200, req);
-    if (!gated(u)) return json({ error: "locked" }, 403, req);
 
     if (req.method === "POST" && u.pathname === "/collect") {
       // gate on the header FIRST (browsers always send it for string bodies),
@@ -166,7 +185,9 @@ async function handle(req, env) {
       return json({ ok: true, id: id }, 200, req);
     }
 
+    // Read routes are ADMIN-ONLY: the records hold user screenshots.
     if (req.method === "GET" && u.pathname === "/list") {
+      if (!adminOk(req, env)) return json({ error: "locked" }, 403, req);
       const cursor = u.searchParams.get("cursor") || undefined;
       const res = await env.COLLECT.list({ prefix: "col/", cursor: cursor, limit: 500 });
       return json({
@@ -176,6 +197,7 @@ async function handle(req, env) {
     }
 
     if (req.method === "GET" && u.pathname === "/obj") {
+      if (!adminOk(req, env)) return json({ error: "locked" }, 403, req);
       const key = u.searchParams.get("key") || "";
       if (!/^col\//.test(key)) return json({ error: "bad key" }, 400, req);
       const val = await env.COLLECT.get(key);

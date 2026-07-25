@@ -25,12 +25,18 @@ and returns every equipped astrogem as JSON:
 }
 ```
 
-No Anthropic / external paid API and no secrets (the admin token is a soft gate in
-the source) — but it is **not** a plain stateless fetcher anymore. It carries:
+No Anthropic / external paid API — but it is **not** a plain stateless fetcher
+anymore, and it **does** carry secrets. It has:
 
 - a **KV namespace binding `CHARS`** — every fetched character is cached ~7 days,
-  an `__index__` list + gzipped snapshot feed the Leaderboard, and the lookup
-  **queue** (premium/free lanes) lives here too;
+  a gzipped snapshot feeds the Leaderboard, and the lookup **queue**
+  (premium/free lanes), feedback notes, and drain state live here too;
+- a **KV namespace binding `OAUTH`** — sign-in sessions + the drain's stored
+  probe token;
+- **four secrets** (`wrangler secret put <NAME> --config wrangler.bible.toml`):
+  `BIBLE_TOKEN` (the Bearer token for lostark.bible page fetches),
+  `BIBLE_CLIENT_ID` / `BIBLE_CLIENT_SECRET` (the OAuth app behind `/oauth/*`),
+  and `ADMIN_TOKEN` (the admin credential — see **Admin auth** below);
 - a **cron trigger** (`* * * * *`) that drains the queue every minute (with a
   monthly-budget guard, a fail-streak circuit breaker, and run/off/probe modes)
   and rebuilds the leaderboard snapshot at most every ~30 min;
@@ -71,18 +77,39 @@ works with no setup at all.
 
 ## API
 
-| Method | Path | Query | Response |
-|--------|------|-------|----------|
-| `GET`  | `/`  | `?region=NA&name=Paroxysmal` | `{ region, name, gems:[...], warnings:[...] }` (KV-cached ~7 days; add `&refresh=1` to bypass the cache, `&queue=1` to enqueue on a miss, `&wait=1` to hold the request through a kick-drain, `&pos=1` for queue position) |
-| `GET`  | `/`  | `?list=1` (`&fmt=2` compact) | `{ characters:[...] }` — the leaderboard snapshot |
-| `GET`  | `/`  | `?status=1` | drain/queue status |
-| `GET`  | `/`  | `?metrics=1&k=<token>` / `?control...&k=<token>` | owner dashboard + controls (`queue-admin.html`; gated) |
+Public endpoints:
+
+| Method | Path | Query / body | Response |
+|--------|------|--------------|----------|
+| `GET`  | `/`  | `?region=NA&name=Paroxysmal` | `{ region, name, gems:[...], warnings:[...] }` (KV-cached ~7 days; add `&refresh=1` to bypass the cache, `&queue=1` to enqueue on a miss, `&pos=1` for queue position). A cache miss without a sign-in token returns `401 { needSignIn }`. |
+| `GET`  | `/`  | `?region=&name=&wait=1&since=<ms>` | Long-poll: `{ done:true, …gems }` once cached newer than `since`, `{ done:false, notFound, error }` if dropped, else `{ done:false }`. Answers at once when the character isn't pending at all. |
+| `GET`  | `/`  | `?list=1` (`&fmt=2` compact) | `{ characters:[...] }` — the leaderboard snapshot (gzip) |
+| `GET`  | `/`  | `?status=1` | `{ paused, mode, message }` drain status |
+| `POST` | `/`  | `?submit=1` + JSON `{ region, name, src }` | Bookmarklet import → cache + leaderboard. Throttled ~1/5s and capped 40/day per IP. |
+| `POST` | `/`  | `?feedback=1` + JSON `{ type, message, contact, hp }` | Store a feedback note (throttled; ~90-day TTL) |
+| `GET`  | `/oauth/start`, `/oauth/callback` | — | lostark.bible sign-in (PKCE); browser navigations |
+| `GET/POST` | `/oauth/me`, `/oauth/logout` | `?s=<session>` | session check / sign-out |
 | `GET`  | `/`  | (none) | `{ ok, service, usage }` (health check) |
 | `OPTIONS` | `/` | — | CORS preflight (204) |
 
-Error responses: `{ error, ... }` with `400` (missing params), `404` (character not
-found), `422` (no Ark Grid data on the page), or `502` (upstream fetch error). The
-endpoint / KV-key / constant reference lives in the queue doc (§9–§11).
+Admin endpoints — every one requires the `ADMIN_TOKEN` secret as an
+**`X-Admin-Token` request header** (never a URL param); mutations are **POST**:
+
+| Method | Path | Query | Does |
+|--------|------|-------|------|
+| `GET`  | `/` | `?metrics=1` | dashboard payload (`queue-admin.html` polls this) |
+| `GET`  | `/` | `?feedback=1` | list the newest ≤200 notes (`{ items, count, total, unread }`) |
+| `GET`  | `/` | `?dequeue=1&list=1` | list the raw queue keys |
+| `POST` | `/` | `?control=1&mode=&rate=` | set drain mode (`run`/`off`/`probe`) and/or rate (1–30) |
+| `POST` | `/` | `?dequeue=1&match=`/`&all=1` | evict queue items |
+| `POST` | `/` | `?feedback=1&read=`/`&del=` | mark a note read / delete it |
+| `POST` | `/oauth/probe-token` | (Bearer token in `Authorization`) | arm the drain/probe credential (admin + roster check) |
+
+Error responses: `{ error, ... }` with `400` (missing params), `401` (sign-in
+needed), `403` (admin token missing/wrong), `404` (character not found), `405`
+(an old GET admin call — the error names the POST + header replacement), `422`
+(no Ark Grid data on the page), `429` (throttled), or `502` (upstream fetch
+error). The endpoint / KV-key / constant reference lives in the queue doc (§9–§11).
 
 ## How the gem data is decoded
 
@@ -113,5 +140,12 @@ Each gem looks like:
 
 ## CORS / security
 
-`ALLOW_ORIGIN` is `"*"` for easy first-run testing. Before production, lock it to
-your Pages origin (`TODO` at that line in the source).
+CORS is an **exact-match Origin allowlist** (`ALLOW_ORIGINS` in the source): the
+site origins plus `lostark.bible` / `www.lostark.bible` — the bookmarklet POSTs
+`?submit=1` from those pages, and its preflight needs the echoed Origin. Requests
+with no Origin (curl, the cron) run without CORS headers; CORS only binds browsers.
+
+Admin auth is the `ADMIN_TOKEN` Worker secret, sent as an `X-Admin-Token` header.
+It replaced the old `?k=<gate hash>` check, which shipped to every browser in
+`gate.js` and so gated nothing. Fail-closed: with the secret unset, no request is
+admin. Treat it as a real credential — send it only as a header, never in a URL.

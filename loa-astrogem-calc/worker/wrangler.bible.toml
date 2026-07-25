@@ -2,10 +2,11 @@
 # lostark.bible" feature. Separate from wrangler.toml (the Workers-AI vision
 # Worker) so the two deploy independently and neither breaks the other.
 #
-# Fetches a lostark.bible character page server-side with a browser User-Agent
-# (the site 403s default fetchers but returns 200 for a browser UA), extracts the
-# embedded arkGridCores data, and returns each equipped astrogem as JSON with CORS
-# headers. No bindings, no secrets, no external paid API — just an HTML fetch.
+# Fetches a lostark.bible character page server-side (with a browser User-Agent
+# and a Bearer token — see SECRETS), extracts the embedded arkGridCores data, and
+# returns each equipped astrogem as JSON. It is NOT a plain HTML fetcher: it
+# carries two KV namespaces, a cron, five rate-limit bindings, and four secrets
+# (below). No external paid API.
 #
 # Deploy:   cd worker && wrangler deploy --config wrangler.bible.toml
 # Local:    cd worker && wrangler dev --config wrangler.bible.toml
@@ -16,19 +17,23 @@ name = "astrogem-bible"
 main = "astrogem-bible.js"
 compatibility_date = "2026-06-01"
 
-# SECRET (not set here — this file is public):
+# SECRETS (never set here — this file is public; set each with
+#     wrangler secret put <NAME> --config wrangler.bible.toml ):
 #   BIBLE_TOKEN — the Bearer token lostark.bible's owners issued for this Worker. Every
-#   character-page request must send `Authorization: Bearer <token>` or they return 401.
-#   Set it once, never commit it:
-#       wrangler secret put BIBLE_TOKEN --config wrangler.bible.toml
-#   Without it the Worker still runs, but every lostark.bible fetch 401s (the error body
-#   says so) and the fail-streak breaker drops the drain into probe mode.
+#     character-page request must send `Authorization: Bearer <token>` or they return 401.
+#     Without it the Worker still runs, but tokenless fetches (old queue items, an unarmed
+#     probe) 401 and the fail-streak breaker drops the drain into probe mode.
+#   BIBLE_CLIENT_ID / BIBLE_CLIENT_SECRET — the lostark.bible OAuth app credentials behind
+#     the /oauth/* sign-in endpoints (PKCE code exchange + token revoke).
+#   ADMIN_TOKEN — the admin credential. Admin surfaces (?metrics, ?control, ?dequeue,
+#     ?feedback review, /oauth/probe-token) require it as an `X-Admin-Token` request header.
+#     Fail-closed: while unset, NO request is admin. Send it only as a header, never in a URL.
 
-# KV namespace: caches each pulled character (key = "region:name" lowercased) +
-# a "__index__" key listing every cached key, so the Leaderboard tab can list all
-# stored characters via ?list=1. The Worker degrades gracefully if this binding is
-# absent (fetches fresh, no caching). The owner creates the namespace (id below)
-# and deploys; see worker/README-bible.md.
+# KV namespace: caches each pulled character (key = "region:name" lowercased); the cron
+# builds the gzipped leaderboard snapshot (lb:snapshot:gz / :gz2) that ?list=1 serves; the
+# lookup queue (q:f: / q:p:), drain state, and feedback (fb:) live here too. The Worker
+# degrades gracefully if this binding is absent (fetches fresh, no caching). The owner
+# creates the namespace (id below) and deploys; see worker/README-bible.md.
 [[kv_namespaces]]
 binding = "CHARS"
 id = "0f51c3b5ac6d45a59186375d62879ad7"
@@ -76,8 +81,9 @@ limit = 3
 period = 60
 
 # GLOBAL overload gate: ONE shared counter across all requests (fixed key in code, not per-IP).
-# When tripped (limit below) the worker degrades: free (no-password) lookups are cut off; password lookups keep working at their normal 1/5s.
-# period max is 60s, so this is a rolling per-minute proxy for "10k/hour" that auto-recovers.
+# When tripped (limit below) the worker degrades: NEW lookups and enqueues pause for EVERYONE
+# equally — there is no password bypass. Cached reads keep working. period max is 60s, so this
+# is a rolling per-minute proxy for "10k/hour" that auto-recovers.
 [[ratelimits]]
 name = "GLOBAL_GATE"
 namespace_id = "1004"
@@ -98,9 +104,7 @@ period = 60
 [observability]
 enabled = true
 
-# --- Optional: lock CORS to your Pages origin instead of "*" ---
-# The Worker hardcodes ALLOW_ORIGIN = "*" (see TODO in astrogem-bible.js). To
-# restrict it without editing source you could read an env var; left commented to
-# keep the default zero-config.
-# [vars]
-# ALLOW_ORIGIN = "https://astrogem-calculator.pages.dev"
+# --- CORS ---
+# The Worker hardcodes an exact-match Origin allowlist (ALLOW_ORIGINS in
+# astrogem-bible.js): the site origins plus lostark.bible (the bookmarklet POSTs
+# ?submit=1 from its character pages). To serve a new frontend origin, add it there.

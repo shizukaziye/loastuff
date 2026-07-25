@@ -10,14 +10,16 @@
  *       effect1, effect1Level, effect2, effect2Level
  *   }, ... ] }
  *
- * No Anthropic / external paid API and no secrets (the admin token is a soft gate
- * in-source) — but it is NOT a plain stateless fetcher anymore. It carries the KV
- * lookup QUEUE (premium/free lanes) + every-minute cron drain (budget guard,
- * fail-streak circuit breaker, run/off/probe modes), the dirty-gated leaderboard
- * snapshot rebuild, five edge rate-limit bindings, and the KR source (lopec.kr)
- * alongside lostark.bible. Full plumbing: ../docs/how-the-queue-and-drain-work.md;
- * ops summary: README-bible.md. The owner deploys and pastes the URL into
- * grader.js/leaderboard.js/loadout-econ.js (WORKER_URL).
+ * No Anthropic / external paid API — but it is NOT a plain stateless fetcher
+ * anymore, and it DOES carry secrets (BIBLE_TOKEN, BIBLE_CLIENT_ID/SECRET, and
+ * ADMIN_TOKEN — the admin credential, sent as an X-Admin-Token header; see
+ * adminOk()). It carries the KV lookup QUEUE (premium/free lanes) + every-minute
+ * cron drain (budget guard, fail-streak circuit breaker, run/off/probe modes),
+ * the dirty-gated leaderboard snapshot rebuild, five edge rate-limit bindings,
+ * and the KR source (lopec.kr) alongside lostark.bible. Full plumbing:
+ * ../docs/how-the-queue-and-drain-work.md; ops summary: README-bible.md. The
+ * owner deploys and pastes the URL into grader.js/leaderboard.js/loadout-econ.js
+ * (WORKER_URL).
  *
  * Primary endpoints (full list incl. queue/admin in the queue doc):
  *   GET /?region=NA&name=Paroxysmal  -> { region, name, gems:[...], pulledAt, cached }
@@ -27,9 +29,9 @@
  *   OPTIONS /                        -> CORS preflight
  *
  * KV (binding CHARS, see wrangler.bible.toml): each pulled character is stored under
- * key "region:name" (lowercased) as { region, name, gems, pulledAt, ... }, and its
- * key is appended to the "__index__" array so ?list=1 can enumerate every character.
- * If the CHARS binding is absent the Worker still works — it just fetches fresh every
+ * key "region:name" (lowercased) as { region, name, gems, pulledAt, ... }; ?list=1
+ * serves the cron-built gzipped snapshot of them (lb:snapshot:gz / :gz2). If the
+ * CHARS binding is absent the Worker still works — it just fetches fresh every
  * time (cached:false) and ?list=1 returns an empty list.
  *
  * --- The two reverse-engineered maps (derived by cross-referencing arkGridCores
@@ -57,7 +59,25 @@
  *    1..5; opts levels in 1..5.
  */
 
-const ALLOW_ORIGIN = "*"; // TODO(before production): lock to the deployed Pages origin.
+// Exact-match CORS allowlist (was "*"). The site origins come first; the two lostark.bible
+// origins must stay listed because the "+ add to leaderboard" bookmarklet POSTs ?submit=1
+// FROM a lostark.bible character page (its JSON body forces a preflight, and the preflight
+// dies without an echoed Origin). Requests with no Origin (curl, the cron) are server-to-
+// server — CORS only constrains browsers — so they proceed with no CORS headers at all.
+const ALLOW_ORIGINS = [
+  "https://www.loseii.com",
+  "https://loseii.com",
+  "https://loastuff.pages.dev",
+  "https://lostark.bible",
+  "https://www.lostark.bible"
+];
+// Local dev servers too (any port — the repo is served from a handful of them). Only the
+// PUBLIC endpoints benefit: admin needs the X-Admin-Token header whatever the origin, and
+// everything a localhost page could read here is already public.
+const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+function originAllowed(origin) {
+  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin);
+}
 
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
@@ -93,18 +113,24 @@ function typeFromGemId(idStr) {
   return idStr[3] === "0" ? "order" : "chaos";
 }
 
-function corsHeaders() {
+// CORS headers for one request's Origin: exact allowlist match -> echo it (+ Vary: Origin,
+// so a shared cache never serves one origin's grant to another); anything else -> none.
+// Applied ONCE, in the exported fetch(), to whatever response the router returns — every
+// response here is Worker-constructed, so its headers are mutable in place.
+function corsHeaders(origin) {
+  if (!origin || !originAllowed(origin)) return {};
   return {
-    "Access-Control-Allow-Origin": ALLOW_ORIGIN,
+    "Access-Control-Allow-Origin": origin,
+    "Vary": "Origin",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Token",
     "Access-Control-Max-Age": "86400"
   };
 }
 function json(body, status, extraHeaders) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
-    headers: Object.assign({ "Content-Type": "application/json" }, corsHeaders(), extraHeaders || {})
+    headers: Object.assign({ "Content-Type": "application/json" }, extraHeaders || {})
   });
 }
 
@@ -219,7 +245,7 @@ function coresToGems(cores) {
 
 // ---- KV cache config + helpers ----
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // a cached character is "fresh" for 7 days.
-const INDEX_KEY = "__index__";               // KV key holding a JSON array of all char keys.
+const INDEX_KEY = "__index__";               // LEGACY key, never written anymore — kept only so isCharKey() can skip an old stored one.
 const SNAPSHOT_KEY = "lb:snapshot";          // LEGACY plain-JSON snapshot key (read as a fallback, deleted after migration).
 const SNAPSHOT_GZ_KEY = "lb:snapshot:gz";    // the whole leaderboard list, stored GZIPPED. The plain JSON hit ~26.1MB at ~5k
                                              // characters — 65KB under KV's 25MiB value cap (writes were days from silently
@@ -255,11 +281,32 @@ const UNAVAILABLE_MSG = "Character lookups are temporarily unavailable";
 const MAX_FETCH_ATTEMPTS = 5;                // after this many failed fetches a queued character is DROPPED, so a permanently-broken entry (e.g. some KR names) can't sit at the head retrying forever and starving everyone behind it.
 const QUEUE_TTL_S = 7 * 24 * 60 * 60;        // a queued request expires after 7 days if never drained.
 const SNAPSHOT_MIN_INTERVAL_MS = 30 * 60 * 1000; // rebuild the leaderboard snapshot at most every ~30 min (the read-heavy part).
-// Access token the GATED client appends as ?k= (== gate.js's salted hash). Requests without it
-// are un-refreshed pre-gate clients -> 403'd before any KV work, so they stop draining the quota.
-// Not the password (a one-way hash); a stale client just needs to refresh the page.
-const GATE_TOKEN = "6104928cd0cc5374f5330e63e6a834f99aef7579db15c77d9d154932bf7a8ced";
-function gated(u) { return (u.searchParams.get("k") || "") === GATE_TOKEN; }
+// ---- Admin auth ----------------------------------------------------------------------------
+// Every admin surface (?metrics, ?control, ?dequeue, ?feedback review, /oauth/probe-token)
+// requires the ADMIN_TOKEN Worker secret, sent as an `X-Admin-Token` request header:
+//     wrangler secret put ADMIN_TOKEN --config wrangler.bible.toml
+// This replaced the old ?k=<gate hash> check. That hash is the SAME value gate.js ships to
+// every browser, so it gated nothing — anyone reading the page source could freeze lookups,
+// purge the queue, or read feedback (incl. contact PII). Clients still send ?k= on public
+// lookups; it is ignored (it always was — no public path ever checked it).
+// Rules: FAIL CLOSED (secret unset -> nobody is admin), constant-time compare, and the token
+// rides only in a header — never a URL, so it can't leak via logs or Referer.
+function adminOk(request, env) {
+  const secret = (env && env.ADMIN_TOKEN) || "";
+  if (!secret) return false;                              // fail closed: no secret, no admin
+  const given = request.headers.get("X-Admin-Token") || "";
+  const enc = new TextEncoder();
+  const a = enc.encode(given), b = enc.encode(secret);
+  if (a.byteLength !== b.byteLength) return false;        // explicit pre-check: timingSafeEqual needs equal lengths
+  try {
+    if (crypto.subtle && typeof crypto.subtle.timingSafeEqual === "function") {
+      return crypto.subtle.timingSafeEqual(a, b);         // Workers-native constant-time compare
+    }
+  } catch (e) { /* fall through to the XOR loop */ }
+  let diff = 0;                                           // fallback: XOR-accumulate every byte, no early exit
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
 
 // ---- lostark.bible OAuth (Authorization Code + PKCE) ---------------------------------------
 // lostark.bible gates character pages behind `Authorization: Bearer <token>`. Tokens come from
@@ -267,10 +314,17 @@ function gated(u) { return (u.searchParams.get("k") || "") === GATE_TOKEN; }
 // use that user's access token to fetch pages on their behalf — so every upstream request is
 // attributable to a consenting human instead of an anonymous scraper.
 //
-// We never hand the raw uwo_ token to the browser. The callback mints an opaque SESSION id; the
-// page holds only that, and the Worker swaps it for the real token server-side per request.
-// Sessions live in their OWN KV namespace (OAUTH) — never CHARS, because buildCharacterList()
-// does a bare prefix-less list() there and would treat a session key as a character record.
+// TOKEN EXPOSURE — the honest version (2026-07-25). The SHIPPED flow is bible-oauth.js's
+// client-side PKCE: the BROWSER exchanges the code itself, keeps the RAW uwo_ access token in
+// localStorage, and sends it to this Worker as an Authorization: Bearer header per lookup. So
+// any XSS on the calculator page can read that token — keep the page dependency-free and
+// treat the token as browser-exposed. The SESSION flow below (/oauth/start -> /oauth/callback
+// mints an opaque s:<sid>; the raw token stays server-side in KV and sessionToken() swaps the
+// sid per request) avoids that exposure and is fully implemented — but the frontend has NOT
+// adopted it yet. It is available, not in use.
+// Sessions live in their OWN KV namespace (OAUTH) — never CHARS, because the leaderboard's
+// from-scratch rebuild does a bare prefix-less list() there and would treat a session key as
+// a character record.
 const OAUTH_AUTHORIZE   = "https://lostark.bible/oauth/authorize";
 const OAUTH_TOKEN_URL   = "https://lostark.bible/oauth/token";
 const OAUTH_REVOKE_URL  = "https://lostark.bible/oauth/revoke";
@@ -683,12 +737,12 @@ async function fetchCharacterData(env, region, name, userToken) {
   // request carries `Authorization: Bearer <token>` (their owners, 2026-07-22). The token
   // lives ONLY as a Worker secret (BIBLE_TOKEN) — never in source, since this repo is public.
   // Sent to lostark.bible ONLY: lopec.kr is an unrelated site and must never receive it.
-  // Prefer the SIGNED-IN USER's OAuth token (so the request is attributable to the human who
-  // asked for it); fall back to a service token if one is configured — that's all the background
-  // drain has, since no user is driving it.
-  // Use the token the caller passed — the requester's own for a user pull, the requester's stored
-  // token for a drained queue item, or the Paroxysmal service token for the recovery probe. There is
-  // NO shared fallback for user pulls: an unauthenticated fetch just fails (401), by design.
+  // Which token: the one the caller passed — the requester's own for a user pull, the
+  // requester's stored token for a drained queue item, or the Paroxysmal service token for
+  // the recovery probe. When the caller passed NONE, the next line falls back to the shared
+  // BIBLE_TOKEN secret (if set) — that fallback serves old queue items stored without a
+  // token and an unarmed probe. USER pulls can't ride it: the router 401s a signed-out
+  // lookup (needSignIn) before any fetch happens.
   if (!isKR) {
     const bibleToken = userToken || (env && env.BIBLE_TOKEN) || "";
     if (bibleToken) headers["Authorization"] = "Bearer " + bibleToken;
@@ -824,44 +878,86 @@ async function handleCharacter(env, region, name, refresh, extra, userToken) {
 // #3: mark a character changed so the next snapshot rebuild merges JUST it (not all ~4000 records).
 function markDirty(env, ck) { return env.CHARS.put(DIRTY_PREFIX + ck, "1", { expirationTtl: SNAPSHOT_DIRTY_TTL_S }).catch(function () {}); }
 
-// Full rebuild of the leaderboard list from a race-free KV enumeration. This is the EXPENSIVE path
-// (~one KV read per stored character) — used only for the FIRST build; later builds are incremental.
-async function buildCharacterList(env) {
-  const keys = [];
-  let cursor;
-  do {
-    const res = await env.CHARS.list({ cursor: cursor, limit: 1000 });
-    for (const k of res.keys) {
-      // Only actual character records ("region:name"). Skip control/queue/marker keys — especially
-      // q:* queue items, whose VALUE now holds the requester's token (must never be read into the list).
-      const n = k.name;
-      if (n === INDEX_KEY || n.indexOf("q:") === 0 || n.indexOf("drain:") === 0 ||
-          n.indexOf("usage:") === 0 || n.indexOf("nf:") === 0 || n.indexOf("lb:") === 0 ||
-          n.indexOf("fb:") === 0) continue;
-      keys.push(n);
-    }
-    cursor = res.list_complete ? null : res.cursor;
-  } while (cursor);
-  // Read every character record CONCURRENTLY (one KV read each); Promise.all collapses latency.
-  const records = await Promise.all(keys.map(function (k) { return kvGetJson(env, k); }));
-  const characters = [];
+// Is this KV key an actual character record ("region:name")? Skip control/queue/marker keys —
+// especially q:* queue items, whose VALUE holds the requester's token (must never be read into
+// the public list).
+function isCharKey(n) {
+  return !(n === INDEX_KEY || n.indexOf("q:") === 0 || n.indexOf("drain:") === 0 ||
+           n.indexOf("usage:") === 0 || n.indexOf("nf:") === 0 || n.indexOf("lb:") === 0 ||
+           n.indexOf("fb:") === 0 || n.indexOf("impc:") === 0);
+}
+
+// From-scratch rebuild of the leaderboard list, CHUNKED across cron ticks. The naive version
+// (list everything + one KV get per character, in one go) blows the ~1,000-subrequest budget of
+// a single invocation at ~5.5k stored characters — it died mid-flight every tick and left the
+// leaderboard PERMANENTLY empty whenever the snapshot had to be built from nothing. Now each
+// tick reads ≤ REBUILD_KEYS_PER_RUN records, parks the partial list (gzipped) + the list cursor
+// in KV, and resumes on the next tick; the finishing tick returns the full list (and the caller
+// writes the real snapshot). Only the FIRST build pays this — later builds are incremental.
+const REBUILD_CURSOR_KEY = "lb:rebuild:cursor"; // { c: <kv list cursor> } — present while a rebuild is in flight
+const REBUILD_ACC_KEY = "lb:rebuild:acc:gz";    // the characters accumulated so far, gzipped
+const REBUILD_KEYS_PER_RUN = 750;               // record reads per tick — headroom under the ~1k budget even sharing the invocation with a drain
+
+// One chunk of the from-scratch rebuild. Returns null while unfinished (progress parked in KV),
+// else the complete character list (parked state cleared).
+async function buildCharacterListChunk(env) {
+  let acc = [], cursor;
+  const st = await kvGetJson(env, REBUILD_CURSOR_KEY);
+  if (st) {
+    cursor = st.c || undefined;
+    try {
+      const gz = await env.CHARS.get(REBUILD_ACC_KEY, "arrayBuffer");
+      acc = (gz && gz.byteLength) ? await gunzipToJson(gz) : [];
+      if (!Array.isArray(acc)) { acc = []; cursor = undefined; }
+    } catch (e) { acc = []; cursor = undefined; }          // corrupt/missing accumulator -> restart clean
+  }
+  const res = await env.CHARS.list({ cursor: cursor, limit: REBUILD_KEYS_PER_RUN });
+  const names = [];
+  for (const k of res.keys) { if (isCharKey(k.name)) names.push(k.name); }
+  // Read this page's records CONCURRENTLY (≤ REBUILD_KEYS_PER_RUN gets); Promise.all collapses latency.
+  const records = await Promise.all(names.map(function (k) { return kvGetJson(env, k); }));
   for (const c of records) {
     if (c && Array.isArray(c.gems)) {
-      characters.push({ region: c.region, name: c.name, gems: c.gems, pulledAt: c.pulledAt, itemLevel: c.itemLevel, class: c.class });
+      acc.push({ region: c.region, name: c.name, gems: c.gems, pulledAt: c.pulledAt, itemLevel: c.itemLevel, class: c.class });
     }
   }
+  if (!res.list_complete) {
+    // More pages left: park progress and let the next cron tick continue.
+    await env.CHARS.put(REBUILD_ACC_KEY, await gzipString(JSON.stringify(acc)));
+    await env.CHARS.put(REBUILD_CURSOR_KEY, JSON.stringify({ c: res.cursor }));
+    return null;
+  }
+  // Done. Dedupe by region:name, newest wins — an import-triggered rebuild call can step the
+  // machine concurrently with the cron and re-append a page; cheap insurance against double rows.
+  const byId = {};
+  for (const c of acc) {
+    const id = (c.region + ":" + c.name).toLowerCase();
+    if (!byId[id] || (c.pulledAt || 0) >= (byId[id].pulledAt || 0)) byId[id] = c;
+  }
+  const characters = Object.keys(byId).map(function (id) { return byId[id]; });
+  try { await env.CHARS.delete(REBUILD_CURSOR_KEY); } catch (e) {}
+  try { await env.CHARS.delete(REBUILD_ACC_KEY); } catch (e) {}
   return characters;
 }
 
 // ---- Feedback (?feedback=1) ----
-// Public POST stores a note under "fb:<ts>-<rand>" in the CHARS KV. buildCharacterList
-// skips the fb: prefix (and these records carry no gems[], so the leaderboard ignores
-// them regardless). Owner GET (k=owner token) lists / marks-read / deletes. Everything is
+// Public POST stores a note under "fb:<ts>-<rand>" in the CHARS KV. The rebuild skips the
+// fb: prefix (and these records carry no gems[], so the leaderboard ignores them
+// regardless). Admin (X-Admin-Token): GET lists, POST &read=/&del= mutates. Everything is
 // trimmed + length-capped; a filled honeypot field is accepted-and-dropped silently.
+// Notes self-expire after ~90 days (they can hold contact PII — it must not sit forever).
 const FB_PREFIX = "fb:";
 const FB_MSG_MAX = 2000, FB_CONTACT_MAX = 80, FB_TYPE_MAX = 40;
+const FB_TTL_S = 90 * 24 * 3600;   // feedback record lifetime
+const FB_LIST_MAX = 200;           // newest notes the admin list reads per request (caps KV gets)
 
-async function handleFeedbackSubmit(env, request) {
+async function handleFeedbackSubmit(env, request, ip) {
+  // Own throttle (fb-scoped key in the shared per-IP namespace): before this, feedback POSTs
+  // were the one write path with no rate limit beyond HARD_CAP.
+  if (env.LOOKUP_THROTTLE) {
+    const t = await env.LOOKUP_THROTTLE.limit({ key: "fb:" + ip });
+    if (!t.success) return json({ error: "One feedback note every few seconds — please wait a moment.", rateLimited: true, retryAfterMs: 5000, throttled: true }, 429);
+  }
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Body must be JSON." }, 400); }
   if (body && String(body.hp || "").trim()) return json({ ok: true });   // honeypot: a bot filled it — drop
@@ -877,25 +973,37 @@ async function handleFeedbackSubmit(env, request) {
     read: false
   };
   const key = FB_PREFIX + rec.ts + "-" + Math.random().toString(36).slice(2, 8);
-  try { await env.CHARS.put(key, JSON.stringify(rec)); }
+  try { await env.CHARS.put(key, JSON.stringify(rec), { expirationTtl: FB_TTL_S }); }
   catch (e) { return json({ error: "Could not save." }, 500); }
   return json({ ok: true });
 }
 
-// Owner-only (caller checks the token first).
-//   ?feedback=1&k=OWNER            -> { items:[{id,ts,type,message,contact,ua,read}], count, unread }
-//   ?feedback=1&k=OWNER&read=<id>  -> mark that note read
-//   ?feedback=1&k=OWNER&del=<id>   -> delete that note
-async function handleFeedbackAdmin(env, u) {
+// Admin feedback MUTATIONS (POST + X-Admin-Token; the router checks the header first).
+//   POST ?feedback=1&read=<id>  -> mark that note read
+//   POST ?feedback=1&del=<id>   -> delete that note
+async function handleFeedbackAdminMutate(env, u) {
   if (!env || !env.CHARS) return json({ error: "Not configured." }, 503);
   const del = u.searchParams.get("del");
   if (del) { try { await env.CHARS.delete(FB_PREFIX + del.replace(/^fb:/, "")); } catch (e) {} return json({ ok: true }); }
   const read = u.searchParams.get("read");
   if (read) {
     const k = FB_PREFIX + read.replace(/^fb:/, "");
-    try { const r = await env.CHARS.get(k, "json"); if (r) { r.read = true; await env.CHARS.put(k, JSON.stringify(r)); } } catch (e) {}
+    // Re-putting refreshes the TTL — acceptable: a note the admin touched may live another 90d.
+    try { const r = await env.CHARS.get(k, "json"); if (r) { r.read = true; await env.CHARS.put(k, JSON.stringify(r), { expirationTtl: FB_TTL_S }); } } catch (e) {}
     return json({ ok: true });
   }
+  return json({ error: "pass read=<id> or del=<id>" }, 400);
+}
+
+// Admin feedback LIST (GET + X-Admin-Token; the router checks the header first).
+//   ?feedback=1 -> { items:[{id,ts,type,message,contact,ua,read}], count, total, unread }
+// Reads only the NEWEST FB_LIST_MAX notes: the key embeds Date.now() ms, so the lexicographic
+// list order IS chronological and the tail of the key list is the newest. This caps the
+// Promise.all at ≤200 gets (an unbounded read-all was on a path to the ~1k-op limit); `total`
+// reports how many exist so the UI can say "showing 200 of N". `unread` counts the returned
+// window only.
+async function handleFeedbackAdmin(env, u) {
+  if (!env || !env.CHARS) return json({ error: "Not configured." }, 503);
   const keys = [];
   let cursor;
   do {
@@ -903,11 +1011,12 @@ async function handleFeedbackAdmin(env, u) {
     for (const k of res.keys) keys.push(k.name);
     cursor = res.list_complete ? null : res.cursor;
   } while (cursor);
-  const recs = await Promise.all(keys.map(function (k) {
+  const newest = keys.slice(-FB_LIST_MAX);       // oldest-first list -> the tail is the newest
+  const recs = await Promise.all(newest.map(function (k) {
     return kvGetJson(env, k).then(function (r) { return r ? Object.assign({ id: k.slice(FB_PREFIX.length) }, r) : null; });
   }));
   const items = recs.filter(Boolean).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
-  return json({ ok: true, items: items, count: items.length, unread: items.filter(function (x) { return !x.read; }).length });
+  return json({ ok: true, items: items, count: items.length, total: keys.length, unread: items.filter(function (x) { return !x.read; }).length });
 }
 
 // ---- snapshot format v2 (compact) ----
@@ -975,13 +1084,13 @@ async function handleList(env, acceptEncoding, fmt) {
         // rare non-gzip client (plain curl, odd scripts): decompress for them — the edge does NOT.
         return new Response(new Response(gz).body.pipeThrough(new DecompressionStream("gzip")), {
           status: 200,
-          headers: Object.assign({ "Content-Type": "application/json" }, corsHeaders())
+          headers: { "Content-Type": "application/json" }   // CORS stamped on by the fetch() wrapper
         });
       }
       return new Response(gz, {
         status: 200,
         encodeBody: "manual", // body is ALREADY gzip — without this the runtime re-encodes it (double-gzip) to honor the header
-        headers: Object.assign({ "Content-Type": "application/json", "Content-Encoding": "gzip" }, corsHeaders())
+        headers: { "Content-Type": "application/json", "Content-Encoding": "gzip" }   // CORS stamped on by the fetch() wrapper
       });
     }
   } catch (e) {}
@@ -1009,7 +1118,7 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
   if (builtAt > 0 && !dirty.keys.length) return;                                // nothing changed since the last build
   const startedAt = Date.now();
   const snap = await readSnapshotObj(env);
-  let characters;
+  let characters, fromScratch = false;
   if (snap && Array.isArray(snap.characters) && snap.characters.length) {
     // INCREMENTAL: merge only the changed characters into the existing snapshot (upsert by region:name).
     characters = snap.characters.slice();
@@ -1025,7 +1134,10 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
       }
     }
   } else {
-    characters = await buildCharacterList(env);                                  // first build -> full read
+    // First build: CHUNKED across cron ticks (#8) — null means "progress parked, resume next tick".
+    fromScratch = true;
+    characters = await buildCharacterListChunk(env);
+    if (!characters) return;
   }
   if (!characters.length) return;
   const gzBytes = await gzipString(JSON.stringify({ builtAt: startedAt, characters: characters }));
@@ -1035,7 +1147,10 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
   try { await env.CHARS.delete(SNAPSHOT_KEY); } catch (e) {} // drop the 26MB legacy plain copy once gz exists
   await env.CHARS.put(BUILTAT_KEY, String(startedAt));
   // clear ONLY the markers we listed (any written mid-build keep theirs -> picked up next rebuild).
-  await Promise.all(dirty.keys.map(function (k) { return env.CHARS.delete(k.name).catch(function () {}); }));
+  // A finished FROM-SCRATCH build keeps ALL markers: it spanned several ticks, so a character
+  // re-cached mid-build may hold newer data than the page we read — the next incremental pass
+  // upserts (then clears) them.
+  if (!fromScratch) await Promise.all(dirty.keys.map(function (k) { return env.CHARS.delete(k.name).catch(function () {}); }));
 }
 
 // Rolling per-drain history (~last hour) for the admin dashboard: every cron drain appends one
@@ -1155,8 +1270,14 @@ async function drainQueue(env) {
     const snap0 = await kvGetJson(env, Q_ORDER_KEY);
     if (snap0 && Array.isArray(snap0.items) && !snap0.items.length && Date.now() - (snap0.ts || 0) < Q_ORDER_IDLE_TTL_MS) return;
   } catch (e) {}
-  // serialize active drains (the cron + enqueue-kicks) so two never overlap and double-fetch lostark.bible.
-  try { if (await env.CHARS.get(DRAIN_LOCK_KEY)) return; await env.CHARS.put(DRAIN_LOCK_KEY, "1", { expirationTtl: 55 }); } catch (e) {}
+  // serialize active drains (the cron + control-resumes) so two never overlap and double-fetch lostark.bible.
+  try { if (await env.CHARS.get(DRAIN_LOCK_KEY)) return; } catch (e) {}
+  // TTL 60, not 55: KV's MINIMUM expirationTtl is 60 — the old 55 made every lock put throw
+  // straight into a silent catch, so the lock NEVER engaged and drains could overlap. And a
+  // failed put must be SEEN, not swallowed: log it (the drain keeps going — availability over
+  // mutual exclusion, same as before).
+  try { await env.CHARS.put(DRAIN_LOCK_KEY, "1", { expirationTtl: 60 }); }
+  catch (e) { console.log("[drain] lock write failed (drains may overlap): " + (e && e.message || e)); }
   const perRun = cfg.drainPerMin;                 // admin-set rate (chars per cron run = per minute)
   const delayMs = Math.round(60000 / perRun);     // pace ONE fetch per (60/rate)s — e.g. 15/min => one every 4s (one character at a time)
   let processed = 0, cached = 0, failed = 0, consecFail = 0, stop = false;
@@ -1208,7 +1329,10 @@ async function drainQueue(env) {
       console.log("[drain-fail] " + it.r + ":" + it.n + " status=" + (res ? res.status : "throw") + " att=" + att);
       try {
         if (att >= MAX_FETCH_ATTEMPTS) { await env.CHARS.delete(it.k); removed.add(it.k); }                 // give up — drop it
-        else await env.CHARS.put(it.k, "", { metadata: { region: it.r, name: it.n, ts: it.t, attempts: att }, expirationTtl: QUEUE_TTL_S }); // preserve ts (keep FIFO place)
+        // Preserve ts (keep FIFO place) AND the requester's stored token (mirror requeueFront) —
+        // rewriting the value to "" lost the token, so the retry fetched unauthenticated, 401'd,
+        // and was dropped as "auth expired" even though the requester's token was fine.
+        else await env.CHARS.put(it.k, JSON.stringify({ t: itemTok }), { metadata: { region: it.r, name: it.n, ts: it.t, attempts: att }, expirationTtl: QUEUE_TTL_S });
       } catch (e) {}
       if (++consecFail >= PAUSE_FAIL_LIMIT) {
         // circuit-breaker -> PROBE: re-queue this run's failures at the FRONT (attempts reset; the
@@ -1348,7 +1472,14 @@ async function enqueueChar(env, region, name, premium, wantPos, ctx, userToken) 
 // lostark.bible character page and write it straight to the cache (source:"import"), so it shows in
 // the Grader (cached) and the Leaderboard with ZERO Worker->lostark.bible traffic. We re-parse the
 // submitted arkGridCores blob with the SAME parser the drain uses and reject anything without real
-// gems. Per-IP throttled (on top of HARD_CAP). Writes are live — validated but not moderated.
+// gems. Per-IP throttled (on top of HARD_CAP) + a per-IP DAILY cap. Writes are live — validated but
+// not moderated. ACCEPTED residual risk: anyone can overwrite any cached character (up to
+// IMPORT_DAILY_CAP a day per IP) with data of their choosing, INCLUDING bible-pulled records — we
+// deliberately do NOT block those overwrites, because the bookmarklet is the legitimate refresh
+// path for them while lookups are paused. The re-parse keeps fakes shaped like real gem data, and
+// the board is crowd-visible, so garbage gets noticed and re-pulled over.
+const IMPORT_CAP_PREFIX = "impc:";   // impc:<ip>:<YYYYMMDD> -> uploads accepted today (TTL 2d)
+const IMPORT_DAILY_CAP = 40;         // per-IP uploads/day — plenty for a roster, useless for flooding
 async function handleSubmit(env, request, ip, ctx) {
   if (!env || !env.CHARS) return json({ error: "Cache not configured." }, 503);
   // One upload per ~5s per IP (shares the lookup throttle namespace but a distinct key).
@@ -1356,10 +1487,22 @@ async function handleSubmit(env, request, ip, ctx) {
     const t = await env.LOOKUP_THROTTLE.limit({ key: "submit:" + ip });
     if (!t.success) return json({ error: "One upload every few seconds — please wait a moment.", rateLimited: true, retryAfterMs: 5000, throttled: true }, 429);
   }
+  // #5: per-IP daily cap. The 1/5s throttle alone still let one IP write ~17k fabricated
+  // records a day. Read the counter here, bump it only after a successful store (a
+  // read-then-increment race can overshoot by a request or two — fine, the cap is a budget,
+  // not an exact quota).
+  const impDay = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const impKey = IMPORT_CAP_PREFIX + ip + ":" + impDay;
+  let impUsed = 0;
+  try { impUsed = parseInt((await env.CHARS.get(impKey)) || "0", 10) || 0; } catch (e) {}
+  if (impUsed >= IMPORT_DAILY_CAP) {
+    return json({ error: "Daily upload limit reached (" + IMPORT_DAILY_CAP + "/day) — it resets at UTC midnight.", rateLimited: true, importCap: true }, 429);
+  }
 
   let body;
   try { body = await request.json(); } catch (e) { return json({ error: "Body must be JSON: { region, name, src }." }, 400); }
-  const region = String((body && body.region) || "").trim();
+  let region = String((body && body.region) || "").trim();
+  if (region.toUpperCase() === "CE") region = "EU"; // lostark.bible URLs say CE for EU Central; normalize so imports join the eu: cache/leaderboard instead of splitting (also heals old bookmarklets in the wild)
   const name = String((body && body.name) || "").trim();
   const src = String((body && body.src) || "");
   if (!region || !name) return json({ error: "region and name are required." }, 400);
@@ -1404,6 +1547,8 @@ async function handleSubmit(env, request, ip, ctx) {
   } catch (e) {
     return json({ error: "Failed to save the upload." }, 500);
   }
+  // Count this accepted upload against the daily cap (only after the store landed).
+  try { await env.CHARS.put(impKey, String(impUsed + 1), { expirationTtl: 2 * 24 * 3600 }); } catch (e) {}
   // Get the contributed character onto the leaderboard sooner than the cron's 30-min rebuild, but
   // don't re-gzip the whole snapshot on every import: coalesce to at most one rebuild per 10 min.
   // Fire-and-forget — adds no latency to the response. (Cron's 30-min pass is the backstop.)
@@ -1524,8 +1669,26 @@ async function oauthLogout(env, u) {
 
 export default {
   async fetch(request, env, ctx) {
+    // The router below builds plain responses; CORS is stamped on HERE, once, from the caller's
+    // Origin (allowlist echo + Vary — see corsHeaders). One place to reason about, no way for a
+    // route to forget it.
+    const resp = await handleFetch(request, env, ctx);
+    const cors = corsHeaders(request.headers.get("Origin") || "");
+    for (const h in cors) resp.headers.set(h, cors[h]);
+    return resp;
+  },
+
+  async scheduled(controller, env, ctx) {
+    // Every minute: drain a few queued characters (paced), then refresh the leaderboard snapshot
+    // if it's due (rebuildSnapshotIfChanged self-throttles to ~every 30 min so reads stay low).
+    await drainQueue(env);
+    await rebuildSnapshotIfChanged(env);
+  }
+};
+
+async function handleFetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
+      return new Response(null, { status: 204 });
     }
 
     const u = new URL(request.url);
@@ -1551,22 +1714,73 @@ export default {
     if (u.pathname === "/oauth/me")       return oauthMe(env, u);
     if (u.pathname === "/oauth/logout")   return oauthLogout(env, u);
     if (u.pathname === "/oauth/probe-token") {
+      // ADMIN + roster check. The roster check alone was claimable: any lostark.bible user who
+      // made a same-name character on another NA server could pass it, seize the canary
+      // credential, and brick auto-resume. Now only the admin can arm the probe.
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
       return storeProbeToken(env, request);
     }
 
-    // Public feedback submit (POST). Handled before the GET-only guard below.
+    // Feedback POST: the public submit, or (with &read=/&del= + the admin header) an admin
+    // mutation. Mutations are POST so a drive-by GET (<img src=…>) can never delete a note.
     if (u.searchParams.get("feedback") === "1" && request.method === "POST") {
-      return handleFeedbackSubmit(env, request);
+      if (u.searchParams.get("del") || u.searchParams.get("read")) {
+        if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
+        return handleFeedbackAdminMutate(env, u);
+      }
+      return handleFeedbackSubmit(env, request, ip);
+    }
+
+    // Admin MUTATIONS — POST-only + X-Admin-Token. GETs with side effects were a drive-by risk
+    // (any <img> tag could freeze lookups or purge the queue while CORS was "*").
+    // POST /?control=1&mode=&rate= — set the drain mode (run/off/probe) and/or rate (1-30).
+    if (u.searchParams.get("control") === "1" && request.method === "POST") {
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
+      const cur = await getDrainConfig(env);
+      const next = { mode: cur.mode, drainPerMin: cur.drainPerMin };
+      const mode = u.searchParams.get("mode");
+      let modeChanged = false;
+      if (mode && DRAIN_MODES.indexOf(mode) !== -1) {
+        next.mode = mode; modeChanged = true;
+        if (mode === "probe") { next.lastProbe = 0; next.interval = PAUSE_PROBE_FIRST_MS; } // probe immediately, then back off
+      }
+      const rate = parseInt(u.searchParams.get("rate"), 10);
+      if (Number.isFinite(rate) && rate >= 1 && rate <= 30) next.drainPerMin = rate;
+      await setDrainConfig(env, next);
+      // Resume/probe RIGHT NOW instead of waiting for the next cron tick — e.g. "Run" -> immediate drain.
+      if (modeChanged && next.mode !== "off" && ctx && ctx.waitUntil) { try { ctx.waitUntil(drainQueue(env)); } catch (e) {} }
+      return json({ ok: true, config: next }, 200);
+    }
+    // POST /?dequeue=1&match=<key substring>|&all=1 — evict stuck/orphaned queue items and
+    // invalidate the order snapshot so the next drain re-lists. Matches on a KEY SUBSTRING —
+    // encoding-proof, since some old items have a mojibake name whose key can't be rebuilt from
+    // a clean one. (GET ?dequeue=1&list=1 lists without touching anything.)
+    if (u.searchParams.get("dequeue") === "1" && request.method === "POST") {
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
+      const all = u.searchParams.get("all") === "1";
+      const match = (u.searchParams.get("match") || "").toLowerCase();
+      if (!all && !match) return json({ error: "pass match=<key substring> or all=1 (list via GET ?dequeue=1&list=1)" }, 400);
+      const removed = [];
+      for (const pfx of [QF, QP]) {
+        let cursor;
+        do {
+          const res = await env.CHARS.list({ prefix: pfx, cursor: cursor });
+          for (const k of res.keys) {
+            if (all || (match && k.name.toLowerCase().indexOf(match) !== -1)) {
+              try { await env.CHARS.delete(k.name); removed.push(k.name); } catch (e) {}
+            }
+          }
+          cursor = res.list_complete ? null : res.cursor;
+        } while (cursor);
+      }
+      try { await env.CHARS.delete(Q_ORDER_KEY); } catch (e) {}
+      return json({ ok: true, removed: removed, count: removed.length });
     }
 
     if (request.method !== "GET") {
       return json({ error: "Method not allowed (use GET ?region=&name=, or POST ?submit=1)." }, 405);
     }
-
-    // Owner token — gates ONLY the admin endpoints (?control / ?metrics). It never controls user
-    // access or queue priority: Grader pulls + the Leaderboard are open to everyone, one queue lane.
-    const isOwner = gated(u);
 
     // GLOBAL overload gate: one shared counter across ALL requests (fixed key, not the IP). When the
     // site-wide rate trips ~1000/min we enter "degraded" mode and pause NEW work for everyone equally
@@ -1584,64 +1798,46 @@ export default {
       const cfg = env.CHARS ? await getDrainConfig(env) : { mode: "run" };
       // SHORT browser cache: keeps the banner fresh (~30s, in line with the queue re-sync cadence) for
       // active users, while deduping rapid focus re-checks. paused = the drain isn't in "run" mode.
-      return json({ ok: true, paused: cfg.mode !== "run", mode: cfg.mode, message: UNAVAILABLE_MSG }, 200, { "Cache-Control": "public, max-age=30" });
+      // The message tracks the mode — it used to say "unavailable" even while running.
+      return json({ ok: true, paused: cfg.mode !== "run", mode: cfg.mode, message: cfg.mode !== "run" ? UNAVAILABLE_MSG : "Character lookups are running." }, 200, { "Cache-Control": "public, max-age=30" });
     }
 
-    // Owner-only: evict stuck/orphaned queue items and invalidate the order snapshot so the next
-    // drain re-lists. Lists at the EDGE (wrangler's KV CLI can't list/delete this namespace) and
-    // matches on a KEY SUBSTRING — encoding-proof, since some old items have a mojibake name whose
-    // key can't be rebuilt from a clean one. ?dequeue=1&k=OWNER&match=na:lari  (or &all=1 to clear,
-    // or &list=1 to just see the raw queue keys).
+    // Admin queue LIST (GET + X-Admin-Token): see the raw queue keys. Lists at the EDGE
+    // (wrangler's KV CLI can't list this namespace). The old GET mutations (&all/&match) moved
+    // to POST — tell the caller so instead of quietly 403ing.
     if (u.searchParams.get("dequeue") === "1") {
-      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
-      const listOnly = u.searchParams.get("list") === "1";
-      const all = u.searchParams.get("all") === "1";
-      const match = (u.searchParams.get("match") || "").toLowerCase();
-      if (!listOnly && !all && !match) return json({ error: "pass match=<key substring>, all=1, or list=1" }, 400);
-      const seen = [], removed = [];
+      if (u.searchParams.get("all") === "1" || u.searchParams.get("match")) {
+        return json({ error: "Dequeue mutations moved: POST /?dequeue=1&match=|&all=1 with the X-Admin-Token header (?k= no longer grants admin)." }, 405);
+      }
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
+      if (u.searchParams.get("list") !== "1") return json({ error: "pass list=1 (mutations are POST match=/all=1)" }, 400);
+      const seen = [];
       for (const pfx of [QF, QP]) {
         let cursor;
         do {
           const res = await env.CHARS.list({ prefix: pfx, cursor: cursor });
           for (const k of res.keys) {
             const md = k.metadata || {};
-            if (listOnly) { seen.push({ key: k.name, region: md.region, name: md.name, ts: md.ts }); continue; }
-            if (all || (match && k.name.toLowerCase().indexOf(match) !== -1)) {
-              try { await env.CHARS.delete(k.name); removed.push(k.name); } catch (e) {}
-            }
+            seen.push({ key: k.name, region: md.region, name: md.name, ts: md.ts });
           }
           cursor = res.list_complete ? null : res.cursor;
         } while (cursor);
       }
-      if (listOnly) return json({ ok: true, queue: seen, count: seen.length });
-      try { await env.CHARS.delete(Q_ORDER_KEY); } catch (e) {}
-      return json({ ok: true, removed: removed, count: removed.length });
+      return json({ ok: true, queue: seen, count: seen.length });
     }
 
-    // Owner-only feedback review (GET): list, mark-read, delete. Drives the queue-admin Feedback panel.
+    // Admin feedback review LIST (GET + X-Admin-Token). Mutations (read/del) moved to POST.
     if (u.searchParams.get("feedback") === "1") {
-      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
+      if (u.searchParams.get("del") || u.searchParams.get("read")) {
+        return json({ error: "Feedback read/delete moved: POST /?feedback=1&read=|&del= with the X-Admin-Token header (?k= no longer grants admin)." }, 405);
+      }
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
       return handleFeedbackAdmin(env, u);
     }
 
-    // Owner-only drain CONTROL: set the mode (run/off/probe) and/or the per-minute rate. Drives the
-    // queue-admin Controls panel. e.g. ?control=1&k=<token>&mode=off  or  &rate=10
+    // Drain control is a mutation: POST-only now (see the POST router above).
     if (u.searchParams.get("control") === "1") {
-      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
-      const cur = await getDrainConfig(env);
-      const next = { mode: cur.mode, drainPerMin: cur.drainPerMin };
-      const mode = u.searchParams.get("mode");
-      let modeChanged = false;
-      if (mode && DRAIN_MODES.indexOf(mode) !== -1) {
-        next.mode = mode; modeChanged = true;
-        if (mode === "probe") { next.lastProbe = 0; next.interval = PAUSE_PROBE_FIRST_MS; } // probe immediately, then back off
-      }
-      const rate = parseInt(u.searchParams.get("rate"), 10);
-      if (Number.isFinite(rate) && rate >= 1 && rate <= 30) next.drainPerMin = rate;
-      await setDrainConfig(env, next);
-      // Resume/probe RIGHT NOW instead of waiting for the next cron tick — e.g. "Run" -> immediate drain.
-      if (modeChanged && next.mode !== "off" && ctx && ctx.waitUntil) { try { ctx.waitUntil(drainQueue(env)); } catch (e) {} }
-      return json({ ok: true, config: next }, 200);
+      return json({ error: "Control moved: POST /?control=1&mode=&rate= with the X-Admin-Token header (?k= no longer grants admin)." }, 405);
     }
 
     // Leaderboard — open to everyone, throttled vs spam-refresh; paused for all while degraded.
@@ -1654,13 +1850,14 @@ export default {
       return handleList(env, request.headers.get("Accept-Encoding"), u.searchParams.get("fmt"));
     }
 
-    // Owner-only QUEUE METRICS (gated by the token): backlog counts, the queued list in drain order
-    // (PREMIUM first, then FREE, each alphabetical), drain config + monthly usage. Light — two queue
-    // list()s + two small get()s, NO big snapshot read — so the private dashboard can poll it often.
+    // Admin QUEUE METRICS (GET + X-Admin-Token): backlog counts, the queued list in drain order
+    // (PREMIUM first, then FREE), drain config + monthly usage. Light — two queue list()s + a few
+    // small get()s, NO big snapshot read — so the private dashboard can poll it often.
     if (u.searchParams.get("metrics") === "1") {
-      if (!isOwner) return json({ error: "Forbidden — owner token required." }, 403);
-      // #1: read the q:order snapshot (1 cheap read; lists only if stale) + the small state keys,
-      // all independent -> one parallel round-trip.
+      if (!adminOk(request, env)) return json({ error: "Forbidden — admin token required (X-Admin-Token header)." }, 403);
+      // Lists the LIVE queue fresh (listQueueOrder — it does NOT read the q:order snapshot:
+      // one admin viewer, and fresh beats cached so new enqueues show immediately) + the small
+      // state keys, all independent -> one parallel round-trip.
       const [items, usage0, lw, dlog, cfg] = await Promise.all([
         listQueueOrder(env).catch(function () { return []; }), // admin: always the LIVE queue (1 owner; fresh > cached so new enqueues show immediately)
         kvGetJson(env, USAGE_KEY).catch(function () { return null; }),
@@ -1704,13 +1901,37 @@ export default {
     // {done:false} on timeout so the client simply reconnects. Drives the grader's refresh banner.
     if (u.searchParams.get("wait") === "1" && env.CHARS) {
       const sinceMs = parseInt(u.searchParams.get("since"), 10) || 0;
+      const doneJson = function (rec) { return json(Object.assign({}, rec, { cached: true, done: true }), 200); };
+      const notFoundJson = function (miss) { return json({ done: false, notFound: true, error: (miss.length > 3 ? miss : "We couldn't find that character on lostark.bible.") }, 200); };
+      const isDone = function (rec) { return rec && Array.isArray(rec.gems) && (rec.pulledAt || 0) > sinceMs; };
+      // #7 read-amp guard: this used to hold + poll (~34 KV reads) for ANY name, queued or not —
+      // an unauthenticated read amplifier. Pre-check ONCE (one parallel round) that the lookup is
+      // actually pending — cached record, nf: marker, or queue membership — before paying the loop.
+      const [rec0, miss0, qp0, qf0] = await Promise.all([
+        kvGetJson(env, key),
+        env.CHARS.get(NOTFOUND_PREFIX + key),
+        env.CHARS.get(QP + key),
+        env.CHARS.get(QF + key)
+      ]);
+      if (isDone(rec0)) return doneJson(rec0);
+      if (miss0) return notFoundJson(miss0);
+      if (qp0 === null && qf0 === null) {
+        // Not queued, nothing cached-newer. One short grace re-check first: a just-kicked fetch
+        // deletes its queue key a beat before the fresh record is readable here. The ~2s pause
+        // also paces the client's reconnect loop (it retries instantly on {done:false}) to a
+        // rate the HARD_CAP never has to see.
+        await new Promise(function (r) { setTimeout(r, 2000); });
+        const [rec1, qp1, qf1] = await Promise.all([kvGetJson(env, key), env.CHARS.get(QP + key), env.CHARS.get(QF + key)]);
+        if (isDone(rec1)) return doneJson(rec1);
+        if (qp1 === null && qf1 === null) return json({ done: false }, 200);   // truly not pending -> answer now, don't hold 25s
+      }
       const deadline = Date.now() + 25000;
       while (Date.now() < deadline) {
+        await new Promise(function (r) { setTimeout(r, 1500); });   // the pre-check above covered t=0
         const rec = await kvGetJson(env, key);
-        if (rec && Array.isArray(rec.gems) && (rec.pulledAt || 0) > sinceMs) return json(Object.assign({}, rec, { cached: true, done: true }), 200);
+        if (isDone(rec)) return doneJson(rec);
         const miss = await env.CHARS.get(NOTFOUND_PREFIX + key);   // dropped (404/422...) while waiting -> stop + report why
-        if (miss) return json({ done: false, notFound: true, error: (miss.length > 3 ? miss : "We couldn't find that character on lostark.bible.") }, 200);
-        await new Promise(function (r) { setTimeout(r, 1500); });
+        if (miss) return notFoundJson(miss);
       }
       return json({ done: false }, 200);
     }
@@ -1779,12 +2000,4 @@ export default {
     if (!userTok) return json({ needSignIn: true, error: "Sign in with lostark.bible to look up a character." }, 401);
     if (wantQueue) return enqueueChar(env, region, name, false, wantPos, ctx, userTok);
     return handleCharacter(env, region, name, refresh, { nextMs: 5000 }, userTok);
-  },
-
-  async scheduled(controller, env, ctx) {
-    // Every minute: drain a few queued characters (paced), then refresh the leaderboard snapshot
-    // if it's due (rebuildSnapshotIfChanged self-throttles to ~every 30 min so reads stay low).
-    await drainQueue(env);
-    await rebuildSnapshotIfChanged(env);
-  }
-};
+}

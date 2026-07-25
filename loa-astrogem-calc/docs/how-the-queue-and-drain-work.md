@@ -41,7 +41,7 @@ So the design is **cache-once, serve-many, fetch-politely**:
                               cached & fresh? ──yes──► return gems (free KV read)
                                    │ no (MISS)
                                    ▼
-                              enqueueChar: put q:f|q:p key  ──► KICK: kickFetch() ──► GET page
+                              enqueueChar: put q:f key      ──► KICK: kickFetch() ──► GET page
                                    │  return {queued}                  │ (direct, no list)  │
    ◄───────────────────────────────                                   ▼                    ▼
   show "in queue" + start watch                                  cache the gems  ◄── parse arkGridCores
@@ -63,18 +63,18 @@ here. (A third, the old `astrogem-vision` OCR worker, was removed 2026-07-18.)
 
 ## 3. The lookup queue
 
-### Two priority lanes
+### Two lanes — one vestigial
 
 Queued characters are just KV keys; the region+name ride in the key's **metadata** (so listing the
-queue needs no extra reads):
+queue needs no extra reads). The **value** holds the requester's sign-in token (`{ t }`), which the
+drain uses to fetch on their behalf:
 
 | Prefix | Lane | Who lands here |
 |---|---|---|
-| `q:p:` | **Premium** (drained first) | password ("gated") clients |
-| `q:f:` | **Free** | everyone else |
+| `q:p:` | **Premium** (drained first) | **nobody, anymore** — `enqueueChar` only ever writes the free lane. The lane is vestigial: any legacy `q:p:` keys still drain first, and nothing new joins them. |
+| `q:f:` | **Free** | everyone |
 
-A free-queued character that's later looked up *with* the password is **upgraded** to the premium
-lane in place. Each queue key expires after `QUEUE_TTL_S` (**7 days**) if never drained.
+Each queue key expires after `QUEUE_TTL_S` (**7 days**) if never drained.
 
 ### How a character enters the queue
 
@@ -85,8 +85,13 @@ A lookup is `GET ?region=NA&name=Foo&queue=1&pos=1`:
   grids rarely change; re-fetching every old character isn't worth the upstream load). The user can
   press **Re-pull** (`&refresh=1`) on demand.
 - **Already queued** → don't re-add; confirm it's still queued and (with `&pos=1`) return its live
-  position/ETA. This path also **re-kicks** the fetch (see §5).
-- **Miss** → `enqueueChar()`: write the queue key, fire the **kick**, return `{queued:true}`.
+  position/ETA. This path does **not** re-kick: the drain fetches the item with the token stored at
+  enqueue time, not the poller's.
+- **Miss, signed in** → `enqueueChar()`: write the queue key (with the requester's token in the
+  value), fire the **kick**, return `{queued:true}`.
+- **Miss, signed out** → `401 { needSignIn }`. A fresh pull scrapes lostark.bible on the caller's
+  behalf, so it needs the caller's own token. Signed-out visitors still get cached characters and
+  the leaderboard.
 
 `enqueueChar` refuses up front if: the drain mode isn't `run` (→ "temporarily unavailable"), the
 character is in the **not-found** set (§3 below), the global **enqueue gate** is tripped, or the
@@ -137,7 +142,7 @@ via `getDrainConfig()` (default `{ run, 10 }`) and set only via the owner `?cont
 |---|---|---|
 | **`run`** | Drain at `drainPerMin` characters/minute (the normal path). | Yes, paced |
 | **`off`** | Frozen. Does nothing. Manual resume only. | **Zero** |
-| **`probe`** | Paused, but periodically probes the oldest queued character; **auto-resumes** (→`run`) the moment one succeeds. | One probe per backoff tick |
+| **`probe`** | Paused, but periodically probes the **canary** (NA/Paroxysmal) with the stored service token; **auto-resumes** (→`run`) the moment a probe succeeds. | One probe per backoff tick |
 
 While not in `run`, new lookups get a "Character lookups are temporarily unavailable" notice
 (`?status=1` reports `paused:true`).
@@ -165,11 +170,12 @@ fetch immediately via `ctx.waitUntil(...)`.
 > (eventual consistency, §3), so the kick drained a stale/empty list, **missed the new character**,
 > and fell back to the cron. The "kick" existed but did nothing for the one character that mattered.
 
-The fix is **`kickFetch(env, region, name)`**: it fetches and caches **that specific character
-directly — no `list()`** — so it's immune to list lag. It's mode-gated (`run` only), mirrors the
-drain's `ok → cache` / `4xx → drop + remember` branches, and leaves block/transient errors queued
-for the cron (which owns the breaker). It fires from **both** `enqueueChar` and the
-already-queued lookup path (the latter retries a character a previous kick missed).
+The fix is **`kickFetch(env, region, name, userToken)`**: it fetches and caches **that specific
+character directly — no `list()`** — so it's immune to list lag. It's mode-gated (`run` only),
+mirrors the drain's `ok → cache` / `4xx → drop + remember` branches, and leaves block/transient
+errors queued for the cron (which owns the breaker). It fires **only from `enqueueChar`**, with
+the enqueuer's own token. The already-queued lookup path does **not** re-kick — a poller's token
+must not be spent on someone else's request; a character a kick missed waits for the cron drain.
 
 **Measured end-to-end:** a freshly-cleared character caches in **1.7–2.0s**, and the grader's
 `?wait` long-poll returns `{done}` in ~1.8s → loadout viewable in **~2s**.
@@ -180,9 +186,13 @@ reliably shows it (labeled **`kick`**) even when the live queue list never got t
 
 ### The drain lock
 
-`drain:lock` (a KV key, **55s** TTL, auto-expiring for crash safety) serializes the **cron and
+`drain:lock` (a KV key, **60s** TTL, auto-expiring for crash safety) serializes the **cron and
 `?control`-resume** `drainQueue` runs so two never overlap and double-fetch. (`kickFetch` is a single
 direct fetch and doesn't take the lock.)
+
+> History: the TTL used to be 55s — **below KV's 60s minimum** — so every lock write threw into a
+> silent catch and the lock never engaged. It is 60s now, and a failed lock write is logged instead
+> of swallowed (the drain still proceeds: availability over mutual exclusion).
 
 ### Per-character outcomes (inside a drain run)
 
@@ -228,22 +238,26 @@ KV work** — a blocked request touches no KV:
 | Binding | Limit | Key | Purpose |
 |---|---|---|---|
 | `HARD_CAP` | 60 / 60s | per IP | Absolute backstop on **every** request — stops scripted abuse. |
-| `LOOKUP_THROTTLE` | 2 / 10s (~1/5s) | per IP | Paces **new-character** lookups. Cached reads bypass it entirely. |
+| `LOOKUP_THROTTLE` | 2 / 10s (~1/5s) | per IP | Paces **new-character** lookups. Also reused (distinct keys) for `?submit=1` uploads and `?feedback=1` notes. Cached reads bypass it entirely. |
 | `LB_THROTTLE` | 3 / 60s | per IP | Stops leaderboard spam-refresh. |
-| `GLOBAL_GATE` | 1000 / 60s | site-wide | Overload gate → "degraded": free lookups cut off, password lookups continue. Auto-recovers. |
+| `GLOBAL_GATE` | 1000 / 60s | site-wide | Overload gate → "degraded": **new lookups and enqueues pause for everyone equally — no bypass, password or not.** Cached reads keep working. Auto-recovers. |
 | `ENQUEUE_GATE` | 10 / 60s | site-wide | Caps **new** characters queued site-wide to match the drain rate, so the backlog (and monthly writes) can't grow faster than we empty it. |
 
-The password no longer buys a faster *rate* — it only grants **queue priority** (the premium lane)
-and **access while the site is degraded**.
+On top of the edge limits, `?submit=1` also carries a KV-backed **daily cap** (`impc:<ip>:<day>`,
+40 uploads/day per IP) so one IP can't flood the cache with fabricated loadouts.
+
+The password grants nothing here anymore: no rate, no priority (the premium lane is vestigial,
+§3), no degraded-mode bypass.
 
 ---
 
 ## 7. The admin page (`queue-admin.html`)
 
-A private dashboard that polls `?metrics=1&k=<token>` every **2 seconds**. Panels:
+A private dashboard that polls `?metrics=1` (with the admin header, see **Auth**) every
+**2 seconds**. Panels:
 
 - **Controls** — `Run` (green) / `Off` (red) / `Probe` (amber) buttons (live-highlighted to the
-  current mode) plus a **drain-rate** input (1–30). Each writes via `?control` and the mode is
+  current mode) plus a **drain-rate** input (1–30). Each POSTs via `?control` and the mode is
   reflected immediately. The current mode and rate are shown at all times.
 - **Errors** — recent failed/dropped fetches with their reason and upstream status.
 - **Drain history (last hour)** — one row per drain run: time, ✓ cached / ✗ failed / ⊝ dropped
@@ -252,13 +266,25 @@ A private dashboard that polls `?metrics=1&k=<token>` every **2 seconds**. Panel
   **`kick`**; `ok` shows when no stop reason was recorded), the duration, and the cached names.
   Kicks (sub-2s single-character drains) show here labeled `kick`.
 - **Queue** — the live backlog in drain order (premium first), with each entry's wait time.
+- **Feedback** — the newest ≤200 notes (the header says "showing 200 of N" when trimmed), with
+  mark-read / delete buttons (POSTs).
 - **Import bookmarklet** — the (deliberately non-public) one-click importer install, kept here rather
   than on the public grader.
 
-**Auth.** `?control` and `?metrics` require `?k=` to equal the **gate token** (`gated()` — the same
-salted-hash token gated clients append; it lives in the source as `GATE_TOKEN`). It's a soft gate,
-not a hard secret. **Treat it as a credential: never type it into a form** — verify admin behavior
-with a dummy token (which 403s) so the live state is never touched by accident.
+**Auth.** Every admin call carries the **`ADMIN_TOKEN` Worker secret** as an **`X-Admin-Token`
+request header**. The old scheme compared `?k=` to a hash baked into the source — the same hash
+`gate.js` ships to every browser, so anyone could pass it; it gated nothing. The new rules:
+
+- **Fail-closed** — while the secret is unset, no request is admin.
+- **Header, never URL** — a URL param lands in access logs and Referer headers; a header doesn't.
+- **Mutations are POST** — `?control`, `?dequeue` evictions, feedback read/delete. A GET can then
+  never change state, so a drive-by `<img>` tag can't freeze lookups or purge the queue. Old GET
+  admin calls get a `405` whose error names the replacement.
+- The page stores the token in `localStorage` and forgets it on any `403` (wrong/rotated token).
+
+**Treat `ADMIN_TOKEN` as a real credential.** Set it with
+`wrangler secret put ADMIN_TOKEN --config wrangler.bible.toml`, rotate it there if it leaks, and
+never paste it anywhere but the admin page's token box.
 
 ---
 
@@ -282,18 +308,28 @@ not-found reason) tear the watch down from whichever path fires first.
 
 ## 9. Endpoint reference (`astrogem-bible`)
 
-All are `GET`. "Owner" = requires `?k=<gate token>`.
+"Admin" = requires the `ADMIN_TOKEN` secret as an **`X-Admin-Token` header** (fail-closed;
+mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 
-| Endpoint | Who | Returns |
-|---|---|---|
-| `?region=&name=` | public | Cached gems (legacy/synchronous path). |
-| `?region=&name=&queue=1[&pos=1]` | public | Cached gems, **or** `{queued, tier, position?}`; enqueues + kicks on a miss. |
-| `&refresh=1` | public | Bypass the cache and re-pull (re-enqueue). |
-| `?wait=1&region=&name=&since=<ms>` | public | Long-poll: `{done:true, …gems}` when cached newer than `since`, `{notFound, error}` if dropped, else `{done:false}` after ~25s. |
-| `?status=1` | public | `{paused, mode, message}` (30s browser cache) — drives the "unavailable" banner. |
-| `?list=1` | public (throttled) | The whole leaderboard snapshot. |
-| `?metrics=1` | **owner** | `{mode, drain:{perMin,delayMs}, queue:{premium,free,total,list}, usage, lastWriteMs, drainLog, paused}`. |
-| `?control=1&mode=&rate=` | **owner** | Set mode (`run`/`off`/`probe`) and/or rate (1–30). Resuming fires an immediate drain. |
+| Method | Endpoint | Who | Returns / does |
+|---|---|---|---|
+| GET | `?region=&name=` | public | Cached gems (legacy/synchronous path). |
+| GET | `?region=&name=&queue=1[&pos=1]` | public | Cached gems, **or** `{queued, tier, position?}`; enqueues + kicks on a miss (signed-in only — a signed-out miss gets `401 {needSignIn}`). |
+| GET | `…&refresh=1` | public | Bypass the cache and re-pull (re-enqueue; signed-in only). |
+| GET | `?wait=1&region=&name=&since=<ms>` | public | Long-poll: `{done:true, …gems}` when cached newer than `since`, `{done:false, notFound, error}` if dropped, else `{done:false}` after ~25s. Pre-checks that the lookup is actually pending (cached / `nf:` / queued) and answers at once when it isn't — the hold-and-poll no longer runs for arbitrary names. |
+| GET | `?status=1` | public | `{paused, mode, message}` (30s browser cache) — drives the "unavailable" banner; the message now tracks the mode. |
+| GET | `?list=1[&fmt=2]` | public (throttled) | The whole leaderboard snapshot (gzip). |
+| POST | `?submit=1` | public (throttled + 40/day/IP) | Bookmarklet import: JSON `{region, name, src}` → cache + leaderboard. `CE` normalizes to `EU`. |
+| POST | `?feedback=1` | public (throttled) | Store a feedback note (JSON body; ~90-day TTL). |
+| GET | `/oauth/start`, `/oauth/callback` | public | lostark.bible sign-in (Authorization Code + PKCE). |
+| GET/POST | `/oauth/me`, `/oauth/logout` | public | Session check / sign-out (`?s=<session>`). |
+| GET | `?metrics=1` | **admin** | `{mode, drain:{perMin,delayMs}, queue:{premium,free,total,list}, usage, lastWriteMs, drainLog, hasProbeToken, paused}`. |
+| GET | `?feedback=1` | **admin** | Newest ≤200 notes: `{items, count, total, unread}`. |
+| GET | `?dequeue=1&list=1` | **admin** | The raw queue keys. |
+| POST | `?control=1&mode=&rate=` | **admin** | Set mode (`run`/`off`/`probe`) and/or rate (1–30). Resuming fires an immediate drain. |
+| POST | `?dequeue=1&match=`/`&all=1` | **admin** | Evict queue items (substring match, or everything). |
+| POST | `?feedback=1&read=`/`&del=` | **admin** | Mark a note read / delete it. |
+| POST | `/oauth/probe-token` | **admin** | Arm the drain/probe credential (`Authorization: Bearer` + a server-side roster check that the token owns the canary). Admin-gated so no stranger with a same-name character can seize it. |
 
 ---
 
@@ -302,17 +338,20 @@ All are `GET`. "Owner" = requires `?k=<gate token>`.
 | Key / prefix | Holds |
 |---|---|
 | `<region:name>` (lowercased) | A cached character: `{ gems[], itemLevel, class, pulledAt, … }`. |
-| `q:p:` / `q:f:` | Premium / free queue entries (region+name in metadata; TTL 7d). |
+| `q:p:` / `q:f:` | Premium (vestigial) / free queue entries. Region+name ride in **metadata**; the **value** holds the requester's sign-in token (`{ t }`), which the drain fetches with and which every requeue must preserve. TTL 7d. |
 | `q:order` | Ordered queue snapshot (drain order), trusted 90s. |
 | `drain:config` | `{ mode, drainPerMin, lastProbe?, interval? }` — the drain state. |
-| `drain:lock` | Serialize-drains lock (TTL 55s). |
+| `drain:lock` | Serialize-drains lock (TTL 60s — KV's minimum; 55 used to make the write throw). |
 | `drain:log` | Rolling ~1h drain history (≤240 entries) for the admin. |
 | `nf:<key>` | "Not found / no Ark Grid" marker + reason (TTL 1h). |
 | `usage:drained` | `{ month, count }` — characters cached this month (budget guard). |
+| `impc:<ip>:<YYYYMMDD>` | Per-IP daily `?submit=1` upload counter (cap 40; TTL 2d). |
+| `fb:<ts>-<rand>` | A feedback note `{ ts, type, message, contact, ua, read }` (TTL ~90d). |
 | `lb:lastwrite` / `lb:builtat` | Timestamps: last character write / last snapshot rebuild. |
 | `lb:snapshot:gz` | The prebuilt leaderboard list, stored **gzipped** (`?list=1` serves the bytes as-is with `Content-Encoding: gzip`). The plain-JSON predecessor (`lb:snapshot`) outgrew KV's 25MiB value cap at ~5k characters and its writes silently failed — gzip is ~1.2MB (~25× headroom). |
+| `lb:snapshot:gz2` | The same list in the compact v2 tuple format (`?list=1&fmt=2`) — ~10× less JSON for the browser. Rebuilt together with `:gz`. |
+| `lb:rebuild:cursor` / `lb:rebuild:acc:gz` | From-scratch rebuild state: the list cursor + the gzipped partial character list. Present only while a chunked first build is in flight (≤750 record reads per cron tick, so the build fits the ~1k-subrequest budget); cleared when it finishes. |
 | `lb:dirty:<key>` | Per-character "changed since last snapshot" marker (incremental rebuild). |
-| `__index__` | JSON array of every cached character key. |
 
 ---
 
@@ -331,8 +370,11 @@ All are `GET`. "Owner" = requires `?k=<gate token>`.
 | `QUEUE_TTL_S` | 604,800 | Queue-entry expiry (7 days). |
 | `MAX_FETCH_ATTEMPTS` | 5 | Transient-failure retries before a queued entry is dropped. |
 | `Q_ORDER_TTL_MS` | 90,000 | How long the `q:order` snapshot is trusted. |
-| drain lock TTL | 55s | (inline) auto-expiry of `drain:lock`. |
-| `?wait` hold / check | 25s / 1.5s | Long-poll duration / poll interval. |
+| drain lock TTL | 60s | (inline) auto-expiry of `drain:lock` — KV's minimum TTL. |
+| `IMPORT_DAILY_CAP` | 40 | Per-IP `?submit=1` uploads per day. |
+| `FB_TTL_S` / `FB_LIST_MAX` | 90d / 200 | Feedback note lifetime / newest notes the admin list reads. |
+| `REBUILD_KEYS_PER_RUN` | 750 | Record reads per cron tick during a chunked from-scratch rebuild. |
+| `?wait` hold / check | 25s / 1.5s | Long-poll duration / poll interval (after the is-it-pending pre-check). |
 | admin poll | 2s | (in `queue-admin.html`) metrics refresh cadence. |
 
 > Note: `DRAIN_DELAY_MS` (a legacy fixed 3s) is **superseded** by the rate-derived
@@ -353,10 +395,13 @@ All are `GET`. "Owner" = requires `?k=<gate token>`.
 - **"I don't see the character in the queue."** With the kick, a single character usually caches in
   ~2s and shows in **Drain history** as `kick` rather than lingering in the waiting list. A backlog
   (multiple at once) will show in the live **Queue**, draining one every `60/rate` seconds.
-- **Never type the owner/gate token into a field.** It's a credential; the admin UI is verified with
-  a dummy token (which 403s).
+- **The admin token stopped working.** Someone rotated `ADMIN_TOKEN`
+  (`wrangler secret put ADMIN_TOKEN --config wrangler.bible.toml`), or it was never set — the check
+  fails closed. Enter the current secret in the admin page; a 403 clears the stored one.
+- **The leaderboard is empty after a snapshot loss.** The first build now runs chunked across cron
+  ticks (~750 records/minute); a ~5.5k-character rebuild finishes in ~8 minutes on its own.
 
 ---
 
-*Last updated 2026-07-16. Source of truth is always `worker/astrogem-bible.js`,
+*Last updated 2026-07-25. Source of truth is always `worker/astrogem-bible.js`,
 `queue-admin.html`, and `grader.js` — if this doc and the code disagree, the code wins.*

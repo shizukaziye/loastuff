@@ -2,6 +2,12 @@
 # Storage: KV (R2 needs a one-time dashboard enable — code 10042; migrate later if
 # volume demands it: KV free tier = 1GB / 1k writes/day, one write per record).
 # Deploy:  npx wrangler deploy -c wrangler-data.toml
+#
+# SECRET (never set here — this file is public):
+#   ADMIN_TOKEN — required (as an `X-Admin-Token` request header) by the read routes
+#   /list and /obj, which expose collected user screenshots. Fail-closed: while unset,
+#   nobody can read. /collect ingestion takes no token.
+#       wrangler secret put ADMIN_TOKEN -c wrangler-data.toml
 name = "astrogem-data"
 main = "astrogem-data.js"
 compatibility_date = "2026-06-01"
