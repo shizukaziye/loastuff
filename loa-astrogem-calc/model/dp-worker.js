@@ -14,8 +14,15 @@
  * exactly as it reads them off `window` in the main thread — see dp.js's own
  * root.Astrogem / root.AstrogemNested fallback) and exposes exactly one message:
  *
- *   postMessage({ state, baseline, goldPerDamage, numRuns, options })
- *   -> postMessage({ ok: true, result }) | { ok: false, error }
+ *   postMessage({ id, state, baseline, goldPerDamage, numRuns, options })
+ *   -> postMessage({ ok: true, result, id }) | { ok: false, error, id }
+ *
+ * `id` is the caller's request tag, echoed back untouched. ONE worker serves every
+ * solve, and requests can overlap (a paste mid-solve auto-runs a second solve), so
+ * replies must be routed, not raced: each caller's listener resolves only the reply
+ * carrying its own id (see advisor.js evaluateActionsDPAsync). Before the id, two
+ * in-flight solves both resolved with whichever reply landed first and the second
+ * real reply was dropped.
  *
  * `state`/`baseline`/`options` etc. are plain JSON — no functions, no DOM — so they
  * survive structured clone across the worker boundary untouched. onProgress is NOT
@@ -25,22 +32,26 @@
  * "still solving" state instead of a fake linear progress bar while this is in
  * flight (see advisor.js's av-bar-indeterminate).
  *
- * Deploy note: these ?v= MUST match index.html's — model/astrogem.js (eager
- * <script>) and model/nested.js / model/dp.js (advisor's LAZY_TABS) — every time
- * one of those files changes. Same convention index.html already documents; a
- * worker with a stale cached copy of the model would silently diverge from the
- * main thread's freshly-versioned one, which is exactly the class of bug the
- * staleness beacon in advisor.js (CLIENT_V) exists to catch on the main thread —
- * this worker has no such beacon of its own, so the version bump is the only guard.
+ * Deploy note: the ?v= pins below MUST match index.html's for the same files —
+ * model/astrogem.js (eager <script>) and model/nested.js / model/dp.js (the
+ * advisor's LAZY_TABS) — every time one of those files changes; and advisor.js's
+ * own `new Worker("model/dp-worker.js?v=N")` pin must bump every time THIS file
+ * changes. As of 2026-07-25 the set is: astrogem.js?v=53, nested.js?v=52,
+ * dp.js?v=57, and this file at dp-worker.js?v=2. Same convention index.html
+ * already documents; a worker with a stale cached copy of the model would
+ * silently diverge from the main thread's freshly-versioned one, which is exactly
+ * the class of bug the staleness beacon in advisor.js (CLIENT_V) exists to catch
+ * on the main thread — this worker has no such beacon of its own, so the version
+ * bump is the only guard.
  */
-importScripts("astrogem.js?v=51", "nested.js?v=51", "dp.js?v=55");
+importScripts("astrogem.js?v=53", "nested.js?v=52", "dp.js?v=57");
 
 self.onmessage = function (e) {
   var m = e.data || {};
   try {
     var result = evaluateActionsDP(m.state, m.baseline, m.goldPerDamage, m.numRuns, null, m.options);
-    self.postMessage({ ok: true, result: result });
+    self.postMessage({ ok: true, result: result, id: m.id });
   } catch (err) {
-    self.postMessage({ ok: false, error: String((err && err.message) || err) });
+    self.postMessage({ ok: false, error: String((err && err.message) || err), id: m.id });
   }
 };

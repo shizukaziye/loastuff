@@ -2416,6 +2416,14 @@
   // ANY offload failure disables it for the session and the inline path takes
   // over — identical behavior, just blocking.
   var _bg = null, _bgDisabled = false, _bgSeq = 0, _bgPending = {};
+  // model/astrogem.js is NOT in LAZY_TABS.advisor — it loads EAGERLY in
+  // index.html — so the LAZY_TABS harvest below can never supply its ?v= and
+  // the parse worker used to importScripts a bare, cache-forever URL: the exact
+  // version-skew hole the pins exist to close. This pin MUST match the eager
+  // <script src="model/astrogem.js?v=…"> in index.html on EVERY deploy that
+  // bumps astrogem.js (2026-07-25 map: astrogem 53; model/dp-worker.js pins the
+  // same file for the same reason — keep all three in step).
+  var MODEL_ASTROGEM_V = "53";
   function bgWorkerUrls() {
     var v = {};
     try {
@@ -2424,6 +2432,8 @@
         if (m) v[m[1]] = m[2] || "";
       });
     } catch (e) {}
+    // seed the pinned astrogem version; a future LAZY_TABS entry would win
+    if (!v["astrogem.js"]) v["astrogem.js"] = "?v=" + MODEL_ASTROGEM_V;
     function f(name, dir) { return (dir || "") + name + (v[name] || ""); }
     return [
       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",

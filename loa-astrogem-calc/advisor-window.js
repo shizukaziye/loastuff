@@ -635,11 +635,15 @@
       if (conf) {
         var cc = conf.config || {}, sc = conf.state || {}, oc = conf.outcomes || [];
         Object.keys(cc).forEach(function (k) { if (cc[k] != null && cc[k] < CT) win.unconfirmed["config." + k] = 1; });
-        ["currentTurn", "rerollsRemaining", "processCostMultiplier"].forEach(function (k) {
+        ["currentTurn", "rerollsRemaining", "resetsRemaining", "processCostMultiplier"].forEach(function (k) {
           if (sc[k] != null && sc[k] < CT) win.unconfirmed["state." + k] = 1;
         });
-        // rarity is derived from maxTurns — a shaky maxTurns read glows the rarity group
-        if (sc.maxTurns != null && sc.maxTurns < CT) win.unconfirmed["state.maxTurns"] = 1;
+        // rarity derives from the Process (x/N) footer read, and the snap reports
+        // the doubt as confidence.state.rarity (a state.maxTurns confidence never
+        // exists — see ocr/engine.js constraintSnap). The UI key stays
+        // "state.maxTurns": that is what render()'s rarity group and the rarity
+        // buttons' markConfirmed both wire.
+        if (sc.rarity != null && sc.rarity < CT) win.unconfirmed["state.maxTurns"] = 1;
         oc.forEach(function (v, i) { if (v != null && v < CT) win.unconfirmed["outcomes." + i] = 1; });
       }
       render(); emit();

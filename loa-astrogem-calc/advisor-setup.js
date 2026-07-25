@@ -11,8 +11,7 @@
  *       rank-ladder baseline with ◀ ▶ (replaces the old raw %-damage input).
  *
  * Everything stays manually overridable; with no character selected the defaults are
- * gpd 1.5M, baseline B+ (grade 65 — gradeToScore(65) ≈ 1.0103, matching the advisor's
- * historical 1.0 default), axis DPS.
+ * gpd 1.5M, baseline A (grade 75 — DEFAULT_BASE_IDX = 7; Shizu 2026-07-21), axis DPS.
  *
  * API (window.AdvisorSetup):
  *   init(hostEl, { onChange })   render + wire; onChange fires after every mutation

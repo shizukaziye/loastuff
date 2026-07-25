@@ -73,7 +73,7 @@ fallbacks — and the channel ORDER is measured, not aesthetic:
 | effect names | white-text mask excluding face-tinted specular (slot-aware: W is always green, E always blue) + fuzzed lexicon constrained to the cost's effect pool | the pool constraint kills whole classes of misreads |
 | gem name → baseCost | n-gram-scored suffix match (never first-match-wins: "immutaBILITY" contains "staBILITY") + the pair→cost cross-check (some effect pairs exist in exactly one pool) | measured collision: Immutability read as cost-8 Stability whenever a pet covered the name |
 | footer (Process x/N, cost) | plain-background OCR with a three-way vote (template digits / located line / footer block) + a last-resort rescue band | the footer is the one place OCR is genuinely strong |
-| reroll pill / Charge | OCR + template+aspect verification; dim rescue at a 0.52 ink floor (between pill background ~0.47 and ink ~0.55); Charge word retried at v>0.32 | tiny dim text right at the OCR floor; the denominator is {1,2} so aspect alone decides it |
+| reroll pill / Charge | OCR + template+aspect verification; dim rescue masks at `s < 0.35, v > 0.45` (under the standard white-text floor — structural-engine's `pillDim`/`pDim2`); the Charge word retries at `s < 0.4, v > 0.32` | tiny dim text right at the OCR floor; the denominator is {1,2} so aspect alone decides it |
 | outcome cells | icon hue self-calibrated against the same image's own W/E diamonds; chartreuse/red amount lines; grey cells get a dedicated dilated OCR pass; sign rules ("a '+' is fat and survives; the thin '−' is what drops") | icon colors follow the SLOT, not the effect — a fixed effect→color table would be wrong |
 | degraded-tier levels & names (LAST rung) | **analysis-by-synthesis** (§2.6): pristine reference patches blurred to candidate degradations, correlated over a sub-pixel grid, dual-scored | the only classical method (of nine tried) that reads sub-10px digits; commits only on cross-channel agreement |
 
@@ -164,15 +164,20 @@ at 0.78, always flagged, never authoritative.**
   correction). Model rerolls = shown free + 1 while the paid Charge is unspent;
   counters STACK past the denominator (3/2, 5/2…).
 - **Complete** — the gem's current value (turn 1 = dismantle = 0).
-- **Reset** — last turn only: pay `COSTS.reset` (20,000g) for a fresh cut.
+- **Reset** — ranked on the last turn, and earlier whenever Complete currently
+  beats continuing (dp.js: `t === 1 || completeWouldWin` — Shizu 2026-07-19:
+  if stopping is right, a fresh cut is always the live alternative): pay
+  `COSTS.reset` (20,000g) for a fresh cut.
   Because a reset MAY re-roll the side effects, whenever Reset is live the DP
   also values a fresh cut for **every** effect pair the gem could land
   (`resetCombos`, C(4,2)=6 — same-class pairs are free via the class-keyed
   memo) and the UI renders the pair table with a disclaimer.
 
-Advice runs **automatically after every successful parse**; only a MANUAL Get
-advice click ships the collection record (auto-stored uncorrected parses would
-flood the DB with unreviewed data).
+Advice runs **automatically after every successful parse** — except an
+OCR-degraded one (the text engine never loaded; every field is a colour-only
+guess), where the advisor asks for a manual check instead of auto-solving.
+Only a MANUAL Get advice click ships the collection record (auto-stored
+uncorrected parses would flood the DB with unreviewed data).
 
 ## 4. The collection flywheel — and its one trap
 
@@ -227,11 +232,15 @@ The process that worked, distilled — future sessions should start here:
 
 ## 6. Known limits and open ends
 
-Current state (2026-07-19, v82, 60-sample corpus): **99.7% headline, zero silent
-errors, all 55 clean captures whole-parse-perfect, and exactly ONE wrong scalar
-in the entire corpus — the tooltip-occluded reroll pill** (absent pixels; no
-reader of any kind). The AI verifier reads every remaining flagged field
-correctly when unlocked.
+Current state (measured 2026-07-19 at v82 on the then 60-sample corpus, since
+grown to 241 frames): **99.7% headline, zero silent errors, all 55 clean
+captures whole-parse-perfect, and exactly ONE wrong scalar in the entire
+corpus — the tooltip-occluded reroll pill** (absent pixels; no reader of any
+kind). The AI verifier reads every remaining flagged field correctly when
+unlocked. One baked-in assumption: the reader is tuned for in-game
+**brightness 70** — on the 241-frame corpus, other brightness settings were
+the single biggest source of misreads, which is why the advisor banners the
+setting up front.
 
 - **Physical occlusion** (a pet sprite, a hovering tooltip) is unwinnable by
   reading — the information is not in the image. Flagged, verifier-eligible
@@ -243,6 +252,9 @@ correctly when unlocked.
 - **Uncommon rarity and Destruction (cost-10) gems** have little/no corpus
   coverage; the vocabulary and pools support them, but they're untested inputs.
   (The one live cost-10 frame ever collected died in a pre-hardening upload.)
+  Uncommon reroll pills in particular sit outside the parse corpus entirely and
+  always fall back to the snap's default at default confidence — a documented
+  degrade: flagged, never silent.
 - ~~The glyph atlas pollution~~ **RESOLVED (2026-07-18 pass 2):** the atlas was
   regenerated with the tip-gated harvester (clean '1'/'2'/'3', the harvest/read
   segmentation bounds unified at 1.7) and landed at full parity — the one
@@ -279,12 +291,18 @@ correctly when unlocked.
 The parse runs **off the main thread** and the site never freezes:
 
 - `ocr/parse-worker.js` — a classic Web Worker importScripts the same engine
-  stack (the client sends its own cache-busted URLs from `LAZY_TABS`, so worker
-  and page can never version-skew), receives the decoded raster by zero-copy
-  buffer TRANSFER, and runs `parseStructural` + `constraintSnap` there. Any
-  offload failure (creation, init, crash) disables it for the session and the
-  identical inline path takes over. Measured: 227 rAF/s on the page during a
-  full parse — display refresh rate, zero blocking.
+  stack. The client builds the worker's cache-busted URLs itself: files listed
+  in `LAZY_TABS.advisor` reuse that list's `?v=` pins, and `model/astrogem.js`
+  — which loads eagerly and is NOT in the list — is pinned by the
+  `MODEL_ASTROGEM_V` constant beside `bgWorkerUrls` in
+  `ocr/structural-engine.js`. Skew protection is only as good as those pins:
+  the `LAZY_TABS` ones move with index.html, but `MODEL_ASTROGEM_V` must be
+  bumped by hand whenever astrogem.js's eager `?v=` changes. The worker
+  receives the decoded raster by zero-copy buffer TRANSFER and runs
+  `parseStructural` + `constraintSnap` there. Any offload failure (creation,
+  init, crash) disables it for the session and the identical inline path takes
+  over. Measured: 227 rAF/s on the page during a full parse — display refresh
+  rate, zero blocking.
 - **Tesseract pool (2 instances) with parameter affinity** inside the worker:
   each instance caches its last psm/whitelist; identical-param calls skip the
   setParameters round-trip. The engine issues everything data-independent

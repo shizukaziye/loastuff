@@ -34,14 +34,14 @@
   // this just ships state/baseline/options over (all plain JSON — no functions, no
   // DOM refs, so structured clone is a non-issue) and resolves with the same result
   // shape evaluateActionsDP already returned synchronously.
-  var dpWorker = null, dpWorkerDead = false;
+  var dpWorker = null, dpWorkerDead = false, dpReqSeq = 0;
   function getDPWorker() {
     if (dpWorkerDead || typeof Worker === "undefined") return null;
     if (!dpWorker) {
       // ?v= for the SAME staleness-avoidance reason as the LAZY_TABS list in
       // index.html — bump whenever model/dp-worker.js changes (it also has its
       // own ?v= pins for astrogem.js/nested.js/dp.js; keep both in sync on edit).
-      try { dpWorker = new Worker("model/dp-worker.js?v=1"); }
+      try { dpWorker = new Worker("model/dp-worker.js?v=2"); }
       catch (e) { dpWorkerDead = true; return null; }
     }
     return dpWorker;
@@ -61,23 +61,33 @@
       });
     }
     return new Promise(function (resolve, reject) {
+      // ONE shared worker serves every solve, so replies are ROUTED, not raced:
+      // each request carries a fresh id, dp-worker.js echoes it back, and this
+      // listener resolves only the reply with its own id (another request's
+      // listener ignores it and keeps waiting). Without the id, two in-flight
+      // solves both resolved with whichever reply landed first, and the second
+      // real reply hit zero listeners and was dropped.
+      var id = ++dpReqSeq;
       function onMsg(e) {
+        if (!e.data || e.data.id !== id) return;   // another request's reply
         w.removeEventListener("message", onMsg);
         w.removeEventListener("error", onErr);
-        if (e.data && e.data.ok) resolve(e.data.result);
-        else reject(new Error((e.data && e.data.error) || "DP worker failed"));
+        if (e.data.ok) resolve(e.data.result);
+        else reject(new Error(e.data.error || "DP worker failed"));
       }
       function onErr(err) {
         w.removeEventListener("message", onMsg);
         w.removeEventListener("error", onErr);
         // the worker itself is broken (e.g. a 404 on model/dp-worker.js under a
-        // stricter static host) — don't keep retrying a dead worker every click
+        // stricter static host) — don't keep retrying a dead worker every click.
+        // No id on error events: every in-flight request's onErr fires, and each
+        // rightly rejects — a dead worker answers nobody.
         dpWorkerDead = true; dpWorker = null;
         reject(err instanceof Error ? err : new Error((err && err.message) || "DP worker error"));
       }
       w.addEventListener("message", onMsg);
       w.addEventListener("error", onErr);
-      w.postMessage({ state: state, baseline: baseline, goldPerDamage: goldPerDamage, numRuns: numRuns, options: options });
+      w.postMessage({ id: id, state: state, baseline: baseline, goldPerDamage: goldPerDamage, numRuns: numRuns, options: options });
     });
   }
 
@@ -104,7 +114,7 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 75;   // MUST match this file's ?v= in index.html on every deploy
+  var CLIENT_V = 76;   // MUST match this file's ?v= in index.html on every deploy
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -262,7 +272,7 @@
 '    <li><b>Process</b> applies one of the 4 on-screen outcomes (25% each, from the outcomes you confirmed), then plays on optimally.</li>' +
 '    <li><b>Reroll</b> redraws the 4 outcomes; only the <i>last</i> reroll costs 3,800g (the on-screen counter shows the free ones; the window translates). Not available on turn 1 &mdash; the game greys it out until the gem has been processed once.</li>' +
 '    <li><b>Complete</b> stops now and keeps the current gem (Turn&nbsp;1 = dismantle, value 0). Ranked against Process/Reroll whenever the toggle is on &mdash; it wins when both are negative.</li>' +
-'    <li><b>Reset</b> (last turn only): pay 20,000g to return the gem to a fresh unprocessed state. Recommended when it beats both Process and Complete. Because a reset may re-roll the side effects, the advisor also lists the fresh-cut value of every effect pair whenever reset is a live option.</li>' +
+'    <li><b>Reset</b> (ranked on the last turn, and earlier whenever Complete currently beats continuing): pay 20,000g to return the gem to a fresh unprocessed state. Recommended when it beats both Process and Complete. Because a reset may re-roll the side effects, the advisor also lists the fresh-cut value of every effect pair whenever reset is a live option.</li>' +
 '    <li><b>Success</b> is the probability the final gem clears your baseline under optimal play. A below-baseline gem is valued as fusion fodder, not zero.</li>' +
 '  </ul>' +
 '  <p class="note">The baseline is the S/A/B/C/D rank ladder the Grader uses (12 anchor grades); picking a character sets it one rank above your stronger 3rd-lowest gem, and sets the gold-per-1%-damage tier from combat power. On the Support axis gems are valued by party contribution (supportValue) against support-scale baselines; support advice has no Monte-Carlo fallback &mdash; if the exact model fails you get an error, never a silently mis-ranked answer.</p>' +
@@ -504,8 +514,12 @@
     var conf = parsed.confidence || {};
     var keys = [];
     Object.keys(VERIFY_ASKS).forEach(function (k) {
-      var c = (conf.config && conf.config[k] != null) ? conf.config[k]
-        : (conf.state && conf.state[k] != null) ? conf.state[k] : null;
+      // maxTurns carries no confidence slot of its own: it derives from the same
+      // Process (x/N) footer read as rarity, and constraintSnap reports the doubt
+      // as confidence.state.rarity — so a shaky rarity keys the maxTurns ask
+      var ck = k === "maxTurns" ? "rarity" : k;
+      var c = (conf.config && conf.config[ck] != null) ? conf.config[ck]
+        : (conf.state && conf.state[ck] != null) ? conf.state[ck] : null;
       if (c != null && c < 0.8) keys.push(k);
     });
     return keys;
@@ -602,15 +616,22 @@
             var inConfig = parsed.config && parsed.config[k] !== undefined;
             var cur = inConfig ? parsed.config[k] : parsed.state[k];
             var confMap = inConfig ? parsed.confidence.config : parsed.confidence.state;
+            // maxTurns' doubt lives on state.rarity (see collectFlaggedFields) —
+            // read and write that slot, or the lift/keep-flagged never reaches
+            // the window (which glows the rarity group off it)
+            var fk = k === "maxTurns" ? "rarity" : k;
             if (String(ai) === String(cur)) {
               // two independent readers agree → unflag
-              confMap[k] = Math.max(confMap[k] || 0, 0.85);
+              confMap[fk] = Math.max(confMap[fk] || 0, 0.85);
               confirmed++;
-            } else if ((confMap[k] || 0) < 0.5) {
+            } else if ((confMap[fk] || 0) < 0.5) {
               // the parser was near-guessing; the AI's answer is the better bet —
               // adopt it but KEEP IT FLAGGED (0.7): disagreement is not certainty
               if (inConfig) parsed.config[k] = ai; else parsed.state[k] = ai;
-              confMap[k] = 0.7;
+              // rarity derives from maxTurns — keep the parse self-consistent so
+              // the window (which reads parsed.rarity first) shows the correction
+              if (k === "maxTurns") parsed.rarity = ai === 5 ? "uncommon" : ai === 7 ? "rare" : "epic";
+              confMap[fk] = 0.7;
               corrected++;
             }
             // parser confident-ish + AI disagrees → keep the parser's value flagged
@@ -636,6 +657,9 @@
     }
     checkStale();    // piggyback the version probe on every parse (10-min throttle)
     clearResult();   // new screenshot ⇒ any previous recommendation is stale
+    if (solveBusy) solveToken++;   // …and so is any solve still in flight: its
+                                   // result describes the PREVIOUS screenshot's
+                                   // state — discard it on arrival (latest wins)
     pendingCollect = null;   // and so is any unshipped record — a FAILED parse must
                              // not leave gem A's image to pair with gem B's state
     setStatus("Reading " + (sourceNoun || "screenshot") + " with " + (eng.label || eng.name) + "…", "working");
@@ -792,7 +816,25 @@
   }
 
   // ---------------- run advice ----------------
+  // ONE solve at a time, latest wins. Manual clicks are already serialized by
+  // setGoBusy, but the parse→verify→auto-advice chain is not: a paste mid-solve
+  // used to launch a SECOND solve against the same worker (the id protocol in
+  // evaluateActionsDPAsync routes the replies; this guard decides what RENDERS).
+  // A request that lands mid-solve supersedes the in-flight one — the stale
+  // result is discarded on arrival, never rendered against state it no longer
+  // describes — and is queued (latest only) to run against the window's CURRENT
+  // state once the worker drains. parseWith also bumps the token directly: a new
+  // screenshot alone is enough to make an in-flight solve stale.
+  var solveToken = 0;      // bump = every in-flight solve is now superseded
+  var solveBusy = false;
+  var solvePending = null; // opts of the latest superseding runAdvice request
+
   function runAdvice(opts) {
+    if (solveBusy) {
+      solvePending = opts || {};
+      solveToken++;        // the in-flight solve must not render its result
+      return;
+    }
     // opts.auto === true → triggered by a fresh parse, not a click. Auto runs skip
     // the collection ship; the staged record stays pending so a later MANUAL click
     // (after the user's corrections) still stores it. (A click handler passes the
@@ -838,6 +880,12 @@
     if (unconf) warns.push(unconf + " parsed field" + (unconf > 1 ? "s" : "") + " unconfirmed (highlighted in the window).");
     $("av-warns").innerHTML = warns.map(function (w) { return '<div class="av-warn">⚠ ' + w + '</div>'; }).join("");
 
+    // Committed: mark the pipeline busy and stamp this run's token. Everything
+    // above is synchronous, so nothing can interleave between the guard at the
+    // top and here; the early validation returns above never set busy at all.
+    solveBusy = true;
+    var myToken = ++solveToken;
+
     try { window.NESTED_INNER_RUNS = MC_INNER; } catch (e) {}
     var bar = $("av-bar"), barI = $("av-bar-i");
     bar.style.display = "block"; barI.style.width = "0%"; bar.classList.remove("av-bar-indeterminate");
@@ -864,6 +912,9 @@
             } catch (dpErr) {
               bar.classList.remove("av-bar-indeterminate");
               console.error("DP failed:", dpErr);
+              // superseded mid-solve — the newer run owns the UI; skip the
+              // status writes AND the (long, synchronous) MC fallback
+              if (myToken !== solveToken) return;
               if (m.axis === "support" || !hasMC) {
                 setStatus("The exact model failed" + (m.axis === "support" ? " — support-axis advice has no Monte-Carlo fallback" : "") + ": " + (dpErr && dpErr.message || dpErr), "err");
                 setGoBusy(false); bar.style.display = "none";
@@ -879,6 +930,9 @@
             result = window.evaluateActions(state, m.baselineScore, m.gpd, MC_RUNS, onProgress, { includeSim2: includeSim2 });
             engineUsed = "mc";
           }
+          // superseded mid-solve (new parse or queued request): discard this
+          // result on arrival — it describes state the window no longer shows
+          if (myToken !== solveToken) return;
           barI.style.width = "100%";
           renderResult(result, state, m, includeSim2, engineUsed);
           if (isAuto) {
@@ -891,12 +945,29 @@
           }
         } catch (err) {
           console.error(err);
+          // a superseded run's error must not clobber the newer run's status
+          if (myToken !== solveToken) return;
           setStatus("Solver error: " + (err && err.message || err), "err");
           clearResult();
         } finally {
           bar.classList.remove("av-bar-indeterminate");
+          solveBusy = false;
+          // release the buttons BEFORE any drain: if the queued request bails in
+          // validation it never reaches setGoBusy(true), and a skipped release
+          // here would leave both buttons dead. A committing drain re-disables
+          // them in the same synchronous task — no flicker.
           setGoBusy(false);
-          setTimeout(function () { bar.style.display = "none"; }, 400);
+          var next = solvePending;
+          solvePending = null;
+          if (next) {
+            // drain the queued (latest) request — it re-enters runAdvice and
+            // captures the window's CURRENT state, which is the whole point.
+            // No 400ms bar-hide here: a delayed hide would land mid-next-solve.
+            bar.style.display = "none";
+            runAdvice(next);
+          } else {
+            setTimeout(function () { bar.style.display = "none"; }, 400);
+          }
         }
       })();
     }, 30);
@@ -942,7 +1013,9 @@
             ? "reroll while a fresh board is worth more than processing this one."
             : best.name === "Process"
               ? "keep processing while the board's expected gain outweighs the per-turn gold cost."
-              : "stop — neither processing nor rerolling pays for itself from here.");
+              : best.name === "Reset"
+                ? "reset — pay the 20,000g for a fresh cut; this board isn't worth finishing."
+                : "stop — neither processing nor rerolling pays for itself from here.");
       }
       var note = $("av-best-line");
       var existing = document.getElementById("av-heur");
@@ -973,7 +1046,10 @@
         '<div class="cn">' + name + (isBest ? ' <span class="pill">Recommended</span>' : "") + "</div>" +
         '<div class="cm">' +
           (disabled
-            ? '<div style="color:var(--dim)">Not applicable' + (name === "Complete" && includeSim2 === false ? " (not ranked)" : (name === "Reroll" ? (state.currentTurn === 1 ? " (turn 1 — process once first)" : " (no rerolls left)") : (name === "Complete" ? " (turn 1 — process once first)" : (name === "Reset" ? " (ranked on the last turn)" : "")))) + "</div>"
+            // no bare `name === "Complete"` arm here: a disabled Complete implies
+            // includeSim2 === false (a ranked Complete is always finite), so the
+            // first branch captures it and a later arm would be dead code
+            ? '<div style="color:var(--dim)">Not applicable' + (name === "Complete" && includeSim2 === false ? " (not ranked)" : (name === "Reroll" ? (state.currentTurn === 1 ? " (turn 1 — process once first)" : " (no rerolls left)") : (name === "Reset" ? " (ranked on the last turn, and earlier whenever Complete currently beats continuing)" : ""))) + "</div>"
             : '<div>Success: <span class="ev">' + odds + '%</span> <span title="Probability the final gem clears your baseline under optimal play" style="cursor:help;opacity:.55">?</span></div>' +
               '<div>Net EV: <span class="ev ' + evClass + '">' + fmtGold(a.value) + "</span></div>" +
               costLine) +
