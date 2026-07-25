@@ -22,11 +22,11 @@ computes in-browser; edit the inputs and hit **Recalculate**.
 
 ## Interactive inputs
 
-- **Anchor prices** (net gold) for the cheapest high/mid and high/high of each
-  slot, clamped 10k–10M. The model fits `(a, pmin)` per slot to reproduce them.
+- **Anchor prices** (net gold): the **necklace** high/mid and high/high for each
+  market — 4 inputs, clamped 10k–10M; earring/ring anchors derive by damage
+  ratio. The model fits `(a, pmin)` per slot to reproduce them.
 - **Character stats**: non-accessory additional damage %, attack power %, crit
-  rate / crit damage, base weapon power, base main stat, support attack
-  multiplier, and the pheon tax.
+  rate / crit damage, base weapon power, base main stat, and the pheon tax.
 - **HP flat toggle** (`Junk` / `= Wpn`): optionally value `Max HP+` lines exactly
   like `Weapon Attack Power+` at the same tier, in both markets — more premium
   outcomes, recalibrated prices, higher cut EV. (Python: `value --hp-as-wp`.)

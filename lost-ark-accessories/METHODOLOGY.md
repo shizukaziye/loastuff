@@ -76,7 +76,7 @@ Max HP+ **exactly like Weapon Attack Power+ at the same tier, in both markets**
 More outcomes count as premium flats, so the supply CDF reshapes and every slot
 recalibrates — the necklace anchors stay pinned by definition (their reference
 rolls contain no HP line) and derived earring/ring anchors are unchanged, but
-mid-tier values and cut EV shift (neck optimal EV ≈ 2,134 → 2,209 at defaults).
+mid-tier values and cut EV shift (neck optimal EV ≈ 2,036 → 2,116 at defaults).
 
 ### DPS defaults (editable)
 - base additional **35.85%**, base attack power **13.33%** (incl. ark-grid-cores
@@ -143,7 +143,7 @@ stat→the support's base atk.
 - **T-skill**: 10% buff through its **own** ark-grid bracket. base ally_dmg_t **7.13%**
   (t-skill ark grid). Applies to **40%**.
 - **Identity bracket base**: base ally_dmg **37.13%** (identity ark grid 27.13 + gems 10);
-  spec_eff **55.06%** (spec 1100 × the Bard coefficient); base_add **35.6%** (the damage
+  spec_eff **55.06%** (spec 1100 × the Bard coefficient); base_add **35.85%** (the damage
   dealer's own additional damage, which dilutes all three identity buffs).
 
 Rough high-tier party-damage contributions (Bard, spec 1100, uptimes above):
@@ -199,8 +199,8 @@ by that slot's damage-above-baseline ratio, then each slot fits its own `(a, p_m
 | DPS | 500,000 | 3,200,000 |
 | Support | 250,000 | 1,200,000 |
 
-Derived (≈, defaults): DPS earring h/h ~1.84M, ring h/h ~1.90M; support ring h/h
-~1.82M. Anchors are editable; the cheapest-roll definition is *useless 3rd line,
+Derived (≈, defaults): DPS earring h/h ~1.83M, ring h/h ~1.90M; support ring h/h
+~2.28M. Anchors are editable; the cheapest-roll definition is *useless 3rd line,
 min main stat*.
 
 ---
@@ -209,12 +209,12 @@ min main stat*.
 
 - Every finished accessory is worth **`max(DPS value, Support value)`** — you sell
   into whichever market pays more. (A Brand+Serenade neck that's worthless to DPS
-  prices ~1.35M via support.)
+  prices ~1.40M via support.)
 - A **Bellman DP** over every cut state chooses cut-vs-stop (cut while
-  `E[next] − 1,200g > 0`). Optimal neck EV at mid stat ≈ 2,134g/attempt. The
+  `E[next] − 1,200g > 0`). Optimal neck EV at mid stat ≈ 2,036g/attempt. The
   policy table shows, at every stat quintile, the **EV of paying for the next cut
   and playing on** (net of remaining cut costs), color-scaled — red for ≤0 (deeper = worse),
-  a log green ramp brightening with the EV for cut — e.g. a junk-opener mid-stat earring is −10g (a coin flip), min-stat −688g
+  a log green ramp brightening with the EV for cut — e.g. a junk-opener mid-stat earring is +22g (barely worth cutting), min-stat −690g
   (clear stop), while necks stay positive at any stat.
 - Reference strategies: **S1** = abandon unless cut 1 is a **DPS or support**
   primary at mid+; **S3** = always full-cut. Partial cuts are valued at 0.

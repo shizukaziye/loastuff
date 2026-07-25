@@ -7,12 +7,14 @@ markets, recommends what to cut, and plans purchases against a budget.
 ## Files (only these)
 
 - **`index.html`** — the entire app: self-contained HTML + CSS + vanilla JS, no
-  build, no deps. This is the published page (GitHub Pages) **and the
+  build, no deps. This is the published page (Cloudflare Pages) **and the
   authoritative model**. Everything computes in-browser from editable inputs.
 - **`accessory_value.py`** — Python reference in **full parity** with the JS.
   `python3 accessory_value.py verify` asserts it reproduces values captured from
   the live page (stored in `REFS`). `value` prices a single roll in both markets.
 - **`README.md`** — user-facing overview.
+- **`METHODOLOGY.md`** — full model reference: formulas, defaults, design history.
+- **`video_script.md`** — script + numbers appendix for the companion video.
 - No other source files; `.claude/` is gitignored.
 
 ## The model (mirror exactly across both files)
@@ -57,9 +59,10 @@ markets, recommends what to cut, and plans purchases against a budget.
   `python3 accessory_value.py verify` must pass.
 - **Inputs are editable + recalc**: anchors (neck DPS/Support h-m & h-h + pheon
   tax in row 1), DPS character stats (row 2), support buff totals + uptimes.
-- Commit + push when done; site is GitHub Pages
-  (`https://shizukaziye.github.io/lost-ark-accessories/`). Git is authenticated
-  on the dev machine.
+- Commit + push when done. This directory lives in the **loastuff monorepo**; a
+  push deploys via Cloudflare Pages to
+  `https://www.loseii.com/lost-ark-accessories/`. Git is authenticated on the
+  dev machine.
 
 ## Don't
 

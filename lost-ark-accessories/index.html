@@ -3,6 +3,15 @@
 <meta charset='utf-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <title>Lost Ark Accessory Value Calculator</title>
+<meta name="description" content="Score any Lost Ark accessory by its real % damage gain and what it's worth in gold — the model behind The Math Behind Accessories.">
+<meta name='theme-color' content='#0d1017'>
+<link rel='canonical' href='https://www.loseii.com/lost-ark-accessories/'>
+<meta property='og:type' content='website'>
+<meta property='og:title' content='Lost Ark Accessory Value Calculator'>
+<meta property="og:description" content="Score any Lost Ark accessory by its real % damage gain and what it's worth in gold — the model behind The Math Behind Accessories.">
+<meta property='og:url' content='https://www.loseii.com/lost-ark-accessories/'>
+<meta name='twitter:card' content='summary'>
+<link rel='icon' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='none' stroke='%23a9802a' stroke-width='1.2'/%3E%3Cpath d='M3 12h26M16 3v26M9.5 7.5 16 12l6.5-4.5M3 12l13 4 13-4' fill='none' stroke='%23fff3d6' stroke-opacity='.5' stroke-width='.8'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
@@ -42,7 +51,7 @@ code,.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-
 .grid{display:grid;gap:12px}
 .grid.c3{grid-template-columns:1fr 1fr 1fr}
 .grid.c2{grid-template-columns:1fr 1fr}
-.inputs{position:sticky;top:0;z-index:20;background:rgba(13,16,23,.97);
+.inputs{position:sticky;top:var(--loseii-nav-offset,0px);z-index:20;background:rgba(13,16,23,.97);
   border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px)}
 .ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px}
 .fld{display:flex;flex-direction:column;gap:2px}
@@ -238,7 +247,7 @@ reference strategies. Partial cuts are valued at 0.
 
 <h4>7. Budget planner</h4>
 For each of the 5 slots we build the cost&rarr;damage efficient frontier over every primary pair, flat tier
-(none/low/mid/high) and main-stat tier (min/mid/max), then merge all slots' marginal upgrades by gold-per-1%-damage.
+(none/low/mid/high) and main-stat quintile (min/low/mid/high/max), then merge all slots' marginal upgrades by gold-per-1%-damage.
 A budget buys the cheapest-per-damage prefix of that list; "closest upgrade / cheapest equipped" show the
 efficiency right at your budget.
 
@@ -279,7 +288,7 @@ efficiency right at your budget.
 <div class='view' id='view-budget'>
 <h2>Budget planner</h2>
 <div class='panel'>
-  <div class='note' style='margin-bottom:10px'>Buy the cheapest damage-per-gold upgrades first. A full set is <b>1 neck, 2 earrings, 2 rings</b>. Candidates span every primary pair, flat tier (none/low/mid/high) and main-stat tier (min/mid/max). Follows the <b>DPS / Support</b> toggle at the top.</div>
+  <div class='note' style='margin-bottom:10px'>Buy the cheapest damage-per-gold upgrades first. A full set is <b>1 neck, 2 earrings, 2 rings</b>. Candidates span every primary pair, flat tier (none/low/mid/high) and main-stat quintile (min/low/mid/high/max). Follows the <b>DPS / Support</b> toggle at the top.</div>
   <div class='barrow' style='margin-top:0'>
     <label style='font-size:13px'>Total budget: <b id='budgetlbl' style='color:var(--accent)'></b></label>
   </div>
@@ -463,6 +472,8 @@ function calibrate(slot,market,sup){
  else { // derive from neck by score-above-baseline ratio
   const nlo=MAIN_RANGE.neck[0], nrs=refSets('neck',market), nb=baseScore('neck',market);
   const nHM=quality('neck',nlo,nrs.lo,market)-nb, nHH=quality('neck',nlo,nrs.hi,market)-nb;
+  if(nHM<=1e-9||nHH<=1e-9) // degenerate neck gap (e.g. zero serenade uptime): nothing to scale — fail soft like the neck path (pmin=0, all values 0)
+   return {damages:sup.damages,cum:sup.cum,Gcum:sup.damages.map(()=>0),baseD,a:1,pmin:0};
   vHM=P.anchors[market].hm*Math.max(0,dHM-baseD)/nHM;
   vHH=P.anchors[market].hh*Math.max(0,dHH-baseD)/nHH;
  }
@@ -803,14 +814,14 @@ function recalc(){
   MODEL[acc+'_'+mk]=calibrate(acc,mk,buildSupply(acc,mk));
  renderDmg();renderPrice();renderCatalog();renderEV();renderGrid();renderPolicy();renderHighlight();
  PLAN=buildUpgradePlan(curMarket);
- const sl=$('budget'); const hadVal=sl.value!=='';
  clampBudget();
- if(!hadVal) sl.value=500;   // ~midpoint of the log scale (~1M) — a typical low budget
  renderBudget();
  $('status').textContent='Recalculated in '+(performance.now()-t0).toFixed(0)+' ms.';
  $('foot').innerHTML="Closed-form model: all 3-cut outcomes enumerated; multiplicative (log) damage; DPS via the sqrt attack-power model, Support via party-damage buff contribution. Per-slot Pareto demand fit to necklace anchors (earring/ring derived by damage ratio), value above baseline minus pheon tax. Cut EV uses max(DPS, Support). Everything recomputes in-browser.";
 }
-window.onload=function(){setDefaultsToInputs();recalc();toggleInputs();};  // start collapsed
+window.onload=function(){setDefaultsToInputs();
+ clampBudget();$('budget').value=500;   // start the budget at the log-scale midpoint (≈715k gold) — a typical low budget
+ recalc();toggleInputs();};  // start collapsed
 </script>
 </div><script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>

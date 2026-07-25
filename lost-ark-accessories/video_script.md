@@ -327,26 +327,29 @@ would be.]
 
 ## APPENDIX — numbers cited, with sources
 
-All reproducible from the repo (necklace, mid main stat unless noted):
+All reproducible from the repo — CLI subcommands `verify` and `value`; bare
+names are constants / functions in `accessory_value.py`, run via
+`python3 -c 'import accessory_value as m; print(m.opt_ev("neck", 16518))'`.
+Necklace, mid main stat 16518 unless noted:
 
 | Claim | Value | How to reproduce |
 |---|---|---|
-| Tier base rates | low 6.3% / mid 3.0% / high 0.7% | `TIER_BASE_PROB` |
-| Necklace high-line damage | Outgoing 2.00% / Additional 1.91% (high) | `value ...` |
-| P(both primaries high, full cut) | 0.033% | `strategy neck`, high/high cell |
-| Sum of "good" buckets (full cut) | 1.501% | `strategy neck`, sum highlighted |
-| Clean high/high (useless 3rd) | ~2.98M (mid) / ~3.4M (max) | `report` |
-| high/high net @ max MS | ~3.92M | `value --type neck --main-stat 17857 ...` |
-| mid/mid necklace | ~42.5k | `report` |
+| Tier base rates | low 6.3% / mid 3.0% / high 0.7% | `TIER_PROB` |
+| Necklace high-line damage | Outgoing 2.00% / Additional 1.91% (high) | `line_marginal_pct("Additional Damage %", "high")` (Outgoing = the raw 2.00) |
+| P(both primaries high, full cut) | 0.033% | sum `three_line_dist("neck")` over cuts with both primaries high |
+| Sum of "good" buckets (full cut) | 1.501% | same, over the six kept pairs (site: Tier hit rates grid) |
+| Clean high/high (useless 3rd) | ~2.98M (mid) / ~3.4M (max) | `value --type neck --main-stat 16518 --line "Outgoing Damage %" high --line "Additional Damage %" high` |
+| high/high net @ max MS | ~3.92M | same `value` with `--main-stat 17857` |
+| mid/mid necklace | ~42.5k | `value --type neck --main-stat 16518 --line "Outgoing Damage %" mid --line "Additional Damage %" mid` |
 | **Flat premium — mid/mid** | 42.5k → 101k (+59k) | computed |
 | **Flat premium — high/mid** | 572k → 930k (+358k) | computed |
 | **Flat premium — high/high** | 2.98M → 5.90M (+2.91M) | computed |
-| **Best non-high/high (high/mid + high flat)** | ~930k vs ~572k plain | `report` |
-| EV cut neck, min MS, blind (S3) | −561g | `report` |
-| EV cut neck, min MS, optimal | +469g | `report` |
-| EV cut neck, mid MS, optimal | +919g | `report` |
-| EV cut neck, max MS, optimal | +1,744g | `report` |
-| Pheon (sale) tax | 60,000g | `SALE_TAX` |
+| **Best non-high/high (high/mid + high flat)** | ~930k vs ~572k plain | `value --type neck --main-stat 16518 --line "Outgoing Damage %" high --line "Additional Damage %" mid`, adding `--line "Weapon Attack Power+" high` for the flat |
+| EV cut neck, min MS, blind (S3) | −561g | `ev_of_cutting("neck", 15178, 3)` |
+| EV cut neck, min MS, optimal | +469g | `opt_ev("neck", 15178)` |
+| EV cut neck, mid MS, optimal | +919g | `opt_ev("neck", 16518)` |
+| EV cut neck, max MS, optimal | +1,744g | `opt_ev("neck", 17857)` |
+| Pheon (sale) tax | 60,000g | `P["tax"]` |
 | Cut cost | 1,200g | `CUT_COST` |
 
 *Recording notes:*

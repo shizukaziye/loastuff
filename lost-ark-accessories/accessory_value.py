@@ -312,6 +312,11 @@ def calibrate(slot, market):
         nb = base_score("neck", market)
         nHM = quality("neck", nlo, nrs["lo"], market) - nb
         nHH = quality("neck", nlo, nrs["hi"], market) - nb
+        if nHM <= 1e-9 or nHH <= 1e-9:
+            # degenerate neck gap (e.g. zero serenade uptime): nothing to scale
+            # — fail soft like the neck path (pmin=0, all values 0)
+            return dict(damages=damages, cum=cum, Gcum=[0.0] * len(damages),
+                        baseD=baseD, a=1.0, pmin=0.0)
         vHM = P["anchors"][market]["hm"] * max(0.0, dHM - baseD) / nHM
         vHH = P["anchors"][market]["hh"] * max(0.0, dHH - baseD) / nHH
     target = (vHH + P["tax"]) / (vHM + P["tax"])
@@ -486,6 +491,8 @@ REFS = {  # captured from the live JS site (index.html) for parity
     "hp_ev_neck_mid_opt": 2116,
     "hp_neck_dps_a": 1.35108, "hp_neck_dps_pmin": 11351.826,
     "hp_neck_hh_hp3": 4326673,   # Outgoing high / Additional high / Max HP+ high, min stat
+    # zero serenade uptime -> derived support models fail soft (pmin=0, values 0)
+    "seren0_sup_ring_hh": 0,
 }
 
 
@@ -577,6 +584,16 @@ def cmd_verify(args):
         abs(ev_on - REFS["hp_ev_neck_mid_opt"]) < 20, f"got {ev_on:.0f}")
     chk("EV(hp on) > EV(off)", ev_on > ev_off, f"{ev_on:.0f} vs {ev_off:.0f}")
     set_hp_as_wp(False)
+
+    print("\n8. Degenerate support calibration (zero serenade uptime)")
+    up0 = P["upSeren"]
+    P["upSeren"] = 0
+    _model.clear()
+    v0 = value_at("ring", support_quality("ring", lo("ring"), [("Ally Dmg Buff %", "high"), ("Ally Atk Buff %", "high")]), "support")
+    chk(f"upSeren=0: sup ring h/h fails soft to {REFS['seren0_sup_ring_hh']}",
+        v0 == REFS["seren0_sup_ring_hh"], f"got {fmt(v0)}")
+    P["upSeren"] = up0
+    _model.clear()
 
     print("\nOVERALL:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
