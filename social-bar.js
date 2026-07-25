@@ -3,11 +3,7 @@
    ------------------------------------------------------------
    Add to ANY page with ONE line, ideally before </body>:
 
-       <script src="https://loseii.com/social-bar.js" defer></script>
-
-   (Until loseii.com is pointed at the loastuff repo, you can use
-    https://shizukaziye.github.io/loastuff/social-bar.js instead —
-    it's the same file and will keep working afterward.)
+       <script src="https://www.loseii.com/social-bar.js" defer></script>
 
    Everything below — links, colours, markup — lives here only.
    Change a link once, every page that loads this file updates.

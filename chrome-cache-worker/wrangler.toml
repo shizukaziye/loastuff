@@ -1,0 +1,9 @@
+# loseii-chrome-cache — see worker.js header for why this exists.
+name = "loseii-chrome-cache"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+routes = [
+  { pattern = "www.loseii.com/nav.js", zone_name = "loseii.com" },
+  { pattern = "www.loseii.com/social-bar.js", zone_name = "loseii.com" }
+]

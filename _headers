@@ -1,4 +1,7 @@
 # Shared chrome must update immediately across every page — always revalidate.
+# NOTE: these rules hold on the pages.dev origin, but the loseii.com zone
+# rewrites .js Cache-Control to max-age=14400. On www.loseii.com the
+# chrome-cache-worker/ routes enforce no-cache instead — keep both in place.
 /nav.js
   Cache-Control: no-cache
 /social-bar.js
