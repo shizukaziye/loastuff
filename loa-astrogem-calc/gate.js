@@ -45,9 +45,10 @@
     }).catch(function () { return false; });
   }
 
-  // Access token the app sends to the Worker (?k=) once unlocked. The Worker rejects requests
-  // without it, so un-refreshed pre-gate clients are blocked server-side. It's the embedded
-  // hash (never the plaintext), and "" while locked so a locked client can't reach the Worker.
+  // Access token the app sends to the Worker (?k=) once unlocked. Lookups are OPEN now —
+  // the Worker no longer requires k= for pulls or the leaderboard; it reads k= only as
+  // the owner marker for the admin endpoints (?control / ?metrics). It's the embedded
+  // hash (never the plaintext), and "" while locked.
   function token() { return isUnlocked() ? HASH : ""; }
 
   // Parse-record collection is deliberately NOT password-gated (Shizu 2026-07-18: "only the

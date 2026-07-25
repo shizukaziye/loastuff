@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,31 +23,25 @@
 <!--
   App shell for the Lost Ark astrogem-cutting tool.
 
-  Four tabs: "Grader" (#tab-grader, first/default), "Pipeline" (#tab-pipeline),
-  "Advisor" (#tab-advisor), and "Leaderboard" (#tab-leaderboard). The tab bar
-  toggles the .active class on the panes and fires a 'tabselected' event so a pane
-  can lazy-load on activation (the Leaderboard fetches ?list=1 the first time).
-  The model core is loaded first so the tab scripts can call its globals
-  (window.Astrogem.grade, window.score, window.tierExpectedValue,
-  window.evaluateActions, ...).
+  Five tabs: "Grader" (#tab-grader, first/default), "Pipeline" (#tab-pipeline),
+  "Advisor" (#tab-advisor), "Leaderboard" (#tab-leaderboard) and "Feedback"
+  (#tab-feedback). The tab bar toggles .active on the panes and fires a
+  'tabselected' event so a pane can act on activation.
 
-  Load order matters:
-    1. model/astrogem.js  -> attaches deterministic core to window
-    2. model/nested.js    -> attaches evaluateActions etc. (needs astrogem.js)
-    3. model/dp.js        -> attaches the exact Bellman DP (evaluateActionsDP,
-                             topLevelAdvice; needs astrogem.js + nested.js). The
-                             advisor uses this by default and falls back to the MC.
-    4. grader.js          -> renders #tab-grader (grades finished gems; calls
-                             Astrogem.grade / gemRank / damagePercent)
-    5. pipeline.js        -> renders #tab-pipeline
-    6. advisor.js         -> renders #tab-advisor
+  Scripts load in two sets:
+    EAGER (bottom of <body>, in order): model/astrogem.js (the deterministic core
+    on window.Astrogem — grade / gemRank / damagePercent / tierExpectedValue …),
+    then gate.js, favorites.js, tip.js, loadout-econ.js, bible-import.js,
+    bible-oauth.js, grader.js (#tab-grader) and pipeline.js (#tab-pipeline, which
+    also feeds the grader's plan section via pipelineReady).
+    LAZY (the LAZY_TABS map in the inline script below): the Advisor stack
+    (model/nested.js + model/dp.js + ocr/* + advisor*.js), leaderboard.js and
+    feedback.js load on FIRST activation of their tab.
 
-  Styling lives in styles.css (shared dark theme + tab styling). The two UI
-  agents will flesh out pipeline.js / advisor.js using the sticky-input,
-  toggle-button, results-table, and methodology-<details> conventions already
-  styled in styles.css.
+  Styling lives in styles.css (shared dark theme + tab styling); each tab module
+  carries its own scoped <style> for module-specific bits.
 -->
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head><body>
 <div class="wrap">
   <div class="appbar">
@@ -88,13 +82,13 @@ var LAZY_TABS = {
     // NOTE: the Tesseract CDN bundle is NOT loaded on the main page anymore —
     // the background parse worker imports its own copy, and the inline fallback
     // lazy-injects it only if the offload is unavailable (structural-engine.js)
-    "model/nested.js?v=51", "model/dp.js?v=56",
+    "model/nested.js?v=52", "model/dp.js?v=57",
     "ocr/engine.js?v=52", "ocr/layout.js?v=54", "ocr/glyphs.js?v=54", "ocr/level-refs.js?v=2", "ocr/tesseract-engine.js?v=43",
     "ocr/structural-engine.js?v=88",
     "advisor-setup.js?v=46", "advisor-window.js?v=55",
-    "advisor.js?v=75"
+    "advisor.js?v=76"
   ],
-  leaderboard: ["leaderboard.js?v=44"],
+  leaderboard: ["leaderboard.js?v=45"],
   feedback: ["feedback.js?v=1"]
 };
 var lazyLoaded = {};
@@ -133,15 +127,15 @@ function selectTab(name){
      grader's plan section via pipelineReady). The Advisor stack and Leaderboard are in
      LAZY_TABS above and load on first tab activation. -->
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
-<script src="model/astrogem.js?v=52"></script>
-<script src="gate.js?v=38"></script>
-<script src="favorites.js?v=38"></script>
-<script src="tip.js?v=1"></script>
+<script src="model/astrogem.js?v=53"></script>
+<script src="gate.js?v=39"></script>
+<script src="favorites.js?v=39"></script>
+<script src="tip.js?v=2"></script>
 <script src="loadout-econ.js?v=2"></script>
-<script src="bible-import.js?v=2"></script>
+<script src="bible-import.js?v=3"></script>
 <script src="bible-oauth.js?v=7"></script>
-<script src="grader.js?v=70"></script>
-<script src="pipeline.js?v=43"></script>
+<script src="grader.js?v=71"></script>
+<script src="pipeline.js?v=44"></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

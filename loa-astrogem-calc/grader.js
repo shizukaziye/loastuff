@@ -111,6 +111,20 @@
   // grader UI state (grMode, grBaseShift), so every call site in this file is
   // unchanged. loadout-econ.js is eager-loaded right before this file.
   var Econ = (typeof window !== "undefined" && window.LoadoutEcon) || null;
+  // loadout-econ.js didn't load (404 from a stale cached index.html, blocked script…):
+  // every line below would throw and kill the whole tab blank. Show a recovery note
+  // (styles.css classes only — this file's own <style> never renders on this path).
+  if (!Econ) {
+    var econFail = function () {
+      var t = document.getElementById("tab-grader");
+      if (t) t.innerHTML = '<div class="panel"><b>The Grader failed to load.</b>'
+        + '<div class="note">A required script (loadout-econ.js) did not load — '
+        + 'hard-refresh (Cmd-Shift-R / Ctrl-Shift-R) to pick up the current build.</div></div>';
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", econFail);
+    else econFail();
+    return;
+  }
   var GRADE_ROWS = Econ.GRADE_ROWS;
   var GPD_TIERS = Econ.GPD_TIERS;
   var GPD_DEFAULT = Econ.GPD_DEFAULT;
@@ -191,15 +205,19 @@
   // gpdLabel / cpToGpd / accessoriesImpliedGpd / gemsImpliedFloor live in
   // loadout-econ.js now (see the wrapper block above).
 
-  // The provenance/consistency line under the gpd selector. Combat power always picks
-  // the default; accessories warn when ≥2 ladder steps away, gems when their floor
-  // exceeds the CP band.
+  // The provenance/consistency line under the gpd selector. Combat power picks the
+  // default; accessories warn when ≥2 ladder steps away, gems when their floor
+  // exceeds the CP band. Says "auto-set" ONLY while the active tier IS the CP
+  // suggestion — after a manual tier click it reports the suggestion instead
+  // (re-rendered into #gr-gpd-note-host by __grSetGpd).
   function gpdNoteHtml() {
     var lo = lastLoadout || {};
     var cpG = cpToGpd(lo.combatPower);
     var parts = [];
     if (cpG) {
-      parts.push("auto-set " + gpdLabel(cpG) + " from combat power " + Number(lo.combatPower).toLocaleString("en-US"));
+      parts.push(grGpd === cpG
+        ? "auto-set " + gpdLabel(cpG) + " from combat power " + Number(lo.combatPower).toLocaleString("en-US")
+        : "combat power " + Number(lo.combatPower).toLocaleString("en-US") + " suggests " + gpdLabel(cpG));
       var accG = accessoriesImpliedGpd(lo.accessories);
       if (accG && Math.abs(GPD_TIERS.indexOf(accG) - GPD_TIERS.indexOf(cpG)) >= 2) {
         parts.push('<span class="gr-gpd-warn">⚠ accessories look closer to ' + gpdLabel(accG) + "</span>");
@@ -223,6 +241,11 @@
     if (!record || record.cached !== true || record.combatPower != null) return false;
     if (record.source !== "lostark.bible") return false;           // KR / custom never have it
     if (!Array.isArray(record.gems) || !record.gems.length) return false;
+    // Signed-out visitors can't re-pull: the Worker answers needSignIn and runPull's
+    // error branch would then WIPE the cached loadout just rendered. Skip the self-heal
+    // for them (the manual Re-pull button still shows the sign-in message on purpose).
+    var O = window.BibleOAuth;
+    if (!(O && O.signedIn && O.signedIn())) return false;
     var key = ((record.region || "") + ":" + (record.name || "")).toLowerCase();
     if (grAutoRepulled[key]) return false;
     grAutoRepulled[key] = 1;
@@ -356,9 +379,9 @@
 '  #tab-grader .gr-status{font-size:12px;color:var(--dim);margin-top:8px;min-height:16px}' +
 '  #tab-grader .gr-status.working{color:var(--accent)}' +
 '  #tab-grader .gr-status.err{color:var(--bad)}' +
-// DPS = GOLD, Support = GREEN — a mode-scoped --axis var applied ONLY to the key figures
-// (avg grade, totals, per-gem dmg, order/chaos + grading text, the toggle). Everything
-// else keeps the generic blue --accent; rank badges use fixed rankColor (untouched).
+// DPS = PINK (#e18ac0), Support = BLUE (#66c7ff) — a mode-scoped --axis var applied ONLY
+// to the key figures (avg grade, totals, per-gem dmg, order/chaos + grading text, the
+// toggle). Everything else keeps the generic --accent; rank badges use fixed rankColor.
 '  #tab-grader.axis-dps{--axis:#e18ac0}' +
 '  #tab-grader.axis-support{--axis:#66c7ff}' +
 // pull mode: saved-character chips sit at the TOP (right under the mode toggle); the
@@ -1126,7 +1149,7 @@
       + '<span class="pl-sub"><span id="gr-econ-label">' + econLabel + '</span> · per-effect-pair action plan at your loadout’s baseline</span></h2>'
       + '<div class="gr-baseline-host" id="gr-baseline-host">' + baselineHeadHtml(base) + '</div>'
       + '<div class="gr-gpd"><span class="lab">Gold per 1% damage</span>' + gpdBtns + '</div>'
-      + gpdNoteHtml()
+      + '<div id="gr-gpd-note-host">' + gpdNoteHtml() + '</div>'
       + rosterRow
       + body
       + legend
@@ -1138,7 +1161,7 @@
   function refreshPlanCards() {
     var host = document.getElementById("gr-plan-cards");
     if (!host) return;
-    var gems = (lastLoadout && lastLoadout.gems) || [];
+    var gems = activeGems(lastLoadout);   // honor the raid/chaos preset, like renderLoadout
     var base = blanketBaseline(gems);
     var headHost = document.getElementById("gr-baseline-host");
     if (headHost) headHost.innerHTML = baselineHeadHtml(base);
@@ -1157,6 +1180,10 @@
     grGpd = g;
     var btns = document.querySelectorAll("#tab-grader .gr-gpd .gpd-btn");
     for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("active", Number(btns[i].getAttribute("data-gpd")) === g);
+    // The provenance note must track the ACTIVE tier ("auto-set" only while it is the
+    // CP suggestion) — re-render it, since refreshPlanCards doesn't touch it.
+    var noteHost = document.getElementById("gr-gpd-note-host");
+    if (noteHost) noteHost.innerHTML = gpdNoteHtml();
     refreshPlanCards();
   };
 
@@ -1174,7 +1201,7 @@
   // ◀ ▶ baseline nudge: shift the blanket baseline ±1 rank (clamped to GRADE_ROWS) and
   // re-render the plan live. Wired via event delegation in renderLoadout.
   window.__grNudgeBaseline = function (delta) {
-    var gems = (lastLoadout && lastLoadout.gems) || [];
+    var gems = activeGems(lastLoadout);   // honor the raid/chaos preset, like renderLoadout
     var base = blanketBaseline(gems);
     if (!base) return;
     // clamp the *resulting* index, then store the shift that produced it
@@ -1195,6 +1222,9 @@
     getFieldSnapshot().then(function (chars) {
       var el = $("gr-fieldrank"); // re-query: the pane may have re-rendered while fetching
       if (!chars || !chars.length || !el) return;
+      // Superseded? A DIFFERENT loadout may have rendered while the snapshot fetched —
+      // its pane has a fresh #gr-fieldrank that must not get THIS character's rank.
+      if (lastLoadout && charKey(lastLoadout.region, lastLoadout.name) !== charKey(data.region, data.name)) return;
       var axis = sup ? "support" : "dps";
       var better = 0, total = 0, classBetter = 0, classTotal = 0;
       for (var i = 0; i < chars.length; i++) {
@@ -1209,7 +1239,8 @@
       var bits = [];
       if (data.class && classTotal >= 5) {
         var pct = Math.max(1, Math.ceil(100 * (classBetter + 1) / (classTotal + 1)));
-        bits.push("Top " + pct + "% of " + esc(data.class) + "s (#" + (classBetter + 1) + " of " + classTotal + ")");
+        // no esc(): this lands in textContent below, which escapes on its own
+        bits.push("Top " + pct + "% of " + data.class + "s (#" + (classBetter + 1) + " of " + classTotal + ")");
       }
       bits.push("#" + (better + 1) + " of " + total.toLocaleString() + " tracked characters" + (sup ? " (support axis)" : ""));
       el.textContent = bits.join(" · ");
@@ -1721,7 +1752,10 @@ presetToggleHtml(data) +
       "if(e<0){alert('Could not read the gem data on this page.');return}" +
       "var im=h.match(/ilvl:\\d+/),cm=h.match(/bg-neutral-900 px-2 py-1 text-sm\">[^<]+<\\/p>/g)," +
       "meta=(im?im[0]+' ':'')+(cm?cm.join(' '):''),p=location.pathname.split('/')," +
-      "o={src:meta+' arkGridCores:'+h.slice(s,e),region:(p[2]||''),name:decodeURIComponent(p[3]||'')};";
+      // lostark.bible's EU path code is CE — normalize to our region key so the
+      // leaderboard filters / region select / favorites all match (the worker and
+      // bible-import.js normalize the same way).
+      "o={src:meta+' arkGridCores:'+h.slice(s,e),region:(p[2]==='CE'?'EU':(p[2]||'')),name:decodeURIComponent(p[3]||'')};";
     var GO = "location.href='" + CALC + "#import='+encodeURIComponent(JSON.stringify(o))";
     var gradeBm = "javascript:(function(){" + EXTRACT + GO + "})()";
     var uploadBm = "javascript:(function(){" + EXTRACT +
@@ -1998,7 +2032,7 @@ presetToggleHtml(data) +
         (gems ? '<p class="gr-oauthgems">' + rd.gemFields.map(esc).join('<br>') + '</p>' : '') +
         rundownRows(rd, data) +
         rundownEvidence(rd) +
-        '<p class="note">Token: ' + esc(rd.scope) + ' &middot; ' + rd.daysLeft + ' days left' +
+        '<p class="note">Token: ' + esc(rd.scope) + ' &middot; ' + esc(rd.daysLeft) + ' days left' +
         (rd.daysLeft <= 14 ? ' &mdash; sign in again soon to renew it' : '') + '</p>' +
         '</div>';
       out.appendChild(box);
@@ -2025,7 +2059,7 @@ presetToggleHtml(data) +
     var r = rd.roster || {};
     var lg = rd.latestLog || {};
     var rows = [
-      ["Roster", (rd.world || "?") + " &middot; " + esc(data.region)],
+      ["Roster", esc(rd.world || "?") + " &middot; " + esc(data.region)],
       ["Class", esc(lg.class || r.class || "—") + (lg.spec ? " &middot; " + esc(lg.spec) : "")],
       ["Item level", r.ilvl != null ? esc(Math.round(r.ilvl * 100) / 100) : "—"],
       ["Combat power", lg.combatPower != null ? esc(Math.round(lg.combatPower * 100) / 100) : "—"],
@@ -2183,6 +2217,7 @@ presetToggleHtml(data) +
     // so the user can force a fresh pull of that same character.
     window.graderShowLoadout = function (charData) {
       if (!charData) return;
+      stopPoll(); clearRefreshBanner(); // cancel any running queue watch (mirrors runPull) so its finish can't clobber this loadout
       if (typeof window.selectTab === "function") window.selectTab("grader");
       selectMode("pull");
       if (charData.region && $("gr-region")) {

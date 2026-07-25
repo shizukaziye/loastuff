@@ -16,11 +16,13 @@
  * /tmp/pipe-method/generate_pipeline.py with the OVERRIDES baked into the editable
  * CONST block below): box buy decisions, weekly gem income, per-gem cut/fuse/reset
  * processing, post-cut L/R/A fusion (A+2L → R+2L → 3L), weeks-to-24, weekly gold, and
- * the cp% combat-power gain. cp% uses the conditional score-when-above of each kept
- * gem; that conditional is the one quantity not stored per-gpd in the bake, so it is
- * carried in COND_SCORE below (a compact offline solve at a 5M reference gpd; it is
- * gpd-stable to <0.001, and the per-gpd P(above) used to weight it IS read live from
- * the baked cells, so the cp% tracks each gpd exactly in the dimension that moves).
+ * the cp% combat-power gain. cp% wants the conditional score-when-above of each kept
+ * gem; that conditional is the one quantity not stored per-gpd in the bake. COND_SCORE
+ * below is the slot for an offline solve of it, but no generator exists yet — until it
+ * is baked, condScoreFor falls back to each cell's baked expScore (the archetype's
+ * mean score, a slight under-read vs the conditional). The per-gpd P(above) used to
+ * weight it IS read live from the baked cells, so cp% tracks each gpd in the
+ * dimension that moves.
  */
 (function () {
   "use strict";
@@ -114,11 +116,12 @@
 
   // ---------------------------------------------------------------------------
   // COND_SCORE — conditional expected score-when-above (the % damage of a KEPT gem of
-  // each archetype), keyed grade -> "rarity_cost_bucket" -> score. Offline exact-DP
-  // solve at a 5M reference gpd (gpd-stable to <0.001). Used ONLY for the cp% column;
-  // it is weighted by the per-gpd baked P(above) so cp% still tracks each gpd exactly.
-  // For gpds not listed (e.g. future tiers) the value is reused as-is — it is the
-  // conditional score, which is gpd-invariant. See the offline bake in the task notes.
+  // each archetype), keyed grade -> "rarity_cost_bucket" -> score. Meant to be an
+  // offline exact-DP solve at a 5M reference gpd (gpd-stable to <0.001), used ONLY
+  // for the Avg/Total %dmg + cp% columns, weighted by the per-gpd baked P(above).
+  // NOT BAKED YET — no generator exists, so this stays null and condScoreFor falls
+  // back to each cell's baked expScore (the archetype's mean score, a slight
+  // under-read vs the conditional solve). Fill the placeholder once a bake exists.
   // ---------------------------------------------------------------------------
   var COND_SCORE = /*__COND_SCORE__*/ null;
 
@@ -463,29 +466,38 @@
 
   // ---------------------------------------------------------------------------
   // cp% baseline score (wp 4.25, order 4.25, dead effects), cost-weighted 60/30/10.
-  // Scoring is linear in level, so this is exact. Cached.
+  // AXIS-AWARE: the support bake scores on the support scale, so its zero-point is
+  // the model's supportBaseline twin, not the DPS cpBaseline (which would swamp the
+  // small support scores and turn every party% negative). Scoring is linear in
+  // level, so this is exact. Cached per axis.
   // ---------------------------------------------------------------------------
   function cpBaselineScore() {
-    if (cpBaselineScore._v != null) return cpBaselineScore._v;
-    if (!window.Astrogem || typeof window.Astrogem.cpBaseline !== "function") return null;
+    if (cpBaselineScore._v && cpBaselineScore._v[AXIS] != null) return cpBaselineScore._v[AXIS];
+    var A2 = window.Astrogem;
+    var fn = A2 && (AXIS === "support" ? A2.supportBaseline : A2.cpBaseline);
+    if (typeof fn !== "function") return null;
     var s = 0;
     for (var ci = 0; ci < COSTS.length; ci++) {
       var c = COSTS[ci];
-      // Shared zero-point with the Grader: A.cpBaseline(c) == score of a
-      // wp-4.25/order-4.25/dead-effect gem at cost c (the only allowed pipeline edit).
-      s += CONST.COST_MIX[c] * window.Astrogem.cpBaseline(c);
+      // Shared zero-point with the Grader: A.cpBaseline(c) / A.supportBaseline(c) ==
+      // this axis's score of a wp-4.25/order-4.25/dead-effect gem at cost c.
+      s += CONST.COST_MIX[c] * fn(c);
     }
-    cpBaselineScore._v = s;
+    if (!cpBaselineScore._v) cpBaselineScore._v = {};
+    cpBaselineScore._v[AXIS] = s;
     return s;
   }
 
   // Conditional score-when-above for a cell, from COND_SCORE (5M-ref offline solve).
-  // Falls back to the cell's own baked expScore if the table is absent.
-  function condScoreFor(grade, rarity, cost, bucket, baseline) {
+  // Falls back to the cell's own baked expScore if the table is absent (rec = the
+  // baked bucket record) — the archetype's mean score, a slight under-read vs the
+  // conditional solve — then to the baseline itself if even the record is missing.
+  function condScoreFor(grade, rarity, cost, bucket, baseline, rec) {
     if (COND_SCORE && COND_SCORE[grade]) {
       var v = COND_SCORE[grade][rarity + "_" + cost + "_" + bucket];
       if (v != null) return v;
     }
+    if (rec && rec.expScore != null) return rec.expScore;
     return baseline;
   }
 
@@ -502,7 +514,7 @@
           if (!rec) continue;
           var p = rec.pAbove || 0;
           if (p <= 0) continue;
-          var s = condScoreFor(grade, RARITIES[ri], COSTS[ci], BUCKETS[bi], baseline);
+          var s = condScoreFor(grade, RARITIES[ri], COSTS[ci], BUCKETS[bi], baseline, rec);
           var w = CONST.COST_MIX[COSTS[ci]] * BW[BUCKETS[bi]] / BW_TOTAL * p;
           ta += w; ss += w * s;
         }
@@ -687,22 +699,6 @@
     };
   }
 
-  // score (≈ %dmg, the same unit as the baked baseline) -> 0-100 grade, via the linear
-  // gradeToScore map (recover slope/intercept from two evaluations). For the popup only.
-  function scoreToGrade(s) {
-    if (s == null || !isFinite(s) || typeof window.gradeToScore !== "function") return null;
-    var s0 = window.gradeToScore(0), s100 = window.gradeToScore(100);
-    if (s100 === s0) return null;
-    return 100 * (s - s0) / (s100 - s0);
-  }
-  function gradePill(s) {
-    var g = scoreToGrade(s);
-    if (g == null) return "—";
-    var gr = Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
-    var rk = (typeof window.rankFromGrade === "function") ? window.rankFromGrade(gr) : "";
-    return gr.toFixed(1) + (rk ? " " + rankBadge(rk, gr) : "");
-  }
-
   // Popup HTML registry: gemCell stores the rich tip keyed by a cell id; the shared
   // hover handler (wireTips) looks it up and positions a single floating popover so
   // the markup never has to survive HTML-attribute escaping.
@@ -726,13 +722,13 @@
       var cut = rec ? rec.cut : null;
       var pa = rec ? rec.pAbove : null;
       var spend = rec ? rec.expSpend : null;
-      var esc = rec ? rec.expScore : null;
+      var cellExp = rec ? rec.expScore : null;   // NOT `esc` — that name is the site's HTML escaper
       if (cut != null) { avgAcc += BW[b] * cut; avgW += BW[b]; }
       rowsHtml += '<tr><td class="pt-pair"><b>' + BUCKET_LABEL[b] + '</b> <span class="pt-dim">' + bucketDescFor(b, cost) + '</span></td>'
         + '<td class="pt-num">' + fmtGold(cut) + '</td>'
         + '<td class="pt-num">' + fmtPct(pa) + '</td>'
         + '<td class="pt-num">' + (spend ? fmtGold(spend) : "—") + '</td>'
-        + '<td class="pt-num">' + fmtNum(esc, 3) + '</td></tr>';
+        + '<td class="pt-num">' + fmtNum(cellExp, 3) + '</td></tr>';
     }
     rowsHtml += '</tbody></table>';
     // Weighted-average cell value: (1·2D + 2·Op + 2·Sub + 1·No) / 6.
@@ -838,7 +834,7 @@
     // strings, so no escaping needed.
     var dmgAbbr = AXIS === "support"
       ? '<span class="gloss" data-gloss="The full party-damage buff your support grid provides">party%</span>'
-      : '<span class="gloss" data-gloss="Total % damage your grid adds over having no grid">%dmg</span>';
+      : '<span class="gloss" data-gloss="% damage of the kept gems above the wp/order-4.25 zero-point — Avg is per gem, Total is ×24 for the filled grid (not the leaderboard\'s grid-vs-no-grid figure)">%dmg</span>';
     var cpAbbr = '<span class="gloss" data-gloss="Combat-power gain once all 24 grid slots clear the baseline">cp%</span>';
     var head = '<table class="pipe-table"><thead>'
       + '<tr><th rowspan="2">Grade</th>'
@@ -1051,8 +1047,8 @@
       + 'Post-cut fodder is fused L/R/A in priority A+2L → R+2L → 3L. Weeks = ' + CONST.SLOTS + ' / (Direct + Fuse per week).</p>'
       + '<p><b>cp%.</b> cp% = ' + CONST.CP_MULT + '·(1 + Total%dmg/100) − 1, Total%dmg = ' + CONST.SLOTS + '·(avgScore − baseline), baseline = the '
       + 'score of a wp ' + CONST.CP_BASELINE_WP + ' / order ' + CONST.CP_BASELINE_ORDER + ' gem with dead side-effects (= 0 damage; interpolated, since scoring is linear). '
-      + 'avgScore is the P(above)-weighted mean of each kept archetype\'s conditional score-when-above (an offline 5M-reference exact-DP '
-      + 'solve, gpd-stable; the per-gpd P(above) that weights it is read live from the baked cells).</p>'
+      + 'avgScore is the P(above)-weighted mean of each kept archetype\'s baked mean score — a slight under-read vs the conditional '
+      + 'score-when-above, until that conditional table (COND_SCORE) is baked; the per-gpd P(above) that weights it is read live from the baked cells.</p>'
       + '<p><b>All constants are editable</b> in the CONST block at the top of pipeline.js — daily income, box costs/caps, reset cost, '
       + 'fusion fee, cp% coefficients — tweakable without a re-bake. gpd tiers are enumerated from whatever exists in data/pipeline.json.</p>'
       + '</details>';
@@ -1120,6 +1116,9 @@
       // .wrap's own width. If the window ever gets narrower than the table, only the inner
       // .tablewrap scrolls (overflow-x:auto) — the page itself never scrolls sideways.
       + '#tab-pipeline.active{--pl-w:min(1560px, calc(100vw - 96px));width:var(--pl-w);max-width:none;margin-left:calc(-1 * ((var(--pl-w) - 100%) / 2));margin-right:0}'
+      // Phones: the 96px gutter would shrink the pane BELOW the viewport (390px -> a
+      // 294px pane shifted 38px left). Fill .wrap instead; .tablewrap still scrolls.
+      + '@media(max-width:700px){#tab-pipeline.active{--pl-w:100%;margin-left:0}}'
       + '#tab-pipeline > *{padding-left:0;padding-right:0}'
       + '#tab-pipeline .legend-box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:8px 0 16px}'
       + '#tab-pipeline .legend-box .lg-title{font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);margin:0 0 14px}'
@@ -1244,6 +1243,8 @@
     if (!DATA) return '<div class="placeholder"><b>Loading baked tiers…</b></div>';
     if (GPD == null) return '<div class="placeholder"><b>No gpd tiers found in data/pipeline.json</b></div>';
     var out = '<h2 id="grid">' + gpdName(GPD) + ' gold / 1% damage — ' + (ROSTER === "nrb" ? "Non-Roster Bound" : "Roster Bound") + '</h2>';
+    // NRB/RB explainer — #pl-mode-note so __plSetRoster can live-update the text.
+    out += '<p class="note" id="pl-mode-note">' + modeNote() + '</p>';
     out += '<div class="tablewrap">' + gpdTable(GPD, ROSTER) + '</div>';
     out += '<div class="tablewrap">' + fusionTable(GPD) + '</div>';
     return out;
@@ -1442,19 +1443,12 @@
     var h = document.querySelector("#tab-pipeline .pl-handle-legend");
     if (h) h.classList.toggle("active", open);
   };
-  window.__plToggleInputs = function () {
-    var body = document.getElementById("pl-inbody");
-    var caret = document.getElementById("pl-caret");
-    if (!body) return;
-    var hidden = body.style.display === "none";
-    body.style.display = hidden ? "" : "none";
-    if (caret) caret.textContent = hidden ? "▾" : "▸";
-  };
-
   // ===========================================================================
   // PUBLIC ADVICE API — consumed by the Grader tab's "what to do with your
   // astrogems" infographic. Reuses the exact economic functions above (gev,
-  // fuseDecisions, computePipeline); changes NO existing behavior. Computed for
+  // unopenedFusion, computePipeline); changes NO existing behavior. The pre-cut
+  // fuse verdict comes from the SAME unopened-fusion fixed point the Pipeline
+  // tab's ⚜ uses (gemCell), so tab and plan agree on every cell. Computed for
   // the CURRENT REGION + the caller's roster (default 'nrb'). Only NRB has a
   // box / pre-cut fuse economy; RB gems are free to cut, so the RB plan is pure
   // per-bucket cut verdicts (no fuse rows, no boxes).
@@ -1518,7 +1512,8 @@
   // ADD 2 Uncommons to the gem you have — NO rarity is consumed beyond that:
   //   Uncommon block -> fuse as 3× Uncommon (the gem + 2 Uncommons), cost held.
   //   Rare block     -> fuse as this Rare + 2× Uncommon, the 2 Uncommons steered toward
-  //                     `addCost` (= fd.rareUcCost) so the output cost is pushed there.
+  //                     `addCost` (= the fixed point's steer cost, the same cost the
+  //                     tab's hover tip names) so the output cost is pushed there.
   //   Epic           -> never fuses.
   // These are Uncommon / Rare / Epic (the UNOPENED rarities), NOT the finished-gem
   // Legendary/Relic/Ancient processed-fusion tiers — do not conflate the two.
@@ -1548,8 +1543,17 @@
     var savedRegion = REGION, savedData = DATA, savedAxis = AXIS;
     REGION = wantRegion; DATA = grid; AXIS = axis;   // force the requested grid; restored in finally
     try {
-      // RB gems are free to cut — there is no pre-cut fuse decision to make.
-      var fd = (roster === "nrb") ? fuseDecisions(bl, gpd, roster) : null;
+      // Pre-cut fuse verdicts MUST match the Pipeline tab's ⚜, which gemCell derives
+      // from the coupled unopened-fusion FIXED POINT — not from fuseDecisions (the
+      // weekly-economy routing model; the two disagree on edge cells). Run the same
+      // per-row computation gpdTable does. RB gems are free to cut — no pre-cut fuse
+      // decision, so the fixed point is skipped (uf stays null, blockFuse false).
+      var uf = (roster === "nrb") ? unopenedFusion(function (rs, r, c, b) {
+        var rec2 = bakedBucket(r, c, b, bl, gpd, rs);
+        return rec2 ? rec2.cut : null;
+      }) : null;
+      var fuseA = uf ? uf.fuse : null;
+      var steer = uf ? uf.steer : null;
 
       // Per-BUCKET cut-EV -> verdict, mirroring the pipeline tab's verdict() bands:
       //   cut-EV >= RESET_THRESHOLD -> "cut & reset"; > 0 -> "cut"; else "dismantle".
@@ -1565,10 +1569,20 @@
         for (var ci = 0; ci < COSTS.length; ci++) {
           var rarity = RARITIES[ri], cost = COSTS[ci];
           var ov = gev(rarity, cost, bl, gpd, roster);   // 1:2:2:1-weighted open value
-          var blockFuse = !fd ? false   // RB: never fuse (fd == null)
-            : (rarity === "uncommon") ? !!fd.uc[cost]
-              : (rarity === "rare") ? !!fd.rare[cost]
-                : false;   // epic never fuses pre-cut
+          // Block fuse — EXACTLY gemCell's test: the block's fixed-point fuse value
+          // beats the plain (unclamped) 1:2:2:1 mean of its 4 bucket cut-EVs, all 4
+          // present. Epic never fuses (fuseA.epic is all null); RB never fuses (uf null).
+          var f3 = fuseA && fuseA[rarity] ? fuseA[rarity][cost] : null;
+          var blockFuse = false;
+          if (f3 != null) {
+            var fAcc = 0, fW = 0, fOk = true;
+            for (var fb = 0; fb < BUCKETS.length; fb++) {
+              var fRec = bakedBucket(rarity, cost, BUCKETS[fb], bl, gpd, roster);
+              if (!fRec || fRec.cut == null) { fOk = false; break; }
+              fAcc += BW[BUCKETS[fb]] * fRec.cut; fW += BW[BUCKETS[fb]];
+            }
+            if (fOk) blockFuse = f3 > fAcc / fW;
+          }
 
           // Per effect-pair bucket verdicts (2D / Op / Sub / No), reusing the SAME baked
           // cut-EVs + bands as the pipeline tab's gemCell. When the block fuses (per-BLOCK
@@ -1590,8 +1604,9 @@
           if (blockFuse) {
             verdict = "fuse";
             // addCost = the cost of the 2 Uncommons you ADD. A UC fuse holds its own
-            // cost; a Rare fuse steers its 2 added Uncommons toward fd.rareUcCost.
-            addCost = (rarity === "uncommon") ? cost : fd.rareUcCost[cost];
+            // cost; a Rare fuse steers its 2 added Uncommons toward the fixed point's
+            // best output cost (uf.steer — the cost the tab's hover tip names too).
+            addCost = (rarity === "uncommon") ? cost : ((steer && steer.rare && steer.rare[cost] != null) ? steer.rare[cost] : cost);
             recipe = (rarity === "uncommon")
               ? ("3× " + cost + "-cost Uncommon")
               : (cost + "-cost Rare + 2× " + addCost + "-cost Uncommon");

@@ -228,10 +228,9 @@ METHODOLOGY §3) — so when that model changes, these move with it.
 > bracket `base·(1 + ally_dmg)·(1 + spec_eff)`, summed and diluted by the dealer's own
 > additional damage. Net effect on per-point party damage: ally-attack ×0.98, brand
 > ×1.01, ally-damage **×1.10** (ally damage rides the bracket size, so higher spec
-> lifts it further). Values below are the corrected numbers. **⚠ Pending: the code
-> constants in `model/astrogem.js` and the baked `data/pipeline-support.json` still
-> hold the old values — apply + re-bake before this doc and the tool agree (see the
-> audit / METHODOLOGY "Regenerate").**
+> lifts it further). Values below are the corrected numbers, and they are **live**:
+> `model/astrogem.js` carries them and the committed 2026-07-23
+> `data/pipeline-support.json` bake was built from them (verified in sync).
 
 | Support line | per-level value (per-DPS) | was |
 |---|---:|---:|
@@ -301,8 +300,9 @@ It's a **level-0 multiplicative** model (`gridDamage`):
 
 The support total (`supportGridDamage`) is the same shape: support **effects stay
 linear** (the party per-level values are flat in this model — no bucket diminishing),
-and order is the per-core 17-floor form with each core's own rate. The UI shows it
-**÷3** ("per-ally party %").
+and order is the per-core 17-floor form with each core's own rate. The support
+coefficients are stored per-ally (÷3, §8), so this total already IS the per-ally
+party % — the UI shows it as-is, with no division.
 
 > **Important:** per-gem grades use the lvl-30 *marginal* yardstick, while the grid
 > total uses the lvl-0 *cumulative* model with diminishing returns. So **the per-gem

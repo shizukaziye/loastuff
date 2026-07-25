@@ -172,8 +172,9 @@ re-bake needed to retune it:
   red >26), net **Gold/wk** for the whole loop, and **cp%** — the combat-power
   gain once all 24 slots clear the baseline: `1.3·(1 + Total%dmg/100) − 1` with
   `Total%dmg = 24 × (avgScore − baseline)`. `avgScore` weights each kept
-  archetype's conditional score-when-above (a gpd-stable offline exact-DP solve,
-  `COND_SCORE`) by the per-gpd `P(above)` read live from the baked cells.
+  archetype's baked mean score (`expScore` — a slight under-read vs the
+  conditional score-when-above, until the `COND_SCORE` conditional table is
+  baked) by the per-gpd `P(above)` read live from the baked cells.
 
 The collector still bakes the *original, simpler* throughput reconstruction
 (`CUTS_PER_WEEK`, `FRESH_BUCKET_MIX`, `BOX_SCHEDULE` → the JSON's `thru` block,

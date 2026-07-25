@@ -26,6 +26,30 @@ important) reducing **Cloudflare KV** and **lostark.bible** usage.
 > - Still open: **#7** (brute-force `valueBounds()`/`gradeBounds()`), the rest of
 >   **#9** (`OLD_SCORING_MODE`/`OLD_W`), the `ALLOW_ORIGIN` CORS TODO, and #6.
 >
+> **Status update (2026-07-25 — the frontend fix pass).** A fresh audit's findings
+> landed today:
+> - **Favorites moved cookie → localStorage** (`favorites.js`): the cookie died
+>   silently at the 4KB header cap (~60 characters; `favoriteRoster` saves whole
+>   rosters) and rode every request. Same key name, same public API; the old cookie
+>   is imported once on load, then deleted.
+> - **`COND_SCORE` fallback** (`pipeline.js`): the `/*__COND_SCORE__*/ null`
+>   placeholder has no generator, so the Avg/Total %dmg + cp% columns were
+>   degenerate (grade-40 showed −0.0 / the bare 30% floor). `condScoreFor` now
+>   falls back to each cell's baked `expScore`, and the support columns use the
+>   model's `supportBaseline` zero-point (they showed −12.8…−9.0 before).
+> - **`pipelineAdvice` fuse verdicts unified** with the Pipeline tab's ⚜: both now
+>   derive from the same unopened-fusion fixed point (they disagreed on 26/216 DPS
+>   + 23/216 support cells).
+> - **Published-hash admin token**: the queue-admin/owner endpoints authenticated
+>   with gate.js's page-source hash — fixed 2026-07-25 by the worker owner with a
+>   dedicated admin secret.
+> - Smaller: bookmarklet EU imports normalized CE→EU; `graderShowLoadout` cancels a
+>   running queue watch; the grader guards a missing `loadout-econ.js`; signed-out
+>   auto-re-pull no longer wipes a rendered cached loadout; dead `__plToggleInputs`
+>   / `gradePill` / `scoreToGrade` removed from `pipeline.js`; stale doc/comment
+>   claims (support "÷3", "DPS = GOLD/GREEN" theme colors, 2026-06-27 bake stamps,
+>   unreachable commit hashes) corrected.
+>
 > **Status update (2026-07-18 — the whole-repo audit pass).** Four parallel area
 > audits re-verified everything; landed in the "audit pass 1" commit:
 > - `gradeBounds`/`grade_bounds` (JS+PY), `_solve3x3` (JS+PY), `Solver.branchStats`,
@@ -52,9 +76,9 @@ important) reducing **Cloudflare KV** and **lostark.bible** usage.
 | Where | What | Disposition |
 |---|---|---|
 | `model/astrogem.js` `OLD_SCORING_MODE` / `OLD_W` / `setOldScoring` | Head-to-head "old abstract weights" comparison mode, **hardcoded `false`**, never on in the app. | Remove once analysis no longer needs it — **fork's file**, flagged. |
-| `model/astrogem.js` `score()` / `gradeToScore()` | The **legacy additive** scoring layer. Grading no longer uses it; only the pipeline EV still does, "until the Stage-2 rebake." | Will be removed by the **rebake** — flagged. |
-| `grader.js` `var since` (in `runPull`) | Computed but unused after the queue-watch rewrite (superseded by `sinceTs`). | **✅ Removed this pass.** |
-| `advisor.js` Workers-AI engine | Shown but **disabled** behind a never-set `WORKER_URL` (Tesseract is the live engine). | Keep as a deliberate future hook, or trim — see opt #10. |
+| `model/astrogem.js` `score()` | The **legacy additive** scoring layer. Grading no longer uses it; survives as the grader's raw %-damage readout (`relDamage`) + the JS↔Python reference battery. (`gradeToScore` struck from this row 2026-07-25 — it is a **live dependency**: it runs on the multiplicative model and feeds the pipeline baselines.) | Will be removed by the **rebake** — flagged. |
+| `grader.js` `var since` (in `runPull`) | Computed but unused after the queue-watch rewrite (superseded by `sinceTs`). | **✅ Removed (2026-07-18 pass).** |
+| `advisor.js` Workers-AI engine | Was shown but **disabled** behind a never-set `WORKER_URL`. | **✅ Trimmed** — the branch is gone; engines live behind the `ocr/engine.js` registry (see opt #10). |
 | `worker/astrogem-bible.js:55` `ALLOW_ORIGIN = "*"` | `TODO`: lock CORS to the Pages origin before "production." | Tighten if desired (security, not dead code). |
 
 Everything else (`gate.js`, `favorites.js`, `queue-admin.html`) is lean.
@@ -121,18 +145,19 @@ See the dead-code table. Once the pipeline finishes migrating to `gemValue`, the
 old-weights comparison mode and the additive `score`/`gradeToScore` path can go,
 trimming a meaningful chunk of `model/astrogem.js`.
 
-**10. Trim the disabled Workers-AI advisor engine.** *(Recommended / optional.)*
-The advisor's Workers-AI branch is dead behind a never-set `WORKER_URL`. If Tesseract is
-the permanent engine, removing the branch + its UI selector trims `advisor.js`; if a
-cloud OCR is still planned, keep it as the intentional hook it is.
+**10. Trim the disabled Workers-AI advisor engine.** *(✅ Done.)*
+The Workers-AI/`WORKER_URL` branch is out of `advisor.js` — engines live behind the
+`ocr/engine.js` registry (`ocr/workersai-engine.js` keeps its own `WORKER_URL`), and
+the structural engine has been the sole live engine since 2026-07-16.
 
 ---
 
 ## Summary
 
-- **Implemented now (no behavior change):** #4, #5 (worker read parallelization), #8
-  (dead `since`).
-- **Highest-value recommendations:** #1 (`q:order` snapshot) and #2 (incremental
-  leaderboard snapshot) — together they remove almost all of the steady-state KV-`list`
-  and KV-`read` load; #3 cuts wasted lostark.bible fetches.
-- **Left for the rebake fork:** #7, #9 (and the `model/astrogem.js` dead code).
+- **Implemented:** #1, #2, #3 (worker, 2026-07-16), #4, #5 (read parallelization),
+  #8 (dead `since`), #10 (Workers-AI trim). Plus, outside the numbered list: the
+  Favorites cookie→localStorage move, the `COND_SCORE` fallback, and the
+  `pipelineAdvice` fuse-verdict unification (2026-07-25 — see the status block).
+- **Still open:** #6 (lazy inactive-axis leaderboard figures), #7 (`valueBounds`
+  brute force), #9 (`OLD_SCORING_MODE`/`OLD_W` + the legacy `score()` layer), and
+  the `ALLOW_ORIGIN` CORS TODO.

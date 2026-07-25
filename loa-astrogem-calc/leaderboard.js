@@ -281,8 +281,8 @@
 '  #tab-leaderboard .lb-modebtn{background:none;border:none;cursor:pointer;color:var(--dim);font-family:inherit;font-weight:700;font-size:12px;padding:5px 16px;line-height:1.4;transition:background .12s,color .12s}' +
 '  #tab-leaderboard .lb-modebtn:hover{color:var(--text)}' +
 '  #tab-leaderboard .lb-modebtn.on{background:var(--axis);color:#0c0e12}' +
-// DPS = GOLD, Support = GREEN: a mode-scoped --axis on avg grade, dmg, the header + the
-// toggle. Generic blue --accent stays for the rest; rank badges keep their rankColor.
+// DPS = PINK (#e18ac0), Support = BLUE (#66c7ff): a mode-scoped --axis on avg grade, dmg,
+// the header + the toggle. Generic --accent stays for the rest; rank badges keep rankColor.
 '  #tab-leaderboard.axis-dps{--axis:#e18ac0}' +
 '  #tab-leaderboard.axis-support{--axis:#66c7ff}' +
 '  #tab-leaderboard .lb-regs{display:inline-flex;gap:0;border:1px solid var(--border);border-radius:99px;overflow:hidden}' +
@@ -331,7 +331,7 @@
 '    <li><b>Avg grade</b> — a quality score that’s <i>pairing-invariant</i> (it doesn’t matter which gem sits in which core): the geometric mean of the gems’ values mapped to 0–100. It’s separate from total damage — “how clean is the build,” not “how much it does.”</li>' +
 '  </ul>' +
 '  <p>The board <b>sorts by Total dmg %</b> (descending) and is <b>floorless</b> — every graded character shows, at any rank. The name search finds anyone by name, at any grade, with their true overall rank.</p>' +
-'  <p><b>DPS / Support toggle.</b> DPS ranks everyone by Total dmg%. Support keeps only the four support classes — Bard, Paladin, Artist, Valkyrie (every one of them, even DPS-built) — ranked by their support grade, with a Party dmg% column (shown ÷3, per-ally).</p>' +
+'  <p><b>DPS / Support toggle.</b> DPS ranks everyone by Total dmg%. Support keeps only the four support classes — Bard, Paladin, Artist, Valkyrie (every one of them, even DPS-built) — ranked by Party dmg%, the party-damage buff their grid provides. It is already per-ally (the support coefficients are stored per-DPS), so no ÷3 is applied to the shown value.</p>' +
 '  <p><b>Support mains move off the DPS board.</b> A support-class character whose <i>support</i> build outranks its <i>DPS</i> build by 2+ sub-ranks (e.g. B− DPS but B+ support) is a genuine support and is dropped from DPS — they belong on the Support board. A support within 1 sub-rank, or whose DPS is as good or better, stays on both boards.</p>' +
 '  <p class="note">At most 100 rows per page (Prev / Next or the jump box for the rest; favorites in full above the table). The list reflects characters pulled so far — pull a new one in the Grader and it appears here.</p>' +
 '</details>';
@@ -522,9 +522,9 @@
   }
 
   // Build the ranked list FROM rawChars for the active mode, then paint.
-  //   DPS:     ALL characters, ranked by avg grade desc (Total dmg% column).
+  //   DPS:     ALL characters (minus support mains), ranked by Total dmg% desc (_dmg).
   //   Support: ONLY the four support CLASSES (by c.class, not build) — kept in full,
-  //            ranked by avg supportGrade desc (Party dmg% column).
+  //            ranked by Party dmg% desc (_pdmg, already per-ally).
   // Tags each kept char with _rank (overall #, 1..N within this mode's list) and
   // _idx (its index in allChars, for the delegated click/star handlers).
   function rebuild() {
@@ -686,7 +686,7 @@
     var el = $("tab-leaderboard");
     if (!el) return;
     el.innerHTML = shell();
-    el.classList.add("axis-dps");   // default DPS = red theme
+    el.classList.add("axis-dps");   // default DPS = pink theme (#e18ac0)
     // Name search: filter the table by name (matches at ANY grade, so sub-B- characters
     // are findable). Empty box restores the normal board. Favorites hide while searching.
     var searchEl = $("lb-search");

@@ -44,11 +44,11 @@ code,.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-
 .tabpane.active{display:block}
 
 /* ---- sticky, collapsible input panel (for the UI agents to use) ---- */
-.inputs{position:sticky;top:0;z-index:20;background:rgba(13,16,23,.97);
+.inputs{position:sticky;top:var(--loseii-nav-offset,0px);z-index:20;background:rgba(13,16,23,.97);
   border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px)}
 .ihdr{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;user-select:none;margin-bottom:10px}
 .ihdr .tgl{cursor:pointer}
-.ihdr #caret{display:inline-block;width:12px}
+.ihdr #gr-caret{display:inline-block;width:12px}
 .ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px}
 .fld{display:flex;flex-direction:column;gap:2px}
 .fld label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
@@ -98,9 +98,11 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
   @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
 }
 
-/* Abbreviation tooltip: a dotted underline + help cursor signals "hover for the full
-   meaning" (the definition rides in the title=). Used for 2D/Op/Sub/No, cp%, gpd, etc. */
-.gloss{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
+/* Abbreviation tooltip: a dotted underline + help cursor signals "hover (or tap) for
+   the full meaning" (the definition rides in data-gloss; tip.js shows it — no title=).
+   Bare [data-gloss] (e.g. the grader plan-table cells) gets the same affordance as
+   .gloss. Used for 2D/Op/Sub/No, cp%, gpd, etc. */
+.gloss,[data-gloss]{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
 th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}
 
 /* Instant styled tooltip (no native-title delay). One floating node positioned by tip.js on
@@ -110,4 +112,3 @@ th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}
   color:var(--text);font-size:12px;line-height:1.45;padding:7px 10px;border-radius:7px;
   box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
 #gm-tip.on{opacity:1;visibility:visible}
-.gloss[data-gloss]{cursor:help}

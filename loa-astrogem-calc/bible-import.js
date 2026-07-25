@@ -311,7 +311,11 @@
     if (!gems || !gems.length) return null;
 
     const meta = parseMeta(text, isKrPage);
-    const rn = (hint && hint.region) ? { region: hint.region, name: hint.name } : regionNameFromHtml(text);
+    // The hint region comes from the bookmarklet's URL path — normalize it the same
+    // way regionNameFromHtml does (lostark.bible's EU path code is CE).
+    let hintRegion = (hint && hint.region) ? String(hint.region).toUpperCase() : null;
+    if (hintRegion === "CE") hintRegion = "EU";
+    const rn = hintRegion ? { region: hintRegion, name: hint.name } : regionNameFromHtml(text);
     return {
       source: source,
       region: (rn && rn.region) || (isKrPage ? "KR" : null),

@@ -179,8 +179,8 @@ fodder[A_c] = (1/3)·H(c) + (2/3)·max_c H(c) − FC
 P(v < baseline)` come from the exact per-`(cost, tier)` value distribution (§2).
 `fusionValueForTier(tier, cost, …)` returns the per-input `fodder[…]` above,
 clamped `≥ 0`. (The earlier per-cost `3×3` linear solve by Gaussian elimination —
-"fuse 3 of the same tier at your own cost" — is superseded by this joint model,
-commit `75ec11e`; the `_solve3x3` helper still in the file is a leftover of it.)
+"fuse 3 of the same tier at your own cost" — is superseded by this joint model;
+its `_solve3x3` helper was removed 2026-07-18.)
 
 ---
 
@@ -247,10 +247,10 @@ DPS/Support toggle picks which file it reads.
 > per-level and `SUPPORT_ORDER_PER_CORE` per-point values (grading doc §8) come from
 > the accessory calc's support model, which was corrected against the Bebkok sup-buff
 > sheet — the identity channel now carries **Major Chord** and treats spec as a
-> multiplier. Ally-damage lines rise ~10%, brand and ally-attack barely move. **After
-> the code constants change, `data/pipeline-support.json` MUST be re-baked** (§Regenerate;
-> ~45 min) and the support refs re-frozen. The **leaderboard** re-ranks on its own —
-> it computes `gridDamage(support)` live in the browser, so a redeploy is enough.
+> multiplier. Ally-damage lines rise ~10%, brand and ally-attack barely move. The
+> committed 2026-07-23 `data/pipeline-support.json` bake carries these corrected
+> constants (code and bake verified in sync). The **leaderboard** computes
+> `gridDamage(support)` live in the browser, so it re-ranked on redeploy.
 
 ### Per cost-cell rendering
 
@@ -393,12 +393,12 @@ generations are superseded:
 
 1. **Additive score as the value metric** (this tool, up to 2026-06-26): value /
    grade / EV all used `score(config) = Σ line D` with willpower as an additive
-   `±D` line (and, before `b448333`, the 30-level *average* per-level `D` —
+   `±D` line (and, earlier still, the 30-level *average* per-level `D` —
    see the historical note in §1). Superseded by the multiplicative
    `gemValue = gemDamage × M(effectiveCost)` (perfect gems tie at grade 100);
    grading, the DP terminal value, and the whole EV/bake layer moved together in
-   commit `4c127aa`. The additive `score` remains only as the grader's raw
-   %-damage readout (`relDamage`) and in the JS↔Python reference battery. (The
+   the 2026-06-26 scoring rework. The additive `score` remains only as the grader's
+   raw %-damage readout (`relDamage`) and in the JS↔Python reference battery. (The
    `tools/verify-dp.js` MC harness was the one value-metric consumer left behind
    on `A.score`; found and fixed 2026-07-16 — its gate had been failing by the
    score-vs-value gap since the rework.)
@@ -475,8 +475,8 @@ Each axis's bake runs **6912 exact DP solves** (3 rarities × 3 costs × 4 bucke
 Because a single turn-1 **epic** DP is ~3 s, the collector **parallelizes with
 `worker_threads`** (`tools/collect-stats-worker.js`) and logs progress + a
 rarity-aware ETA (uncommon ≈ 0.15 s, rare ≈ 1 s, epic ≈ 3 s per solve, plus a
-same-magnitude fodder-policy walk per NRB solve). The committed 2026-06-27 bakes
-measured **~45–47 min per axis** (`meta.elapsedSec` ≈ 2715 s DPS / 2832 s support).
+same-magnitude fodder-policy walk per NRB solve). The committed 2026-07-23 bakes
+measured **~48–52 min per axis** (`meta.elapsedSec` ≈ 3126 s DPS / 2850 s support).
 The keyed schema is `cells["{rarity}_{cost}_{bucket}_{baseline}_{gpd}"] =
 { nrb:{cut,act,pAbove,expScore,expSpend,fLeg,fRelic,fAnc},
 rb:{cut,act,pAbove,expScore,expSpend} }` plus
