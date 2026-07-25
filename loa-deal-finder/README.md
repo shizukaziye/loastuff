@@ -3,7 +3,7 @@
 A single self-contained `index.html` (no build, no deps) that ranks every market item
 by how far its **current spot** sits below or above a robust **14-day fair price** —
 so you can check, anywhere, what's cheap to buy right now. Companion to the
-[stronghold crafting calculator](https://shizukaziye.github.io/loa-crafting-calculator/);
+[stronghold crafting calculator](https://www.loseii.com/loa-crafting-calculator/);
 shares its fair-price model.
 
 ## Use it
@@ -34,15 +34,13 @@ mistaken for a deal). We don't label per-unit vs per-stack for every item, but t
 
 ## Data & refresh
 
-A GitHub Action bakes prices into `index.html` as a snapshot and **refreshes them every 6
-hours** (`refresh_deals.py`, both regions). To refresh locally: `python3
-refresh_deals.py` then reload.
+A GitHub Action (`.github/workflows/refresh-data.yml` at the repo root) bakes prices
+into `index.html` as a snapshot and **refreshes them every 6 hours** (`refresh_deals.py`,
+both regions). To refresh locally: `python3 refresh_deals.py` then reload.
 
-## Deploy
+## Where it lives
 
-```
-git add -A && git commit -m "Lost Ark deal finder"
-gh repo create <user>/loa-deal-finder --public --source=. --push
-gh api -X POST repos/<user>/loa-deal-finder/pages -f source.branch=main -f source.path=/
-```
+This folder is part of the loastuff monorepo. Cloudflare Pages deploys it from
+`main` at https://www.loseii.com/loa-deal-finder/.
+
 Data comes from the same community market feed loa-buddy uses.

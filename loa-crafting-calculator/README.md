@@ -82,29 +82,19 @@ python3 verify.py
   The breakdown flags any item whose spot is ≥15% off its robust price (⚠). Toggle
   **Pricing → Spot** for live lowest prices. `refresh_prices.py` bakes the daily
   history; the app computes the robust value client-side so the knobs are instant.
-- **Craft times:** Virtuoso's Striploin is set to ~49 min (your in-game figure);
-  Specialist's Beef is still an assumed 60 min (marked `*`) — per-hour only.
+- **Craft times:** Virtuoso's Striploin is a confirmed 54 min; Specialist's Beef
+  is an assumed 60 min (marked `*`) — per-hour only.
 - Mats are valued at **market price** (true opportunity cost); zero one out to
   model farming it yourself.
 - To add a recipe, append an object to the `RECIPES` array in `index.html`
   (`id, name, type, craftingCost, quantity, craftingTime, materialOptions`) and add
   any new item ids to `ITEMS` with their `slug`/`bundle`.
 
-## Deploy to GitHub Pages
+## Where it lives
 
-**Fastest, no tooling** — since the site is one file:
-1. Create a new public repo on github.com (such as `loa-crafting-calculator`).
-2. "Add file → Upload files", drag in `index.html`, commit.
-3. Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)` → Save.
-4. Live at `https://<user>.github.io/loa-crafting-calculator/` in ~1 min.
-
-**With the CLI** (after `gh auth login` / a token is set up):
-```
-git add -A && git commit -m "Lost Ark crafting profit calculator"
-gh repo create <user>/loa-crafting-calculator --public --source=. --push
-gh api -X POST repos/<user>/loa-crafting-calculator/pages -f source.branch=main -f source.path=/
-```
-This repo is already `git init`'d and committed, so you can skip straight to the
-`gh repo create` step once authenticated.
+This folder is part of the loastuff monorepo. Cloudflare Pages deploys it from
+`main` at https://www.loseii.com/loa-crafting-calculator/. A GitHub Action
+(`.github/workflows/refresh-data.yml` at the repo root) runs `refresh_prices.py`
+every 6 hours and commits the new bake.
 
 Price data comes from the same community market feed loa-buddy uses.
