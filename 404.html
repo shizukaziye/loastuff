@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moved to Loseii</title>
+<meta name="robots" content="noindex">
+<style>body{background:#0c0e12;color:#e7e9ee;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:20px}a{color:#e8b75c}</style>
+</head>
+<body>
+<div>
+<p>Loseii now lives at <a href="https://www.loseii.com/">www.loseii.com</a></p>
+<p>Redirecting&hellip;</p>
+</div>
+<script>
+// Preserve deep links: /loastuff/<path> -> https://www.loseii.com/<path>
+var p = location.pathname.replace(/^\/loastuff\/?/, "/");
+location.replace("https://www.loseii.com" + p + location.search + location.hash);
+</script>
+</body>
+</html>
