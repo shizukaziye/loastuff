@@ -365,6 +365,26 @@
     // The FIND mask for dim button/footer text — shared by the footer phase, the
     // pill, and the cost reads, so it lives OUTSIDE the async footer wrapper.
     var dimBtnWhite = function (r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.3 && c.v > 0.6; };
+    // The Charge WORD, degradation-tolerant: dim 'h' reads as 'r'/'n' ("Crarge" —
+    // measured live, the whole "rerolls default to fresh-3" class) and the 'C' can
+    // drop. c + ≤2 letters + "arg" + e/a covers the family INCLUDING the Spanish
+    // client's "Carga" (measured live); the pill ROI has no other word-bearing
+    // text, so the loose net stays safe.
+    var CHARGE_RX = /c[a-z+.−-]{0,2}arg[ea]|harge|harga|chorge/i;   // the dim 'h' also reads as +/-
+    // Charge-button gold: the face test + a cluster-solidity fallback. frac alone
+    // dilutes when the anchor-derived rect clips the button (live: gold called grey
+    // at 0.80). A solid gold rectangle ≥~1.5% of gap² at ≥0.4 density is the face;
+    // the ⟳ pill icon (~0.2% of gap², outline) can never reach it.
+    var chargeGoldPred = function (r, g, b) {
+      var c = L.hsv(r, g, b); return c.h >= 30 && c.h < 55 && c.s > 0.45 && c.v > 0.5;
+    };
+    function chargeGoldSolid(stats) {
+      // count bar 0.008·gap² (a half-clipped face still clears it; a live full
+      // button measured 667 px against a 0.015 bar of 1054 and was called grey);
+      // the ⟳ pill icon is PALE gold — it fails s>0.45 outright (measured 0 px),
+      // so it cannot ride the looser bar.
+      return stats.frac > 0.35 || (stats.count >= gap * gap * 0.008 && stats.density > 0.45);
+    }
 
     // ---- footer: Process (x/N) — anchored tight button first, block fallback ----
     // Wrapped as a CONCURRENT phase (launched here, awaited before outcomes): its
@@ -658,24 +678,38 @@
       // Confirm the WORD (any brightness), then the BUTTON COLOR decides —
       // gold = paid reroll purchasable (1), grey = paid spent (0).
       var pillCrop = L.crop(raster, pillRect);
-      var goldBtn = L.colorClusterStats(pillCrop, function (r, g, b) {
-        var c = L.hsv(r, g, b); return c.h >= 30 && c.h < 55 && c.s > 0.45 && c.v > 0.5;
-      });
+      var goldBtn = L.colorClusterStats(pillCrop, chargeGoldPred);
       var chRead = await maskedOcr(pillRect, dimBtnWhite, { psm: 7 });
-      var chWord = /charg|harge|chorge/i.test(normText(chRead.text));
-      if (!chWord && goldBtn.frac <= 0.35) {
+      var chWord = CHARGE_RX.test(normText(chRead.text));
+      if (!chWord && !chargeGoldSolid(goldBtn)) {
         // the DISABLED (all-spent) Charge renders dimmer than the standard mask
         // floor — retry the word at a low floor with dilation
         var chDimPred = function (r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.4 && c.v > 0.32; };
         var chRead2 = await dilatedOcr(pillCrop, chDimPred, { scale: 3, psm: 7 });
-        chWord = /charg|harge|chorge/i.test(normText(chRead2.text));
+        chWord = CHARGE_RX.test(normText(chRead2.text));
       }
-      if (goldBtn.frac > 0.35) {
+      if (chargeGoldSolid(goldBtn)) {
         out.state.rerollsChargeSeen = true;                       // gold face is decisive
         confidence.state.rerollsRemaining = 0.85;
       } else if (chWord) {
-        out.state.rerollsChargeSpent = true;                      // grey Charge
-        confidence.state.rerollsRemaining = 0.8;
+        // word confirmed but no gold in THIS rect — re-measure grown toward the
+        // panel edge before calling it grey: on some framings the anchor-derived
+        // rect clips the button and frac dilutes (live: a gold Charge called
+        // "spent" at 0.80 — one model reroll short, silently)
+        // reach a full 0.55·gap down: one live framing had the button sit
+        // ~0.45·gap below the anchor-derived rect (word matched, gold missed)
+        var chGrown = L.crop(raster, {
+          x: pillRect.x - gap * 0.15, y: pillRect.y - gap * 0.10,
+          w: pillRect.w + gap * 0.45, h: pillRect.h + gap * 0.55
+        });
+        var goldGrown = L.colorClusterStats(chGrown, chargeGoldPred);
+        if (chargeGoldSolid(goldGrown)) {
+          out.state.rerollsChargeSeen = true;
+          confidence.state.rerollsRemaining = 0.85;
+        } else {
+          out.state.rerollsChargeSpent = true;                    // grey Charge
+          confidence.state.rerollsRemaining = 0.8;
+        }
       }
     }
     if (out.state.rerollsShownFree == null && !out.state.rerollsChargeSeen && !out.state.rerollsChargeSpent) {
@@ -725,7 +759,7 @@
         var pgrow = Math.round(pline.h * 0.5);
         var prect2 = { x: pline.x - pgrow, y: pline.y - pgrow, w: pline.w + pgrow * 2, h: pline.h + pgrow * 2 };
         var pChk = await maskedOcr(prect2, pDim2, { psm: 7 });   // unwhitelisted first
-        if (!/charg|harge|chorge/i.test(normText(pChk.text))) {
+        if (!CHARGE_RX.test(normText(pChk.text))) {
           var pReM = pChk.text.match(/(\d)\s*\/\s*(\d)/);
           if (!pReM) {
             var pRe = await dilatedOcr(L.crop(raster, prect2), pDim2, { scale: 3, whitelist: "0123456789/", psm: 7 });
@@ -751,11 +785,14 @@
       var chSubW = L.crop(raster, chRectW);
       var chDimPredW = function (r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.4 && c.v > 0.32; };
       var chReadW = await dilatedOcr(chSubW, chDimPredW, { scale: 3, psm: 7 });
-      if (/charg|harge|chorge/i.test(normText(chReadW.text))) {
-        var goldW = L.colorClusterStats(chSubW, function (r, g, b) {
-          var c = L.hsv(r, g, b); return c.h >= 30 && c.h < 55 && c.s > 0.45 && c.v > 0.5;
-        });
-        if (goldW.frac > 0.2) out.state.rerollsChargeSeen = true;   // gold face
+      if (out._debug) out._debug.chReadW = String(chReadW.text || "").replace(/\n/g, "|").slice(0, 40);
+      if (CHARGE_RX.test(normText(chReadW.text))) {
+        // color check on a DEEPER rect than the word read: the gold face can sit
+        // below the text rect on drifted framings (live: word hit, face missed)
+        var goldW = L.colorClusterStats(L.crop(raster, {
+          x: chRectW.x, y: chRectW.y, w: chRectW.w, h: chRectW.h + gap * 0.30
+        }), chargeGoldPred);
+        if (goldW.frac > 0.2 || chargeGoldSolid(goldW)) out.state.rerollsChargeSeen = true;   // gold face
         else out.state.rerollsChargeSpent = true;                    // grey
         confidence.state.rerollsRemaining = 0.7;   // clipped-geometry read — flagged
       }
@@ -821,39 +858,72 @@
       }
     }
     var nameText = normText(nameRead.text).toLowerCase();
-    out.config.gemType = /chaos/.test(nameText) ? "chaos" : (/order/.test(nameText) ? "order" : null);
-    confidence.config.gemType = out.config.gemType ? 0.9 : 0;
+    // The 6 gem names are (type × cost) JOINT: the suffix alone pins BOTH ("Corrosion"
+    // is always a chaos-8, "Solidity" always an order-9). The old code read the two
+    // independently, so a title whose "Chaos" word was eaten but whose suffix survived
+    // still defaulted the type (order→chaos was the #2 production gemType confusion),
+    // and vice versa. Score all 6 names jointly: suffix grams + the type keyword.
+    var GEM_TITLES = [
+      // alt spellings: the ES client's names, gram-scored alongside the English
+      // (measured live: "astrogema del aos: distosion" — a Spanish Distortion)
+      { sfx: "corrosion", type: "chaos" }, { sfx: "stability", type: "order", alt: ["estabilidad"] },
+      { sfx: "distortion", type: "chaos", alt: ["distorsion"] }, { sfx: "solidity", type: "order", alt: ["solidez"] },
+      { sfx: "destruction", type: "chaos", alt: ["destruccion"] }, { sfx: "immutability", type: "order", alt: ["inmutabilidad"] }
+    ];
+    var kwType = /chaos|caos|xaoc/.test(nameText) ? "chaos" : (/order|orden/.test(nameText) ? "order" : null);
+    var titleLetters = nameText.replace(/[^a-z]/g, "");
+    // 5-gram coverage + prefix bonus (the discriminative START of the word), the
+    // proven anti-"immutaBILITY-contains-staBILITY" scorer, now per (type,cost) name.
+    function gramScoreOne(sfx) {
+      if (nameText.indexOf(sfx) !== -1) return 1.3;   // verbatim hit outranks any gram tally
+      var hits = 0, total = 0;
+      for (var k = 0; k + 5 <= sfx.length; k++) {
+        total++;
+        if (titleLetters.indexOf(sfx.slice(k, k + 5)) !== -1) hits++;
+      }
+      var score = total ? hits / total : 0;
+      if (titleLetters.indexOf(sfx.slice(0, 5)) !== -1) score += 0.25;   // prefix bonus
+      return score;
+    }
+    function suffixGramScore(t) {
+      var s = gramScoreOne(t.sfx);
+      (t.alt || []).forEach(function (a) { s = Math.max(s, gramScoreOne(a)); });
+      return s;
+    }
+    var titleScores = GEM_TITLES.map(function (t) {
+      var s = suffixGramScore(t);
+      t.sfxScore = s;
+      // the type keyword is corroborating, not deciding: the suffix still wins a
+      // conflict (a mangled "Order" can gram-match nothing, never the wrong word)
+      if (kwType) s += (kwType === t.type) ? 0.2 : -0.2;
+      return { t: t, score: s };
+    }).sort(function (a, b) { return b.score - a.score; });
+    var titleBest = titleScores[0], titleSecond = titleScores[1];
     var suffixHit = null, suffixAmbig = false;
-    Object.keys(GEM_NAME_COST).forEach(function (sfx) {
-      if (nameText.indexOf(sfx) !== -1) suffixHit = sfx;
-    });
-    if (!suffixHit) {
-      // Fuzzy pass: SCORE every suffix by 5-gram coverage and take the best — never
-      // first-match-wins. "immutaBILITY" contains most of "staBILITY"'s grams, so the
-      // old first-hit loop returned stability (cost 8) whenever OCR (or Shizu's pet
-      // sprite sitting on the name) mangled "Immutability" — a systematic wrong cost
-      // that then poisoned the effect pool. Prefix grams get a bonus: the START of
-      // the word ("immut" vs "stab") is the discriminative part.
-      var letters = nameText.replace(/[^a-z]/g, "");
-      var bestS = null, secondS = 0;
-      Object.keys(GEM_NAME_COST).forEach(function (sfx) {
-        var hits = 0, total = 0;
-        for (var k = 0; k + 5 <= sfx.length; k++) {
-          total++;
-          if (letters.indexOf(sfx.slice(k, k + 5)) !== -1) hits++;
-        }
-        var score = total ? hits / total : 0;
-        if (letters.indexOf(sfx.slice(0, 5)) !== -1) score += 0.25;   // prefix bonus
-        if (!bestS || score > bestS.score) { secondS = bestS ? bestS.score : 0; bestS = { sfx: sfx, score: score }; }
-        else if (score > secondS) secondS = score;
-      });
-      if (bestS && bestS.score >= 0.5) {
-        suffixHit = bestS.sfx;
-        suffixAmbig = (bestS.score - secondS) < 0.15;   // two suffixes nearly tied
+    if (titleBest.t.sfxScore >= 0.38) {
+      suffixHit = titleBest.t.sfx;
+      // ambiguity on the COST only: the runner-up that matters is the best title
+      // with a DIFFERENT cost (same-cost other-type ties are harmless here).
+      // The 0.38-0.5 band is a SOFT commit (heavy degradation / localized
+      // spellings land there): always ambiguous-grade confidence, and only
+      // with a real margin over the cost rival.
+      var rivalCost = null;
+      for (var ts = 1; ts < titleScores.length; ts++) {
+        if (GEM_NAME_COST[titleScores[ts].t.sfx] !== GEM_NAME_COST[suffixHit]) { rivalCost = titleScores[ts]; break; }
+      }
+      suffixAmbig = rivalCost != null && (titleBest.score - rivalCost.score) < 0.15;
+      if (titleBest.t.sfxScore < 0.5) {
+        if (suffixAmbig) suffixHit = null;
+        else suffixAmbig = true;
       }
     }
+    // gemType: keyword when present (the proven 0.9 signal); else the suffix's type —
+    // a real suffix identification implies the type at the same evidence level.
+    out.config.gemType = kwType || (suffixHit ? (titleBest.t.type) : null);
+    confidence.config.gemType = kwType ? 0.9 : (suffixHit ? (suffixAmbig ? 0.6 : 0.8) : 0);
     if (suffixHit) { out.config.baseCost = GEM_NAME_COST[suffixHit]; confidence.config.baseCost = suffixAmbig ? 0.6 : 0.85; }
     else confidence.config.baseCost = 0;
+    if (out._debug) out._debug.title = { text: nameText.slice(0, 48), kw: kwType, best: titleBest.t.sfx + "@" + titleBest.score.toFixed(2), second: titleSecond.t.sfx + "@" + titleSecond.score.toFixed(2) };
 
     tmark("gemName");
     // ---- wheel levels (gold digits) + effect hue references ----
@@ -1387,7 +1457,16 @@
               var im = iouDigit(mask, dbBox, ["1", "2", "3", "4", "5"]);
               if (im && im.ch !== String(b1v) && im.margin >= 0.08) vetoed = true;
             }
-            if (!vetoed) { tmVal = b1v; tmConf = Math.min(0.95, 0.75 + (b1 - b2) * 2); }
+            if (!vetoed) {
+              tmVal = b1v; tmConf = Math.min(0.95, 0.75 + (b1 - b2) * 2);
+              // small-glyph commits (a 10x14 '2' matched '3' and shipped at
+              // 0.88, silent) are the 1↔2↔3 low-res confusion zone — keep the
+              // value, stay under the flag line until the checksum or a second
+              // channel corroborates. Gate on TRUE CAPTURE pixels (normalized
+              // height ÷ scale factor): native-tier digits run 17px+ and stay
+              // exempt; a 14px capture glyph is mush whatever the wheel gap says.
+              if (dbBox.h / Math.max(0.5, scaleF) < 16) tmConf = Math.min(tmConf, 0.78);
+            }
           }
         }
       }
@@ -1411,6 +1490,11 @@
           // (a clean capture's correct '3' was once overridden by an
           // agreeing-wrong '5' at a sub-0.015 margin)
           if (srT && srT.value !== tmVal && srT.gm >= 0.03) { tmVal = srT.value; tmConf = 0.5; }
+          // a narrow box whose cross-check REFUSED (the synth's own channels
+          // disagreed) or weakly dissented is uncorroborated sliver evidence:
+          // keep the value, cap under the flag line (a 3px '1'@0.95 with the
+          // synth raw-channel screaming '5' shipped silently before this)
+          else if (!isGoldFace && (!srT || srT.value !== tmVal)) tmConf = Math.min(tmConf, 0.75);
         }
         return { value: tmVal, conf: isGoldFace ? Math.min(tmConf, 0.6) : tmConf, vec: vec, src: "tm" };
       }
@@ -1418,13 +1502,20 @@
       var read = await maskedOcr(lineX, pred, { whitelist: "Lv.12345 ", psm: 7 });
       var m = read.text.match(/([1-5])\s*$/) || read.text.match(/([1-5])/);
       if (!m) { read = await maskedOcr(lineX, pred, { whitelist: "12345", psm: 10 }); m = read.text.match(/([1-5])/); }
+      var usedDilate = false;
       if (!m) {
         read = await dilatedOcr(L.crop(raster, lineX), pred, { scale: "auto", maxAuto: 5, whitelist: "Lv.12345 ", psm: 7 });
         m = read.text.match(/([1-5])\s*$/) || read.text.match(/([1-5])/);
+        usedDilate = m != null;   // a dilated-rung digit is the known hallucination shape
       }
       var conf = m ? Math.min(0.9, read.conf + 0.2) : 0;
       if (isGoldFace) conf = Math.min(conf, 0.45);
-      if (LREFS && nodeKind && (!m || conf < 0.5)) {
+      // vec == null means the template channel saw NO digit-shaped box at all —
+      // a confident OCR digit standing on that line is single-channel evidence
+      // (live: a junk band OCR'd '4'@0.90 for a willpower 1, silent) — verify
+      // it against the synth or cap it under the flag line.
+      var vecless = m && conf >= 0.8 && !vec;
+      if (LREFS && nodeKind && (!m || conf < 0.5 || usedDilate || vecless)) {
         // last rung: analysis-by-synthesis vs the pristine reference patches —
         // agreement-gated, modest conf; the checksum arbitrates from here (and
         // for S the value flows through the sHint channel, never pinned). It also
@@ -1445,6 +1536,11 @@
             return { value: sr.value, conf: isGoldFace ? Math.min(sr.conf, 0.5) : sr.conf, vec: vec, src: "synth" };
           }
         }
+        // dilated-rung or vec-less digit with no synth corroboration (refused,
+        // or a weak dissent): the value stands but never confidently —
+        // Tesseract's conf on a dilated 1-glyph mask is noise (an eroded E-node
+        // '2' read '1'@0.90 through this exact hole and shipped silently)
+        if (usedDilate || vecless) conf = Math.min(conf, usedDilate ? 0.75 : 0.78);
       }
       return { value: m ? parseInt(m[1], 10) : null, conf: conf, vec: vec, src: "ocr" };
     }
@@ -1743,7 +1839,15 @@
               }
             }
           }
-        } else { levels[fi] = indep[fi].v != null ? indep[fi].v : 1; conf4[fi] = 0.3; }
+        } else {
+          // remaining out of 1..5: the checksum is INFEASIBLE, so one of the three
+          // pinned reads (or pts) is wrong — not just the free node. Demote every
+          // pinned sibling below the flag line too (a sliver-'1' at 0.90 rode this
+          // branch out silently while only the free node got flagged).
+          levels[fi] = indep[fi].v != null ? indep[fi].v : (fi === 3 && sHint != null ? sHint : 1);
+          conf4[fi] = 0.3;
+          for (var pd = 0; pd < 4; pd++) if (pinned[pd]) conf4[pd] = Math.min(conf4[pd], 0.75);
+        }
       } else {
         // ≥2 unknowns: enumerate their assignments summing to `remaining`, pick the
         // max-template-score one; confidence from the assignment margin per node
@@ -1765,16 +1869,39 @@
           });
           combos.sort(function (x, y) { return y._s - x._s; });
           var best = combos[0];
+          // the enumeration's conclusions are only as good as its PREMISES (the
+          // pinned reads + pts): a single feasible combo used to commit at 0.9
+          // even when the pinned nodes were near-guesses — two wrong 0.55 pins
+          // once forced (5,5) over a truth of (3,4), SILENTLY. Bound every
+          // enumerated confidence by the weakest pinned premise.
+          var minPin = 1;
+          for (var pj = 0; pj < 4; pj++) if (pinned[pj]) minPin = Math.min(minPin, indep[pj].conf);
+          var premiseCap = Math.min(0.9, 0.5 + minPin * 0.5);
+          // ≥3 free nodes = a nearly-blind enumeration (pts + junk score vecs
+          // only — live: a wrong S-hint steered a 4-free board to a coherent-
+          // wrong orderLevel at 0.87): whatever the margins say, stay flagged
+          if (freeIdx.length >= 3) premiseCap = Math.min(premiseCap, 0.78);
           for (var q2 = 0; q2 < freeIdx.length; q2++) {
             var fidx = freeIdx[q2];
             var alt = -Infinity;
             for (var r = 1; r < combos.length; r++) { if (combos[r][q2] !== best[q2]) { alt = combos[r]._s; break; } }
             levels[fidx] = best[q2];
             enumAssigned[fidx] = true;   // chosen BY the template vector — no self-corroboration
-            if (alt === -Infinity) conf4[fidx] = 0.9;
-            else conf4[fidx] = Math.max(0.15, Math.min(0.9, 0.5 + (best._s - alt) * 3.0));
+            if (alt === -Infinity) conf4[fidx] = premiseCap;
+            else conf4[fidx] = Math.max(0.15, Math.min(premiseCap, 0.5 + (best._s - alt) * 3.0));
           }
-        } else { freeIdx.forEach(function (fi2) { levels[fi2] = indep[fi2].v || 1; conf4[fi2] = 0.3; }); }
+        } else {
+          // INFEASIBLE: no assignment of the free nodes can reach `remaining` —
+          // proof that a pinned read or the pts is wrong. The free nodes take
+          // their best independent evidence (S: the gated hint, not a blind 1)
+          // and every pinned read drops below the flag line: the checksum just
+          // impeached one of them and cannot say which.
+          freeIdx.forEach(function (fi2) {
+            if (fi2 === 3 && sHint != null) { levels[3] = sHint; conf4[3] = 0.5; return; }
+            levels[fi2] = indep[fi2].v || 1; conf4[fi2] = 0.3;
+          });
+          for (var pk = 0; pk < 4; pk++) if (pinned[pk]) conf4[pk] = Math.min(conf4[pk], 0.75);
+        }
       }
     }
     // no points (or unsolved free nodes): fall back to the committed per-node reads;
@@ -1783,9 +1910,14 @@
     for (var f = 0; f < 4; f++) if (levels[f] == null) {
       if (f === 3 && sHint != null) { levels[3] = sHint; conf4[3] = 0.6; continue; }
       levels[f] = indep[f].v != null ? indep[f].v : 1;
-      conf4[f] = indep[f].v == null ? 0 : Math.min(0.85, indep[f].conf);
+      // 0.78, not 0.85: with NO checksum the read has no corroborator, and a
+      // junk-band '4'@0.90 for a willpower 1 shipped silently through the old cap
+      conf4[f] = indep[f].v == null ? 0 : Math.min(0.78, indep[f].conf);
     }
     if (ptsSoft) conf4 = conf4.map(function (cv) { return Math.min(cv, 0.7); });
+    // NO checksum at all: every level is a single-source read with nothing to
+    // corroborate it — pinned or not, none may cross the flag line
+    if (pts == null) conf4 = conf4.map(function (cv) { return Math.min(cv, 0.78); });
 
     // TWO-CHANNEL corroborator (false-alarm reduction — every flagged-but-correct
     // field is a wasted "confirm me" tap AND a wasted AI-verifier pull): lift a
@@ -1890,46 +2022,6 @@
     var nmE = await readNameLadder(nodes.nodeE, hueE);
     if (out._debug) out._debug.nmTexts = { W: nmW.text.slice(0, 60), E: nmE.text.slice(0, 60) };
 
-    // ---- pair→cost CROSS-CHECK (before pool-constrained lexing) ----
-    // The effect pair constrains the cost: some pairs exist in exactly ONE pool
-    // (Additional Damage + Boss Damage ⇒ cost 10 only). If the RAW captions name
-    // such a pair and it contradicts the name-suffix cost, the suffix read is the
-    // likely casualty (pet occlusion / OCR mangle — Shizu's Immutability kept
-    // reading as a cost-8 Stability) — adopt the pair-implied cost, re-pool, and
-    // keep the cost FLAGGED for confirmation.
-    var rawE1 = lexIn(nmW.text, null, null);
-    var rawE2 = lexIn(nmE.text, null, rawE1);
-    if (rawE1 && rawE2 && rawE1 !== rawE2 && ENGINE_API.EFFECT_POOLS) {
-      var costsWithPair = Object.keys(ENGINE_API.EFFECT_POOLS).filter(function (ck) {
-        var pl = ENGINE_API.EFFECT_POOLS[ck];
-        return pl.indexOf(rawE1) !== -1 && pl.indexOf(rawE2) !== -1;
-      }).map(Number);
-      // fires on a WRONG suffix read and also on a NULL one (first flywheel
-      // record: cost unreadable → snap defaulted to 10 → pool-10 canonicalization
-      // rewrote two correctly-read names, which presented as a W/E "swap")
-      if (costsWithPair.length === 1 && costsWithPair[0] !== out.config.baseCost) {
-        out.config.baseCost = costsWithPair[0];
-        confidence.config.baseCost = Math.min(confidence.config.baseCost, 0.75);   // below the flag threshold
-        poolNames = (ENGINE_API.EFFECT_POOLS && ENGINE_API.EFFECT_POOLS[out.config.baseCost]) || null;
-      }
-    }
-
-    out.config.effect1 = lexEffect(nmW.text, null);
-    out.config.effect2 = lexEffect(nmE.text, out.config.effect1);
-    // a pool-constrained lexicon hit is strong evidence even when the raw OCR conf is
-    // low (mangled-but-matched text): floor at 0.82 when the pool was known
-    var effFloor = poolNames ? 0.82 : 0;
-    confidence.config.effect1 = out.config.effect1 ? Math.max(effFloor, Math.min(0.92, nmW.conf + 0.3)) : 0;
-    confidence.config.effect2 = out.config.effect2 ? Math.max(effFloor, Math.min(0.92, nmE.conf + 0.3)) : 0;
-    // name rescue ladder when the lexicon got nothing (rare1: a 2-line
-    // "Ally Damage Enh." OCR'd as 'jamage and the lexicon rightly refused).
-    // Rung 1 — STRUCTURE: fuzzy keyword (edit distance 1 on tokens) × measured
-    // LINE COUNT × the cost pool. Each name has a fixed render: 2-line names are
-    // Ally Damage Enh. / Ally Attack Enh. / Additional Damage; the rest are
-    // 1-line. When exactly ONE pool candidate survives, that's a unique
-    // structural identification ("jamage" ×2 lines in pool 9 ⇒ Ally Damage
-    // Enh., the only 2-line damage-name there). Rung 2 — patch synthesis.
-    // Both commit FLAGGED at 0.6, never the 0.82 pool floor.
     var NAME_2LINE = { "Ally Damage Enh.": 1, "Ally Attack Enh.": 1, "Additional Damage": 1 };
     var FUZZY_KEYS = [
       ["damage", ["Boss Damage", "Ally Damage Enh.", "Additional Damage"]],
@@ -1938,7 +2030,13 @@
       ["boss", ["Boss Damage"]],
       ["brand", ["Brand Power"]],
       ["additional", ["Additional Damage"]],
-      ["ally", ["Ally Damage Enh.", "Ally Attack Enh."]]
+      ["ally", ["Ally Damage Enh.", "Ally Attack Enh."]],
+      // ES client tokens (measured live: "dafio de jefe" / "dato aliado")
+      ["jefe", ["Boss Damage"]],
+      ["aliado", ["Ally Damage Enh.", "Ally Attack Enh."]],
+      ["adicional", ["Additional Damage"]],
+      ["ataque", ["Attack Power", "Ally Attack Enh."]],
+      ["marca", ["Brand Power"]]
     ];
     function editDist1(a, b) {
       if (a === b) return true;
@@ -1972,6 +2070,167 @@
       if (run >= minRun) bands++;
       return bands;
     }
+
+    // ---- JOINT (cost, pool, name-assignment) SOLVE ----
+    // The production confusions this replaces (the pairwise cross-check): a failed
+    // title read left cost null, the snap defaulted 10, and pool-10 canonicalization
+    // then DESTROYED two correctly-read support names (Ally Damage Enh.→Boss Damage,
+    // Attack Power→Additional Damage — the two biggest name-confusion classes).
+    // Grade every name's evidence per slot, score the best 2-name assignment inside
+    // EACH cost's pool, add the title evidence, and pick the argmax — so a read name
+    // can pull the cost rather than the (defaulted) cost erasing the name.
+    // graded evidence: lex regex 1.0 · fuzzy token 0.55 · line-count ±(see below)
+    function nameEvidence(t, p) {
+      var ev = {};
+      for (var li2 = 0; li2 < EFFECT_LEX.length; li2++) {
+        if (EFFECT_LEX[li2][1].test(t)) { ev[EFFECT_LEX[li2][0]] = 1.0; break; }
+      }
+      // "Atk. Power" vs "Ally Attack Enh." share the attack stem; a bare attack-hit
+      // with NO "power" tail is ambiguous between them (support gems made this the
+      // top silent-name class: "wutoattack"/"aly attack" → Attack Power @0.82).
+      if (ev["Attack Power"] && !/pow|ower|wer\b/.test(t)) {
+        ev["Attack Power"] = 0.7;
+        if (!(ev["Ally Attack Enh."] >= 0.65)) ev["Ally Attack Enh."] = 0.65;
+      }
+      var toks = t.split(/[^a-z]+/).filter(function (tk) { return tk.length >= 3; });
+      FUZZY_KEYS.forEach(function (fk) {
+        for (var ti = 0; ti < toks.length; ti++) {
+          if (toks[ti].length >= 4 && editDist1(toks[ti], fk[0])) {
+            fk[1].forEach(function (n) { if (!(ev[n] >= 0.55)) ev[n] = 0.55; });
+            break;
+          }
+        }
+      });
+      if (Object.keys(ev).length) {
+        // measured line count refines but must not overrule a full lex hit
+        var lines = countNameLines(p);
+        if (lines === 1 || lines === 2) {
+          Object.keys(ev).forEach(function (n) {
+            var match = (lines === 2) === !!NAME_2LINE[n];
+            ev[n] += match ? 0.15 : (ev[n] >= 1.0 ? -0.1 : -0.3);
+          });
+        }
+      }
+      return ev;
+    }
+    var evW = nameEvidence(nmW.text, nodes.nodeW);
+    var evE = nameEvidence(nmE.text, nodes.nodeE);
+    function bestAssign(cost) {
+      var pool = (ENGINE_API.EFFECT_POOLS && ENGINE_API.EFFECT_POOLS[cost]) || [];
+      var best = { score: 0, a: null, b: null, aEv: 0, bEv: 0 };
+      for (var ai = 0; ai < pool.length; ai++) {
+        for (var bi = 0; bi < pool.length; bi++) {
+          if (ai === bi) continue;
+          var sa = evW[pool[ai]] || 0, sb = evE[pool[bi]] || 0;
+          if (sa + sb > best.score) best = { score: sa + sb, a: pool[ai], b: pool[bi], aEv: sa, bEv: sb };
+        }
+      }
+      return best;
+    }
+    var COSTS3 = [8, 9, 10];
+    var asg = {};
+    COSTS3.forEach(function (c) { asg[c] = bestAssign(c); });
+    var titleCost = out.config.baseCost;
+    {
+      // title evidence per cost, usable even under the 0.5 commit bar (a partial
+      // gram score still separates an 8-vs-9 tie the names alone can't)
+      var sfxByCost = {};
+      GEM_TITLES.forEach(function (t) {
+        var c2 = GEM_NAME_COST[t.sfx];
+        sfxByCost[c2] = Math.max(sfxByCost[c2] || 0, t.sfxScore || 0);
+      });
+      // tie preference [8, 10, 9] as an epsilon bias: fuzzy evidence smears tie
+      // all three pools mostly on SUPPORT gems, and those are cost-8-heavy
+      // (preferring 10 was tried — it re-broke 10 formerly-right costs to win 1);
+      // 8 over 9 is the measured production skew on support-pair ties
+      var TIE_EPS = { 8: 0.002, 10: 0.001, 9: 0 };
+      var rankedC = COSTS3.map(function (c) {
+        return { c: c, s: asg[c].score + Math.min(1.0, sfxByCost[c] || 0) * 0.6 + (titleCost === c ? 0.6 : 0) + TIE_EPS[c] };
+      }).sort(function (a, b) { return b.s - a.s; });
+      var winC = rankedC[0].c;
+      if (out._debug) out._debug.jointCost = rankedC.map(function (r) { return r.c + ":" + r.s.toFixed(2) + "(nm" + asg[r.c].score.toFixed(2) + ")"; }).join(" ") + " title=" + titleCost;
+      if (titleCost != null && winC !== titleCost) {
+        // the title stands unless its own pool is CLEARLY beaten on name evidence
+        // (the proven unique-pair override, generalized to graded scores)
+        if (asg[winC].score - asg[titleCost].score >= 0.5) {
+          out.config.baseCost = winC;
+          confidence.config.baseCost = Math.min(confidence.config.baseCost, 0.75);   // below the flag threshold
+        }
+      } else if (titleCost == null && asg[winC].score >= 0.7) {
+        // no title, but at least one decently-read name (a lone fuzzy token with
+        // line-count agreement clears 0.7): emit the best pool-consistent cost
+        // LOW — flagged for confirmation, but the read names survive the snap
+        // (leaving null meant "default 10", which erased them)
+        var margin2 = rankedC[0].s - rankedC[1].s;
+        out.config.baseCost = winC;
+        confidence.config.baseCost = margin2 >= 0.4 ? 0.7 : 0.5;
+      }
+      if (out.config.baseCost !== titleCost) {
+        poolNames = (ENGINE_API.EFFECT_POOLS && ENGINE_API.EFFECT_POOLS[out.config.baseCost]) || null;
+      }
+    }
+    // name commits from the winning assignment (evidence-graded confidence):
+    //   ≥1.0 lex-grade hit → the proven 0.82 pool floor;
+    //   0.55-1.0 fuzzy / ambiguity-downgraded → 0.75 cap, always flagged — and
+    //   ONLY with a real (0.1) margin over the slot's best pool alternative:
+    //   a fuzzy family-tie ("aly damage" → AddDmg = AllyDmg) used to commit by
+    //   pool order and preempt the synth rescue that resolves such ties right.
+    function slotMargin(ev, chosen) {
+      var alt = 0;
+      (poolNames || []).forEach(function (n) { if (n !== chosen && (ev[n] || 0) > alt) alt = ev[n] || 0; });
+      return (ev[chosen] || 0) - alt;
+    }
+    // a slot is FAMILY-AMBIGUOUS when two pool names hold sub-lex evidence within
+    // 0.1 of each other ("aly attack" fits Attack Power AND Ally Attack Enh.) —
+    // then no commit from ANY path may reach the unflagged zone: the plain
+    // lexEffect fallback used to re-commit the refused name at the 0.82 floor.
+    function slotAmbiguous(ev, chosen, chosenEv) {
+      return chosen != null && chosenEv >= 0.55 && chosenEv < 0.85 && slotMargin(ev, chosen) < 0.1;
+    }
+    // ambiguous-slot ARBITRATION: the tied family members go to the patch synth
+    // (pixels, not tokens — it tells "Atk. Power" from the 2-line "Ally Attack
+    // Enh." where the mangled text cannot); its answer commits flagged at 0.6.
+    function tiedCands(ev, chosenEv) {
+      return Object.keys(ev).filter(function (n) {
+        return (poolNames || []).indexOf(n) !== -1 && ev[n] >= chosenEv - 0.1;
+      });
+    }
+    var asgWin = asg[out.config.baseCost] || { a: null, b: null, aEv: 0, bEv: 0 };
+    var ambW = slotAmbiguous(evW, asgWin.a, asgWin.aEv), ambE = slotAmbiguous(evE, asgWin.b, asgWin.bEv);
+    if (asgWin.a && asgWin.aEv >= 0.55 && (asgWin.aEv >= 0.85 || !ambW)) {
+      out.config.effect1 = asgWin.a;
+      confidence.config.effect1 = asgWin.aEv >= 1.0
+        ? Math.max(0.82, Math.min(0.92, nmW.conf + 0.3))
+        : Math.min(0.75, 0.45 + asgWin.aEv * 0.3);
+    } else {
+      var synW = (ambW && NREFS) ? synthNameRescue("W", nodes.nodeW, tiedCands(evW, asgWin.aEv), null) : null;
+      out.config.effect1 = synW || lexEffect(nmW.text, null);
+      confidence.config.effect1 = out.config.effect1
+        ? (synW ? 0.6 : Math.min(ambW ? 0.75 : 1, Math.max(poolNames ? 0.82 : 0, Math.min(0.92, nmW.conf + 0.3)))) : 0;
+    }
+    if (asgWin.b && asgWin.bEv >= 0.55 && asgWin.b !== out.config.effect1 &&
+        (asgWin.bEv >= 0.85 || !ambE)) {
+      out.config.effect2 = asgWin.b;
+      confidence.config.effect2 = asgWin.bEv >= 1.0
+        ? Math.max(0.82, Math.min(0.92, nmE.conf + 0.3))
+        : Math.min(0.75, 0.45 + asgWin.bEv * 0.3);
+    } else {
+      var synE = (ambE && NREFS) ? synthNameRescue("E", nodes.nodeE, tiedCands(evE, asgWin.bEv), out.config.effect1) : null;
+      out.config.effect2 = synE || lexEffect(nmE.text, out.config.effect1);
+      confidence.config.effect2 = out.config.effect2
+        ? (synE ? 0.6 : Math.min(ambE ? 0.75 : 1, Math.max(poolNames ? 0.82 : 0, Math.min(0.92, nmE.conf + 0.3)))) : 0;
+    }
+    // name rescue ladder when the lexicon got nothing (rare1: a 2-line
+    // "Ally Damage Enh." OCR'd as 'jamage and the lexicon rightly refused).
+    // Rung 1 — STRUCTURE: fuzzy keyword (edit distance 1 on tokens) × measured
+    // LINE COUNT × the cost pool. Each name has a fixed render: 2-line names are
+    // Ally Damage Enh. / Ally Attack Enh. / Additional Damage; the rest are
+    // 1-line. When exactly ONE pool candidate survives, that's a unique
+    // structural identification ("jamage" ×2 lines in pool 9 ⇒ Ally Damage
+    // Enh., the only 2-line damage-name there). Rung 2 — patch synthesis.
+    // Both commit FLAGGED at 0.6, never the 0.82 pool floor. (NAME_2LINE,
+    // FUZZY_KEYS, editDist1, countNameLines are declared above — the joint
+    // cost solve shares them.)
     function structuralName(nmText, p, allowed, avoid) {
       var toks = nmText.split(/[^a-z]+/).filter(function (t) { return t.length >= 4; });
       var hits = {};
@@ -2011,6 +2270,7 @@
     // ---- the 4 outcomes ----
     var iconXs = geo ? geo.outIconXs : L.ROI.outIconXs.map(function (fx) { return panel.x + fx * panel.w; });
     var iconY = geo ? geo.outIconY : panel.y + L.ROI.outIconY * panel.h;
+    var _typeVotes = { chaos: 0, order: 0 };   // gold-cell caption votes (gemType backstop)
     // the four cells are data-independent — read them CONCURRENTLY (the OCR pool
     // overlaps them; serialized backends preserve old order via their queues);
     // every write below is oi-indexed, so completion order cannot matter
@@ -2028,7 +2288,14 @@
       var o = null, oconf = 0;
       var target = null;
       if (icls === "red") target = "willpower";
-      else if (icls === "gold") target = "order";
+      else if (icls === "gold") {
+        target = "order";
+        // free gemType evidence: the gold cell's caption names the axis
+        // ("Chaos Points" / "Order Points") — reaped after the cells complete
+        // for the title-unreadable frames (order→chaos was 7 of 240 live)
+        if (/cha[ocs]|haos|ch[eé]o\s*po|caos|xaoc/.test(cap)) _typeVotes.chaos++;
+        else if (/order|orde[rn]?\s*po|o.der\s*po|rder/.test(cap)) _typeVotes.order++;
+      }
       else if (icls !== "grey") {
         // self-calibrated: match against this image's own W/E diamond hues
         var dW = hueDist(ihue, hueW), dE = hueDist(ihue, hueE);
@@ -2298,6 +2565,34 @@
       confidence.outcomes[oi] = Math.max(0, Math.min(0.95, oconf * panelConf));
     }
     await Promise.all([0, 1, 2, 3].map(readOutcomeCell));
+
+    // ---- gemType backstops (title unreadable / weak) ----
+    // 1) the gold outcome-caption votes collected above; 2) the S-node's own
+    // "Chaos/Order Points" label — one extra OCR call, paid only when needed.
+    if (out.config.gemType == null || (confidence.config.gemType || 0) < 0.8) {
+      var tvC = _typeVotes.chaos > 0, tvO = _typeVotes.order > 0;
+      if (tvC !== tvO) {
+        var voteType = tvC ? "chaos" : "order";
+        if (out.config.gemType == null || out.config.gemType === voteType) {
+          out.config.gemType = voteType;
+          confidence.config.gemType = Math.max(confidence.config.gemType || 0, 0.85);
+        }
+        // a vote CONTRADICTING a (weak) title read: leave the value, keep it flagged
+      } else if (out.config.gemType == null) {
+        var sLabelRect = { x: nodes.nodeS.x - gap * 0.5, y: nodes.nodeS.y - gap * 0.30, w: gap * 1.0, h: gap * 0.32 };
+        var sLabel = await maskedOcr(sLabelRect, effectNamePredRelaxed(), { psm: 7 });
+        var sTxt = normText(sLabel.text).toLowerCase();
+        if (!/cha[ocs]|haos|caos|xaoc|has?\s*point|orde|rder/.test(sTxt)) {
+          var sLabel2 = await dilatedOcr(L.crop(raster, sLabelRect), effectNamePredRelaxed(), { scale: "auto", maxAuto: 4, psm: 7 });
+          sTxt = normText(sLabel2.text).toLowerCase();
+        }
+        // measured degradations: "Chace pointe", "has pointes", "onn xaoca" (RU),
+        // "caos" (ES) — vs "Order/O-der points"
+        if (/cha[ocs]|haos|ch[eé]o|caos|xaoc|has?\s*point/.test(sTxt)) { out.config.gemType = "chaos"; confidence.config.gemType = 0.8; }
+        else if (/order|rder|o.der/.test(sTxt)) { out.config.gemType = "order"; confidence.config.gemType = 0.8; }
+        if (out._debug) out._debug.sLabel = sTxt.slice(0, 40);
+      }
+    }
 
     // panel-quality attenuation on the art-region fields
     ["willpowerLevel", "orderLevel", "effect1Level", "effect2Level", "effect1", "effect2"].forEach(function (k) {

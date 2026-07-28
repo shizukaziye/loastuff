@@ -12,3 +12,4 @@ worker/.wrangler/
 samples/collected/
 __pycache__/
 *.pyc
+samples/

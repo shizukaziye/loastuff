@@ -39,7 +39,16 @@ function err(f, msg) { errors.push(f + ": " + msg); }
 function warn(f, msg) { warnings.push(f + ": " + msg); }
 
 var files = fs.readdirSync(SAMPLES);
-var jsons = files.filter(function (f) { return /\.json$/i.test(f); });
+var jsons = files.filter(function (f) {
+  if (!/\.json$/i.test(f)) return false;
+  // Metadata files (review-queue/resolutions, manifests) live beside the labels;
+  // a label is any JSON with a `config` block. Unusable-marked samples are exempt
+  // from content lint but still pairing-checked.
+  try {
+    var t = JSON.parse(fs.readFileSync(path.join(SAMPLES, f), "utf8"));
+    return !!(t && t.config);
+  } catch (e) { return true; } // unparseable: keep, so it errors loudly below
+});
 var images = files.filter(function (f) { return /\.(png|webp|jpe?g)$/i.test(f); });
 
 // pairing

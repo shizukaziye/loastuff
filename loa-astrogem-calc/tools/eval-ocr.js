@@ -34,17 +34,18 @@ var fs = require("fs");
 var path = require("path");
 
 var ROOT = path.resolve(__dirname, "..");
-var SAMPLES_DIR = path.join(ROOT, "samples");
+var SAMPLES_DIR = path.join(ROOT, "samples");  // override with --dir=
 
 var engineApi = require(path.join(ROOT, "ocr", "engine.js"));
 var tesseractMod = require(path.join(ROOT, "ocr", "tesseract-engine.js"));
 
 // ---- args ----
 function parseArgs(argv) {
-  var out = { engines: null, workerUrl: process.env.WORKER_URL || null, json: false, dump: false, gates: [], only: null };
+  var out = { engines: null, workerUrl: process.env.WORKER_URL || null, json: false, dump: false, gates: [], only: null, dir: null };
   argv.forEach(function (a) {
     var m;
-    if ((m = a.match(/^--engines=(.+)$/))) out.engines = m[1].split(",").map(function (s) { return s.trim(); });
+    if ((m = a.match(/^--dir=(.+)$/))) out.dir = m[1];   // score pairs from another dir (e.g. samples/candidates)
+    else if ((m = a.match(/^--engines=(.+)$/))) out.engines = m[1].split(",").map(function (s) { return s.trim(); });
     else if ((m = a.match(/^--only=(.+)$/))) out.only = m[1].split(",").map(function (s) { return s.trim().toLowerCase(); });
     else if ((m = a.match(/^--worker-url=(.+)$/))) out.workerUrl = m[1];
     else if (a === "--json") out.json = true;
@@ -60,6 +61,7 @@ function parseArgs(argv) {
   return out;
 }
 var ARGS = parseArgs(process.argv.slice(2));
+if (ARGS.dir) SAMPLES_DIR = path.resolve(ROOT, ARGS.dir);
 
 // ---- sample discovery ----
 function findSamples() {
@@ -91,6 +93,13 @@ function findSamples() {
 function scoreOne(parsed, truthRaw) {
   var truth = engineApi.constraintSnap(truthRaw);
   var fields = [];
+  // Per-sample field mask: labels born from collected `final` records are only
+  // trustworthy per-field (an uncorrected field can freeze a collection-time parser
+  // error — see ocr/ACCURACY-LOG.md). `"_mask": {"skip": ["effect1", ...]}` in the
+  // ground-truth JSON excludes those fields from scoring for that sample until a
+  // human pixel-review resolves them ("outcomes" masks the outcome set).
+  var MASK = {};
+  ((truthRaw._mask && truthRaw._mask.skip) || []).forEach(function (f) { MASK[f] = true; });
   // Per-field confidence from the engine (via constraintSnap's passthrough); absent -> 1.
   var conf = parsed.confidence || {};
   var confC = conf.config || {}, confS = conf.state || {}, confO = conf.outcomes || [];
@@ -103,6 +112,7 @@ function scoreOne(parsed, truthRaw) {
     rerollsRemaining: confS.rerollsRemaining, processCostMultiplier: confS.processCostMultiplier
   };
   function cmp(label, a, b) {
+    if (MASK[label]) return;
     var c = CONF_BY_LABEL[label];
     fields.push({ label: label, ok: String(a) === String(b), got: a, want: b, conf: c == null ? 1 : c });
   }
@@ -143,18 +153,24 @@ function scoreOne(parsed, truthRaw) {
   });
   var outcomeScore = wantKeys.length ? matched / wantKeys.length : 1;
   var outcomeConf = confO.length ? Math.min.apply(null, confO.map(function (c) { return c == null ? 1 : c; })) : 1;
-  fields.push({ label: "outcomes(" + matched + "/" + wantKeys.length + ")", ok: matched === wantKeys.length, score: outcomeScore, conf: outcomeConf });
+  var outcomesMasked = !!MASK.outcomes;
+  if (!outcomesMasked) {
+    fields.push({ label: "outcomes(" + matched + "/" + wantKeys.length + ")", ok: matched === wantKeys.length, score: outcomeScore, conf: outcomeConf });
+  }
 
   var scalarFields = fields.filter(function (f) { return f.score == null; });
   var correct = scalarFields.filter(function (f) { return f.ok; }).length;
-  // The HEADLINE per-sample metric (Shizu's definition): mean over the 13 scored
-  // fields — the 12 scalars (0/1 each) + the outcome multiset score.
-  var headline = (correct + outcomeScore) / (scalarFields.length + 1);
+  // The HEADLINE per-sample metric (Shizu's definition): mean over the scored
+  // fields — the scalars (0/1 each, up to 12 minus masked) + the outcome multiset
+  // score (unless masked).
+  var headline = outcomesMasked
+    ? (scalarFields.length ? correct / scalarFields.length : 1)
+    : (correct + outcomeScore) / (scalarFields.length + 1);
   // Confidence flagging at the UI threshold: of the WRONG fields, how many carried
   // conf < 0.8 (i.e. would have been highlighted "confirm me")?
   var CONF_T = 0.8;
   var wrongAll = scalarFields.filter(function (f) { return !f.ok; });
-  if (matched !== wantKeys.length) wrongAll = wrongAll.concat([{ label: "outcomes", conf: outcomeConf }]);
+  if (!outcomesMasked && matched !== wantKeys.length) wrongAll = wrongAll.concat([{ label: "outcomes", conf: outcomeConf }]);
   var wrongFlagged = wrongAll.filter(function (f) { return (f.conf == null ? 1 : f.conf) < CONF_T; }).length;
   // SILENT errors: wrong yet confident — the UI would NOT highlight these. The most
   // dangerous class; --dump prints them so each one can be hunted individually.
@@ -165,7 +181,7 @@ function scoreOne(parsed, truthRaw) {
   var faFields = scalarFields.filter(function (f) { return f.ok && (f.conf == null ? 1 : f.conf) < CONF_T; });
   var falseAlarms = faFields.length;
   var faDetail = faFields.map(function (f) { return { field: f.label, conf: f.conf == null ? 1 : f.conf }; });
-  if (matched === wantKeys.length && outcomeConf < CONF_T) { falseAlarms++; faDetail.push({ field: "outcomes", conf: outcomeConf }); }
+  if (!outcomesMasked && matched === wantKeys.length && outcomeConf < CONF_T) { falseAlarms++; faDetail.push({ field: "outcomes", conf: outcomeConf }); }
   return {
     fields: fields,
     scalarCorrect: correct,
@@ -351,7 +367,7 @@ async function main() {
   for (var ei = 0; ei < engines.length; ei++) {
     var eng = engines[ei];
     console.log("--- " + eng.label + " ---");
-    var totScalarCorrect = 0, totScalar = 0, totOutcome = 0, totHeadline = 0, n = 0;
+    var totScalarCorrect = 0, totScalar = 0, totOutcome = 0, totHeadline = 0, n = 0, skippedUnusable = 0;
     var whole = 0, wrongTotal = 0, wrongFlagged = 0;
     var totSilent = 0, totFalseAlarms = 0, silentList = [];
     var fieldAgg = {}; // label -> {ok,total}
@@ -362,6 +378,7 @@ async function main() {
       var truthRaw;
       try { truthRaw = JSON.parse(fs.readFileSync(s.truth, "utf8")); }
       catch (e) { console.log("  " + pad(s.name, 18) + " BAD ground-truth JSON: " + e.message); continue; }
+      if (truthRaw._unusable) { skippedUnusable++; continue; }   // not a Processing screenshot
       var parsed;
       try { parsed = await eng.parse(s.image); }
       catch (e) { console.log("  " + pad(s.name, 18) + " engine error: " + e.message); continue; }
@@ -402,6 +419,7 @@ async function main() {
       console.log("  " + pad("TOTAL", 18) +
         " fields " + pct(totScalar ? totScalarCorrect / totScalar : 0) +
         "  outcomes " + pct(outcomesAvg) + "  (" + n + " samples)");
+      if (skippedUnusable) console.log("  (skipped " + skippedUnusable + " _unusable non-Processing images)");
       console.log("  HEADLINE per-field avg (12 scalars + outcome set): " + pct(headlineAvg) +
         "   whole-parse: " + whole + "/" + n + " (" + pct(whole / n) + ")" +
         "   flag-coverage: " + (wrongTotal ? wrongFlagged + "/" + wrongTotal + " wrong fields flagged (" + pct(wrongFlagged / wrongTotal) + ")" : "n/a (no errors)"));
