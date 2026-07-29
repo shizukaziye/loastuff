@@ -23,6 +23,26 @@ var L = require("../ocr/layout.js");
 
 var ROOT = path.resolve(__dirname, "..");
 var PS = 32, PATCH_GAP = 0.13, CANON = 246;
+// ---- SUPERVISED SELECTION (round 9) ----------------------------------------
+// `--supervised` replaces the geometric exemplar picker (g0 spread × tier) with
+// one that scores candidates by HELD-OUT CLASSIFICATION: the holdout boards
+// (djb2%5==0, which never contribute a patch) become an evaluation set of
+// observed node patches with known labels, every candidate is scored against
+// them the way the engine's synth consult scores refs, and exemplars are chosen
+// greedily to maximize correct-minus-wrong commits on boards they were not
+// harvested from. Round 8 closed the geometric route with numbers; this is the
+// only remaining mechanism named for the level block.
+//   node tools/build-level-refs.js --supervised [--k=6] [--pen=3] [--half]
+// `--half` selects on half the held-out observations and reports on the other
+// half, so the printed number is not the one that was optimized.
+var ARGV = process.argv.slice(2);
+function argOf(n, d) { var m = ARGV.filter(function (a) { return a.indexOf("--" + n + "=") === 0; })[0]; return m ? m.split("=")[1] : d; }
+var SUPERVISED = ARGV.indexOf("--supervised") !== -1;
+var SUP_K = parseInt(argOf("k", "6"), 10);
+var SUP_PEN = parseFloat(argOf("pen", "3"));
+var SUP_HALF = ARGV.indexOf("--half") !== -1;
+var SUP_FILL = ARGV.indexOf("--fill") !== -1;
+var SUP_OUT = argOf("out", null);   // write the generated file elsewhere (A/B safety)
 // name-band patches: the whole caption block (wide) — 6-class name recognition
 var NPW = 48, NPH = 16, NBAND = { dx: 0, dy: -0.16, w: 1.06, h: 0.34 };
 var MIN_NATIVE_GAP = 110, MAX_PER_CLASS = 6;   // 2 per g0 tier (see stratify)
@@ -219,18 +239,106 @@ function patchInkOk(patch, mode) {
   return true;
 }
 
+// ---- the engine's synth kernels, replicated so a candidate is scored the way
+// the consult will actually use it (ocr/structural-engine.js _synth*) ----
+var SWIN = (function () {
+  var w = new Float32Array(PS * PS), c = (PS - 1) / 2, s2 = 2 * 9 * 9;
+  for (var y = 0; y < PS; y++) for (var x = 0; x < PS; x++) {
+    var r2 = (x - c) * (x - c) + (y - c) * (y - c);
+    w[y * PS + x] = 0.25 + 0.75 * Math.exp(-r2 / s2);
+  }
+  return w;
+})();
+function zn(p) {
+  var out = new Float32Array(p.length), mean = 0, i;
+  for (i = 0; i < p.length; i++) mean += p[i];
+  mean /= p.length;
+  var va = 0;
+  for (i = 0; i < p.length; i++) { out[i] = p[i] - mean; va += out[i] * out[i]; }
+  var sd = Math.sqrt(va / p.length) || 1;
+  for (i = 0; i < out.length; i++) out[i] /= sd;
+  return out;
+}
+function gradMag(p) {
+  var g = new Float32Array(PS * PS);
+  for (var y = 1; y < PS - 1; y++) for (var x = 1; x < PS - 1; x++) {
+    var dx = p[y * PS + x + 1] - p[y * PS + x - 1], dy = p[(y + 1) * PS + x] - p[(y - 1) * PS + x];
+    g[y * PS + x] = Math.sqrt(dx * dx + dy * dy);
+  }
+  return g;
+}
+function gradVec(p) { var g = gradMag(p), o = new Float32Array(g.length); for (var i = 0; i < g.length; i++) o[i] = g[i] * SWIN[i]; return zn(o); }
+function blur(p, sigma) {
+  var r = Math.max(1, Math.ceil(sigma * 2.5)), k = [], ks = 0, i;
+  for (i = -r; i <= r; i++) { var v = Math.exp(-i * i / (2 * sigma * sigma)); k.push(v); ks += v; }
+  for (i = 0; i < k.length; i++) k[i] /= ks;
+  var tmp = new Float32Array(PS * PS), out = new Float32Array(PS * PS), x, y, s, j;
+  for (y = 0; y < PS; y++) for (x = 0; x < PS; x++) { s = 0; for (j = -r; j <= r; j++) s += p[y * PS + Math.max(0, Math.min(PS - 1, x + j))] * k[j + r]; tmp[y * PS + x] = s; }
+  for (y = 0; y < PS; y++) for (x = 0; x < PS; x++) { s = 0; for (j = -r; j <= r; j++) s += tmp[Math.max(0, Math.min(PS - 1, y + j)) * PS + x] * k[j + r]; out[y * PS + x] = s; }
+  return out;
+}
+function cos(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s / a.length; }
+var SUP_SIG = [0.6, 1.0, 1.5, 2.1, 2.8, 3.6];
+
 (async function () {
   var files = fs.readdirSync(path.join(ROOT, "samples")).filter(function (f) { return /\.(png|webp|jpe?g)$/i.test(f); });
   var refs = { N: {}, S: {}, W: {}, E: {} };
   var nrefs = { W: {}, E: {} };   // name-band refs keyed by canonical effect name
   var weCands = [];               // W/E candidates, verified after the loop
+  var obs = { N: [], S: [], W: [], E: [] };   // --supervised: held-out observations
   var used = 0, heldOut = 0, localized = 0;
   for (var fi = 0; fi < files.length; fi++) {
     var f = files[fi];
     var base = f.replace(/\.(png|webp|jpe?g)$/i, "");
     if (DEGRADED[base]) continue;
     if (LOCALIZED[base]) { localized++; continue; }
-    if (isHoldout(base)) { heldOut++; continue; }
+    if (isHoldout(base)) {
+      heldOut++;
+      if (!SUPERVISED) continue;
+      // HELD-OUT EVALUATION SET: the same boards the harvest refuses, at EVERY
+      // resolution (not just g0>=110) — the degraded tier is what the consult
+      // exists to read, so excluding it would score the exemplars on the one
+      // population that never needs them. Anchoring mirrors the engine, not the
+      // harvest: locate when the line/ink is there, else the consult's own fixed
+      // fallback centres.
+      var lf0 = path.join(ROOT, "samples", base + ".json");
+      if (!fs.existsSync(lf0)) continue;
+      var lb0 = JSON.parse(fs.readFileSync(lf0, "utf8"));
+      if (lb0._unusable) continue;
+      var c0 = lb0.config || {};
+      var mk0 = ((lb0._mask && lb0._mask.skip) || []);
+      var cx0 = await loadNorm(path.join(ROOT, "samples", f));
+      if (!cx0) continue;
+      cx0.lum = lumOf(cx0.raster);
+      var gp0 = cx0.geo.gap;
+      var nd0 = { N: cx0.geo.nodeN, S: cx0.geo.nodeS, W: cx0.geo.nodeW, E: cx0.geo.nodeE };
+      var cl0 = { N: c0.willpowerLevel, S: c0.orderLevel, W: c0.effect1Level, E: c0.effect2Level };
+      var fld = { N: "willpowerLevel", S: "orderLevel", W: "effect1Level", E: "effect2Level" };
+      ["N", "S", "W", "E"].forEach(function (k0) {
+        var v0 = cl0[k0];
+        if (!(v0 >= 1 && v0 <= 5)) return;
+        if (mk0.indexOf(fld[k0]) !== -1) return;   // masked label — not ground truth
+        var p0 = nd0[k0], ox0, oy0;
+        if (k0 === "N" || k0 === "S") {
+          var lc0 = locateBareDigit(cx0.raster, p0, gp0, k0);
+          ox0 = lc0 ? lc0.x : p0.x; oy0 = lc0 ? lc0.y : p0.y + gp0 * OFF_BARE;
+        } else {
+          var ln0 = locateLv(cx0.raster, p0, gp0);
+          if (ln0 && ln0.w >= gp0 * 0.26) { ox0 = ln0.x + ln0.w - gp0 * 0.05; oy0 = ln0.y + ln0.h / 2; }
+          else { ox0 = p0.x + gp0 * 0.125; oy0 = p0.y + gp0 * 0.17; }
+        }
+        // a 5x5 grid at the consult's own step, so a slightly-off anchor is not
+        // scored as a classification failure
+        var grid = [];
+        for (var gy = -2; gy <= 2; gy++) for (var gx = -2; gx <= 2; gx++) {
+          var pp = rawPatch(cx0.lum, cx0.raster.width, cx0.raster.height,
+            ox0 + gx * 0.0075 * gp0, oy0 + gy * 0.0075 * gp0, gp0);
+          grid.push({ raw: zn(pp), grad: gradVec(pp) });
+        }
+        obs[k0].push({ src: base, cls: v0, grid: grid });
+      });
+      continue;
+    }
     var lblFile = path.join(ROOT, "samples", base + ".json");
     if (!fs.existsSync(lblFile)) continue;
     var lbl = JSON.parse(fs.readFileSync(lblFile, "utf8"));
@@ -432,8 +540,123 @@ function patchInkOk(patch, mode) {
       bucket[cls] = pick.slice(0, MAX_PER_CLASS);
     });
   }
+  if (SUPERVISED) {
+    // ---- score every candidate against the held-out observations ----
+    // M[o][c] = { g: best windowed-gradient correlation over the 5x5 anchor grid
+    // and the six blur sigmas, r: the RAW correlation at that same alignment }.
+    // The engine ranks classes by max-over-exemplars and commits only when the two
+    // channels agree with a gradient margin, so a selected SET's behaviour is a max
+    // over its own columns — which is what makes greedy selection cheap and exact.
+    console.log("supervised: scoring candidates against held-out observations…");
+    ["N", "S", "W", "E"].forEach(function (k) {
+      var cands = [];
+      Object.keys(refs[k]).forEach(function (cls) {
+        (refs[k][cls] || []).forEach(function (r) { cands.push({ cls: +cls, ref: r }); });
+      });
+      var O = obs[k];
+      if (!cands.length || !O.length) { console.log("  " + k + ": no candidates/observations — falling back to the geometric picker"); return; }
+      // pre-blur every candidate once
+      var vars_ = cands.map(function (c) {
+        var base = new Float32Array(c.ref.q);
+        return SUP_SIG.map(function (sg) { var b = blur(base, sg); return { raw: zn(b), grad: gradVec(b) }; });
+      });
+      var M = O.map(function (o) {
+        return cands.map(function (c, ci) {
+          var bg = -Infinity, br = -Infinity;
+          for (var gi = 0; gi < o.grid.length; gi++) {
+            var og = o.grid[gi].grad, or_ = o.grid[gi].raw;
+            for (var si = 0; si < vars_[ci].length; si++) {
+              var g = cos(og, vars_[ci][si].grad);
+              if (g > bg) { bg = g; br = cos(or_, vars_[ci][si].raw); }
+            }
+          }
+          return { g: bg, r: br };
+        });
+      });
+      // objective: +1 per correct commit, −SUP_PEN per wrong commit, 0 for a refusal
+      var floor = k === "S" ? 0.015 : 0.01;
+      function scoreSet(sel, idxs) {
+        var net = 0, ok = 0, bad = 0, ref = 0;
+        for (var oi = 0; oi < idxs.length; oi++) {
+          var o = idxs[oi], perG = {}, perR = {};
+          for (var j = 0; j < sel.length; j++) {
+            var ci = sel[j], cl = cands[ci].cls, m = M[o][ci];
+            if (!(cl in perG) || m.g > perG[cl]) { perG[cl] = m.g; perR[cl] = m.r; }
+          }
+          var ks = Object.keys(perG);
+          if (ks.length < 2) { ref++; continue; }
+          var g1 = -Infinity, g1v = null, g2 = -Infinity, r1 = -Infinity, r1v = null;
+          ks.forEach(function (cl) {
+            if (perG[cl] > g1) { g2 = g1; g1 = perG[cl]; g1v = +cl; } else if (perG[cl] > g2) g2 = perG[cl];
+            if (perR[cl] > r1) { r1 = perR[cl]; r1v = +cl; }
+          });
+          if (g1v === r1v && (g1 - g2) >= floor) {
+            if (g1v === O[o].cls) { net += 1; ok++; } else { net -= SUP_PEN; bad++; }
+          } else ref++;
+        }
+        return { net: net, ok: ok, bad: bad, ref: ref };
+      }
+      var all = O.map(function (_, i) { return i; });
+      var selIdx = SUP_HALF ? all.filter(function (i) { return i % 2 === 0; }) : all;
+      var repIdx = SUP_HALF ? all.filter(function (i) { return i % 2 === 1; }) : all;
+      // SEED one exemplar per class first. The objective is degenerate on a
+      // partial class set — the consult refuses whenever fewer than two classes
+      // can score, so a greedy that starts empty sees zero gain from its first
+      // additions and stalls with three classes missing (measured: S and E came
+      // out all-'1' and committed on nothing at all). Seed = the candidate with
+      // the best DISCRIMINABILITY on the selection half: mean gradient score
+      // against its own class's observations minus the mean against the others.
+      var sel = [], perClass = {};
+      [1, 2, 3, 4, 5].forEach(function (c) {
+        var bi = -1, bs = -Infinity;
+        for (var ci0 = 0; ci0 < cands.length; ci0++) {
+          if (cands[ci0].cls !== c) continue;
+          var same = 0, ns = 0, oth = 0, no = 0;
+          for (var q0 = 0; q0 < selIdx.length; q0++) {
+            var oo = selIdx[q0], g = M[oo][ci0].g;
+            if (O[oo].cls === c) { same += g; ns++; } else { oth += g; no++; }
+          }
+          if (!ns || !no) continue;
+          var d = same / ns - oth / no;
+          if (d > bs) { bs = d; bi = ci0; }
+        }
+        if (bi >= 0) { sel.push(bi); perClass[c] = 1; }
+      });
+      // greedy forward selection with the engine's per-class budget; keep the
+      // PREFIX with the best objective rather than stopping at the first plateau
+      var cur = scoreSet(sel, selIdx), bestNet = cur.net, bestLen = sel.length;
+      for (var step = 0; step < SUP_K * 5; step++) {
+        var bestI = -1, bestS = null;
+        for (var ci2 = 0; ci2 < cands.length; ci2++) {
+          if (sel.indexOf(ci2) !== -1) continue;
+          if ((perClass[cands[ci2].cls] || 0) >= SUP_K) continue;
+          var s = scoreSet(sel.concat(ci2), selIdx);
+          if (!bestS || s.net > bestS.net || (s.net === bestS.net && s.ok > bestS.ok)) { bestS = s; bestI = ci2; }
+        }
+        if (bestI < 0) break;
+        sel.push(bestI); perClass[cands[bestI].cls] = (perClass[cands[bestI].cls] || 0) + 1; cur = bestS;
+        if (cur.net > bestNet) { bestNet = cur.net; bestLen = sel.length; }
+      }
+      // `--fill` keeps the WHOLE greedy order up to the 6-per-class budget instead
+      // of truncating at the objective's best prefix — the like-for-like comparison
+      // against the geometric picker, which always spends its full budget.
+      if (SUP_FILL) bestLen = sel.length;
+      sel = sel.slice(0, bestLen);
+      perClass = {}; sel.forEach(function (ci) { perClass[cands[ci].cls] = (perClass[cands[ci].cls] || 0) + 1; });
+      cur = scoreSet(sel, selIdx);
+      var rep = scoreSet(sel, repIdx);
+      console.log("  " + k + ": " + cands.length + " candidates, " + O.length + " held-out obs -> picked " + sel.length +
+        "  [select " + cur.ok + "ok/" + cur.bad + "bad/" + cur.ref + "ref net " + cur.net.toFixed(0) +
+        "]  [report " + rep.ok + "ok/" + rep.bad + "bad/" + rep.ref + "ref]");
+      var out = {};
+      sel.forEach(function (ci) { (out[cands[ci].cls] = out[cands[ci].cls] || []).push(cands[ci].ref); });
+      refs[k] = out;
+    });
+    stratify(nrefs.W); stratify(nrefs.E);   // name refs keep the geometric picker
+  } else {
   for (var kk2 = 0; kk2 < 4; kk2++) stratify(refs[["N", "S", "W", "E"][kk2]]);
   stratify(nrefs.W); stratify(nrefs.E);
+  }
 
   var lines = [];
   lines.push("// GENERATED by tools/build-level-refs.js — do not edit by hand.");
@@ -450,13 +673,14 @@ function patchInkOk(patch, mode) {
   lines.push("  if (typeof module !== \"undefined\" && module.exports) module.exports = { LEVEL_REFS: LEVEL_REFS, NAME_REFS: NAME_REFS, LEVEL_REFS_META: META };");
   lines.push("  else root.OcrLevelRefs = { LEVEL_REFS: LEVEL_REFS, NAME_REFS: NAME_REFS, LEVEL_REFS_META: META };");
   lines.push("})(typeof globalThis !== \"undefined\" ? globalThis : this);");
-  fs.writeFileSync(path.join(ROOT, "ocr", "level-refs.js"), lines.join("\n") + "\n");
+  var OUTFILE = SUP_OUT ? path.resolve(SUP_OUT) : path.join(ROOT, "ocr", "level-refs.js");
+  fs.writeFileSync(OUTFILE, lines.join("\n") + "\n");
 
   var covN = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.N[v] || []).length); }).join(" ");
   var covS = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.S[v] || []).length); }).join(" ");
   var covW = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.W[v] || []).length); }).join(" ");
   var covE = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.E[v] || []).length); }).join(" ");
-  var kb = Math.round(fs.statSync(path.join(ROOT, "ocr", "level-refs.js")).size / 1024);
+  var kb = Math.round(fs.statSync(OUTFILE).size / 1024);
   console.log("harvested from " + used + " samples (holdout skipped: " + heldOut + ", localized skipped: " + localized + ") -> ocr/level-refs.js (" + kb + "KB)");
   console.log("coverage  N " + covN + "  |  S " + covS + "  |  W " + covW + "  |  E " + covE);
   console.log("name refs W: " + Object.keys(nrefs.W).map(function (n) { return n + ":" + nrefs.W[n].length; }).join(" "));

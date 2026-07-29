@@ -1052,3 +1052,172 @@ round, so its pin alone can stay.
   into BOTH fewer misses and fewer false alarms. More data is the weaker investment now: 87 fresh
   boards moved the headline 0.2 points, cost three silent errors (one of them a label error), and
   added 60 harvestable reference sources that made the reference set no better.
+
+
+### 2026-07-29 · iteration 11 — round 9: verifiers, and the floor
+Round 8 named two levers and this round spent itself on both. The first paid: **false
+alarms 2802 → 2398 (5.9 → 5.1/shot, −14.4%)** with every parsed VALUE byte-identical —
+0 fields fixed, 0 broken, headline 96.3, whole-parse 329, outcomes 95.8, **silents 0**,
+flag coverage 100%. The second did not, and its negative is the more useful result.
+No data files were rebuilt in the shipped tree. Harness: round 8's design re-created as
+`r9/ph.js` (the old scratch dir was gone), 8 lanes, **472 pairs in ~110s** against the
+serial gate's ~9m; it reproduces the gate to the digit. Sixteen full-corpus runs.
+
+**The band, re-measured.** 0.68-0.80 holds **1334 false alarms against 39 real misses**
+(round 8's "31" counted scalars only; the other 8 are outcome sets). By field:
+orderLevel 257:7 · outcomes 242:8 · effect1 193:1 · effect2 184:0 · willpowerLevel 160:10 ·
+effect1Level 144:8 · effect2Level 81:3 · rerollsRemaining 34:1 · maxTurns 20:0 ·
+currentTurn 19:1. Every rule below was mined OFFLINE from a provenance dump and only then
+wired in, so the 110s runs were spent on ideas that already measured.
+
+- **The caption names the effect, and that is a second witness to the wheel's name read**
+  (`structural-engine.js:3228, 3282, 3786`). Round 4 read the strip captions to resolve a
+  tile's TARGET; the same text, lexed on its own, is an independent witness to the NAME —
+  different crop, different mask, a separate OCR call, and the caption renders the name on
+  one line at a larger effective size than the diamond's two-line label. STRICT patterns
+  only: each name must show its own discriminating token, because the shared stems are
+  exactly where a degraded caption would agree with a wrong wheel read for the wrong reason
+  ("attack" fits both Attack Power and Ally Attack Enh.; "power" fits Attack Power and Brand
+  Power). Measured on in-band reads: **156 corroborated, every one right**, against 221
+  uncorroborated of which 1 is wrong. **effect1 304 → 225 FAs, effect2 318 → 240.**
+- **The four-way closure the soft-header cap was throwing away**
+  (`structural-engine.js:2551, 2605, 2775`). When exactly one level node is free it is
+  always S — `lvFull[3]` is never pinned by construction — so that branch means three
+  independently-read nodes, a header read, and the S diamond's own luminance hint, and
+  `sHint === pts − pinnedSum` is four channels closing on each other. The hint is genuinely
+  independent of the header: different region, different predicate (vivid-gold saturation
+  vs dim white), different reader. A wrong pin would need a header wrong by the same amount
+  AND a hint wrong by the same amount again. Measured by label:
+  - S with the hint closing — **239 boards, 239 right, 0 wrong**, and 177 of them were
+    capped to 0.70 by the blanket `ptsSoft` rule and flagged. Exempted.
+  - the three SIBLINGS on a **hard**-pts closure — **186 fields, 186 right, 0 wrong**,
+    87 flagged. Lifted to 0.82.
+  - the three siblings on a **soft**-pts closure — 529 right but **2 wrong**
+    (`c-mrw6hugm` willpower 2≠5, `c-mrxd1quv` willpower 1≠3). A soft header corroborates
+    the node it DETERMINES and nothing else; siblings stay capped. **orderLevel 385 → 211
+    FAs, effect2Level 419 → 381, effect1Level 399 → 369, willpowerLevel 388 → 383.**
+
+**Same-labels A/B, full corpus, 472 scored pairs.** A-arm = unmodified HEAD in a
+`git worktree` with `samples/` symlinked in. **No labels were changed this round**, so the
+arms are identical by construction; the A-arm reproduces the shipped round-8 numbers exactly.
+
+| metric | HEAD (A) | round 9 (B) |
+|---|---|---|
+| headline per-field avg | 96.3% | 96.3% |
+| whole-parse | 329/472 (69.7%) | 329/472 (69.7%) |
+| flag coverage | 100.0% (262/262) | 100.0% (262/262) |
+| silent errors | 0 | **0** |
+| **false alarms/shot** | **5.9** (2802) | **5.1** (2398) |
+| outcomes | 95.8% | 95.8% |
+| 0.68-0.80 band | 1334 FA / 39 miss | **958 FA** / 39 miss |
+
+Per-field accuracy is unchanged on all 12 scalars plus outcomes — a verifier moves
+confidence, never a value, and 0 fixed / 0 broken is the proof. Holdout vs in-sample is
+identical in both arms (holdout 95.6%, whole 63/96; in-sample 96.5%, whole 266/376).
+Residual wrong fields (unchanged): effect2 39 · effect1Level 38 · effect1 33 ·
+effect2Level 24 · orderLevel 22 · willpowerLevel 19 · rerollsRemaining 12 · baseCost 11 ·
+currentTurn 4 · gemType 3 · processCostMultiplier 1 · maxTurns 0. Outcome tiles missed 80
+over 58 boards.
+
+**PRIORITY 2 — supervised exemplar selection. Built, measured, and it loses.**
+`tools/build-level-refs.js` gained a `--supervised` mode that does exactly what round 8
+prescribed: the 91 holdout boards (djb2%5==0, which never contribute a patch) become an
+evaluation set of observed node patches with known labels — at EVERY resolution, since the
+degraded tier is what the consult exists for, and anchored the way the ENGINE anchors
+(locate when the line/ink is there, else the consult's own fallback centres, over a 5×5
+grid at the consult's step). Every candidate is scored against them with the engine's own
+kernels (six blur sigmas, windowed-gradient + raw z-normed correlation), and exemplars are
+chosen by GREEDY FORWARD SELECTION on correct-minus-wrong commits (wrong penalised 3:1),
+seeded one-per-class because the consult refuses below two scoring classes and a
+greedy starting empty stalls with three classes missing.
+
+| level refs (spliced onto the incumbent NAME_REFS, one fixed engine) | headline | whole | silent | wpLvl | ordLvl | e1Lvl | e2Lvl |
+|---|---|---|---|---|---|---|---|
+| **round-6 incumbent (geometric picker, 271 src)** | **96.3** | **329** | **0** | **96.0** | **95.3** | **91.9** | **94.9** |
+| supervised, objective-best prefix (8-12/node) | 95.0\* | 299 | 1 | 91.7 | 90.0 | 89.6 | 91.5 |
+| supervised, full 6-per-class budget | 96.1 | 329 | **1** | 95.3 | 94.5 | 91.5 | 94.5 |
+
+\*that row is the whole rebuilt file (its own NAME_REFS too); the spliced level-only run is
+the fair one and is the third row.
+
+Both variants introduce the SAME silent error (`c-mrwzbdin-lh4dxl` orderLevel 4≠1 @0.84),
+which fails the gate outright, and neither beats the incumbent on any level field. Three
+things went wrong and they are worth naming, because they are properties of the *signal*,
+not of the implementation:
+1. **The objective wants a far smaller set than the engine needs.** Its best prefix is
+   8-12 exemplars per node against the engine's 30, and at full budget the greedy's own
+   held-out score goes NEGATIVE (W −36, E −11): the exemplars it is forced to add make the
+   consult commit more often and wrongly. End-to-end the small set is a disaster
+   (whole-parse 329 → 299), which is round 2's "leaning the W/E pools costs
+   effect1Level 82→75" measured a second way.
+2. **It overfits 91 boards.** With `--half` (select on half the observations, report on
+   the other half) N scores 33ok/1bad where it optimized and **26ok/7bad** where it did
+   not; W 18ok/2bad → 13ok/4bad. The selection signal is a few dozen commit events
+   choosing among 50-130 candidates per node — the variance of the draw is larger than
+   the effect.
+3. **The proxy is not the objective.** Held-out classification of the synth consult in
+   isolation is not end-to-end accuracy: the consult is one rung among six, it is
+   memoized and consulted by the enumeration as a *vote*, and its refusals are load-bearing.
+   A set that classifies better in isolation can and does read worse in the engine.
+
+`ocr/level-refs.js` is therefore left byte-identical to the round-6 build for the second
+round running, and the DO-NOT-REGENERATE warning stands. **This closes the last idea with
+a mechanism behind it for the level/name block.**
+
+**RULED OUT, with numbers.**
+- *Supervised exemplar selection*, both budgets, spliced and whole — the table above. The
+  criterion is not the problem; the amount of supervision available is. Any future attempt
+  needs a labelled evaluation set an order of magnitude larger than 91 boards, and even
+  then it has to be scored end-to-end rather than on the consult in isolation.
+- *The caption-name witness BELOW 0.68*. It would add 92 more corroborations at 0.50-0.60
+  with 0 wrong — and 6 with **1 wrong** at 0.60-0.68 (`c-ms0uhvso-gj1ae8`: the wheel reads
+  W as the name that truly sits at E, and a tile duly spells that name out). Below 0.68 the
+  name did not come from the node's own graded lexical evidence but from a rescue rung
+  (patch synthesis, structural line-count, a fuzzy family tie) whose failure mode is a SLOT
+  SWAP, and a caption can witness that a name is on the BOARD, never which node holds it.
+  One silent for 98 false alarms is not a trade this campaign makes.
+- *The located line as an outcome DIRECTION witness*. The evidence is real and was measured
+  positionally against the labels over every order/willpower raise-or-lower cell: a strict
+  chartreuse locate means raise (willpower **297:0**, order **286:1**) and a strict red
+  locate, chartreuse having declined, means lower (willpower **0:44**, order **0:43**).
+  Lifting the `!signSeen` cap on a witnessed direction reclaimed only **35 false alarms**
+  and cost **one silent error** — and the silent is not in the witnessed cell:
+  `c-ms0lcj9n-snau3j` cell 3 reads "Lv. 3 ▲" as amount 1 at oconf 0.85, and the board was
+  flagged only because that cap held cell 2 at 0.72. **`outcomes` confidence is a MIN over
+  four tiles**, so every per-tile cap is incidental cover for the other three — which is
+  also why the yield is so small. The 242 in-band outcome false alarms cannot be reclaimed
+  a tile family at a time; they need all four tiles at once. Reverted, negative written
+  beside the cap.
+- *The soft-pts closure extended to the three siblings* — 529 right, 2 wrong (above).
+- *Lifting the checksum-closure siblings on 2-pin or 1-pin boards* (i.e. without the S
+  node's hint): nPin=2 measures 68 right / 2 wrong and nPin=1 measures 23 / 1, against
+  nPin=3-with-hint's 186 / 0. Three pins is the discriminator, not the closure.
+
+Gate: lint-labels 0 errors; **96.3% ≥ 95% · outcomes 95.8% ≥ 94% · silent 0 = 0 → PASS**
+(`npm run eval-gate`, serial; it reproduces the parallel harness exactly — 329/472 whole,
+262/262 flagged, 0 silents, 2398 FAs). Thresholds untouched: no accuracy number moved this
+round, so there is nothing new to ratchet against.
+
+**NOT DONE (owner's call at ship time):** version pins in `index.html` were left alone as
+instructed — `ocr/engine.js`, `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` and
+`ocr/structural-engine.js?v=93` still need a bump before this deploys. `ocr/level-refs.js`
+is byte-identical to the shipped build, so its pin alone can stay.
+
+- Next: **this method is at its floor and the remaining levers are different in kind.**
+  Four rounds have now closed four independent channels into the W/E level block (ink
+  geometry r4, line width r5, checksum recovery r6, pigment r7) and two into its data
+  (reference re-harvesting r8, supervised selection r9). What is left after this round is
+  958 in-band false alarms against 39 misses, and the 39 are concentrated where no
+  independent channel exists: a node with no located line, no usable checksum and no
+  separable pigment. The honest reading of six rounds of measurement is that a
+  *correlation-and-rule* reader has extracted what this corpus contains. A genuinely
+  different approach would have to (a) read the four levels JOINTLY from one crop rather
+  than four nodes independently — the failures are assignments and compensating pairs, and
+  every channel tried so far is per-node; (b) be trained rather than hand-derived, i.e. a
+  small classifier over the wheel crop, which is the only thing that can use the 472 boards
+  as *training* data instead of as a test set the way every rule has been mined; or (c)
+  change the capture — the residual population is a resolution tier, not a bug, and one
+  larger screenshot is worth more than any rule. On false alarms specifically, the next
+  real gain is the outcome strip, and it needs the `outcomes` confidence to stop being a
+  min over four tiles: per-tile flagging in the UI would let three verified tiles stay
+  quiet while the fourth asks.

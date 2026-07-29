@@ -2545,6 +2545,10 @@
     var pinned = indep.map(function (x) { return x.v != null; });
     var levels = [null, null, null, null], conf4 = [0, 0, 0, 0];
     var enumAssigned = [false, false, false, false];
+    // FOUR-WAY CLOSURE (round 9): set when the three pinned nodes, the header read
+    // and the S diamond's own luminance hint are all mutually consistent — see the
+    // verifier block after the confidence caps below.
+    var hintClosure = false;
     var freeIdx = [];
     for (var i = 0; i < 4; i++) { if (pinned[i]) { levels[i] = indep[i].v; conf4[i] = indep[i].conf; } else freeIdx.push(i); }
 
@@ -2598,6 +2602,7 @@
           // the luminance read agreeing with the arithmetic solve is independent
           // corroboration; disagreement drops S into hard-flag territory
           if (fi === 3 && sHint != null) {
+            hintClosure = sHint === remaining;
             conf4[3] = sHint === remaining ? Math.max(conf4[3], 0.85) : Math.min(conf4[3], 0.5);
             // ...and when the pts read is SOFT, a disagreeing hint WINS the value:
             // soft header reads at the degraded tier are junk-prone (t6 live read
@@ -2766,6 +2771,30 @@
     // NO checksum at all: every level is a single-source read with nothing to
     // corroborate it — pinned or not, none may cross the flag line
     if (pts == null) conf4 = conf4.map(function (cv) { return Math.min(cv, 0.78); });
+
+    // ---- FOUR-WAY CLOSURE VERIFIER (round 9) ----
+    // The blanket caps above are the zero-silent guards for a header read that
+    // might be junk (ptsSoft) — and they were throwing away the one configuration
+    // where the header does NOT have to be trusted on its own. When exactly one
+    // node is free it is always S (lvFull[3] is never pinned by construction), so
+    // this branch means: three independently-read nodes, a header read, and the S
+    // diamond's own luminance hint — four channels, and `sHint === pts − pinnedSum`
+    // is them closing on each other. A wrong pin would have to be cancelled by a
+    // header wrong by the same amount AND a hint wrong by the same amount again.
+    // The hint is genuinely independent of the header: different region, different
+    // predicate (vivid-gold saturation vs dim white), different reader.
+    // Measured over the 472-pair corpus, by label:
+    //   S (this node) with the hint closing — 239 boards, 239 right, 0 wrong
+    //     (177 of them soft-pts, i.e. currently capped to 0.70 and flagged);
+    //   the three SIBLINGS on a HARD-pts closure — 186 fields, 186 right, 0 wrong
+    //     (87 currently flagged);
+    //   the three siblings on a SOFT-pts closure — 529 right but **2 wrong**
+    //     (c-mrw6hugm willpower 2≠5, c-mrxd1quv willpower 1≠3), so a soft header
+    //     corroborates the node it DETERMINES and nothing else. Siblings stay capped.
+    if (hintClosure) {
+      conf4[3] = Math.max(conf4[3], 0.85);
+      if (!ptsSoft) for (var hc = 0; hc < 3; hc++) conf4[hc] = Math.max(conf4[hc], 0.82);
+    }
 
     // TWO-CHANNEL corroborator (false-alarm reduction — every flagged-but-correct
     // field is a wasted "confirm me" tap AND a wasted AI-verifier pull): lift a
@@ -3182,6 +3211,28 @@
     // order axis, and neither shares a stem with any effect name.
     var CAP_WILLPOWER = /wil+\s*po|[il]lpo|efficien|fficien|ficienc|iciency|icienc|volunta/;
     var CAP_POINTS = /[o0]rd\w*\s*[,.]?\s*[pf]|cha[o0]?s|ca[o0]s|xaoc|punt|p[o0][il1]?[nmr][tf]|f[o0][il1][nmr]|[o0]unt[cs]|[o0]rder|rder|qrder|sdor/;
+    // ---- the caption also NAMES the effect (round 9's verifier channel) ----
+    // Same evidence as captionTarget, read for the other purpose: a strip caption is
+    // a different pixel region, under a different mask, from a different OCR call
+    // than the wheel's W/E name read, so a caption spelling out the committed name
+    // is an independent witness to it. STRICT patterns only — the shared stems are
+    // where a degraded caption would agree with a wrong wheel read for the wrong
+    // reason ("attack" alone fits both Attack Power and Ally Attack Enh.; "power"
+    // fits Attack Power and Brand Power), so each name must show its own
+    // discriminating token. Order is EFFECT_LEX's, most specific first.
+    var CAP_NAME_STRICT = [
+      ["Ally Damage Enh.", /a[li1|]{2}y\s*dam|ally\s*dam|damage\s*enh|dmg\s*enh/],
+      ["Ally Attack Enh.", /a[li1|]{2}y\s*at|ally\s*at|attack\s*enh|atk\s*enh/],
+      ["Additional Damage", /additional|addit/],
+      ["Boss Damage", /boss/],
+      ["Brand Power", /brand/],
+      ["Attack Power", /(atk|attack)\D{0,4}(pow|ower)/]
+    ];
+    var _nameVotes = {};
+    function captionName(t) {
+      for (var i = 0; i < CAP_NAME_STRICT.length; i++) if (CAP_NAME_STRICT[i][1].test(t)) return CAP_NAME_STRICT[i][0];
+      return null;
+    }
     // The effect rung reuses EFFECT_LEX in ITS order, first match wins — that is
     // what keeps "atk. power" out of Ally Attack Enh. and "ally attack enh." out of
     // Attack Power. A bare "power" is deliberately NOT evidence: it is the stem
@@ -3228,6 +3279,8 @@
       var capRead = await maskedOcr(capRect, captionText, { psm: 6 });
       var cap = normText(capRead.text).toLowerCase();
       if (out._debug) (out._debug.caps = out._debug.caps || [])[oi] = icls + "· '" + cap.replace(/\n/g, "|").slice(0, 45) + "'";
+      var capNm = captionName(cap);
+      if (capNm) _nameVotes[capNm] = (_nameVotes[capNm] || 0) + 1;   // reaped after the cells
 
       var o = null, oconf = 0;
       var target = null;
@@ -3667,6 +3720,20 @@
               if (vAmt && !hadAmt) o.amount = parseInt(vAmt[1], 10);
             }
           }
+          // (RULED OUT 2026-07-29, round 9 — the located LINE as a direction witness
+          // independent of the sign glyph. The evidence is real: measured positionally
+          // against the labels over every order/willpower raise-or-lower cell,
+          // a strict CHARTREUSE locate means raise — willpower 297:0, order 286:1 —
+          // and a strict RED locate, chartreuse having declined, means lower —
+          // willpower 0:44, order 0:43. Lifting this cap on a witnessed direction
+          // reclaimed only **35 false alarms** and cost **one SILENT error**, and the
+          // silent is not in the witnessed cell at all: `c-ms0lcj9n-snau3j` cell 3
+          // reads "Lv. 3 ▲" as amount 1 at oconf 0.85, and the board was flagged only
+          // because THIS cap held cell 2 at 0.72. The `outcomes` confidence is a MIN
+          // over the four tiles, so every per-tile cap is incidental cover for the
+          // other three — which is also why the yield is so small: 242 in-band outcome
+          // false alarms, and lifting one tile family clears 35 boards. Reclaiming
+          // outcome false alarms needs all four tiles at once, not a better tile.)
           if (!signSeen) oconf = Math.min(oconf, 0.72);
         }
       } else {
@@ -3714,6 +3781,30 @@
     // panel-quality attenuation on the art-region fields
     ["willpowerLevel", "orderLevel", "effect1Level", "effect2Level", "effect1", "effect2"].forEach(function (k) {
       confidence.config[k] = (confidence.config[k] || 0) * panelConf;
+    });
+
+    // ---- CAPTION-NAME VERIFIER (round 9) ----
+    // A wheel name that the strip independently spells out is corroborated by a
+    // channel with no shared failure mode: different crop, different mask, a
+    // separate OCR call, and the caption renders the name on ONE line at a larger
+    // effective size than the diamond's two-line label. Measured over the corpus by
+    // label, on reads sitting in the 0.68-0.80 "confirm me" band: **156 corroborated
+    // and every one of them right**, against 221 uncorroborated of which 1 is wrong.
+    // SCOPE — 0.68 and up, deliberately. Below it the name did not come from the
+    // node's own graded lexical evidence but from a rescue rung (patch synthesis,
+    // structural line-count, a fuzzy family tie), and that tier's failure mode is a
+    // SLOT SWAP rather than a misread name: the caption can witness that a name is
+    // on the board, never which node holds it. Measured: 0.60-0.68 corroborates
+    // 6 right and **1 wrong** (`c-ms0uhvso-gj1ae8`, where the wheel reads W as the
+    // name that truly sits at E and a tile duly spells it out), and 0.50-0.60 would
+    // add 92 more with 0 wrong — one silent for 98 false alarms is not a trade this
+    // campaign makes. Runs AFTER the panel attenuation so the lift is the final word.
+    ["effect1", "effect2"].forEach(function (slot) {
+      var c = confidence.config[slot] || 0;
+      if (c < 0.68 || c >= 0.8) return;
+      if (!out.config[slot] || !_nameVotes[out.config[slot]]) return;
+      confidence.config[slot] = 0.82;
+      if (out._debug) (out._debug.capName = out._debug.capName || []).push(slot + "<-" + out.config[slot]);
     });
 
     // ---- HONESTY GUARD: degraded OCR must never look confident ----
