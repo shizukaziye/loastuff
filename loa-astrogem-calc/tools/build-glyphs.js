@@ -25,18 +25,35 @@ var SAMPLES = path.join(__dirname, "..", "samples");
 var OUT = path.join(__dirname, "..", "ocr", "glyphs.js");
 var CANON_GAP = 246;
 
+// HOLDOUT (2026-07-28, round 2): ~20% of the corpus, picked by a deterministic
+// name hash, never feeds the harvest — the eval can then report template accuracy
+// on samples the templates never saw. Same rule in tools/build-level-refs.js.
+function djb2(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h; }
+function isHoldout(base) { return djb2(base) % 5 === 0; }
+
 // the DIM white mask, matching the engine's find/read mask for footer text (strict
 // v>0.72 keeps only a sparse skeleton on 2x-upscaled captures)
 function isWhite(r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.3 && c.v > 0.6; }
 function isGold(r, g, b) { return L.isGoldText(r, g, b); }
 
-// accumulators: char -> { sum: Float64Array, n }
-var acc = {};
+// accumulators: char -> { sum: Float64Array, n } — one pooled set plus one per
+// RESOLUTION BAND. The corpus is now dominated by ×2-upscaled small-monitor
+// captures whose bilinear-fattened strokes average into different silhouettes
+// than native-tier glyphs (measured: a native-built '+' template outscored the
+// true serif-'1' on a ×2 points header, killing the level checksum). The band is
+// the engine's own normalization factor (scaleF), which it knows at parse time.
+var CUR_BAND = "n";   // set per sample from its scaleF
+// Every instance is STORED (label, band, bitmap) rather than folded into a
+// running average: a PURIFICATION pass after the loop ejects mislabeled
+// instances before any averaging. Positional labeling has measured leak modes
+// — eroded "Lv." fragments entered '+' (the native '+' template rendered as a
+// serif-'1' and outscored real ones), shifted Process-pair tails leak digits
+// into '('/'/' — and a 0.5-thresholded average of polluted or misaligned
+// instances turns to mush (the native '2'/'3'/'8' were unrecognizable).
+var INSTANCES = [];
 function addInstance(ch, mask, box) {
   var bm = L.glyphBitmap(mask, box);
-  if (!acc[ch]) acc[ch] = { sum: new Float64Array(L.GLYPH_W * L.GLYPH_H), n: 0 };
-  for (var i = 0; i < bm.length; i++) acc[ch].sum[i] += bm[i];
-  acc[ch].n++;
+  INSTANCES.push({ ch: ch, band: CUR_BAND, bm: bm });
 }
 // Shape sanity for GOLD-SOURCE digit instances (wheel levels, outcome amounts):
 // the diamond-TIP missegmentation is a SOLID wide triangle (fill ≥~0.5, aspect
@@ -68,12 +85,15 @@ function segRect(raster, rect, pred) {
 
 (async function () {
   var files = fs.readdirSync(SAMPLES).filter(function (f) { return /\.(png|webp|jpe?g)$/i.test(f); });
-  var used = 0;
+  var used = 0, held = 0;
   for (var fi = 0; fi < files.length; fi++) {
     var img = files[fi];
-    var truthFile = path.join(SAMPLES, img.replace(/\.(png|webp|jpe?g)$/i, ".json"));
+    var base = img.replace(/\.(png|webp|jpe?g)$/i, "");
+    if (isHoldout(base)) { held++; continue; }
+    var truthFile = path.join(SAMPLES, base + ".json");
     if (!fs.existsSync(truthFile)) continue;
     var truth = JSON.parse(fs.readFileSync(truthFile, "utf8"));
+    if (truth._unusable) continue;
 
     var dec = await sharp(path.join(SAMPLES, img)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     var raster = { width: dec.info.width, height: dec.info.height, data: new Uint8ClampedArray(dec.data.buffer, dec.data.byteOffset, dec.data.length) };
@@ -85,6 +105,7 @@ function segRect(raster, rect, pred) {
     var g0 = found.anchors.gold.y - found.anchors.red.y;
     var fRaw = CANON_GAP / Math.max(8, g0);
     var scaleF = fRaw <= 0.65 ? 0.5 : fRaw <= 1.25 ? 1 : Math.min(3, Math.round(fRaw));
+    CUR_BAND = scaleF >= 3 ? "u3" : scaleF >= 2 ? "u2" : "n";
     if (scaleF !== 1) raster = L.upscaleBilinear(raster, scaleF);
     var red = { x: found.anchors.red.x * scaleF, y: found.anchors.red.y * scaleF };
     var gold = { x: found.anchors.gold.x * scaleF, y: found.anchors.gold.y * scaleF };
@@ -223,7 +244,17 @@ function segRect(raster, rect, pred) {
       if (segA.boxes.length >= 2 && segA.boxes.length <= 4) {
         addDigitInstance(String(o.amount || 1), segA.mask, segA.boxes[segA.boxes.length - 1]);
         if (segA.boxes.length === 2 && segA.boxes[0].w <= segA.boxes[1].w * 1.4) {
-          addInstance(isLower ? "-" : "+", segA.mask, segA.boxes[0]);
+          // GEOMETRY guard (2026-07-28): "Lv." erodes to fragments that pass the
+          // width test and flooded the sign classes — the '+' template averaged
+          // into a serif-'1' (an 'L' sliver IS that shape) and real ones then
+          // template-matched '+'. A true '+' is a small near-square cross and a
+          // '−' a squat wide bar; an 'L' is digit-tall, a 'v.' blob mid-height.
+          var sb = segA.boxes[0], db = segA.boxes[1];
+          var sAsp = sb.w / Math.max(1, sb.h), sRelH = sb.h / Math.max(1, db.h);
+          var signOk = isLower
+            ? (sAsp >= 1.3 && sRelH <= 0.45)
+            : (sAsp >= 0.6 && sAsp <= 1.15 && sRelH >= 0.4 && sRelH <= 0.8);
+          if (signOk) addInstance(isLower ? "-" : "+", segA.mask, segA.boxes[0]);
         }
       }
     }
@@ -243,27 +274,121 @@ function segRect(raster, rect, pred) {
     }
   }
 
+  // ---- purification (2026-07-28 round 2) ----
+  // Pass 1: per-class mean bitmaps over ALL instances. Pass 2: an instance
+  // whose similarity ranks ANOTHER class's mean above its own label — or whose
+  // own-class similarity is junk-level — is dropped. One round is enough: the
+  // leaks are a minority per class, so the initial means still point the right
+  // way. Pass 3: averages rebuilt from survivors only.
+  var SZ = L.GLYPH_W * L.GLYPH_H;
+  function meansOf(insts) {
+    var m = {};
+    insts.forEach(function (it) {
+      if (!m[it.ch]) m[it.ch] = { sum: new Float64Array(SZ), n: 0 };
+      for (var i = 0; i < SZ; i++) m[it.ch].sum[i] += it.bm[i];
+      m[it.ch].n++;
+    });
+    Object.keys(m).forEach(function (ch) {
+      var a = m[ch], avg = new Float64Array(SZ);
+      for (var i = 0; i < SZ; i++) avg[i] = a.sum[i] / a.n;
+      m[ch] = { avg: avg, n: a.n };
+    });
+    return m;
+  }
+  function simTo(bm, avg) {
+    var diff = 0;
+    for (var i = 0; i < SZ; i++) diff += Math.abs(bm[i] - avg[i]);
+    return 1 - diff / SZ;
+  }
+  // Purify PER BAND (native and ×2 strokes are different shapes — pooled means
+  // mixed them and legit digits got ejected against their own blurred average),
+  // two iterations (survivor means re-seed the second pass). A band class with
+  // too few instances borrows the all-band mean as its seed.
+  var dropped = {}, kept = INSTANCES;
+  for (var round = 0; round < 2; round++) {
+    var allMeans = meansOf(kept);
+    var bandMeans = {
+      n: meansOf(kept.filter(function (it) { return it.band === "n"; })),
+      u2: meansOf(kept.filter(function (it) { return it.band === "u2"; })),
+      u3: meansOf(kept.filter(function (it) { return it.band === "u3"; }))
+    };
+    dropped = {};
+    var next = [];
+    kept.forEach(function (it) {
+      var m = bandMeans[it.band];
+      function seed(ch) {
+        var bm2 = m[ch];
+        return (bm2 && bm2.n >= 4) ? bm2.avg : (allMeans[ch] && allMeans[ch].avg);
+      }
+      var ownAvg = seed(it.ch);
+      if (!ownAvg) { dropped[it.ch] = (dropped[it.ch] || 0) + 1; return; }
+      var own = simTo(it.bm, ownAvg), bestCh = it.ch, best = own;
+      Object.keys(allMeans).forEach(function (ch) {
+        if (ch === it.ch) return;
+        var av = seed(ch);
+        if (!av) return;
+        var s = simTo(it.bm, av);
+        if (s > best) { best = s; bestCh = ch; }
+      });
+      if (bestCh !== it.ch || own < 0.55) dropped[it.ch] = (dropped[it.ch] || 0) + 1;
+      else next.push(it);
+    });
+    kept = next;
+  }
+  console.log("purify: dropped(last round) " + Object.keys(dropped).sort().map(function (c) { return c + ":" + dropped[c]; }).join(" ") +
+    "  (kept " + kept.length + "/" + INSTANCES.length + ")");
+
   // ---- emit ----
-  var atlas = {};
-  Object.keys(acc).sort().forEach(function (ch) {
-    var a = acc[ch];
-    var bits = [];
-    for (var i = 0; i < a.sum.length; i++) bits.push(a.sum[i] / a.n >= 0.5 ? 1 : 0);
-    atlas[ch] = bits;
-  });
-  var counts = Object.keys(acc).sort().map(function (ch) { return ch + ":" + acc[ch].n; }).join("  ");
+  function bakeAtlas(insts, minN) {
+    var m = meansOf(insts), out = {};
+    Object.keys(m).sort().forEach(function (ch) {
+      if (m[ch].n < (minN || 1)) return;   // too few instances for a stable average
+      var bits = [];
+      for (var i = 0; i < SZ; i++) bits.push(m[ch].avg[i] >= 0.5 ? 1 : 0);
+      out[ch] = bits;
+    });
+    return out;
+  }
+  var atlas = bakeAtlas(kept, 1);
+  // band templates need >=10 surviving instances: a thin band template SHADOWS
+  // the (better-fed) pooled one at parse time, and thin-class native overlays
+  // measurably broke native amount/level reads (outcome silents at 0.85 on
+  // legacy boards). Under the floor, the band falls back to pooled.
+  var bands = {
+    n: bakeAtlas(kept.filter(function (it) { return it.band === "n"; }), 10),
+    u2: bakeAtlas(kept.filter(function (it) { return it.band === "u2"; }), 10),
+    u3: bakeAtlas(kept.filter(function (it) { return it.band === "u3"; }), 10)
+  };
+  function countsOf(insts) {
+    var c = {};
+    insts.forEach(function (it) { c[it.ch] = (c[it.ch] || 0) + 1; });
+    return Object.keys(c).sort().map(function (ch) { return ch + ":" + c[ch]; }).join("  ");
+  }
+  var counts = countsOf(kept);
   var body = "/**\n * ocr/glyphs.js — GENERATED by tools/build-glyphs.js (do not hand-edit).\n" +
     " * Binary " + L.GLYPH_W + "x" + L.GLYPH_H + " templates of the game's own glyphs, harvested from the labeled\n" +
     " * corpus at the engine's canonical scale. Digit keys '0'-'9' cover ALL fonts —\n" +
     " * gold wheel digits chroma-mask to the same silhouettes as the white footer\n" +
     " * ones. Letters/signs are DISTRACTOR classes for rejection.\n" +
-    " * Instances per class: " + counts + "\n */\n" +
+    " * GLYPH_BANDS: per-resolution-band variants keyed by the engine's own\n" +
+    " * normalization factor (n = native/downscale, u2 = ×2 upscale, u3 = ×3);\n" +
+    " * ×2-fattened strokes average into different silhouettes than native ones,\n" +
+    " * and the engine overlays its band onto the pooled atlas at parse time.\n" +
+    " * Provenance: harvested " + new Date().toISOString().slice(0, 10) + " from " + used + " labeled samples (holdout\n" +
+    " * djb2%5==0 excluded: " + held + " samples; rule mirrored in build-level-refs.js);\n" +
+    " * label-noise purification kept " + kept.length + "/" + INSTANCES.length + " instances.\n" +
+    " * Instances per class (pooled, post-purify): " + counts + "\n" +
+    " * Band instances: n[" + countsOf(kept.filter(function (it) { return it.band === "n"; })) + "]\n" +
+    " *   u2[" + countsOf(kept.filter(function (it) { return it.band === "u2"; })) + "]\n" +
+    " *   u3[" + countsOf(kept.filter(function (it) { return it.band === "u3"; })) + "]\n */\n" +
     "(function (root) {\n  \"use strict\";\n  var GLYPH_ATLAS = " + JSON.stringify(atlas) + ";\n" +
-    "  if (typeof module !== \"undefined\" && module.exports) module.exports = { GLYPH_ATLAS: GLYPH_ATLAS };\n" +
-    "  else root.OcrGlyphs = { GLYPH_ATLAS: GLYPH_ATLAS };\n})(typeof globalThis !== \"undefined\" ? globalThis : this);\n";
+    "  var GLYPH_BANDS = " + JSON.stringify(bands) + ";\n" +
+    "  if (typeof module !== \"undefined\" && module.exports) module.exports = { GLYPH_ATLAS: GLYPH_ATLAS, GLYPH_BANDS: GLYPH_BANDS };\n" +
+    "  else root.OcrGlyphs = { GLYPH_ATLAS: GLYPH_ATLAS, GLYPH_BANDS: GLYPH_BANDS };\n})(typeof globalThis !== \"undefined\" ? globalThis : this);\n";
   fs.writeFileSync(OUT, body);
-  console.log("samples used: " + used);
-  console.log("classes: " + Object.keys(atlas).length);
+  console.log("samples used: " + used + "   holdout skipped: " + held);
+  console.log("classes: " + Object.keys(atlas).length +
+    "  bands n/u2/u3: " + Object.keys(bands.n).length + "/" + Object.keys(bands.u2).length + "/" + Object.keys(bands.u3).length);
   console.log("instances: " + counts);
   console.log("wrote " + OUT);
 })().catch(function (e) { console.error(e); process.exit(1); });

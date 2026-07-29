@@ -35,8 +35,29 @@
   var L = IS_NODE ? require("./layout.js") : root.OcrLayout;
   var ENGINE_API = IS_NODE ? require("./engine.js") : (root.OcrEngineAPI || root);
   var TESS = IS_NODE ? require("./tesseract-engine.js") : (root.OcrTesseractEngine || root);
-  var GLYPHS = null;
-  try { GLYPHS = IS_NODE ? require("./glyphs.js").GLYPH_ATLAS : (root.OcrGlyphs && root.OcrGlyphs.GLYPH_ATLAS); } catch (e) {}
+  var GLYPHS_POOLED = null, GLYPH_BANDS = null;
+  try {
+    var _gl = IS_NODE ? require("./glyphs.js") : root.OcrGlyphs;
+    if (_gl) { GLYPHS_POOLED = _gl.GLYPH_ATLAS; GLYPH_BANDS = _gl.GLYPH_BANDS || null; }
+  } catch (e) {}
+  // Per-resolution-band atlas pick: ×2-upscaled captures render bilinear-fattened
+  // strokes whose averaged silhouettes differ from native ones (measured: a
+  // pooled-native '+' template outscored a true ×2 serif-'1' in the points
+  // header, killing the level checksum). The band overlays the pooled atlas so
+  // classes a band lacks still match. Cached per band — the merge is tiny.
+  var _atlasCache = {};
+  function pickGlyphAtlas(scaleF) {
+    if (!GLYPHS_POOLED) return null;
+    if (!GLYPH_BANDS) return GLYPHS_POOLED;
+    var band = scaleF >= 3 ? "u3" : scaleF >= 2 ? "u2" : "n";
+    if (_atlasCache[band]) return _atlasCache[band];
+    var over = GLYPH_BANDS[band] || {};
+    var merged = {}, k;
+    for (k in GLYPHS_POOLED) if (GLYPHS_POOLED.hasOwnProperty(k)) merged[k] = GLYPHS_POOLED[k];
+    for (k in over) if (over.hasOwnProperty(k)) merged[k] = over[k];
+    _atlasCache[band] = merged;
+    return merged;
+  }
   var LREFS = null, NREFS = null;
   try {
     var _lr = IS_NODE ? require("./level-refs.js") : root.OcrLevelRefs;
@@ -205,6 +226,9 @@
     var panel = found.rect;
     var geo = found.anchors ? L.wheelGeometry(found.anchors) : null;
     var panelConf = found.score;
+    // band-specific glyph templates for THIS capture's normalization factor
+    // (function-scoped: every closure below reads this local, not the pooled set)
+    var GLYPHS = pickGlyphAtlas(scaleF);
     out._debug = { panel: found };
     tmark("normalize");
 
@@ -445,9 +469,22 @@
         for (var sk2 = 0; sk2 < tg.length; sk2++) { if (tg[sk2].ch === "/" && tg[sk2].score >= 0.8) si2 = sk2; }
         if (si2 >= 1 && si2 + 1 < tg.length) {
           var aB = tg[si2 - 1], bB = tg[si2 + 1];
-          var a3 = aB.box.w / Math.max(1, aB.box.h) < 0.45 ? 1
-            : (aB.ch && /^\d$/.test(aB.ch) && aB.score >= 0.8 ? parseInt(aB.ch, 10) : null);
-          var b3 = (bB.ch && /^\d$/.test(bB.ch) && bB.score >= 0.8) ? parseInt(bB.ch, 10) : null;
+          // INK-IoU CROSS-CHECK on the x digit (round 2): bitmapSim's background-
+          // dominated score let a ×2-tier '3' match '8'@0.8+ and the pairT-alone
+          // rung shipped the wrong turn at 0.88 — silent. IoU counts only ink, so
+          // the closed-loop lookalikes separate; a decisive IoU dissent refuses
+          // the digit (the pair then falls to the OCR voters, flagged).
+          function pairDigit(tB, wide) {
+            if (tB.box.w / Math.max(1, tB.box.h) < 0.45) return 1;   // the only narrow digit
+            if (!(tB.ch && /^\d$/.test(tB.ch) && tB.score >= 0.8)) return null;
+            if (DIGIT_ATLAS && tg.mask) {
+              var im = iouDigit(tg.mask, tB.box);
+              if (im && im.ch !== tB.ch && im.margin >= 0.08) return null;
+            }
+            return parseInt(tB.ch, 10);
+          }
+          var a3 = pairDigit(aB);
+          var b3 = pairDigit(bB);
           if (a3 != null && b3 != null && (b3 === 5 || b3 === 7 || b3 === 9) && a3 >= 1 && a3 <= b3) pairT = { a: a3, b: b3 };
         }
       }
@@ -612,6 +649,37 @@
     var pillRect = geo
       ? rectAround(geo.rerollPill, geo.gap * 0.42, geo.gap * 0.14)
       : L.roiRect(panel, "rerollPill");
+    // LINE-LOCATE FIRST (round 2): on drifted framings the anchor-derived rect
+    // clips the pill at its corner — and a HALF-CUT "1/2" does not read empty,
+    // it reads "2/2" (measured on two live boards: one phantom reroll, and the
+    // relocation rescue below never fired because the plain read "succeeded").
+    // Locating the text line in the right/down-grown zone up front centers
+    // every later read (OCR, template, Charge) on the real pill; well-placed
+    // rects locate to themselves and nothing changes.
+    {
+      var pz0 = { x: pillRect.x, y: pillRect.y, w: pillRect.w + gap * 0.30, h: pillRect.h + gap * 0.24 };
+      // BRIGHT-text predicate: the button FACE peaks at v≈0.45-0.55 (measured),
+      // so a lower floor floods the mask with the face and the row scan never
+      // bands — locate the white "n/m" text itself (dim-state pills keep their
+      // existing dilated rescues downstream).
+      var pl0Opts = {
+        rejectFill: 0.5, maxRowFill: 0.75, minRowPx: 2,
+        minH: Math.max(4, Math.round(gap * 0.05)), maxH: Math.round(gap * 0.18),
+        accept: function (r) { return r.w >= gap * 0.12 && r.w <= gap * 0.75; }
+      };
+      var pl0 = L.findMaskedTextLine(raster, pz0, dimBtnWhite, pl0Opts);
+      if (!pl0) {
+        // chat text leaking into the zone's LEFT edge stretches the band past
+        // the width cap (measured: a stray white 's' on the pill row) — retry
+        // with the left third cut off; the pill hugs the zone's right side
+        var pz1 = { x: pz0.x + gap * 0.35, y: pz0.y, w: pz0.w - gap * 0.35, h: pz0.h };
+        pl0 = L.findMaskedTextLine(raster, pz1, dimBtnWhite, pl0Opts);
+      }
+      if (pl0) {
+        var pg0 = Math.round(pl0.h * 0.5);
+        pillRect = { x: pl0.x - pg0, y: pl0.y - pg0, w: pl0.w + pg0 * 2, h: pl0.h + pg0 * 2 };
+      }
+    }
     var pillRead = await maskedOcr(pillRect, dimBtnWhite, { whitelist: "0123456789/", psm: 7 });
     var pillM = pillRead.text.match(/(\d)\s*\/\s*(\d)/);
     // template view of the pill, with the ASPECT rule: '1' is the only narrow digit,
@@ -1019,39 +1087,113 @@
       return out;
     }
     function _synthVariants() {
-      if (_synthTVCache || !LREFS) return _synthTVCache;
-      var _synthTV;
-      var SIGMAS = [0.6, 1.0, 1.5, 2.1, 2.8, 3.6];
-      _synthTV = {};
+      // Variant sets are TIER-SELECTED (round 2): the parse knows its own
+      // normalization factor, and domain proximity was the measured round-1
+      // stratification lesson — so a native parse correlates against sharp
+      // refs at light blurs and a ×2/×3 parse against small-monitor refs at
+      // heavy blurs, instead of every parse paying for (and being confused
+      // by) the full cross-product. This also cut the consult's compute ~2×;
+      // with the enumeration now consulting every free node, that matters in
+      // the browser too. Cache keyed per band at module scope.
+      var band = scaleF >= 3 ? "u3" : scaleF >= 2 ? "u2" : "n";
+      if (!LREFS) return null;
+      if (_synthTVCache && _synthTVCache[band]) return _synthTVCache[band];
+      // Per-NODE budgets: W/E consults run on a TIGHT line-anchored grid (cheap)
+      // and measurably lose accuracy when their pools are leaned (effect1Level
+      // dropped 82→75 on the lean sets), so they keep the full exemplar/sigma
+      // spread. N/S consults run WIDE fallback grids (the expensive path), so
+      // they get tier-matched refs at four sigmas — domain proximity was the
+      // round-1 stratification lesson, applied at match time.
+      var SIG_FULL = [0.6, 1.0, 1.5, 2.1, 2.8, 3.6];
+      var SIG_LEAN = band === "n" ? [0.6, 1.0, 1.5, 2.1] : band === "u2" ? [1.0, 1.5, 2.1, 2.8] : [1.5, 2.1, 2.8, 3.6];
+      var G0_PREF = band === "n"
+        ? function (g) { return g >= 160; }
+        : band === "u2"
+          ? function (g) { return g < 180; }
+          : function (g) { return g < 150; };
+      var _synthTV = {};
       // per-node reference pools ONLY: pooling W↔E was tried (same font, and
       // doubling exemplars is tempting) and produced the one agreeing-wrong
       // commit ever measured (share-W read 2 for a 1) — the face-gradient
       // difference matters more than exemplar count
-      var SOURCES = { N: ["N"], S: ["S"], W: ["W"], E: ["E"] };
       ["N", "S", "W", "E"].forEach(function (k) {
+        var lean = k === "N" || k === "S";
+        var sigmas = lean ? SIG_LEAN : SIG_FULL;
         _synthTV[k] = {};
-        SOURCES[k].forEach(function (srcK) {
-          Object.keys(LREFS[srcK] || {}).forEach(function (cls) {
-            var arr = _synthTV[k][cls] = _synthTV[k][cls] || [];
-            (LREFS[srcK][cls] || []).forEach(function (ref) {
-              var base = new Float32Array(ref.q);
-              SIGMAS.forEach(function (sg) {
-                var b = _synthBlur(base, sg);
-                arr.push({ raw: _synthZnorm(b), grad: _synthGrad(b) });
-              });
+        Object.keys(LREFS[k] || {}).forEach(function (cls) {
+          var all = LREFS[k][cls] || [];
+          var pref = all;
+          if (lean) {
+            pref = all.filter(function (r) { return G0_PREF(r.g0); });
+            if (pref.length < 2) pref = all;   // starved class: take everything
+            pref = pref.slice(0, 4);
+          }
+          var arr = _synthTV[k][cls] = [];
+          pref.forEach(function (ref) {
+            var base = new Float32Array(ref.q);
+            sigmas.forEach(function (sg) {
+              var b = _synthBlur(base, sg);
+              arr.push({ raw: _synthZnorm(b), grad: _synthGrad(b) });
             });
           });
         });
       });
-      _synthTVCache = _synthTV;
-      return _synthTVCache;
+      _synthTVCache = _synthTVCache || {};
+      _synthTVCache[band] = _synthTV;
+      return _synthTV;
     }
+    // Memoized per parse: the same node consults from up to three rungs (no-line
+    // rescue, template cross-check, OCR arbitration) plus the enumeration votes
+    // below — the scan grid is the engine's most expensive classical read, and
+    // it is deterministic for a given raster, so one run serves them all.
+    // CONTRACT (round 2): returns null only when no refs/scores exist at all;
+    // otherwise ALWAYS an object { value, conf, gm, gradTop, rawTop, agree } —
+    // value stays null on a refused commit (channels disagree / margin under
+    // the gate), but the channel tops remain visible so the joint solve can use
+    // a refused consult as tie-break EVIDENCE (the synthAmountDigit precedent:
+    // gradient is the transferable channel).
+    var _synthMemo = {};
     function synthLevelRescue(kind, p) {
+      if (_synthMemo[kind] !== undefined) return _synthMemo[kind];
+      return (_synthMemo[kind] = _synthLevelRescueRaw(kind, p));
+    }
+    function _synthLevelRescueRaw(kind, p) {
       var dbgS = out._debug ? ((out._debug.synth = out._debug.synth || {})) : null;
       var tv = _synthVariants();
       if (!tv || !tv[kind] || !Object.keys(tv[kind]).length) { if (dbgS) dbgS[kind] = "no-refs"; return null; }
-      var cx, cy, wideScan = false;
-      if (kind === "N" || kind === "S") { cx = p.x; cy = p.y + gap * 0.175; }
+      var cx, cy, wideScan = false, altCenter = null;
+      if (kind === "N" || kind === "S") {
+        // INK LOCATE (round 2): the bare digit's offset below the anchor varies
+        // per board (+0.03 gap measured on a 2-line "Willpower Efficiency"
+        // board vs the +0.175 typical) — a fixed offset made the observed patch
+        // miss the digit entirely and the correlation then ran on face texture
+        // (the confident N='4'-for-'1' family). The digit is the only VIVID
+        // gold blob in its search window; its centroid anchors the patch. BUT
+        // fiery red faces pollute the mask enough to drift the centroid off the
+        // digit (measured: a previously-committing N=3 refused), so BOTH
+        // centers are scanned — the located one and the fixed offset — and the
+        // per-class maxima merge across the union; correlation decides which
+        // anchor was real. The SAME locator harvests refs in
+        // tools/build-level-refs.js — change the two together or not at all.
+        cx = p.x; cy = p.y + gap * 0.175;
+        var bdPred = kind === "S"
+          ? function (r2, g2, b2) { var c2 = L.hsv(r2, g2, b2); return c2.h >= 42 && c2.h <= 64 && c2.s > 0.72 && c2.v > 0.7; }
+          : function (r2, g2, b2) { var c2 = L.hsv(r2, g2, b2); return c2.h >= 35 && c2.h <= 65 && c2.s > 0.5 && c2.v > 0.6; };
+        var bdRect = { x: p.x - gap * 0.28, y: p.y - gap * 0.05, w: gap * 0.56, h: gap * 0.37 };
+        var bdSt = L.colorClusterStats(L.crop(raster, bdRect), bdPred);
+        if (bdSt.count >= gap * gap * 0.0006 && bdSt.count <= gap * gap * 0.02 && bdSt.density >= 0.15) {
+          var lcx = Math.max(0, Math.round(bdRect.x)) + bdSt.cx;
+          var lcy = Math.max(0, Math.round(bdRect.y)) + bdSt.cy;
+          if (Math.hypot(lcx - cx, lcy - cy) > gap * 0.02) altCenter = { x: lcx, y: lcy };
+          else { cx = lcx; cy = lcy; }
+        } else {
+          // NO ink locate at all: the refs are digit-CENTERED now, and a
+          // fixed-offset observation can sit a whole digit-height off them
+          // (the round-2 N/S collapse: willpower 87→78 with tight scans) —
+          // widen the grid so the correlation can find the alignment itself.
+          wideScan = true;
+        }
+      }
       else {
         // W/E: anchor on the BELOW-CENTER Lv line (the caption band above is a trap)
         var lbox = { x: p.x - gap * 0.5, y: p.y - gap * 0.02, w: gap * 1.0, h: gap * 0.38 };
@@ -1078,24 +1220,70 @@
           cx = lline.x + lline.w - gap * 0.05; cy = lline.y + lline.h / 2;
         }
       }
-      var xspan = wideScan ? 0.11 : (kind === "W" || kind === "E") ? 0.07 : 0.03;
-      var yspan = wideScan ? 0.12 : 0.03;
-      var perRaw = {}, perGrad = {}, dy, dx, cls, i;
-      for (dy = -yspan; dy <= yspan + 0.0001; dy += 0.0075) {
-        for (dx = -xspan; dx <= xspan + 0.0001; dx += 0.0075) {
-          var op = _synthPatch(cx + dx * gap, cy + dy * gap);
-          var oraw = _synthZnorm(op), ograd = _synthGrad(op);
-          for (cls in tv[kind]) {
-            var arr = tv[kind][cls];
-            for (i = 0; i < arr.length; i++) {
-              var sr = _synthCos(oraw, arr[i].raw);
-              if (!(cls in perRaw) || sr > perRaw[cls]) perRaw[cls] = sr;
-              var sg = _synthCos(ograd, arr[i].grad);
-              if (!(cls in perGrad) || sg > perGrad[cls]) perGrad[cls] = sg;
+      var isBare = kind === "N" || kind === "S";
+      // bare-node wide scans reach UP to +0.03 gap (2-line-name boards render
+      // the digit right under the name, far above the +0.175 fixed offset)
+      var xspan = wideScan ? (isBare ? 0.06 : 0.11) : (kind === "W" || kind === "E") ? 0.07 : 0.03;
+      var yspan = wideScan ? (isBare ? 0.15 : 0.12) : 0.03;
+      var dy, dx, cls, i;
+      // Each candidate center is scored SEPARATELY (a union of maxima mixes one
+      // center's face-texture matches into the other's digit evidence — measured:
+      // raw voted '1' off center A while grad voted '4' off center B and a real
+      // '3' drowned). The center whose ranking is more DECISIVE (larger gradient
+      // margin) wins; the commit gate then runs on that center's scores alone.
+      var centers = [{ x: cx, y: cy }];
+      if (altCenter) centers.push(altCenter);
+      // BARE-node wide scans step at 2× pitch: the refs are BLURRED variants,
+      // so the correlation peak is broad and half-pitch sampling finds it —
+      // full pitch made the (very common) bare-node fallback ~4× the whole
+      // parse's compute. W/E wide scans are rare (line-missing boards only)
+      // and keep full pitch.
+      var step = wideScan && isBare ? 0.015 : 0.0075;
+      var scored = centers.map(function (ctr) {
+        // TIGHT scans evaluate both channels at every position (the proven
+        // round-1 behavior). WIDE scans (the expensive N/S fallback) go
+        // two-phase: gradient-only over the grid (the transferable channel
+        // does the position search), then raw at each class's grad-best
+        // position — the channels then discuss the same alignment hypothesis
+        // and the scan's compute halves.
+        var pr = {}, pg = {}, bestPos = {};
+        for (dy = -yspan; dy <= yspan + 0.0001; dy += step) {
+          for (dx = -xspan; dx <= xspan + 0.0001; dx += step) {
+            var op = _synthPatch(ctr.x + dx * gap, ctr.y + dy * gap);
+            var ograd = _synthGrad(op);
+            var oraw = wideScan ? null : _synthZnorm(op);
+            for (cls in tv[kind]) {
+              var arr = tv[kind][cls];
+              for (i = 0; i < arr.length; i++) {
+                var sg = _synthCos(ograd, arr[i].grad);
+                if (!(cls in pg) || sg > pg[cls]) { pg[cls] = sg; bestPos[cls] = { dx: dx, dy: dy }; }
+                if (oraw) {
+                  var sr = _synthCos(oraw, arr[i].raw);
+                  if (!(cls in pr) || sr > pr[cls]) pr[cls] = sr;
+                }
+              }
             }
           }
         }
-      }
+        if (wideScan) {
+          for (cls in tv[kind]) {
+            var bp = bestPos[cls];
+            if (!bp) { pr[cls] = -1; continue; }
+            var op2 = _synthPatch(ctr.x + bp.dx * gap, ctr.y + bp.dy * gap);
+            var oraw2 = _synthZnorm(op2);
+            var arr2 = tv[kind][cls], best2 = -Infinity;
+            for (i = 0; i < arr2.length; i++) {
+              var sr2 = _synthCos(oraw2, arr2[i].raw);
+              if (sr2 > best2) best2 = sr2;
+            }
+            pr[cls] = best2;
+          }
+        }
+        var gs = Object.keys(pg).map(function (v) { return pg[v]; }).sort(function (a, b) { return b - a; });
+        return { perRaw: pr, perGrad: pg, gm: gs.length > 1 ? gs[0] - gs[1] : 0 };
+      });
+      scored.sort(function (a, b) { return b.gm - a.gm; });
+      var perRaw = scored[0].perRaw, perGrad = scored[0].perGrad;
       function rank(per) {
         return Object.keys(per).map(function (v) { return { v: parseInt(v, 10), s: per[v] }; })
           .sort(function (a, b) { return b.s - a.s; });
@@ -1109,9 +1297,9 @@
       // run tighter spreads — a clean capture's S once agree-wronged at exactly
       // 0.010), the others 0.01 (t6-E's correct fill sits at 0.012). Callers
       // that OVERRIDE an existing read demand ≥ 0.03 via the returned gm.
-      if (ra[0].v !== rg[0].v) return null;
-      if (gm < (kind === "S" ? 0.015 : 0.01)) return null;
-      return { value: ra[0].v, conf: 0.55, gm: gm };
+      var res = { value: null, conf: 0.55, gm: gm, gradTop: rg[0].v, rawTop: ra[0].v, agree: ra[0].v === rg[0].v };
+      if (res.agree && gm >= (kind === "S" ? 0.015 : 0.01)) res.value = ra[0].v;
+      return res;
     }
 
     // ANALYSIS-BY-SYNTHESIS for outcome AMOUNT digits (2026-07-21, Shizu's
@@ -1377,7 +1565,7 @@
         // tier lands
         if (LREFS && nodeKind) {
           var sr0 = synthLevelRescue(nodeKind, p);
-          if (sr0) return { value: sr0.value, conf: isGoldFace ? Math.min(sr0.conf, 0.5) : sr0.conf, vec: null, src: "synth" };
+          if (sr0 && sr0.value != null) return { value: sr0.value, conf: isGoldFace ? Math.min(sr0.conf, 0.5) : sr0.conf, vec: null, src: "synth" };
         }
         return { value: null, conf: 0, vec: null };
       }
@@ -1484,19 +1672,33 @@
         // half, the 6x16 sliver committed '1'@0.82 SILENTLY and the checksum
         // pushed the error into a synth-refuted S). Wide boxes → IoU veto;
         // narrow boxes → synthesis veto. No commit escapes both.
-        if (LREFS && nodeKind && (isGoldFace || (dbBox && dbBox.w / Math.max(1, dbBox.h) < 0.45))) {
+        // Cross-check triggers: the gold face (always), narrow slivers, and any
+        // SMALL '1' commit — '1' is the absorber class (eroded strokes of every
+        // digit collapse to a bar; the relaxed re-mask can hand it a WIDE box
+        // that dodges the narrow rule), and a pinned wrong '1' poisons the
+        // checksum's arithmetic far beyond its own field.
+        var narrowT = dbBox && dbBox.w / Math.max(1, dbBox.h) < 0.45;
+        var smallOne = tmVal === 1 && dbBox && dbBox.h / Math.max(0.5, scaleF) < 16;
+        if (LREFS && nodeKind && (isGoldFace || narrowT || smallOne)) {
           var srT = synthLevelRescue(nodeKind, p);
           // OVERRIDE bar: replacing a committed template read needs gm ≥ 0.03
           // (a clean capture's correct '3' was once overridden by an
           // agreeing-wrong '5' at a sub-0.015 margin)
-          if (srT && srT.value !== tmVal && srT.gm >= 0.03) { tmVal = srT.value; tmConf = 0.5; }
-          // a narrow box whose cross-check REFUSED (the synth's own channels
-          // disagreed) or weakly dissented is uncorroborated sliver evidence:
-          // keep the value, cap under the flag line (a 3px '1'@0.95 with the
-          // synth raw-channel screaming '5' shipped silently before this)
+          if (srT && srT.value != null && srT.value !== tmVal && srT.gm >= 0.03) { tmVal = srT.value; tmConf = 0.5; }
+          // a sliver/small-'1' whose cross-check REFUSED with a DISSENTING
+          // gradient top is worse than uncorroborated — it is contradicted.
+          // Un-commit it and fall through to the OCR ladder (vec stays for the
+          // solver, whose synth votes carry the gradient evidence).
+          else if (!isGoldFace && srT && srT.value == null && srT.gradTop != null && srT.gradTop !== tmVal) {
+            tmVal = null;
+          }
+          // ...refused-without-dissent or weakly dissented stays uncorroborated
+          // sliver evidence: keep the value, cap under the flag line (a 3px
+          // '1'@0.95 with the synth raw-channel screaming '5' shipped silently
+          // before this)
           else if (!isGoldFace && (!srT || srT.value !== tmVal)) tmConf = Math.min(tmConf, 0.75);
         }
-        return { value: tmVal, conf: isGoldFace ? Math.min(tmConf, 0.6) : tmConf, vec: vec, src: "tm" };
+        if (tmVal != null) return { value: tmVal, conf: isGoldFace ? Math.min(tmConf, 0.6) : tmConf, vec: vec, src: "tm" };
       }
       // OCR ladder (proven on "Lv. N"): plain → single-char → dilate
       var read = await maskedOcr(lineX, pred, { whitelist: "Lv.12345 ", psm: 7 });
@@ -1526,7 +1728,7 @@
         // keeps the OCR provenance (vec intact for the corroborator) with a lift;
         // only DISAGREEMENT replaces the read.
         var sr = synthLevelRescue(nodeKind, p);
-        if (sr) {
+        if (sr && sr.value != null) {
           var mVal = m ? parseInt(m[1], 10) : null;
           if (mVal != null && mVal === sr.value) {
             return { value: mVal, conf: Math.max(conf, isGoldFace ? 0.45 : 0.55), vec: vec, src: "ocr" };
@@ -1603,7 +1805,7 @@
       // them against DIGITS ONLY (closed world: '+'/'g' lookalikes aren't candidates,
       // so the threshold can drop to what dim strokes actually score).
       if (ptsT == null && DIGIT_ATLAS && tgP.mask) {
-        var aIdx = -1;
+        var aIdx = -1, genAnchor = false;
         for (var ai = 1; ai <= 3 && ai < tgP.length; ai++) {
           if (tgP[ai].ch === "A" && tgP[ai].score >= 0.8) { aIdx = ai; break; }
         }
@@ -1614,7 +1816,32 @@
           for (var li = aIdx + 1; li < Math.min(aIdx + 4, tgP.length); li++) {
             if (tgP[li].ch && /^[a-z]$/i.test(tgP[li].ch) && tgP[li].score >= 0.7) letterHits++;
           }
-          if (letterHits >= 2) {
+          if (letterHits < 2) aIdx = -1;
+        }
+        if (aIdx < 1) {
+          // GENERALIZED anchor (2026-07-28 round 2): at the ×2 tier the 'A' box
+          // itself misclassifies (measured live: 'A'→'o'@0.74 on a "15 Astrogem"
+          // header, so the A-gate above never fires and the checksum dies with
+          // it). The word doesn't need its first letter to prove itself: a RUN
+          // of letter-classified boxes right after a 1-2 box lead IS "Astrogem"
+          // — nothing else letter-shaped lives in this anchor-derived rect.
+          // Three hits so a couple of stray blobs can't fake the word; the
+          // closed-world digit floors, the sum-feasibility bounds and the
+          // forced-soft authority below still guard the digits themselves.
+          for (var ag = 1; ag <= 2 && ag < tgP.length; ag++) {
+            // a confident DIGIT at ag is still part of the number ("15" — the
+            // window would happily skip it and shear the tens digit off), so
+            // the word can only start on a non-digit box
+            if (tgP[ag].ch && /^\d$/.test(tgP[ag].ch) && tgP[ag].score >= 0.8) continue;
+            var runHits = 0;
+            for (var lg = ag; lg < Math.min(ag + 6, tgP.length); lg++) {
+              if (tgP[lg].ch && /^[a-z]$/i.test(tgP[lg].ch) && tgP[lg].score >= 0.7) runHits++;
+            }
+            if (runHits >= 3) { aIdx = ag; genAnchor = true; break; }
+          }
+        }
+        if (aIdx >= 1) {
+          {
             // CONSTRAINT PROPAGATION: the committed level reads already bound the
             // points value (each unread node contributes 1..5), so match each digit
             // only against the values that keep the total FEASIBLE — a dim '0' no
@@ -1664,9 +1891,10 @@
               var pv2 = parseInt(digs, 10);
               if (pv2 >= 4 && pv2 <= 20) {
                 ptsT = pv2;
-                // dim or constraint-assisted reads keep checksum authority CAPPED:
-                // solved levels stay in "confirm me" territory, preserving 0-silent
-                ptsTSoft = minSc < 0.5 || constrained;
+                // dim / constraint-assisted / letter-run-anchored reads keep
+                // checksum authority CAPPED: solved levels stay in "confirm me"
+                // territory, preserving 0-silent
+                ptsTSoft = minSc < 0.5 || constrained || genAnchor;
               }
             } else if (aIdx >= 1) {
               // template couldn't resolve the digit run (a dim '3' matches nothing
@@ -1773,9 +2001,15 @@
         if (remaining === 0) {
           // all four read AND they sum to points: mutually corroborated — but lift
           // proportionally (same coordinated-error risk as the 3-known solve: a
-          // wrong pts offsetting one wrong level), so a near-guess stays flagged
+          // wrong pts offsetting one wrong level), so a near-guess stays flagged.
+          // A sub-0.65 read may NOT cross the flag line on this lift alone: two
+          // wrong low-evidence reads can compensate each other inside the sum
+          // (measured round 2: W 5≠3 with E 2≠3 summed clean and E@0.60 lifted
+          // to 0.85, silent).
           for (var bi = 0; bi < 4; bi++) {
-            conf4[bi] = Math.max(conf4[bi], Math.min(ptsSoft ? 0.85 : 0.92, indep[bi].conf + 0.25));
+            var lifted = Math.min(ptsSoft ? 0.85 : 0.92, indep[bi].conf + 0.25);
+            if (indep[bi].conf < 0.65) lifted = Math.min(lifted, 0.79);
+            conf4[bi] = Math.max(conf4[bi], lifted);
           }
         } else {
           // mismatch: one committed read (or points) is wrong — re-solve the
@@ -1797,9 +2031,13 @@
             // The checksum closing CORROBORATES the siblings — it is not proof. A
             // wrong pts plus one wrong level can cohere (seen live: pts '8'→'6'
             // with wp '3'→'1' promoted a 0.52 willpower read to confident). Lift
-            // each sibling proportionally to its OWN evidence: a near-guess
-            // (<0.55) stays under the 0.8 flag threshold no matter what.
-            for (var sb = 0; sb < 4; sb++) if (sb !== fi) conf4[sb] = Math.max(conf4[sb], Math.min(0.88, indep[sb].conf + 0.25));
+            // each sibling proportionally to its OWN evidence; sub-0.65 reads
+            // may not cross the flag line on this lift (see the 4-known case).
+            for (var sb = 0; sb < 4; sb++) if (sb !== fi) {
+              var lift1 = Math.min(0.88, indep[sb].conf + 0.25);
+              if (indep[sb].conf < 0.65) lift1 = Math.min(lift1, 0.79);
+              conf4[sb] = Math.max(conf4[sb], lift1);
+            }
             conf4[fi] = Math.min(0.85, 0.5 + minSib * 0.5);
           } else conf4[fi] = Math.min(0.65, 0.55 + minSib * 0.4);
           // S-hint arbitration (after the base assignment so it can't be clobbered):
@@ -1857,6 +2095,22 @@
           for (var vi = 0; vi < 5; vi++) rec(k + 1, acc.concat(vals[vi]), sum + vals[vi]);
         })(0, [], 0);
         if (combos.length) {
+          // PER-NODE PROVENANCE VOTES (round 2, the swap family): a free {W/E, S}
+          // pair used to split on vec noise or plain generation order — and a
+          // swapped pair sums the same, so the checksum can never catch it. Each
+          // free node now brings its own independent witness into the scoring:
+          // a REFUSED synth consult still carries channel rankings (memoized —
+          // the consult is free here), and the gradient channel transfers across
+          // degradation (the synthAmountDigit lesson). Weights stay under the S
+          // luminance hint's 0.3 (gated pixel evidence outranks a refused
+          // consult), and a committed-grade synth value outranks the hint.
+          var synthVotes = {};
+          if (LREFS) freeIdx.forEach(function (fi3) {
+            var kindF = ["N", "W", "E", "S"][fi3];
+            var pF = [nodes.nodeN, nodes.nodeW, nodes.nodeE, nodes.nodeS][fi3];
+            var svr = synthLevelRescue(kindF, pF);
+            if (svr) synthVotes[fi3] = svr;
+          });
           combos.forEach(function (cm) {
             cm._s = 0;
             for (var q = 0; q < freeIdx.length; q++) {
@@ -1865,6 +2119,11 @@
               // free {effect, order} pair got split by generation order (the live
               // "Atk Power 5 / Chaos Points 3" board came out swapped)
               if (freeIdx[q] === 3 && sHint != null && cm[q] === sHint) cm._s += 0.3;
+              var sv = synthVotes[freeIdx[q]];
+              if (sv) {
+                if (sv.gradTop === cm[q]) cm._s += 0.15 + (sv.rawTop === cm[q] ? 0.1 : 0);
+                if (sv.value != null && sv.value === cm[q]) cm._s += 0.1;   // committed-grade consult
+              }
             }
           });
           combos.sort(function (x, y) { return y._s - x._s; });
@@ -1929,9 +2188,19 @@
     // to 0.85). What remains — OCR-committed reads and arithmetic solves — gets a
     // genuine second witness. A real margin is required so flat noise can't vote.
     for (var vc = 0; vc < 3; vc++) {
+      if (ptsSoft) break;   // a soft checksum capped everything at 0.7 for a
+                            // reason — the corroborator must not re-lift past it
       if (conf4[vc] < 0.5 || conf4[vc] >= 0.8) continue;
       if (enumAssigned[vc]) continue;
-      if (lvFull[vc].value != null && lvFull[vc].src === "tm") continue;
+      // tm: conf already IS the vector. synth: its conf is deliberately capped
+      // ≤0.55 and the "vec" on its line is often a letter-box score (an E-node
+      // '(' vec corroborated a wrong synth 5 to 0.80, silent).
+      if (lvFull[vc].value != null && (lvFull[vc].src === "tm" || lvFull[vc].src === "synth")) continue;
+      // '1' at the upscaled tiers is the ABSORBER class — every eroded digit's
+      // vec argmax collapses toward it, so a vec "agreeing" on 1 there is not
+      // an independent witness (round 2: a wrong 1 rode this lift to 0.81,
+      // silent). Ones stay flagged unless the checksum itself lifts them.
+      if (levels[vc] === 1 && scaleF >= 2) continue;
       var vv = scoreVecs[vc];
       if (!vv) continue;
       var vb1 = -1, vb1v = null, vb2 = -1;
@@ -2404,9 +2673,12 @@
         if (amtLine) {
           var agrow = Math.round(amtLine.h * 0.5);
           var amtRectX = { x: amtLine.x, y: amtLine.y - agrow, w: amtLine.w, h: amtLine.h + agrow * 2 };
-          // template match first (amounts use the same glyph art as the wheel digits)
+          // template match first (amounts use the same glyph art as the wheel
+          // digits). Only the HIGH-tier commit (score≥0.86 with margin) skips
+          // the synth consult — a 0.85-tier commit shipped a "+1 ▲" as +4
+          // SILENTLY twice (round 2), so the weak tier stays consultable.
           var amTm = lastGoldDigit(amtRectX, L.isAmountText, 4);
-          if (amTm) { amt = amTm.value; amtSrc = "tm"; }
+          if (amTm) { amt = amTm.value; amtSrc = amTm.conf >= 0.9 ? "tm" : "tm-weak"; }
           if (amt == null) {
             var amtRead = await maskedOcr(amtRectX, L.isAmountText, { whitelist: "Lv.+12345 ", psm: 7 });
             // prefix-anchored — a bare digit here is a trap ('L' of a garbled
@@ -2468,9 +2740,10 @@
             var rgrow = Math.round(redLine.h * 0.5);
             var redRectX = { x: redLine.x, y: redLine.y - rgrow, w: redLine.w, h: redLine.h + rgrow * 2 };
             // template first: the red lower digits are the same glyph art as the gold
-            // ones (the chroma mask makes them identical binary shapes)
+            // ones (the chroma mask makes them identical binary shapes); weak-tier
+            // commits stay consultable (see the raise path)
             var redTm = lastGoldDigit(redRectX, L.isRedAmountText, 4);
-            if (redTm) { amt = redTm.value; amtSrc = "tm"; }
+            if (redTm) { amt = redTm.value; amtSrc = redTm.conf >= 0.9 ? "tm" : "tm-weak"; }
             if (amt == null) {
               var redRead = await maskedOcr(redRectX, L.isRedAmountText, { whitelist: "Lv.-12345 ", psm: 7 });
               // prefix-anchored; bare digits are weak candidates (see raise path)
@@ -2511,6 +2784,10 @@
         if (out._debug) (out._debug.amtSynth = out._debug.amtSynth || [])[oi] =
           (amSy ? (amSy.value != null ? "synth " + amSy.value : "refuse(top " + amSy.gradTop + ")") + "@gm" + amSy.gm.toFixed(3) + (amSy.gradOnly ? " gradOnly" : "") : "n/a") +
           " src=" + (amtSrc || "none");
+        // a weak-tier template amount CONTRADICTED by the synth's (transferable)
+        // gradient channel may keep its value but never its confidence
+        var amtContra = amtSrc === "tm-weak" && amSy && amSy.value == null &&
+          amSy.gradTop != null && amSy.gradTop !== amt;
         var hadAmt = amt != null;
         if (amt == null) amt = 1;
         // direction earns full confidence only with a STRONG signal: a located red
@@ -2535,6 +2812,7 @@
         // a synth-sourced amount NEVER reaches the unflagged zone — the rescue is
         // user/verifier-checkable, not silently authoritative (silent-error class)
         if (amtFromSynth) oconf = Math.min(oconf, 0.78);
+        if (amtContra) oconf = Math.min(oconf, 0.72);   // contradicted weak template
         // SAFETY: on order/points/willpower the direction arrow renders in the icon's
         // OWN hue family (a red raise ▲ on the gold order icon), so the color test is
         // unreliable there — a wrong direction must never be CONFIDENT. Require a clear
