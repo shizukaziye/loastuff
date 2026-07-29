@@ -113,21 +113,6 @@
     return null;
   }
 
-  // Snap one effect to a base cost's pool. If `raw` resolves to a name that's in the
-  // pool, keep it; otherwise pick the first pool entry not equal to `avoid`.
-  function snapEffectToPool(raw, baseCost, avoid) {
-    var pool = EFFECT_POOLS[baseCost] || [];
-    if (pool.length === 0) return raw || null;
-    var canon = canonicalEffectName(raw);
-    if (canon && pool.indexOf(canon) !== -1 && canon !== avoid) return canon;
-    // canonical name exists but isn't in this pool, or collides with `avoid`:
-    // fall through to first available pool member.
-    for (var i = 0; i < pool.length; i++) {
-      if (pool[i] !== avoid) return pool[i];
-    }
-    return pool[0];
-  }
-
   function rarityFromMaxTurns(maxTurns) {
     if (maxTurns === 5) return "uncommon";
     if (maxTurns === 7) return "rare";
@@ -243,14 +228,31 @@
     var effect1Level = clampLevel(cIn.effect1Level, 1);
     var effect2Level = clampLevel(cIn.effect2Level, 1);
 
-    var effect1 = snapEffectToPool(cIn.effect1, baseCost, null);
-    var effect2 = snapEffectToPool(cIn.effect2, baseCost, effect1);
-    if (effect1 === effect2) {
-      // force-distinct from the pool
-      var pool = EFFECT_POOLS[baseCost] || [];
-      for (var i = 0; i < pool.length; i++) {
-        if (pool[i] !== effect1) { effect2 = pool[i]; break; }
-      }
+    // Effects: SEAT THE READS FIRST, then fill. The old order snapped slot 1 and
+    // handed its answer to slot 2 as `avoid` — so an ABSENT effect1 took pool[0]
+    // and, when pool[0] was exactly what effect2 had correctly read, bumped that
+    // read off it (measured on the 385-pair corpus: two boards read "Additional
+    // Damage" at E, cost 8, effect1 null, and shipped effect1 "Additional Damage"
+    // / effect2 "Attack Power" — the one true name destroyed by a default). A
+    // slot with no read has no evidence and must not out-rank one that has.
+    var pool = EFFECT_POOLS[baseCost] || [];
+    var e1Canon = canonicalEffectName(cIn.effect1);
+    var e2Canon = canonicalEffectName(cIn.effect2);
+    var e1Seat = (e1Canon && pool.indexOf(e1Canon) !== -1) ? e1Canon : null;
+    var e2Seat = (e2Canon && pool.indexOf(e2Canon) !== -1) ? e2Canon : null;
+    // a duplicate pair is one read repeated: slot 1 keeps it (historical tie-break)
+    if (e1Seat && e2Seat && e1Seat === e2Seat) e2Seat = null;
+    function fillPool(avoid) {
+      for (var i = 0; i < pool.length; i++) if (pool[i] !== avoid) return pool[i];
+      return pool[0];
+    }
+    var effect1, effect2;
+    if (pool.length === 0) {
+      effect1 = cIn.effect1 || null;
+      effect2 = cIn.effect2 || null;
+    } else {
+      effect1 = e1Seat || fillPool(e2Seat);
+      effect2 = e2Seat || fillPool(effect1);
     }
 
     var config = {
@@ -441,8 +443,9 @@
   // -------------------- exports (dual) --------------------
 
   // Consumed surface only (audited 2026-07-18): the snap sub-steps (snapOutcome,
-  // snapBaseCost, snapEffectToPool, canonicalEffectName, snapRarity,
-  // rarityFromMaxTurns) are internal to constraintSnap and no longer exported.
+  // snapBaseCost, canonicalEffectName, snapRarity, rarityFromMaxTurns) are internal
+  // to constraintSnap and no longer exported. (snapEffectToPool was removed in
+  // round 7: seating the READ slots first replaced it and left it uncalled.)
   var API = {
     constraintSnap: constraintSnap,
     BaseEngine: BaseEngine,

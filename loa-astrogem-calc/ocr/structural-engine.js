@@ -575,6 +575,132 @@
     var cval = null;
     var costConf = 0.9;
     var _costTplTried = false;
+    // ---- COIN-ANCHORED COST READ (round 7) ----------------------------------
+    // The old template rescue below is anchored by a fixed offset: `costZone` runs
+    // goldY+1.13..1.63·gap, and the cost row's own text centre was MEASURED across
+    // all 385 corpus boards at goldY+1.61·gap (p2 1.50, p98 1.75) — the zone's
+    // BOTTOM EDGE cuts the row in half. Hence the residual: 5 boards located
+    // nothing, 7 located the outcome-strip band above through the untraced
+    // top-edge fallback, 7 reached the ZERO rung and were refused by an iouDigit
+    // of 0.63-0.66 on a plainly legible '0'.
+    //
+    // The game draws its own anchor: a GOLD COIN after the number, and a second
+    // identical coin one row below on the Balance line. A vertical PAIR of equal
+    // coins is present on 379 of 385 boards (the 6 without are 4 label-masked, one
+    // whose panel crop loses the Balance row, and one client that renders the
+    // currency SILVER). Pair geometry, measured: pitch 0.24-0.37·gap, top coin
+    // 1.79-2.81·gap right of cx and 1.30-2.44·gap below goldY — far wider drift
+    // than any fixed offset survives, which is exactly why the offset failed.
+    //
+    // What the strip left of the coin is read FOR is the DIGIT COUNT, not the
+    // digits: the cost is right-aligned and can only be 0, 900 or 1,800, so
+    // 1 glyph ⇒ 0, 3 ⇒ 900, 4 (the narrow '1' + comma + 800) ⇒ 1,800. Counting
+    // survives the per-glyph classification noise that sinks the value read —
+    // iouDigit calls the same '0' anywhere from 0.41 to 1.00 across capture
+    // scales. Two independent colour predicates must agree (white text, and a
+    // white-or-amber one for the boards where the number carries the game's gold
+    // "changed" glow); disagreement means a fragmented segmentation and refuses.
+    // Measured over the corpus: 369 read, 369 right, 0 wrong, 11 refused.
+    function costCoinRead() {
+      if (cval != null || !GLYPHS) return;
+      var pz = { x: Math.max(0, cx + gap * 0.3), y: Math.max(0, goldY + gap * 0.50),
+                 w: gap * 3.2, h: gap * 2.5 };
+      pz.w = Math.min(pz.w, raster.width - pz.x - 1);
+      pz.h = Math.min(pz.h, raster.height - pz.y - 1);
+      if (pz.w < gap * 0.5 || pz.h < gap * 0.5) return;
+      var psub = L.crop(raster, pz), PW = psub.width, PH = psub.height, PD = psub.data;
+      var minN = Math.max(12, Math.round(gap * gap * 0.004));
+      // COIN pigment: the currency icon is a saturated gold disc. Deliberately
+      // wider than isGoldText (s>0.45) — a dim capture drops the coin to s≈0.42.
+      // The SILVER pass is a fallback for the one client that renders the currency
+      // neutral; it is far less specific than gold, so it runs only when the gold
+      // pass finds no PAIR, and the pair/squareness/density guards are what carry
+      // it (on the one corpus board where a neutral pass runs and must refuse, the
+      // candidates are 23×33 text blobs and the squareness guard rejects them).
+      function coinPairFor(pf) {
+        var seen = new Uint8Array(PW * PH), coins = [];
+        for (var q = 0; q < PW * PH; q++) {
+          if (seen[q] || !pf(q * 4)) { seen[q] = 1; continue; }
+          var stack = [q], n = 0, x0 = PW, x1 = -1, y0 = PH, y1 = -1;
+          seen[q] = 1;
+          while (stack.length) {
+            var pI = stack.pop(), px = pI % PW, py = (pI / PW) | 0;
+            n++;
+            if (px < x0) x0 = px; if (px > x1) x1 = px;
+            if (py < y0) y0 = py; if (py > y1) y1 = py;
+            if (px > 0 && !seen[pI - 1]) { seen[pI - 1] = 1; if (pf((pI - 1) * 4)) stack.push(pI - 1); }
+            if (px < PW - 1 && !seen[pI + 1]) { seen[pI + 1] = 1; if (pf((pI + 1) * 4)) stack.push(pI + 1); }
+            if (py > 0 && !seen[pI - PW]) { seen[pI - PW] = 1; if (pf((pI - PW) * 4)) stack.push(pI - PW); }
+            if (py < PH - 1 && !seen[pI + PW]) { seen[pI + PW] = 1; if (pf((pI + PW) * 4)) stack.push(pI + PW); }
+          }
+          var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+          if (n < minN) continue;
+          // a coin is round and SOLID: the game's gold text, frames and diamond
+          // faces all fail one of width, squareness or density
+          if (n / (bw * bh) >= 0.55 && bw >= gap * 0.07 && bw <= gap * 0.22 &&
+              Math.abs(bw - bh) <= Math.max(3, bw * 0.35)) coins.push({ x: x0, y: y0, w: bw, h: bh });
+        }
+        coins.sort(function (a, b) { return a.y - b.y; });
+        for (var ci = 0; ci < coins.length; ci++) {
+          for (var cj = 0; cj < coins.length; cj++) {
+            if (ci === cj) continue;
+            var ca = coins[ci], cb = coins[cj], dyc = (cb.y + cb.h / 2) - (ca.y + ca.h / 2);
+            if (Math.abs((ca.x + ca.w / 2) - (cb.x + cb.w / 2)) <= gap * 0.05 &&
+                dyc >= gap * 0.18 && dyc <= gap * 0.38 &&
+                Math.abs(ca.w - cb.w) <= gap * 0.03) return { top: ca, n: coins.length };
+          }
+        }
+        return { top: null, n: coins.length };
+      }
+      var pick = coinPairFor(function (i) {
+        var c = L.hsv(PD[i], PD[i + 1], PD[i + 2]);
+        return c.h >= 28 && c.h < 62 && c.s > 0.40 && c.v > 0.35;
+      });
+      var silver = false;
+      if (!pick.top) {
+        pick = coinPairFor(function (i) {
+          var c = L.hsv(PD[i], PD[i + 1], PD[i + 2]);
+          return c.s < 0.30 && c.v > 0.55;
+        });
+        silver = true;
+      }
+      var top = pick.top;
+      if (out._debug) out._debug.costCoin = { n: pick.n, silver: silver, top: top ? [Math.round(pz.x + top.x), Math.round(pz.y + top.y + top.h / 2)] : null };
+      if (!top) return;
+      var acx = pz.x + top.x, acy = pz.y + top.y + top.h / 2;
+      var strip = { x: Math.max(0, acx - gap * 1.25), y: Math.max(0, acy - gap * 0.15),
+                    w: gap * 1.21, h: gap * 0.30 };
+      // the amber pass: a cost the last outcome CHANGED renders over a gold glow,
+      // and the white predicate then loses every digit but the leading '1'
+      function whiteOrAmber(r, g, b) {
+        var c = L.hsv(r, g, b);
+        return (c.s < 0.35 && c.v > 0.55) || (c.h >= 28 && c.h < 65 && c.s > 0.25 && c.v > 0.60);
+      }
+      function countRun(pred) {
+        var tg = templateGlyphs(strip, pred);
+        if (!tg || !tg.length) return null;
+        var hs = tg.map(function (t) { return t.box.h; }).sort(function (a, b) { return a - b; });
+        var med = hs[hs.length >> 1];
+        var s0 = tg.length - 1;
+        // the thousands comma sits ~0.9 median-heights from the '1', the label a
+        // full 1.8+ away: 1.5 separates them (measured, and 2.0 swallows the label)
+        while (s0 > 0 && (tg[s0].box.x - (tg[s0 - 1].box.x + tg[s0 - 1].box.w)) < med * 1.5) s0--;
+        return { n: tg.length - s0, leftX: tg[s0].box.x, med: med };
+      }
+      var rW = countRun(dimBtnWhite), rA = countRun(whiteOrAmber);
+      function valOf(r) { return r ? (r.n === 1 ? 0 : r.n === 3 ? 900 : r.n === 4 ? 1800 : null) : null; }
+      var vW = valOf(rW), vA = valOf(rA);
+      if (out._debug) out._debug.costRun = (rW ? rW.n + "@" + rW.leftX : "-") + "/" + (rA ? rA.n + "@" + rA.leftX : "-") +
+        " => " + vW + "|" + vA;
+      if (vW == null || vW !== vA) return;
+      // a number clipped by the strip's own left edge would under-count: refuse it
+      // (never observed on the corpus — the widest read, "1,800", leaves 0.5·gap
+      // of clearance — but the failure is silent-shaped, so it is guarded)
+      if (rW.leftX <= 1) return;
+      cval = vW;
+      costConf = 0.85;
+    }
+    costCoinRead();
     function costTemplateRead() {
       if (_costTplTried || cval != null) return;
       _costTplTried = true;
@@ -587,12 +713,20 @@
       // NOTE: the "Processing Cost" LABEL is blue-grey and fails the white mask —
       // on many shots the masked row is JUST the right-aligned number (~3 glyphs),
       // so the accept is narrow and the {450,900,1800} whitelist is the real guard.
+      var costZone = { x: cx - gap * 2.3, y: goldY + gap * 1.13, w: gap * 4.6, h: gap * 0.5 };
+      var costTrace = out._debug ? [] : null;
       var costLn = locateLine(
-        { x: cx - gap * 2.3, y: goldY + gap * 1.13, w: gap * 4.6, h: gap * 0.5 },
+        costZone,
         dimBtnWhite,
         { maxRowFill: 0.75, minH: Math.max(4, Math.round(gap * 0.05)), maxH: Math.round(gap * 0.2),
-          minRowPx: Math.max(3, Math.round(gap * 0.03)), accept: function (r) { return r.w >= gap * 0.22; } });
-      if (out._debug) out._debug.costLn = costLn ? { y: Math.round(costLn.y), w: Math.round(costLn.w) } : null;
+          minRowPx: Math.max(3, Math.round(gap * 0.03)), accept: function (r) { return r.w >= gap * 0.22; },
+          trace: costTrace });
+      if (out._debug) {
+        out._debug.costZone = [Math.round(costZone.x), Math.round(costZone.y), Math.round(costZone.w), Math.round(costZone.h)];
+        out._debug.costGap = Math.round(gap);
+        out._debug.costTrace = costTrace.slice(0, 8).map(function (t) { return JSON.stringify(t); }).join(" ");
+        out._debug.costLn = costLn ? { x: Math.round(costLn.x), y: Math.round(costLn.y), w: Math.round(costLn.w), h: Math.round(costLn.h) } : null;
+      }
       if (costLn) {
         var tgC2 = templateGlyphs(costLn, dimBtnWhite);
         if (out._debug) out._debug.costTG = tgC2 ? tgC2.map(function (t) { return (t.ch || "?") + ":" + t.score.toFixed(2) + "@" + t.box.x; }).join(" ") : "null";
@@ -2966,14 +3100,49 @@
       return cands.length === 1 ? cands[0] : null;
     }
     if (!out.config.effect1) {
-      var rnW = structuralName(nmW.text, nodes.nodeW, poolNames, null) ||
-        (NREFS ? synthNameRescue("W", nodes.nodeW, poolNames, null) : null);
+      // AVOID the slot already committed (round 7). This rescue runs AFTER
+      // effect2's commit, and it used to pass avoid=null — so it could hand
+      // effect1 the very name effect2 had just taken. The snap then force-
+      // distinguished them by bumping effect2 off its own correct read into
+      // pool order: measured on `c-ms0e14l1-23vfq5`, where W reads "aoss damage"
+      // and E "aaditional", and both slots shipped Additional Damage.
+      var rnW = structuralName(nmW.text, nodes.nodeW, poolNames, out.config.effect2) ||
+        (NREFS ? synthNameRescue("W", nodes.nodeW, poolNames, out.config.effect2) : null);
       if (rnW) { out.config.effect1 = rnW; confidence.config.effect1 = 0.6; }
     }
     if (!out.config.effect2) {
       var rnE = structuralName(nmE.text, nodes.nodeE, poolNames, out.config.effect1) ||
         (NREFS ? synthNameRescue("E", nodes.nodeE, poolNames, out.config.effect1) : null);
       if (rnE) { out.config.effect2 = rnE; confidence.config.effect2 = 0.6; }
+    }
+
+    // ---- pool backstop: a NULL cost is not evidence, a read NAME is (round 7) ----
+    // When the title read fails, baseCost stays null and the snap defaults it to 10 —
+    // and pool 10 then ERASES every committed name it does not contain. The late
+    // rescue rungs above run with poolNames === null (nothing to restrict against),
+    // so they legitimately emit cost-8/9 names that the default then destroys.
+    // Measured on the 385-pair corpus: 5 boards lose 6 correctly-read names this way,
+    // and on 3 of them the name PAIR pins the cost outright (Boss Damage ∧ Ally
+    // Damage Enh. is pool 9 alone; Ally Damage Enh. ∧ Brand Power is pool 8 alone).
+    // Fires only when the default pool CONTRADICTS the names, so boards whose true
+    // cost is 10 are untouched; commits at 0.4, always flagged.
+    if (out.config.baseCost == null) {
+      var POOLS3 = ENGINE_API.EFFECT_POOLS || {};
+      var haveNm = [out.config.effect1, out.config.effect2].filter(Boolean);
+      var fitsPool = function (c) {
+        var p = POOLS3[c] || [];
+        return haveNm.every(function (n) { return p.indexOf(n) !== -1; });
+      };
+      if (haveNm.length && !fitsPool(10)) {
+        // the joint solve's own tie order (8 > 10 > 9): fuzzy support-gem evidence
+        // smears across pools and the production skew is cost-8-heavy
+        var fitC = [8, 10, 9].filter(fitsPool);
+        if (fitC.length) {
+          out.config.baseCost = fitC[0];
+          confidence.config.baseCost = 0.4;
+          if (out._debug) out._debug.poolBackstop = haveNm.join("+") + "->" + fitC[0];
+        }
+      }
     }
 
     tmark("effectNames");

@@ -710,3 +710,141 @@ instructed — `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` and
   round 1 and is now the largest non-name block. The 8 localized boards remain excluded
   by design; a locale-aware `extractPts` would recover their checksums but they are out
   of the "normal screenshots" goal.
+
+### 2026-07-29 · iteration 9 — round 7: the row the game itself points at
+`processCostMultiplier` (95.0%, 19 misses) was the largest non-name block and had not been
+touched since round 1; the effect-name "forced into pool" tier at confidence 0.30 was
+**0 for 13**, a rung that is never right. Both are fixed. No data files were rebuilt —
+glyphs and level-refs stay byte-identical to round 6, so every point below is engine work.
+Harness: round 6's `r6/ph.js` copied to `r7/ph.js`, 385 pairs in **267s**; it reproduces the
+serial gate to the digit. Eight full-corpus harness runs plus the gate.
+
+- **The cost row was never located either — and the game draws its own anchor.** Same shape
+  as round 5's points header, one field over. `costZone` runs goldY+1.13..1.63·gap; the cost
+  row's text centre, measured over all 385 boards, sits at **goldY+1.61·gap** (p2 1.50,
+  p98 1.75), so the zone's BOTTOM EDGE cuts the row in half. The 19 misses split three ways:
+  5 located nothing (a lone '0' carries ~4 ink px per row against a `minRowPx` of gap·0.03≈7),
+  7 located the outcome-strip band ABOVE through `findMaskedTextLine`'s untraced top-edge
+  fallback, and 7 reached the ZERO rung and were refused by an `iouDigit` of **0.63-0.66** on
+  a '0' that is plainly legible by eye. Every one of the 19 sat on a board labelled ±100;
+  **not one of the 335 boards labelled 0 was ever over-read**, which is why the historical
+  149 false alarms looked harmless.
+  The replacement anchors on the **currency COIN**: a vertical PAIR of equal gold discs (the
+  cost row's, and the Balance row's one line below), present on **379 of 385** boards —
+  pitch 0.24-0.37·gap, top coin 1.79-2.81·gap right of cx and 1.30-2.44·gap below goldY. That
+  drift is four times what any fixed offset survives, which is precisely why the offset lost.
+  What the strip left of the coin is read FOR is the **digit COUNT, not the digits**: the cost
+  is right-aligned and can only be 0, 900 or 1,800, so 1 glyph ⇒ 0, 3 ⇒ 900, 4 (narrow '1' +
+  comma + 800) ⇒ 1,800. Counting survives the classification noise that sinks the value read —
+  the same '0' scores anywhere from 0.41 to 1.00 across capture scales. Two colour predicates
+  must agree: white text, and a white-or-amber one for the boards where the number carries the
+  game's gold "changed" glow (on those the white mask keeps only the leading '1'). Measured:
+  **369 read, 369 right, 0 wrong, 11 refused** (10 of the 11 default correctly). A neutral-disc
+  fallback, which runs only when the gold pass finds no pair, recovers the one client that
+  renders the currency SILVER. **processCostMultiplier 94.2 → 100.0%**, and its ~149 false
+  alarms went with it (FA 6.3 → 5.9/shot).
+- **The 0.30 tier was three bugs, not one pool problem, and none of them was the pool.**
+  1. *A defaulted null out-ranked a read.* `constraintSnap` snapped slot 1 first and handed
+     its answer to slot 2 as `avoid` — so an ABSENT effect1 took pool[0], and on two boards
+     pool[0] was exactly what effect2 had read correctly, bumping the true name off it.
+     The snap now SEATS both reads first and fills afterwards. `snapEffectToPool` fell out
+     of use and was removed.
+  2. *A null cost erased read names.* When the title fails, baseCost stays null, the snap
+     defaults 10, and pool 10 erases every committed name it does not contain — 6 correct
+     names on 5 boards. The late rescue rungs run with `poolNames === null`, so they
+     legitimately emit cost-8/9 names. A **pool backstop** now emits a name-consistent
+     baseCost at 0.4 (flagged) when the default pool CONTRADICTS the committed names; on 3
+     boards the name pair pins the cost outright (Boss Damage ∧ Ally Damage Enh. is pool 9
+     alone, Ally Damage Enh. ∧ Brand Power is pool 8 alone). Boards whose true cost is 10
+     are untouched by construction.
+  3. *A rescue duplicated the other slot's name.* effect1's late rescue runs AFTER effect2
+     commits and passed `avoid = null`, so it could take the name slot 2 already held; the
+     snap then force-distinguished them by bumping effect2 into pool order.
+  The 0.30 tier is now **empty**. baseCost 96.9 → **98.7** · effect1 92.5 → **93.8** ·
+  effect2 91.7 → **93.2**.
+
+**Same-labels A/B, full corpus, 385 scored pairs.** A-arm = unmodified HEAD in a
+`git worktree` with `samples/` symlinked in, so both arms score the round-7 labels.
+
+| metric | HEAD (A) | round 7 (B) |
+|---|---|---|
+| headline per-field avg | 95.5% | **96.3%** |
+| whole-parse | 244/385 (63.4%) | **261/385 (67.8%)** |
+| flag coverage | 100.0% (266/266) | **100.0%** (226/226) |
+| silent errors | 0 | **0** |
+| false alarms/shot | 6.3 (2431) | **5.9** (2277) |
+| outcomes | 94.4% | 94.4% |
+
+Per-field (A → B): processCostMultiplier **94.2 → 100.0** · baseCost **96.9 → 98.7** ·
+effect2 **91.7 → 93.2** · effect1 **92.5 → 93.8** · gemType 99.2 · currentTurn 97.9 ·
+maxTurns 99.7 · rerollsRemaining 97.1 · willpowerLevel 95.6 · orderLevel 95.6 ·
+effect2Level 94.3 · effect1Level 91.9. Field-level: **40 fixed, 0 broken** — the first
+strictly-positive round of the campaign. Scalar misses 205 → **165**, boards with ≥1
+scalar miss 118 → **96**. Outcome tiles unchanged (this round touched no cell reader).
+
+Residual wrong fields (B): effect1Level 31 · effect2 26 · effect1 24 · effect2Level 22 ·
+willpowerLevel 17 · orderLevel 17 · rerollsRemaining 11 · currentTurn 8 · baseCost 5 ·
+gemType 3 · maxTurns 1 · processCostMultiplier **0**.
+
+Holdout vs in-sample (djb2%5==0; no refs were rebuilt, so the split only guards the mined
+thresholds): holdout headline 94.2 → **94.7** with whole 47 → 48; in-sample 95.8 → **96.6**
+with whole 197 → 213. processCostMultiplier is **100% on both** (73 holdout, 307 in-sample).
+Wall time is unchanged (267s vs the A-arm's 268s): the coin blob scan is free against OCR.
+
+**Label fixes (three, all pixel-arbitrated, all shared mode).** Each is a `class: "fix"`
+record whose processCostMultiplier the user never corrected, where the collection-time
+engine also defaulted 0 — so the "engine agrees" trust mask kept the default. Crops taken
+from the coin-anchored row at 4× nearest-neighbour and read by eye:
+- `c-mrtozati-lhefaf` 0 → **−100**: the row reads "Processing Cost 0", one lone glyph
+  right-aligned against the coin, no ink in the two digit slots left of it under either mask.
+- `c-mrxd1quv-ynwd48` 0 → **−100**: same, a single right-aligned glyph.
+- `c-mrw7refw-f4n86c` 0 → **+100**: the row reads "Processing Cost 1,800", geometrically
+  identical to the eleven boards labelled +100 at the same capture scale. This is the board
+  whose rerollsRemaining round 6 corrected — the same shared-mode failure, twice over.
+Without these three the new reader would have shown 3 "regressions"; with them it shows none.
+Lint: 391 labels, 0 errors.
+
+**RULED OUT, with numbers.**
+- *The W/E level PIGMENT route* — the obvious follow-on from the two locate bugs this round
+  fixed, and it is closed. On the 33 boards carrying a no-line W/E level miss, a hue histogram
+  of every bright saturated pixel (s>0.45, v>0.55) in the below-centre node box shows the
+  diamond FACE, not the digit: at W the mass is 70-100° (green), at E 170-210° (blue), and the
+  gold band `isGoldText` reads (30-60°) holds **0-412 px out of 1,400-14,400**. On 8 of the 33
+  it is 0-25 px — the whole bright content of the crop is face. The "Lv. N" ink on the degraded
+  tier is chartreuse over a green face and is not separable from it by hue, which is the same
+  wall round 4's ink geometry and round 5's line width hit from their own directions. Any
+  future channel here has to work from a node with no located line AND no separable pigment.
+- *Naive digit-count on ONE predicate* for the cost: 371 right / 5 wrong / 4 refused against
+  the two-predicate agreement's 369 / 0 / 11 (post-label-fix: 372/2 vs 369/0). Two of the
+  five errors are boards whose digits fragment under the white mask alone; requiring the
+  amber pass to agree converts them from wrong answers into refusals, and a refusal defaults
+  to 0, which on this field is right 88% of the time.
+- *A run-gap factor of 2.0·median-height* instead of 1.5 when walking the trailing digit run:
+  6 wrong instead of 5 — at 2.0 the run swallows a "Processing Cost" label fragment sitting
+  1.8 median-heights left of the number and the count becomes 4 on a true 900.
+- *False alarms*: not touched as a target again. They fell 2431 → 2277 as a by-product of the
+  cost read — those were the 149 "cost unread, default happened to be right" flags round 3
+  first characterised. The 0.70-0.75 effect-name band is untouched and still needs a verifier.
+
+Gate: lint-labels 0 errors; **96.3% ≥ 95% · outcomes 94.4% ≥ 94% → PASS** (`npm run eval-gate`,
+serial; the parallel harness reproduces it exactly — 261/385 whole, 226/226 flagged, 0 silents,
+2277 FAs). Thresholds untouched. The headline now clears by 1.3 points, so the ratchet has room
+at last, but **outcomes clears by only 0.4 and is the binding constraint** — a headline ratchet
+to 0.96 is safe, an outcomes one is not.
+
+**NOT DONE (owner's call at ship time):** version pins in `index.html` were left alone as
+instructed — `ocr/engine.js`, `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` and
+`ocr/structural-engine.js?v=93` still need a bump before this deploys.
+
+- Next (iteration 10): **effect1Level 91.9 (31 misses) is the binding field again**, and the
+  frontier is unchanged and now triply-measured: a W/E node with no located line, no usable
+  checksum, and no separable pigment. Three independent channels have been ruled out with
+  numbers (ink geometry, line width, hue). The honest read is that this block is not an
+  engine problem any more — it is the degraded tier of the corpus, and the levers left are
+  sharper exemplars (the samples-v3 pass is aimed exactly there) or a different capture. The
+  name blocks (effect2 26 · effect1 24) are the same story: everything at 0.68+ is 543/544
+  right, and the misses concentrate in the fuzzy "damage" family tie at 0.64-0.66 (14 of 24
+  right), which is an NREFS-diversity problem. The cheapest remaining ENGINE work is
+  **outcomes 94.4%** — the binding gate constraint, untouched this round, with round 6's
+  taxonomy (TYPE 9 · AMOUNT 17 · TARGET 10 · DROPPED 12 · DIRECTION 4 · COSTSIGN 2) still
+  standing and the vivid-yellow direction locate still not tried.
