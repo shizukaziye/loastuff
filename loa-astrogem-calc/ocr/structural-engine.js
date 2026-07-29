@@ -49,6 +49,14 @@
   // reader attach the raw per-cell evidence it decided on, so a scratch harness can
   // score candidate decision rules offline against the labels.
   var COLLECT_EVID = (typeof process !== "undefined" && process.env && process.env.OCR_CELL_EVID === "1");
+  // Second calibration hook (off in production): OCR_LEVEL_EVID=1 makes the level
+  // solve attach the FULL per-node evidence it decided on — every node's template
+  // score vector and both synth channels' complete per-class rankings, plus the
+  // header/hint/pin state — so a scratch harness can score candidate JOINT
+  // hypotheses (four values at four positions) offline against the labels. It also
+  // forces a consult on all four nodes; the consult is memoized, so this costs
+  // compute only on nodes the engine did not already ask about.
+  var COLLECT_LEVID = (typeof process !== "undefined" && process.env && process.env.OCR_LEVEL_EVID === "1");
   var _atlasCache = {};
   function pickGlyphAtlas(scaleF) {
     if (!GLYPHS_POOLED) return null;
@@ -66,6 +74,17 @@
   try {
     var _lr = IS_NODE ? require("./level-refs.js") : root.OcrLevelRefs;
     if (_lr) { LREFS = _lr.LEVEL_REFS; NREFS = _lr.NAME_REFS; }
+  } catch (e) {}
+  // Trained observation tables for the JOINT level solve (tools/build-level-model.js).
+  // Optional: absent, the engine falls back to the per-node solve alone.
+  var LMODEL = null;
+  // The joint reader's decisive-margin bar; see the AGREEMENT lift in the level
+  // solve for how it was measured. Raising it costs false alarms, lowering it
+  // spends the safety factor.
+  var JOINT_SURE = 12;
+  try {
+    var _lm = IS_NODE ? require("./level-model.js") : root.OcrLevelModel;
+    if (_lm) LMODEL = _lm.LEVEL_MODEL;
   } catch (e) {}
   // blurred-variant caches for the synthesis rescues — MODULE scope: building
   // them costs ~400 blur+normalize passes and they depend only on the baked
@@ -1706,8 +1725,14 @@
       // rawScore/gradScore = each channel's PEAK correlation, not just its
       // winner: the no-checksum fallback arbitrates dissenting channels by
       // which one actually locked onto something (see there).
-      var res = { value: null, conf: 0.55, gm: gm, gradTop: rg[0].v, rawTop: ra[0].v,
+      // rm = the RAW channel's own decisiveness, the mirror of gm. The joint solve
+      // conditions each channel's table on whether that channel was decisive at all
+      // — a flat W raw ranking and a decisive one are different observations about
+      // the same node, and pooling them throws the distinction away.
+      var res = { value: null, conf: 0.55, gm: gm, rm: ra.length > 1 ? ra[0].s - ra[1].s : 1,
+        gradTop: rg[0].v, rawTop: ra[0].v,
         rawScore: ra[0].s, gradScore: rg[0].s, agree: ra[0].v === rg[0].v };
+      if (COLLECT_LEVID) { res.perRaw = perRaw; res.perGrad = perGrad; }
       if (res.agree && gm >= (kind === "S" ? 0.015 : 0.01)) res.value = ra[0].v;
       // RULED OUT (round 4) — a W/E "dissent + ink-geometry corroboration" commit.
       // The idea: when raw and gradient disagree decisively (gm ≥ 0.10) at W/E, the
@@ -2826,6 +2851,137 @@
       if (vb1v === levels[vc] && (vb1 - vb2) >= 0.03) conf4[vc] = 0.82;
     }
 
+    // ---- JOINT HYPOTHESIS RE-READ (round 10) ----
+    // Everything above reads four nodes INDEPENDENTLY and reconciles them: each node
+    // commits (or refuses) on its own evidence, the committed ones become pins, and
+    // the checksum fills the rest. That structure cannot see the two failure shapes
+    // that dominate what is left — a SWAP and a COMPENSATING PAIR are only wrong
+    // jointly, each node alone looks plausible, and the sum comes out right either
+    // way. Six independent per-node channels were ruled out against them by
+    // measurement in rounds 4-9 (ink geometry, line width, checksum recovery,
+    // pigment, reference re-harvesting, supervised exemplar selection); the residual
+    // is per-node-invisible by construction, not for want of a better channel.
+    //
+    // So score whole HYPOTHESES instead. A hypothesis is an assignment of four
+    // values to the four positions; there are 625 of them, and each is scored as
+    // Σ log P(observation | value) over every channel that spoke about that node,
+    // plus a term for whether the header total agrees with the tuple's sum. The
+    // header is EVIDENCE here, not a filter: `LMODEL.ptsHard/.ptsSoft` are the
+    // measured rates at which a header read equals the true sum, so a strong tuple
+    // can outvote a wrong header instead of being excluded by it.
+    //
+    // The tables are TRAINED (tools/build-level-model.js, non-holdout boards only),
+    // which is the other half of the point: every rule in this file was mined by
+    // hand against this corpus, and the corpus has been a test set every time. Here
+    // it is training data, and the holdout measures whether that generalizes.
+    //
+    // An override is always FLAGGED (conf capped under the 0.8 line) and a node the
+    // joint reader agrees with keeps the confidence the per-node machinery gave it.
+    // That is what makes this safe to ship on top of the incumbent rather than in
+    // place of it: the set of fields above the flag line can only shrink, and on
+    // those fields the value never changes, so no override can produce a silent
+    // error. Measured on the 472-pair corpus: 71 overrides, 61 right, 5 wrong,
+    // 5 wrong-either-way (holdout 15 right / 1 wrong).
+    function jointLevelSolve() {
+      if (!LMODEL || !LREFS) return null;
+      var M = LMODEL, W = M.w, KIND = ["N", "W", "E", "S"], pn = [nodes.nodeN, nodes.nodeW, nodes.nodeE, nodes.nodeS];
+      var LL = [], i, v;
+      for (i = 0; i < 4; i++) {
+        var k = KIND[i], sy = synthLevelRescue(k, pn[i]);
+        var vec = scoreVecs[i], tmTop = null;
+        if (vec) { tmTop = 1; for (v = 2; v <= 5; v++) if ((vec[v] || 0) > (vec[tmTop] || 0)) tmTop = v; }
+        var ind = indep[i], srcK = (lvFull[i] && lvFull[i].src) || "none";
+        var rk = srcK + "|" + (ind.conf >= 0.75 ? "hi" : ind.conf >= 0.5 ? "md" : "lo");
+        var rTab = (M.read[k] && M.read[k][rk]) || M.pool[k];
+        var rawB = sy ? (sy.rm >= 0.05 ? 1 : 0) : 0, grdB = sy ? (sy.gm >= 0.05 ? 1 : 0) : 0;
+        var acc = [0, 0, 0, 0, 0];
+        for (v = 0; v < 5; v++) {
+          var s = W.wPrior * M.prior[i][v];
+          if (sy && sy.rawTop) s += W.wRaw * M.raw[k][rawB][v][sy.rawTop - 1];
+          if (sy && sy.gradTop) s += W.wGrad * M.grad[k][grdB][v][sy.gradTop - 1];
+          s += W.wTm * M.tm[k][v][tmTop ? tmTop - 1 : 5];
+          s += W.wRead * rTab[v][ind.v ? ind.v - 1 : 5];
+          if (i === 3) s += W.wHint * M.hint[v][sHint ? sHint - 1 : 5];
+          acc[v] = s;
+        }
+        LL.push(acc);
+      }
+      var hit = null, miss = null;
+      if (pts != null) {
+        var rel = Math.min(0.9995, Math.max(0.05, ptsSoft ? M.ptsSoft : M.ptsHard));
+        hit = W.wPts * Math.log(rel); miss = W.wPts * Math.log((1 - rel) / 16);
+      }
+      var best = null, bestS = -Infinity, a, b2, c2, d2, sc;
+      var alt = [[-1e18, -1e18, -1e18, -1e18, -1e18], [-1e18, -1e18, -1e18, -1e18, -1e18],
+                 [-1e18, -1e18, -1e18, -1e18, -1e18], [-1e18, -1e18, -1e18, -1e18, -1e18]];
+      for (a = 1; a <= 5; a++) for (b2 = 1; b2 <= 5; b2++) for (c2 = 1; c2 <= 5; c2++) for (d2 = 1; d2 <= 5; d2++) {
+        sc = LL[0][a - 1] + LL[1][b2 - 1] + LL[2][c2 - 1] + LL[3][d2 - 1];
+        if (hit != null) sc += ((a + b2 + c2 + d2) === pts) ? hit : miss;
+        if (sc > bestS) { bestS = sc; best = [a, b2, c2, d2]; }
+        if (sc > alt[0][a - 1]) alt[0][a - 1] = sc;
+        if (sc > alt[1][b2 - 1]) alt[1][b2 - 1] = sc;
+        if (sc > alt[2][c2 - 1]) alt[2][c2 - 1] = sc;
+        if (sc > alt[3][d2 - 1]) alt[3][d2 - 1] = sc;
+      }
+      var margin = [0, 0, 0, 0];
+      for (i = 0; i < 4; i++) {
+        var mx = -1e18;
+        for (v = 1; v <= 5; v++) if (v !== best[i] && alt[i][v - 1] > mx) mx = alt[i][v - 1];
+        margin[i] = bestS - mx;
+      }
+      return { v: best, margin: margin };
+    }
+    var _preJoint = levels.slice();
+    if (LMODEL) {
+      var _jr = jointLevelSolve();
+      if (_jr) {
+        for (var jq = 0; jq < 4; jq++) {
+          if (_jr.v[jq] !== levels[jq]) {
+            levels[jq] = _jr.v[jq];
+            // FLAGGED, always: the joint reader may replace a value but may never
+            // raise a confidence. Overrides that are wrong therefore stay covered.
+            conf4[jq] = Math.min(conf4[jq], 0.7);
+            continue;
+          }
+          // AGREEMENT at a decisive margin is the verifier round 9 said the
+          // 0.68-0.80 band needed and could not find. The blanket caps above
+          // (ptsSoft → 0.70, no-checksum → 0.78) are worst-case guards against a
+          // junk header; they fire on 1447 level fields of which 1401 are right,
+          // and this is the first measure of a node that is independent of the
+          // header. `JOINT_SURE` is set at TWICE the highest margin any WRONG
+          // level field reaches on the 472-pair corpus (6.2, on `c-mrugq62n`'s
+          // east node) — at the bar itself it lifts 758 fields, every one of them
+          // correct, 138 of those on holdout boards the tables never saw. The
+          // factor of two is the safety margin: a calibrated log-likelihood ratio
+          // is optimistic about its own tails, and every corpus expansion so far
+          // has produced a confident read worse than anything the previous corpus
+          // held. Overrides are excluded on purpose, so the rule stays "the joint
+          // reader raises confidence only where it changed nothing".
+          if (_jr.margin[jq] >= JOINT_SURE) conf4[jq] = Math.max(conf4[jq], 0.85);
+        }
+        if (out._debug) out._debug.joint = _jr.v.join(",") + " m=" + _jr.margin.map(function (m) { return m.toFixed(1); }).join(",") +
+          " was=" + _preJoint.join(",");
+      }
+    }
+
+    // Calibration hook: the whole joint-hypothesis evidence set in one place.
+    if (COLLECT_LEVID && out._debug) {
+      var _lk = ["N", "W", "E", "S"], _lp = [nodes.nodeN, nodes.nodeW, nodes.nodeE, nodes.nodeS];
+      var _lsy = {};
+      for (var _li = 0; _li < 4; _li++) {
+        var _sv = LREFS ? synthLevelRescue(_lk[_li], _lp[_li]) : null;
+        _lsy[_lk[_li]] = _sv ? { value: _sv.value, gm: _sv.gm, gradTop: _sv.gradTop, rawTop: _sv.rawTop,
+          rawScore: _sv.rawScore, gradScore: _sv.gradScore, perRaw: _sv.perRaw || null, perGrad: _sv.perGrad || null } : null;
+      }
+      out._debug.lvEvid = {
+        vecs: scoreVecs.map(function (v) { return v ? [1, 2, 3, 4, 5].map(function (q) { return Math.round((v[q] || 0) * 1000) / 1000; }) : null; }),
+        indep: indep.map(function (x) { return { v: x.v, c: Math.round(x.conf * 1000) / 1000 }; }),
+        src: lvFull.map(function (r) { return r && r.src || null; }),
+        pinned: pinned.slice(), levels: levels.slice(), preJoint: _preJoint, conf4: conf4.slice(),
+        enumAssigned: enumAssigned.slice(),
+        pts: pts, ptsSoft: ptsSoft, sHint: sHint, scaleF: scaleF, synth: _lsy
+      };
+    }
     out.config.willpowerLevel = levels[0]; confidence.config.willpowerLevel = conf4[0];
     out.config.effect1Level = levels[1]; confidence.config.effect1Level = conf4[1];
     out.config.effect2Level = levels[2]; confidence.config.effect2Level = conf4[2];
@@ -3941,7 +4097,7 @@
     return [
       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
       f("astrogem.js", "../model/"), f("engine.js"), f("layout.js"), f("glyphs.js"),
-      f("level-refs.js"), f("tesseract-engine.js"), f("structural-engine.js")
+      f("level-refs.js"), f("level-model.js"), f("tesseract-engine.js"), f("structural-engine.js")
     ];
   }
   function getBgWorker() {

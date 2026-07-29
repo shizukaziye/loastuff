@@ -1221,3 +1221,244 @@ is byte-identical to the shipped build, so its pin alone can stay.
   real gain is the outcome strip, and it needs the `outcomes` confidence to stop being a
   min over four tiles: per-tile flagging in the UI would let three verified tiles stay
   quiet while the fourth asks.
+
+### 2026-07-29 · iteration 12 — round 10: read the four levels at once, and train it
+**Whole-parse 330 → 355 of 472 (69.9% → 75.2%), headline 96.3 → 97.2%, false alarms
+2399 → 1715 (5.1 → 3.6/shot), silents 0, flag coverage 100%.**
+Round 9's verdict was that a correlation-and-rule reader had taken what this corpus
+contains: six independent channels into the W/E level block had been closed by
+measurement, and the residual was **assignments and compensating pairs on nodes with no
+located line, no usable checksum and no separable pigment** — invisible to any PER-NODE
+evidence by construction. It named two different-in-kind approaches. This round does both
+at once, because they turn out to be the same thing: score whole four-value HYPOTHESES
+against one wheel crop, using tables TRAINED on the corpus rather than rules mined from
+it. It is the largest single-round gain of the campaign and the first to move accuracy and
+false alarms together. Harness: round 9's design copied to `r10/ph.js`, 472 pairs in
+**118s**; it reproduces the serial gate to the digit. Eight full-corpus harness runs plus
+two gates.
+
+- **The joint reader** (`ocr/structural-engine.js:2854-2966`, tables
+  `ocr/level-model.js`, trainer `tools/build-level-model.js`). Everything above it reads
+  four nodes independently: each commits or refuses on its own evidence, the committed
+  ones become PINS, and the checksum fills the rest. A swap and a compensating pair are
+  only wrong *jointly* — each node alone looks plausible and the sum comes out right
+  either way — so that structure cannot see them however good the per-node channel gets.
+  The replacement enumerates all 625 assignments and scores each as Σ log P(observation |
+  value) over every channel that spoke, plus a term for the header total. Five
+  observations per node, all of them things the engine already computes: the template
+  pass's argmax, the synthesis consult's raw and gradient argmaxes **each conditioned on
+  whether that channel was decisive** (a flat W raw ranking and a decisive one are
+  different observations about the same node), the ladder's own committed read keyed by
+  source and confidence bucket, and at S the diamond's luminance hint.
+  Three things about the shape are load-bearing:
+  1. **The header is evidence, not a filter.** `ptsHard`/`ptsSoft` are the measured rates
+     at which a header read equals the true sum (**0.981** / **0.992** on the training
+     split), so a strong tuple can outvote a wrong header instead of being excluded by
+     it. The old solve made pts a hard feasibility gate and then blamed the free nodes.
+  2. **Nothing is pinned.** A wrong pin used to be a premise the enumeration inherited;
+     round 5 measured un-pinning synth reads specifically and it was a wash (7 better, 5
+     worse). Un-pinning *everything* only works when every read is priced, which is what
+     the trained tables do.
+  3. **The consult now runs on all four nodes, always.** It was previously asked only
+     about free nodes and some rescue rungs, so the joint reader sees a channel the
+     per-node solve never consulted on pinned nodes — and it is memoized, so the cost is
+     under the noise floor (118s vs 118s in the same harness; the serial gate is
+     unchanged).
+- **Trained, with the holdout kept religiously.** `tools/build-level-model.js` calibrates
+  every table on the **376 non-holdout boards** (djb2(stem)%5==0 excluded, exactly as
+  `build-level-refs.js` excludes it from the reference harvest) and fits seven channel
+  weights by coordinate ascent on the same split. Seven weights and Laplace-smoothed 5×6
+  conditionals against 1504 training node-labels is deliberately the smallest fit that can
+  say "this channel is worth less than that one" — there is no capacity to memorize a
+  board, and the holdout numbers below say it did not. Ships as an 11.6 KB plain-data
+  module beside the 597 KB reference file; no new runtime dependency, and the tool needs
+  only sharp + tesseract.js, the pair `eval-ocr.js` already uses. Verified reproducible:
+  a cold run with no cache (parses all 472 boards itself, ~15 min) emits a file
+  **byte-identical** to the shipped one.
+- **Why this is safe to put ON TOP of the incumbent rather than in place of it.** An
+  override is capped under the flag line, always. The set of fields above 0.8 can
+  therefore only shrink, and on those fields the value never changes, so **no override can
+  create a silent error** — that is a structural property, not a measurement. Measured
+  anyway: 71 overrides, 61 right, 5 wrong, 5 wrong either way (holdout 15 right, 1 wrong),
+  and all five wrong ones ship flagged at ≤ 0.68.
+- **The verifier round 9 could not find** (`structural-engine.js:2960`). The blanket caps
+  (`ptsSoft` → 0.70, no-checksum → 0.78) are worst-case guards against a junk header; they
+  fire on 1447 level fields of which ~1400 are right, and the joint margin is the first
+  measure of a node that does not depend on the header. Where the joint reader AGREES with
+  the per-node value at a decisive margin, the field lifts to 0.85. The bar `JOINT_SURE =
+  12` is **twice the highest margin any WRONG level field reaches on the corpus** (6.2, at
+  `c-mrugq62n`'s east node) — at the bar it lifts **758 fields, every one correct, 138 of
+  them on holdout boards the tables never saw**. The factor of two is the safety margin: a
+  calibrated log-likelihood ratio is optimistic about its own tails, and every corpus
+  expansion so far has produced a confident read worse than anything the previous corpus
+  held. Overrides are excluded from the lift on purpose, so the rule stays "the joint
+  reader raises confidence only where it changed nothing".
+
+**Same-labels A/B, full corpus, 472 scored pairs.** A-arm = unmodified HEAD in a
+`git worktree` with `samples/` symlinked in; it reproduces the shipped round-9 numbers
+exactly (96.3 / 329 / 2398 FA) before this round's one label fix, and 330 / 2399 after it.
+
+| metric | HEAD (A) | round 10 (B) |
+|---|---|---|
+| headline per-field avg | 96.3% | **97.2%** |
+| whole-parse | 330/472 (69.9%) | **355/472 (75.2%)** |
+| flag coverage | 100.0% (261/261) | **100.0%** (205/205) |
+| silent errors | 0 | **0** |
+| false alarms/shot | 5.1 (2399) | **3.6 (1715)** |
+| outcomes | 95.8% | 95.8% |
+
+Per-field (A → B): effect1Level **91.9 → 96.2** · effect2Level **94.9 → 97.9** · orderLevel
+**95.6 → 97.7** · willpowerLevel **96.0 → 98.5**. Every other field is byte-identical —
+effect2 91.7 · effect1 93.0 · rerollsRemaining 97.4 · baseCost 97.6 · currentTurn 99.2 ·
+gemType 99.4 · processCostMultiplier 99.8 · maxTurns 100.0 · outcomes 95.8. Field-level:
+**61 fixed, 5 broken** (all five flagged, max conf 0.68). Level-field misses **102 → 46**;
+boards carrying one **67 → 32**; per node W 38 → **18**, E 24 → **10**, S 21 → **11**,
+N 19 → **7**. The joint classes are what moved: PERMUTATION 9 → **5**, COMPENSATING
+14 → **6**, SINGLE 35 → 18, MULTI 9 → 3. False alarms by field: effect2Level 381 → **150**,
+willpowerLevel 383 → **147**, effect1Level 369 → **200**, orderLevel 212 → **164**.
+
+**Judged on WHOLE-PARSE, which is the metric that matches what the tool is for.** Going
+from four wrong fields to three buys the user nothing — they are already checking
+everything; going from one to zero is the whole difference between "review this parse" and
+"press Get advice". The per-field average hides that, so here is the distribution.
+
+| wrong fields on a board | 0 | 1 | 2 | 3 | 4+ |
+|---|---|---|---|---|---|
+| HEAD (A) | 331 | 71 | 35 | 25 | 10 |
+| round 10 (B) | **356** | 64 | **26** | **19** | **7** |
+
+(“0 wrong fields” is 331/356; the harness’s whole-parse count is 330/355 because one board,
+`c-mrwsy5gx-96afo7`, has its outcome set masked out of scoring while still mismatching.)
+The multi-error boards are what collapsed — 2-error −9, 3-error −6, 4+ −3 — which is exactly
+what a joint reader should do and is the argument for the framing: a swap or a compensating
+pair is **two** wrong fields on **one** board, so catching it converts a 2-error board
+straight to 0 rather than shaving a field off a board that stays unusable.
+
+**Boards within ONE fix of a perfect parse: 64** (was 71). By the sole remaining field:
+**outcomes 28** · **effect2 12** · rerollsRemaining 6 · **effect1 6** · willpowerLevel 4 ·
+orderLevel 3 · effect1Level 2 · effect2Level 1 · gemType 1 · currentTurn 1. The four level
+fields together now account for **10** of the 64 (they accounted for 24 before this round);
+the outcome strip and the two effect NAMES account for **46**. That is the target list, and
+it is no longer levels.
+
+**The unmeasured number, now measured: the CLEAN-BOARD rate — 0 wrong fields AND 0 flags —
+is 1/472 (0.2%) at HEAD and 4/472 (0.8%) after this round.** A board that parses perfectly
+and then raises five confirm-me flags still costs a full review, so this, not whole-parse, is
+the true "trust it at a glance" number, and it is essentially zero. Flags per board
+(wrong-flagged + false alarms):
+
+| flags on a board | 0 | 1 | 2 | 3 | 4+ | total | per board |
+|---|---|---|---|---|---|---|---|
+| HEAD (A) | 1 | 13 | 27 | 16 | **415** | 2660 | 5.6 |
+| round 10 (B) | 4 | 43 | 108 | 89 | **228** | **1920** | **4.1** |
+
+Round 10 nearly halves the 4+-flag population (415 → 228) but barely moves the clean rate,
+and the cross-tab says why in one line. **Of the 356 perfectly-parsed boards, `outcomes`
+flags 347 of them (97%)** — it is a MIN over four tiles, so one soft tile silences the whole
+set's confidence. After that come the two names (effect2 192, effect1 180) and only then the
+levels, which this round cut from 271/269/266/125 to **133/102/86/82**. The ladder, measured
+on perfect boards:
+
+| if this family never flagged | clean boards (A) | clean boards (B) |
+|---|---|---|
+| nothing (today) | 1 (0.2%) | 4 (0.8%) |
+| the four level fields | 5 (1.1%) | 5 (1.1%) |
+| levels + outcomes | 67 (14.2%) | **74 (15.7%)** |
+| levels + outcomes + names | 274 (58.1%) | **294 (62.3%)** |
+
+The one number that moved a lot is **boards whose ONLY flags are `outcomes`: 12 → 40.**
+Forty boards are now a single flagging *policy* change away from clean, and per-tile
+flagging is that change — it needs no new evidence at all, only for `outcomes` to stop
+being one confidence over four independent tiles.
+
+Holdout vs in-sample (djb2%5==0; the tables were trained this round, so the split is fully
+load-bearing): **holdout 95.6 → 96.7%** with whole-parse 63 → **68** and FA 467 → **346**;
+in-sample 96.5 → 97.4% with whole 267 → **287** and FA 1932 → **1369**. The headline gain is
+LARGER on holdout (+1.1 vs +0.9) and the FA cut is the same rate (−26% vs −29%). The solve
+scored in isolation by the trainer: holdout **372/384 (96.9%)** against the per-node solve's
+358 (93.2%), train 1470/1504 (97.7%) against 1428 (94.9%).
+
+**Label fix (one, pixel-arbitrated):** `c-mrwzbdin-lh4dxl` orderLevel **1 → 4**. The wheel
+crop at 6× reads "Willpower Efficiency 1", "Additional Damage Lv. 1", "Ally Damage Enh.
+Lv. 1" and a plain gold **4** under "Order Points"; the header reads "**7** Astrogem
+Points", and 1+1+1+4 = 7. The label's 1 made the board sum to 4, contradicting its own
+header, and its `lower_effect order 1` outcome was the lint warning that vanished when the
+level was corrected. Shared mode again — the collection-time engine also read 1, so the
+promotion trust mask kept the default on a field the user never corrected. **Round 9's
+supervised-refs experiment flagged this exact board as its one silent error and it was
+counted against that experiment; it was the corpus that was wrong.** Lint: 480 labels,
+0 errors, 4 warnings (was 5).
+
+**RULED OUT, with numbers.**
+- *Softmax over the raw correlation vectors* instead of trained confusion tables — the
+  obvious first form of a joint reader, and the one that does not need training data. Fit
+  the same way (temperatures and weights on the training split), it reaches node accuracy
+  **95.4% all / 95.1% holdout** and 411 all-four boards, against the calibrated tables'
+  **97.6 / 96.9** and 440. The reason is specific and is the whole argument for training:
+  a softmax says a channel's top class is likely, and the W raw channel's top class is
+  systematically the diamond FACE's best match. Only a measured P(observation | true) can
+  say "raw voted 4 at W with a flat margin — that means almost nothing".
+- *Leaving the seven channel weights at 1* (i.e. pure naive Bayes, no fit at all): overrides
+  go 61 right / **5** wrong → 58 right / **15** wrong, holdout node accuracy 96.9 → 95.8%.
+  The fit is small but not free.
+- *Smoothing sweep*: alpha 1 → holdout 95.6%, 14 wrong overrides · **alpha 2 → 96.9%, 5** ·
+  alpha 4 → 95.1%, 22 · alpha 8 → 95.1%, 26. Under-smoothing costs the rare cells,
+  over-smoothing washes out the asymmetries that carry the signal.
+- *A margin bar on the OVERRIDE* (only replace the per-node value when the joint reader is
+  decisive): bar 0 is best. bar 1.5 → 44 fixed / 1 broken, bar 2 → 38 / 0, bar 3 → 28 / 0
+  against bar 0's 61 / 5. Every bar sheds fixes faster than breaks, and since an override
+  is flagged anyway a break costs one accuracy point rather than an invariant.
+- *A lower bar for the CONFIDENCE lift*: margin ≥ 8 reclaims 1060 false alarms with **0**
+  silents on this corpus and 0 on holdout, and margin ≥ 6 reclaims 1186 with **1** silent
+  (`c-mrugq62n-zqc9al` east, 1≠5 at margin 6.2). Both were rejected for the safety factor,
+  not for a measured failure: 8 leaves only 1.3× between the bar and the worst wrong node.
+  If a later round wants the extra ~300 false alarms, the honest way to earn them is a
+  bigger corpus under the same measurement, not a lower bar.
+- *Extending the joint framing to the effect NAMES* — measured, not attempted, and the
+  measurement says it would not pay. Of the 72 residual name misses only **2** are a pure
+  W↔E swap, i.e. the shape a joint reader exists to catch; **31 sit at confidence < 0.30**,
+  where both `structuralName` and `synthNameRescue` refuse and there is no observation to
+  condition on. Names remain what round 9 called them: DATA-bound.
+- *False alarms below 0.68*: untouched. The lift is deliberately confined to fields the
+  blanket header caps had pushed down from a real read.
+
+**The residual is now a resolution tier, and it says so numerically.** Of the 32 boards
+still carrying a level miss, the split by the engine's own normalization factor is
+native **10/143 (7.0%)** · ×2 **12/297 (4.0%)** · ×3+ **10/32 (31.3%)**. The most-upscaled
+tier — the smallest original captures — is 5-8× denser in level misses than the rest of the
+corpus and holds a third of what is left on 7% of the boards.
+
+Gate: lint-labels 0 errors; **97.2% ≥ 95% · outcomes 95.8% ≥ 94% · silent 0 = 0 → PASS**
+(`npm run eval-gate`, serial; the parallel harness reproduces it exactly — 355/472 whole,
+205/205 flagged, 0 silents, 1715 FAs). Thresholds untouched: the headline now clears by 2.2
+points and outcomes by 1.8, so the ladder has room for **0.97/0.95** at ship — but note that
+0.97 is a claim about boards the engine has grown into, and both merges so far broke the
+zero-silent invariant on first contact with fresh ones.
+
+**NOT DONE (owner's call at ship time):** version pins in `index.html` were left alone as
+instructed — `ocr/engine.js?v=54`, `ocr/layout.js?v=55`, `ocr/glyphs.js?v=55`,
+`ocr/level-refs.js?v=4` and `ocr/structural-engine.js?v=97` all need a bump before this
+deploys. **`ocr/level-model.js` is a NEW file** and had to be added to `LAZY_TABS.advisor`
+(`index.html:86`, pinned `?v=1`) and to `bgWorkerUrls()`
+(`ocr/structural-engine.js:4100`) or the browser and the parse worker would never load it;
+that is the one pin this round wrote, and it is a new one, not a bump. `ocr/level-refs.js`
+and `ocr/glyphs.js` are byte-identical to the shipped build.
+
+- Next (iteration 13), ordered by what actually converts a board:
+  1. **Per-tile flagging for the outcome strip — the largest single win left and it needs no
+     new evidence.** `outcomes` confidence is a MIN over four tiles, so it flags 347 of the
+     356 perfect boards and is the sole flag on 40 of them. Splitting it lets three verified
+     tiles stay quiet while the fourth asks. On the accuracy side the same field is the sole
+     remaining error on **28** of the 64 one-fix-from-perfect boards.
+  2. **The two effect NAMES: effect2 39 and effect1 33 misses, 18 of the 64 one-fix boards,
+     and 372 flags on perfect boards.** Measured above: the joint framing does not reach
+     them (only 2 of 72 misses are a W↔E swap, 31 sit at confidence < 0.30 where both
+     readers refuse). They are data-bound, exactly as round 9 said.
+  3. **The trainer is the transferable result, not the level tables.**
+     `tools/build-level-model.js` shows the corpus works as TRAINING data and that the
+     holdout holds up; the outcome CELL is the natural next subject — its evidence dump
+     already exists behind `OCR_CELL_EVID=1`, and a strip is four coupled tiles exactly as
+     the wheel is four coupled nodes.
+  4. The level residual is now demonstrably a capture-resolution population (×3+ tier is
+     5-8× denser in misses): one larger screenshot from a small-monitor user is worth more
+     than any further level rule.
