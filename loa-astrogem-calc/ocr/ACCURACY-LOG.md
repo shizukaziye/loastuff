@@ -848,3 +848,27 @@ instructed — `ocr/engine.js`, `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` an
   **outcomes 94.4%** — the binding gate constraint, untouched this round, with round 6's
   taxonomy (TYPE 9 · AMOUNT 17 · TARGET 10 · DROPPED 12 · DIRECTION 4 · COSTSIGN 2) still
   standing and the vivid-yellow direction locate still not tried.
+
+### 2026-07-29 · corpus merge 2 — 385 → 472 scored pairs (87 more unseen boards)
+samples-v3 merged after round 7 shipped; 12 harvest exclusions added to
+`build-level-refs.js` LOCALIZED (now 22 entries) BEFORE any re-harvest.
+Re-baseline on the expanded corpus (not comparable to the 385-pair scale):
+
+| metric | 385 pairs | 472 pairs |
+|---|---|---|
+| headline | 96.3% | **96.1%** |
+| whole-parse | 67.8% | 67.4% |
+| flag coverage | 100% | **98.9%** |
+| silent errors | 0 | **3** |
+
+Barely any headline drop this time (0.2pt vs 1.7pt on merge 1) — the engine now
+generalizes far better. But **unseen boards broke the zero-silent invariant a second
+time**, in three new places: `currentTurn` 8≠7 @0.85, `gemType` chaos≠order @0.90 (on a
+Russian board), and an `outcomes` set @0.84.
+
+**The pattern is now established and worth stating plainly: every corpus expansion has
+exposed confident-but-wrong reads that the previous corpus could not see.** Zero silents
+measured on boards the engine has grown into is a weaker claim than it looks.
+
+Therefore the gate now ENFORCES it: `tools/eval-ocr.js` fails on any silent error,
+alongside the headline/outcomes thresholds. The invariant is machine-checked from here.

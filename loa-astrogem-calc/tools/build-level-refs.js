@@ -61,7 +61,13 @@ var LOCALIZED = {
   // zh-TW (samples-v2 manifest)
   "c-mryunsmb-h6d7uj": "zh-TW", "c-mryur6to-n3a5jk": "zh-TW",
   // older corpus (ACCURACY-LOG rounds 3-4)
-  "c-mrwgjrp2-1jqlzy": "es", "c-mrw1jzpi-9b314w": "ru"
+  "c-mrwgjrp2-1jqlzy": "es", "c-mrw1jzpi-9b314w": "ru",
+  // samples-v3 manifest (excludeFromReferenceHarvest)
+  "c-ms14qn8f-pzpox7": "ru", "c-ms14wyep-lr2k80": "ru", "c-ms1585k3-qxjzxd": "ru",
+  "c-ms1595wd-lpq2ny": "ru", "c-ms15a06t-dh3yol": "ru", "c-ms15bp48-fnk0cg": "ru",
+  "c-ms15fny6-n96q2j": "ru", "c-ms15gob5-vrq29r": "ru", "c-ms15hix4-kfsmj4": "ru",
+  "c-ms15ia8x-a1vuxt": "ru",
+  "c-mrwkadmb-jkjm5o": "en", "c-mrzz2neu-teo43a": "es"
 };
 
 function lumOf(sub) {

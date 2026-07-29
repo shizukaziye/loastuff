@@ -450,7 +450,7 @@ async function main() {
       console.log("  per-field: " + line);
       jsonOut.engines[eng.name] = {
         label: eng.label, samples: n,
-        headline: headlineAvg, outcomes: outcomesAvg,
+        headline: headlineAvg, outcomes: outcomesAvg, silent: totSilent,
         scalarFieldAccuracy: totScalar ? totScalarCorrect / totScalar : 0,
         wholeParse: whole / n,
         flagCoverage: wrongTotal ? wrongFlagged / wrongTotal : null,
@@ -470,10 +470,15 @@ async function main() {
     var r = jsonOut.engines[g.engine];
     if (!r) { console.log("GATE " + g.engine + ": engine not scored — FAIL"); gateFailed = true; return; }
     var okF = r.headline >= g.fields, okO = r.outcomes >= g.outcomes;
+    // Zero silent errors is the campaign's hard invariant (a wrong-yet-confident field
+    // reaches the user as bad advice with no warning). Enforce it here, not by habit —
+    // every corpus expansion so far has broken it on first contact with unseen boards.
+    var okS = (r.silent || 0) === 0;
     console.log("GATE " + g.engine + ": per-field " + pct(r.headline) + (okF ? " ≥ " : " < ") + pct(g.fields) +
       " · outcomes " + pct(r.outcomes) + (okO ? " ≥ " : " < ") + pct(g.outcomes) +
-      "  ->  " + (okF && okO ? "PASS" : "FAIL"));
-    if (!(okF && okO)) gateFailed = true;
+      " · silent " + (r.silent || 0) + (okS ? " = 0" : " > 0") +
+      "  ->  " + (okF && okO && okS ? "PASS" : "FAIL"));
+    if (!(okF && okO && okS)) gateFailed = true;
   });
 
   console.log("Done. (Tesseract Node scores are a lower bound; the browser engine adds regional cropping.)");
