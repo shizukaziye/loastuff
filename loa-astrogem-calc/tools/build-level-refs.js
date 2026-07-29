@@ -346,17 +346,72 @@ function patchInkOk(patch, mode) {
   // small-monitor (110-139). Sharpest-ONLY was tried in an earlier round and
   // traded fixes for regressions (t8 gained, t6/share broke — including an
   // agreeing-wrong): domain proximity matters, and the production corpus is now
-  // dominated by the 110-139 tier, so that tier gets its own slots. Within a
-  // tier, prefer DISTINCT g0 values (same-g0 frames are usually the same
-  // monitor/user — near-duplicates that waste an exemplar slot).
-  function pickDistinct(arr, n) {
-    var pick = [], seen = {};
-    for (var i = 0; i < arr.length && pick.length < n; i++) {
-      if (seen[arr[i].g0]) continue;
-      seen[arr[i].g0] = 1; pick.push(arr[i]);
+  // dominated by the 110-139 tier, so that tier gets its own slots.
+  //
+  // WITHIN a tier the picker must SPREAD, not merely avoid an exact tie (round 8).
+  // The old `pickDistinct` deduped on `g0 ===`, which is no dedup at all: two
+  // captures from the same setup measure 244 and 243 and both got a slot. Measured
+  // over the 472-pair corpus, 19 of the 20 digit classes ended up with at least one
+  // pair inside 3 px of g0, and the BACKFILL was worse — it had no dedup whatsoever,
+  // so it re-added the very frame the tier picker had just skipped (E|3 picked g0 244
+  // twice; E|5 picked six frames from {121,123}, i.e. one exemplar wearing six slots).
+  // Two exemplars that agree to a pixel are one exemplar, and the synth pays for the
+  // fiction twice: the class looks covered, and its 6-exemplar × 6-sigma spread
+  // searches the same shape six times.
+  //
+  // Replaced by SHARPEST-FIRST WITH A MINIMUM RELATIVE SEPARATION (G0_SEP of the
+  // candidate's own g0), falling back to FARTHEST-POINT (max-min) when a tier is
+  // too crowded to satisfy it — and the cross-tier backfill runs max-min against
+  // everything already chosen instead of shifting the descending list.
+  //
+  // Sharpest-first is load-bearing, not decoration. Pure max-min was measured on the
+  // full corpus and it picks each tier's two ENDPOINTS: the second hi exemplar drops
+  // from g0 ~204 to ~180, right against the mid tier's edge, and the N node pays for
+  // it — willpowerLevel 95.6 → 94.3 while orderLevel went 95.3 → 97.2. A separation
+  // floor keeps the second exemplar sharp AND distinct, which is the whole point.
+  // No starvation: when nothing clears the floor the tier still fills its slots
+  // (round 2 measured that leaning the W/E exemplar count costs effect1Level 82→75,
+  // so an empty slot is the worse failure).
+  //
+  // *** DO NOT REGENERATE ocr/level-refs.js WITHOUT RE-MEASURING. *** Round 8 ran the
+  // whole 2×2 (old picker / this picker × 271 sources / 331 sources) against the
+  // 472-pair corpus with one fixed engine. On the CURRENT 331-source pool this picker
+  // beats the old one by +0.3 headline and +13 whole-parse boards — but the shipped
+  // `ocr/level-refs.js` (old picker, 271 sources, round 6) still beats every rebuild
+  // (96.3 / 327 whole, against 95.9-96.2 / 304-324), and on the 271-source pool the
+  // ORDER REVERSES and this picker is the worse of the two. The exemplar draw is
+  // high-variance — ±5% whole-parse across four defensible builds — which means g0
+  // spread is not the dominant axis of exemplar quality and no geometric proxy is
+  // going to reliably beat a lucky draw. The next real lever here is SUPERVISED
+  // selection (score candidate exemplars by how well they classify a held-out set)
+  // or genuinely more varied sharp captures, not another picking rule.
+  var G0_SEP = 0.08;
+  function farthestOne(arr, anchors, pick) {
+    var best = null, bestD = -1, i, j;
+    for (i = 0; i < arr.length; i++) {
+      var c = arr[i];
+      if (pick.indexOf(c) !== -1) continue;
+      var d = Infinity;
+      for (j = 0; j < anchors.length; j++) d = Math.min(d, Math.abs(c.g0 - anchors[j].g0));
+      for (j = 0; j < pick.length; j++) d = Math.min(d, Math.abs(c.g0 - pick[j].g0));
+      if (d === Infinity) d = 1e9;                        // nothing to be far from yet
+      if (d > bestD || (d === bestD && best && c.g0 > best.g0)) { bestD = d; best = c; }
     }
-    for (var j = 0; j < arr.length && pick.length < n; j++) {
-      if (pick.indexOf(arr[j]) === -1) pick.push(arr[j]);
+    return best;
+  }
+  // arr must be sorted g0-DESCENDING (sharpest first)
+  function spreadPick(arr, n, seedPicks) {
+    var pick = [], anchors = (seedPicks || []).slice(), i, j;
+    for (i = 0; i < arr.length && pick.length < n; i++) {
+      var c = arr[i], ok = true;
+      for (j = 0; j < anchors.length; j++) if (Math.abs(c.g0 - anchors[j].g0) < G0_SEP * c.g0) ok = false;
+      for (j = 0; j < pick.length; j++) if (Math.abs(c.g0 - pick[j].g0) < G0_SEP * c.g0) ok = false;
+      if (ok) pick.push(c);
+    }
+    while (pick.length < n) {
+      var b = farthestOne(arr, anchors, pick);
+      if (!b) break;
+      pick.push(b);
     }
     return pick;
   }
@@ -366,9 +421,14 @@ function patchInkOk(patch, mode) {
       var hi = all.filter(function (r) { return r.g0 >= 180; });
       var mid = all.filter(function (r) { return r.g0 >= 140 && r.g0 < 180; });
       var lo = all.filter(function (r) { return r.g0 < 140; });
-      var pick = pickDistinct(hi, 2).concat(pickDistinct(mid, 2)).concat(pickDistinct(lo, 2));
+      var pick = spreadPick(hi, 2).concat(spreadPick(mid, 2)).concat(spreadPick(lo, 2));
       var pool = all.filter(function (r) { return pick.indexOf(r) === -1; });
-      while (pick.length < MAX_PER_CLASS && pool.length) pick.push(pool.shift());
+      while (pick.length < MAX_PER_CLASS && pool.length) {
+        var b2 = farthestOne(pool, pick, []);
+        if (!b2) break;
+        pick.push(b2);
+        pool = pool.filter(function (r) { return r !== b2; });
+      }
       bucket[cls] = pick.slice(0, MAX_PER_CLASS);
     });
   }
@@ -401,4 +461,9 @@ function patchInkOk(patch, mode) {
   console.log("coverage  N " + covN + "  |  S " + covS + "  |  W " + covW + "  |  E " + covE);
   console.log("name refs W: " + Object.keys(nrefs.W).map(function (n) { return n + ":" + nrefs.W[n].length; }).join(" "));
   console.log("name refs E: " + Object.keys(nrefs.E).map(function (n) { return n + ":" + nrefs.E[n].length; }).join(" "));
+  console.log("");
+  console.log("WARNING: you have just overwritten ocr/level-refs.js. The exemplar draw is");
+  console.log("  high-variance (round 8: +-5% whole-parse across four defensible builds) and the");
+  console.log("  round-6 refs beat every rebuild measured. Run `npm run eval-ocr` and compare");
+  console.log("  before committing this file, or `git checkout -- ocr/level-refs.js` to undo.");
 })().catch(function (e) { console.error(e); process.exit(1); });

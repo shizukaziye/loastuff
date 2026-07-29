@@ -502,17 +502,34 @@
           // rung shipped the wrong turn at 0.88 — silent. IoU counts only ink, so
           // the closed-loop lookalikes separate; a decisive IoU dissent refuses
           // the digit (the pair then falls to the OCR voters, flagged).
-          function pairDigit(tB, wide) {
+          // CLOSED VOCABULARY on the N digit (round 8): N can only be 5, 7 or 9, so
+          // the open-atlas 0.80 floor is the wrong test for it. `c-mrxn60s5` renders
+          // "Process (3/9)" perfectly and the template run reads it perfectly —
+          // 3@0.85, /@0.94, 9@0.76 — and the 0.80 floor threw the '9' away, dropping
+          // the whole pair to the button-OCR voter, which read 2/9 and shipped turn 8
+          // at 0.85: SILENT. Below the floor the digit may still commit if the
+          // INK-IoU restricted to {5,7,9} independently picks the same class with a
+          // clear margin. Two different scorings of the same ink (background-weighted
+          // bitmapSim and ink-only IoU) agreeing inside a 3-way vocabulary is the same
+          // standard the rest of this engine commits on.
+          function pairDigit(tB, allowed) {
             if (tB.box.w / Math.max(1, tB.box.h) < 0.45) return 1;   // the only narrow digit
-            if (!(tB.ch && /^\d$/.test(tB.ch) && tB.score >= 0.8)) return null;
+            if (!(tB.ch && /^\d$/.test(tB.ch))) return null;
             if (DIGIT_ATLAS && tg.mask) {
               var im = iouDigit(tg.mask, tB.box);
               if (im && im.ch !== tB.ch && im.margin >= 0.08) return null;
             }
-            return parseInt(tB.ch, 10);
+            if (tB.score >= 0.8) return parseInt(tB.ch, 10);
+            if (allowed && tB.score >= 0.70 && DIGIT_ATLAS && tg.mask) {
+              var iv = iouDigit(tg.mask, tB.box, allowed);
+              if (out._debug) out._debug.pairVocab = tB.ch + "@" + tB.score.toFixed(2) +
+                " iou " + (iv ? iv.top3 + " m" + iv.margin.toFixed(2) : "null");
+              if (iv && iv.ch === tB.ch && iv.margin >= 0.08) return parseInt(tB.ch, 10);
+            }
+            return null;
           }
           var a3 = pairDigit(aB);
-          var b3 = pairDigit(bB);
+          var b3 = pairDigit(bB, ["5", "7", "9"]);
           if (a3 != null && b3 != null && (b3 === 5 || b3 === 7 || b3 === 9) && a3 >= 1 && a3 <= b3) pairT = { a: a3, b: b3 };
         }
       }
@@ -3365,20 +3382,21 @@
           });
         }
         var amtLine = locateAmt(L.isAmountText, false);
+        // THE EXTENDED CHARTREUSE ZONE OUTRANKS THE STRICT RED ONE (round 8). It used
+        // to sit one rung below, so on a WILLPOWER cell whose amount row falls past
+        // capRect the red locate ran first and always succeeded — red is that cell's
+        // own diamond face. Measured over all 1880 corpus cells by label: a strict red
+        // locate at a willpower cell fires on 47/49 true lowers AND 292/304 true
+        // raises, i.e. it is 86% uninformative there, while the deep chartreuse locate
+        // fires 301/304 vs 0/49. Reordering changes the located line on exactly 9 cells
+        // corpus-wide and every one of them is a `raise_effect/willpower` — no lower,
+        // no effect and no order cell moves. (Round 5's ruled-out experiment was a
+        // different one: running the deep zone as the PRIMARY chartreuse locate, which
+        // cost 5 tiles. This rung still only runs when the strict capRect locate found
+        // nothing.)
+        if (!amtLine) amtLine = locateAmt(L.isAmountText, false, amtZone);
         var redLine = amtLine ? null : locateAmt(L.isRedAmountText, false);
         var lineRelaxed = false;
-        if (!amtLine && !redLine) {
-          // EXTENDED ZONE, and only here. A two-line caption ("Willpower /
-          // Efficiency", "Ally Damage / Enh.") pushes the "+3 ▲" row past capRect's
-          // 0.52·gap bottom, so the strict locate finds nothing and the tile falls
-          // through to the direction guesswork. Searching 0.66·gap recovers it.
-          // It must stay a FALLBACK: run unconditionally, the deeper bottom-up scan
-          // meets a chartreuse fragment below the amount (the divider's edge, the
-          // ▲'s glow on the diamond tip) FIRST and the arrow box lands on red —
-          // measured, that alone flipped five correct `raise willpower` tiles to
-          // `lower` (outcomes 95.0 → 94.7).
-          amtLine = locateAmt(L.isAmountText, false, amtZone);
-        }
         if (!amtLine && !redLine) {
           amtLine = locateAmt(L.isAmountText, true);
           lineRelaxed = !!amtLine;
@@ -3434,7 +3452,27 @@
           // the ICON FACE behind the caption shares a hue family with one arrow color:
           // evidence in the icon's own family is worthless (a red willpower face lands
           // compactly in the box and out-counts a real green ▲) — trust the other side
-          if (icls === "red") { dirUp = upSolid; dirDown = downSolid && !upSolid; }
+          // A LOCATED STRICT CHARTREUSE LINE ON A RED ICON IS ITSELF THE DIRECTION
+          // (round 8). Round 4 established the rule for effect cells — "a located
+          // chartreuse line is a raise 436/436 times" — and never extended it to
+          // willpower, where it matters most: the willpower cell's face IS red, so the
+          // ▼ predicate scores the face (measured on c-ms1n13pa: down 660 px at
+          // density 0.63 against a real ▲ of 55 px) and the ▲ has to clear an absolute
+          // frac bar it misses by a thousandth (0.011 vs the 0.012 gate). Fourteen
+          // tiles corpus-wide read `lower willpower 1` on a plainly yellow "+3 ▲".
+          // Re-measured over all 1880 cells by label: among willpower-target cells a
+          // strict chartreuse locate fires on 291/304 raises and 0/49 lowers — a
+          // willpower LOWER renders "−1" red on a red face and has no chartreuse ink
+          // anywhere. Scoped to the STRICT locates (the relaxed sweep is the one that
+          // can latch onto a stray fragment), so a relaxed line still needs the arrow.
+          // Keyed on the resolved TARGET, not on `icls`: the guard exists because the
+          // cell's own icon face poisons one arrow colour, and it is the target that
+          // says which face this is. `icls` is only an estimate of it and it is wrong
+          // on exactly this family — the willpower diamond reads "gold" on
+          // c-mrtpk4nc-w4732c and c-mrugq62n-zqc9al, which dropped both boards into the
+          // count-vs-count branch and lost it 76:80 and 152:632 to the red face.
+          var ownRed = icls === "red" || target === "willpower";
+          if (ownRed) { dirUp = upSolid || !lineRelaxed; dirDown = downSolid && !dirUp; }
           else if (icls === "green") { dirDown = downSolid; dirUp = upSolid && !downSolid; }
           else if (upSolid && downSolid) { dirUp = aUp.count >= aDown.count; dirDown = !dirUp; }
           else { dirUp = upSolid; dirDown = downSolid; }
@@ -3507,7 +3545,7 @@
         var lnForSynth = amtLine || redLine;
         var amSy = (amtSrc !== "tm" && lnForSynth) ? synthAmountDigit(lnForSynth) : null;
         if (amSy && amt != null && amSy.value != null && amSy.value !== amt &&
-            (amSy.gradOnly ? (amSy.gm >= 0.10 && amtSrc !== "tm") : amSy.gm >= 0.05)) {
+            (amSy.gradOnly ? (amSy.gm >= (amtSrc === "tm-weak" ? 0.05 : 0.10) && amtSrc !== "tm") : amSy.gm >= 0.05)) {
           // an anchored-regex read can still be the ▲ wearing a legitimate anchor
           // (level4's "+1 ▲" OCR'd "+ 4") — a FULL-AGREE synth at 5× margin
           // outranks OCR/cap rungs. A GRADIENT-ONLY synth may now override too, at
@@ -3554,9 +3592,16 @@
           (amSy ? (amSy.value != null ? "synth " + amSy.value : "refuse(top " + amSy.gradTop + ")") + "@gm" + amSy.gm.toFixed(3) + (amSy.gradOnly ? " gradOnly" : "") : "n/a") +
           " src=" + (amtSrc || "none");
         // a weak-tier template amount CONTRADICTED by the synth's (transferable)
-        // gradient channel may keep its value but never its confidence
-        var amtContra = amtSrc === "tm-weak" && amSy && amSy.value == null &&
-          amSy.gradTop != null && amSy.gradTop !== amt;
+        // gradient channel may keep its value but never its confidence.
+        // BOTH FORMS OF DISSENT COUNT (round 8): the original test only fired when the
+        // consult REFUSED (`value == null`) and its gradient top happened to differ —
+        // so the WEAKER dissent was penalised and the STRONGER one, a consult that
+        // actually committed a different value but missed the override bar
+        // (gradOnly needs gm ≥ 0.10), sailed through at full confidence. That is
+        // `c-ms167ipv-wwujgv`: tm-weak '4' against a committing synth '1' at gm 0.095,
+        // shipped at 0.84 — SILENT, on a tile whose label is plainly '1' by eye.
+        var amtContra = amtSrc === "tm-weak" && amSy && amSy.gradTop != null &&
+          (amSy.value == null ? amSy.gradTop !== amt : amSy.value !== amt);
         var hadAmt = amt != null;
         if (COLLECT_EVID) _evExtra[oi] = {
           had: hadAmt, src: amtSrc, bare: bareCand, rel: lineRelaxed,

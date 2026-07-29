@@ -872,3 +872,183 @@ measured on boards the engine has grown into is a weaker claim than it looks.
 
 Therefore the gate now ENFORCES it: `tools/eval-ocr.js` fails on any silent error,
 alongside the headline/outcomes thresholds. The invariant is machine-checked from here.
+
+### 2026-07-29 · iteration 10 — round 8: the willpower tile, and a reference set that would not improve
+The merge left three silent errors and the gate now fails on any. All three are fixed, and the
+biggest of them opened the outcome block the last four rounds kept naming: **DIRECTION misses went
+from 4 on the 385 corpus to 20 on the 472 corpus**, and 14 of the 20 are one tile — `lower willpower 1`
+read off a plainly yellow "+3 ▲". No reference data was rebuilt in the shipped tree (see the ref
+sweep below, which is the round's other half and its main negative result). Harness: round 7's
+`r7/ph.js` copied to `r8/ph.js`, 472 pairs in **325s**; it reproduces the serial gate to the digit.
+Nine full-corpus harness runs plus the gate.
+
+**PRIORITY 1 — the three silents, each checked against pixels before touching anything.**
+- `c-mrxn60s5-znug2k` **currentTurn 8 ≠ 7 @0.85 — engine wrong, label right.** The footer crop reads
+  "Process (3/9)" at 5×, and the template glyph run reads it perfectly: `3@0.85 /@0.94 9@0.76`. The
+  '9' died on `pairDigit`'s open-atlas floor of 0.80, the pair collapsed to the button-OCR voter,
+  which read 2/9, and 0.85 is above the flag line. **N can only be 5, 7 or 9** — an open-vocabulary
+  floor is the wrong test for it. Below 0.80 the digit may now still commit when the ink-IoU
+  restricted to `{5,7,9}` independently picks the same class with margin ≥ 0.08; here it says
+  `9:0.48 5:0.30 7:0.21`, margin 0.18. **currentTurn 97.9 → 99.2** (6 boards), maxTurns 99.8 → 100.0.
+- `c-mrzz2neu-teo43a` **gemType chaos ≠ order @0.90 — LABEL wrong, engine right.** The board is the
+  ES client: the title reads "Astrogema del caos: corrosión" (= Chaos Astrogem: Corrosion) and the S
+  node reads "Caos Puntos 1" — two independent readings, both chaos, and its own `_verify` note
+  already said "chaos Corrosion" while `config.gemType` still said "order". That is the stale
+  collection-time default rounds 3 and 6 documented, surviving the trust mask on a field the user
+  never corrected. **The honest fix is to read it correctly, not to refuse it**: the localized guard
+  exists to keep foreign glyphs out of the reference HARVEST, and this board is already in that
+  exclusion list; nothing about a Spanish title makes the gem type unreadable, and the engine had it
+  right. Label corrected; `_verify.fields.gemType` now records both readings.
+- `c-ms167ipv-wwujgv` **outcomes @0.84 — engine wrong, label right** (strip reads
+  `Ally Damage Enh. Lv. 3 ▲ | Brand Power Lv. 1 ▲ | Brand Power Lv. 2 ▲ | Ally Damage Enh. Lv. 1 ▲`).
+  Tile 4 read amount 4. `amtContra` — the rule that caps a weak-template amount the synth
+  contradicts — only fired when the consult REFUSED, so **the weaker form of dissent was penalised
+  and the stronger one was not**: a consult that actually committed a different value but missed the
+  gradOnly override bar (gm 0.095 against a bar of 0.10) shipped at full confidence. Both forms now
+  count. The value is fixed too, see the amount rung below.
+
+**PRIORITY 2 — the outcome strip. Missed tiles 96 → 80, imperfect boards 70 → 58.**
+- **A located chartreuse line on a willpower cell is itself the direction.** Round 4 proved the rule
+  for effect cells ("a raise 436/436 times") and never extended it to willpower, which is where it
+  matters: that cell's face IS red, so the ▼ predicate scores the FACE — measured on `c-ms1n13pa`,
+  660 px at density 0.63 against a real ▲ of 55 px — and the ▲ then has to clear an absolute `frac`
+  bar it misses by a thousandth (0.011 vs 0.012). Re-measured over all **1880 corpus cells by label**:
+  among willpower-target cells a strict chartreuse locate fires on **291/304 raises and 0/49 lowers**
+  (a willpower lower renders "−1" red on a red face and has no chartreuse ink anywhere). Two edits:
+  the rule is scoped to the STRICT locates, and the red-family guard is keyed on the resolved
+  **TARGET** instead of `icls` — the willpower diamond reads "gold" on `c-mrtpk4nc-w4732c` and
+  `c-mrugq62n-zqc9al`, which dropped both into the count-vs-count branch and lost it 76:80 and 152:632
+  to the face.
+- **The extended chartreuse zone now outranks the strict RED one.** It sat one rung below, so on a
+  willpower cell whose amount row falls past `capRect` the red locate ran first and always won.
+  Measured by label, a strict red locate at a willpower cell fires on 47/49 true lowers **and 292/304
+  true raises** — 86% uninformative — while the deep chartreuse locate is 301/304 vs 0/49. The
+  reorder changes the located line on **exactly 9 cells corpus-wide and all 9 are
+  `raise_effect/willpower`**: no lower, no effect and no order cell moves. (This is not round 5's
+  ruled-out experiment, which made the deep zone the PRIMARY chartreuse locate and cost 5 tiles; this
+  rung still only runs when the strict `capRect` locate found nothing.)
+  Together: **DIRECTION 20 → 3.**
+- **A weak template should not need double margin to be overruled.** The gradOnly synth override bar
+  is 0.10; for `amtSrc === "tm-weak"` it is now the same 0.05 the full-agree synth uses — a 0.85-tier
+  template is not a trusted read and the asymmetry had no basis. Measured: **AMOUNT 27 → 23, 4 boards
+  better, 0 worse**, and `c-ms167ipv-wwujgv`'s strip goes from 3/4 to perfect.
+
+**PRIORITY 3 — reference exemplar diversity. The picker was broken; fixing it still does not pay.**
+- The defect is real and worse than reported. `pickDistinct` deduped on `g0 ===`, which is no dedup
+  at all (two captures from one setup measure 244 and 243), and the BACKFILL deduped nothing
+  whatsoever — it re-added the very frame the tier picker had just skipped. Measured over the 472-pair
+  corpus: **19 of 20 digit classes** carried a |Δg0| ≤ 3 pair, `E|3` picked g0 244 twice, and `E|5`
+  filled all six slots from {121, 123}.
+- Replaced with **sharpest-first under a minimum relative separation (8% of g0)**, falling back to
+  farthest-point (max-min) when a tier is too crowded, and max-min for the cross-tier backfill.
+  Near-duplicate classes 19/20 → 15/20, every survivor a genuinely narrow lo tier.
+- **The 2×2, one fixed engine, same labels, four full-corpus runs:**
+
+| refs | headline | whole | outcomes | wpLvl | ordLvl | e1Lvl | e2Lvl | eff1 | eff2 |
+|---|---|---|---|---|---|---|---|---|---|
+| **round-6 incumbent (old picker, 271 src)** | **96.3** | **327** | **95.6** | **96.0** | 95.3 | **91.9** | 94.9 | **93.0** | 91.7 |
+| re-harvest, old picker, 331 src | 95.9 | 311 | 94.8 | 95.6 | 95.3 | 90.0 | 94.5 | 92.8 | 91.5 |
+| re-harvest, new picker, 331 src | 96.2 | 324 | 95.4 | 94.5 | **97.0** | 91.7 | **95.8** | 92.4 | **91.9** |
+| re-harvest, new picker, 271 src | 95.9 | 304 | 95.6 | 95.3 | 94.9 | 89.6 | 96.0 | 92.2 | 90.3 |
+
+  On the current 331-source pool the new picker beats the old by **+0.3 headline / +13 whole**. On
+  the 271-source pool **the order reverses**. And the shipped round-6 file beats all three rebuilds.
+  Split by batch, the re-harvest gains on samples-v3 (whole 59 → 63 of 87) and loses on the originals
+  (220 → 214 of 302): more sources displace exemplars that were serving the older population.
+  **The honest read is that the exemplar draw is high-variance — ±5% whole-parse across four
+  defensible builds — so g0 spread is not the dominant axis of exemplar quality and no geometric
+  proxy will reliably beat a lucky draw.** `ocr/level-refs.js` is therefore left at the round-6
+  build, byte-identical; `tools/build-level-refs.js` ships the fixed picker (it is strictly better
+  than the code it replaces on the pool that exists now) plus a loud DO-NOT-REGENERATE-WITHOUT-
+  RE-MEASURING warning printed at the end of every run, because the tool overwrites a file that
+  currently outperforms what it would produce. The 22 LOCALIZED exclusions were left untouched.
+
+**Same-labels A/B, full corpus, 472 scored pairs.** A-arm = unmodified HEAD in a `git worktree` with
+`samples/` symlinked in, so both arms score the round-8 labels.
+
+| metric | HEAD (A) | round 8 (B) |
+|---|---|---|
+| headline per-field avg | 96.1% | **96.3%** |
+| whole-parse | 318/472 (67.4%) | **329/472 (69.7%)** |
+| flag coverage | 99.3% (280/282) | **100.0%** (262/262) |
+| **silent errors** | **2** | **0** |
+| false alarms/shot | 5.9 (2801) | 5.9 (2802) |
+| outcomes | 94.9% | **95.8%** |
+
+(HEAD carried **3** silents against the pre-round labels; the gemType one is a label fix, so the
+same-labels A-arm shows 2.)
+
+Per-field (A → B): currentTurn **97.9 → 99.2** · maxTurns 99.8 → **100.0** · outcomes **94.9 → 95.8** ·
+rerollsRemaining 97.2 → 97.4 · gemType 99.4 · baseCost 97.6 · willpowerLevel 96.0 · orderLevel 95.3 ·
+effect2Level 94.9 · effect1 93.0 · effect1Level 91.9 · effect2 91.7 · processCostMultiplier 99.8.
+Field-level: **8 scalar fields fixed, 0 broken; 15 outcome sets better, 0 worse.** Scalar misses
+214 → **206**, boards carrying one 122 → **116**. One board's outcome SCORE fell
+(`c-mrw8gmxg-h54rrh`, 0.50 → 0.25) without any tile getting worse: a wrong tile stopped coincidentally
+multiset-matching a different wrong tile — positionally the same three tiles are wrong in both arms.
+
+Residual wrong fields (B): effect2 39 · effect1Level 38 · effect1 33 · effect2Level 24 · orderLevel 22 ·
+willpowerLevel 19 · rerollsRemaining 12 · baseCost 11 · currentTurn 4 · gemType 3 ·
+processCostMultiplier 1 · maxTurns 0. Outcome tiles missed 96 → **80** over 70 → **58** boards;
+positional taxonomy (A → B) AMOUNT 26 → **23** · DROPPED 27 → 27 · **DIRECTION 20 → 3** ·
+TARGET 14 → 17 · TYPE 9 → 9 · COSTSIGN 3 → 3.
+
+Holdout vs in-sample (djb2%5==0; no refs were rebuilt, so the split only guards the mined rules):
+holdout 95.2 → **95.6** with whole 60 → 63; in-sample 96.3 → **96.5** with whole 258 → 266. The gains
+are not memorization — they are slightly larger on holdout.
+
+**Label fix (one, pixel-arbitrated):** `c-mrzz2neu-teo43a` gemType `order` → `chaos`, evidence above.
+Lint: 480 labels, 0 errors, 5 pre-existing warnings.
+
+**RULED OUT, with numbers.**
+- *Re-harvesting the level refs at all*, under either picker, on either source pool — the 2×2 above.
+  This closes the "sharper exemplars are the lever" line the round-6 and round-7 notes both named: the
+  corpus grew by 60 harvestable sources and the reference set got no better. Any future attempt here
+  has to change the SELECTION CRITERION (supervised: score a candidate by how well it classifies a
+  held-out set) rather than the geometric proxy.
+- *Pure farthest-point (max-min) selection within a tier* — the obvious reading of "enforce g0
+  spread", and it is the wrong shape. It takes each tier's two ENDPOINTS, so the second hi exemplar
+  falls from g0 ~204 to ~180, hard against the mid tier's edge. The N node pays for it:
+  willpowerLevel 95.6 → **94.3** while orderLevel goes 95.3 → 97.2. Sharpest-first with a separation
+  floor keeps both (94.5 / 97.0) and is what shipped.
+- *The vivid-YELLOW amount locate* — round 4's named next try, and it is the wrong channel. A vivid
+  band (h 38-62, s > 0.55, v > 0.60) does locate a line, but measured by label over all 1880 cells it
+  fires on 95/293 raise-ORDER cells and 24/48 lower-order ones: it is reading the ORDER icon's own
+  gold face, not the "+N". The yellow willpower digits are only half inside it anyway (h ~45-65) and
+  the ▲ beside them is already chartreuse, so the existing `isAmountText` locate reaches the row —
+  it was the ladder ORDER and the direction guard that were wrong, not the pigment.
+- *The DROPPED block (27 tiles, now the largest)* — inspected, not attempted. On all eight boards
+  checked the icon reads `grey` AND the caption OCR is pure noise ("et a to|rrp tr tul|et",
+  "hl .|ll '|[i a. [l") on captures that are legible to the eye. Both target channels are dead at
+  once, which is the degraded tier, not a rule. Two of the boards are the zh-TW client.
+- *False alarms*: not touched as a target again. 2802 against 0 silents, and the population is
+  unchanged in shape — effect2Level 419 · outcomes 404 · effect1Level 399 · willpowerLevel 388 ·
+  orderLevel 385 · effect2 318 · effect1 304, so the four level fields plus the two names carry 79%
+  of them and outcomes most of the rest. Measured this round for whoever attacks it next: **1334 FAs
+  (48%) sit in 0.68-0.80, against 31 real misses in the same band** — 43:1, and the misses are the
+  level fields (willpower 10, effect1Level 8, order 7, effect2Level 3). Lifting the band would ship
+  those 31 silently, so it still needs a verifier, not a threshold move.
+
+Gate: lint-labels 0 errors; **96.3% ≥ 95% · outcomes 95.8% ≥ 94% · silent 0 = 0 → PASS**
+(`npm run eval-gate`, serial, now machine-enforcing the zero-silent invariant; the parallel harness
+reproduces it exactly — 329/472 whole, 262/262 flagged, 0 silents, 2802 FAs). Thresholds untouched:
+the headline clears by 1.3 and outcomes by 1.8, so the ratchet has room in both — **0.96/0.95 at
+ship** — but note that both merges so far broke the invariant on first contact with fresh boards, so
+a ratchet is a claim about boards the engine has grown into.
+
+**NOT DONE (owner's call at ship time):** version pins in `index.html` were left alone as instructed —
+`ocr/engine.js`, `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` and `ocr/structural-engine.js?v=93`
+still need a bump before this deploys. `ocr/level-refs.js` is byte-identical to the shipped build this
+round, so its pin alone can stay.
+
+- Next (iteration 11): the outcome strip is no longer the cheapest engine work — it clears its gate by
+  1.8 and its residual is now **DROPPED 27**, which is the degraded tier with both target channels
+  dead. The three name/level blocks (effect2 39 · effect1Level 38 · effect1 33) are unchanged and this
+  round closed the last cheap route into them: reference re-harvesting does not help, on top of the
+  ink-geometry, line-width and pigment channels ruled out in rounds 4, 5 and 7. **The honest read is
+  that engine rounds against this corpus are reaching their floor and the two levers left are
+  different in kind**: (a) supervised exemplar selection, which is the only untried idea with a
+  mechanism behind it, and (b) a verifier for the 0.68-0.80 confidence band, which holds 1334 of the
+  2802 false alarms against 31 real misses — that band is the one place where more evidence converts
+  into BOTH fewer misses and fewer false alarms. More data is the weaker investment now: 87 fresh
+  boards moved the headline 0.2 points, cost three silent errors (one of them a label error), and
+  added 60 harvestable reference sources that made the reference set no better.
