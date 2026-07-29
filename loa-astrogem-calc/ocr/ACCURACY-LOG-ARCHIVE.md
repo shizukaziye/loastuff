@@ -1633,3 +1633,71 @@ Sweep of additional fields lifted (agreed, currently flagged): 4 → 526 (7 wron
     gate silents        0              0
 
 455 of the 2450 false alarms reclaimed (18.6%), no value changed, two silent tiles removed.
+
+
+# ===== Round 12 (moved out of the working log by round 13) =====
+
+## Round 12 — reclaiming false alarms with independent witnesses
+
+The measurement first. `structural-engine.js` now records **cap provenance** per outcome
+tile under `OCR_CELL_EVID=1` (the pre-cap score plus which of the six caps fired), and a
+scratch counterfactual replays every tile's confidence from that record — faithful on
+1880 of 1888 tiles, the 8 misses being two outcomes-masked boards. Candidate policies were
+scored offline before a line of engine code changed.
+
+What that exposed:
+
+- **Tiles are the gate on CLEAN, not scalars.** If every tile flag vanished CLEAN goes
+  4 → 44; if every scalar flag vanished, 4 → 8. Forty-four whole-parse boards already had
+  zero scalar flags; only eight had zero tile flags.
+- **Four SILENT TILES already existed** (wrong yet ≥0.8). The gate cannot see them because
+  it scores `outcomes` as a MIN over four tiles, so another tile's cap is incidental cover.
+  At the granularity the window renders, they are confident bad advice. All four were
+  `src=tm` template commits of amount **1** — the documented absorber class.
+- Positional tile↔label alignment is exact (1801 positional vs 1803 multiset of 1880), so
+  a miss can be attributed to a tile.
+
+**Two independent witnesses, measured against labels over all 1880 cells.**
+
+1. **Direction** — the strict located amount line's colour, which comes from the line
+   locator rather than from clustering inside the arrow box. chartreuse ⇒ raise 582/583
+   (order/willpower) and 684/684 (effects); red ⇒ lower 87/87 and 95/95. **1449 of 1450.**
+2. **Amount** — the caption strip re-lexed on its own crop, mask and OCR call. Where it
+   agrees with the committed amount it is right **458/458**; where it dissents, 9 tiles,
+   4 of them a real error including two of the four silent tiles.
+
+**What shipped** (all in `ocr/structural-engine.js`):
+
+| # | change | effect |
+|---|---|---|
+| A | caption dissent (Lv.-anchored, against a committed `1`, not a synth-override) caps the tile | silent tiles 4 → 2 |
+| B | the sign cap lifts when the located line witnesses the direction AND the amount came from a trusted rung (tm/ocr/cap) | +158 tiles |
+| C | caption agreement waives the synth amount cap | +36 tiles |
+| D | the synth amount cap does not apply to a LOWER — `engine.js` snaps every lower to −1, so the cap guards a value the model discards | +49 tiles |
+| E | …nor to a RAISE whose target the wheel reads (unflagged) at level 4: OUTCOME_RATES excludes +2/+3/+4 there, so the amount is forced to 1 | +16 tiles |
+| F | a reroll tile whose grey and white OCR passes independently agree on both the word and the count scores 0.9 instead of 0.8 | +45 tiles |
+| G | `JOINT_SURE` 12 → 10 | +161 level fields |
+
+A is a tightening: it can only lower a confidence. B-F change no value at all, only whether
+a tile asks to be confirmed, and each was measured to lift **zero wrong tiles**. A waiver is
+not structurally safe the way round 10's overrides were — a tile can be wrong for a reason
+its witness does not cover, which is exactly how the unrestricted version of B cost two —
+so every one of them is scoped to what its witness actually measures.
+
+**`JOINT_SURE` re-measured** (the round-10 question). An offline replay of the shipped
+joint solve from `lvEvid` is faithful (0/472 mismatches). Margin distribution over the
+1817 joint-AGREED level fields:
+
+| margin | [0,2) | [2,4) | [4,6) | [6,8) | ≥8 |
+|---|---|---|---|---|---|
+| right | 32 | 50 | 82 | 129 | 1488 |
+| **WRONG** | **15** | **14** | **6** | **1** | **0** |
+
+The 6.20 outlier is `c-mrugq62n`'s east node and it stands alone — the next wrong field is
+at 5.26, only 7 of 36 clear 4, nothing clears 6.2, and on HOLDOUT boards the worst is 4.71.
+Extra fields lifted per bar, all currently flagged and all right: 7 → 382, 8 → 313,
+9 → 241, **10 → 183**, 11 → 99, 12 → 18. Bar 6 is the first that touches a wrong field.
+Shipped at 10: 1.6× the corpus maximum, 2.1× the holdout maximum. **8 is available at
+1.29× and was not taken** — the primary objective barely moves (CLEAN 18 → 19) and a
+calibrated log-likelihood ratio is optimistic about its own tails.
+

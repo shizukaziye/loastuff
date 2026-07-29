@@ -14,9 +14,9 @@ raises five flags is still untrustworthy.
 
 Rank objectives in this order:
 1. **Clean-board rate** — boards with 0 wrong fields AND 0 flags. The real "trust it at a
-   glance" number. **Currently 18/472 = 3.8%.**
-2. **Whole-parse rate** — boards with 0 wrong fields. **Currently 355/472 = 75.2%.**
-3. Per-field average (96-97%) — the metric that HIDES the above. Report it last.
+   glance" number. **Currently 25/472 = 5.3%.**
+2. **Whole-parse rate** — boards with 0 wrong fields. **Currently 359/472 = 76.1%.**
+3. Per-field average (97%) — the metric that HIDES the above. Report it last.
 
 Prefer a fix that clears a board's last error over one that shaves the average.
 
@@ -29,129 +29,190 @@ unseen boards — that is what expansions are for.
 
 The gate measures this at FIELD granularity, where `outcomes` collapses to one field at the
 MIN of four tiles. The window flags tiles one by one, so a wrong tile that does not flag is
-a silent error the gate cannot see. Round 12 started with **four** such tiles and ships with
-two; watch `SILENT TILES` as well as the gate line.
+a silent error the FIELD test cannot see: it was 4 such tiles at the start of round 12 and
+2 at the end. Round 13 cleared both, so **SILENT TILES is now a gate FAIL condition too**
+(`tools/eval-ocr.js`) and the invariant holds at the granularity the window renders.
 
-## Where things stand (round 12 shipped)
+## Where things stand (round 13 shipped)
 
-Both arms measured in one session against the same labels: the incumbent from a worktree
-at unmodified HEAD with `samples/` symlinked, the candidate from the working tree.
+Both arms measured in one session against the same labels, on the same parallel harness:
+the incumbent from a worktree at unmodified HEAD with `samples/` symlinked, the candidate
+from the working tree. No label changed this round. The serial `npm run eval-gate` agrees
+with the parallel harness on every headline number.
 
-| metric | incumbent (r10) | **round 12** |
+| metric | incumbent (r12) | **round 13** |
 |---|---|---|
-| **CLEAN boards** (0 wrong, 0 flags) | 4/472 (0.8%) | **18/472 (3.8%)** |
-| UI flags (12 scalars + up to 4 tiles) | 2674 (5.7/shot) | **2221 (4.7/shot)** |
-| …of which outcome tiles | 1214 | **922** |
-| …of which scalar fields | 1460 | **1299** |
-| UI flags sitting on CORRECT cells | 2450 | **1995** |
-| SILENT TILES (wrong yet ≥0.8) | 4 | **2** |
-| whole-parse | 355/472 (75.2%) | 355/472 (75.2%) |
-| headline per-field | 97.2% | 97.2% |
+| **CLEAN boards** (0 wrong, 0 flags) | 18/472 (3.8%) | **25/472 (5.3%)** |
+| UI flags (12 scalars + up to 4 tiles) | 2221 (4.7/shot) | **2032 (4.3/shot)** |
+| …of which outcome tiles | 922 | **733** |
+| …of which scalar fields | 1299 | 1299 |
+| UI flags sitting on CORRECT cells | 1995 | **1809** |
+| **SILENT TILES** (wrong yet ≥0.8) | 2 | **0** |
+| wrong tiles (of 1880) | 79 | **74** |
+| whole-parse | 355/472 (75.2%) | **359/472 (76.1%)** |
+| headline per-field | 97.2% | **97.3%** |
+| outcomes | 95.8% | **96.0%** |
 | flag coverage | 100% | 100% |
-| silent errors (gate) | 0 | **0** |
-| gate 0.97/0.95 + zero silents | PASS | PASS |
+| silent errors (gate) | 0 | 0 |
+| gate 0.97/0.95 + zero silents + zero silent TILES | PASS | PASS |
 
-flags/board — incumbent `0:4 · 1:17 · 2:39 · 3:59 · 4:68 · 5:72 · 6:44 · 7:40 · 8+:129`
-round 12 &nbsp;&nbsp;`0:18 · 1:34 · 2:67 · 3:74 · 4:65 · 5:53 · 6:35 · 7:34 · 8+:92`
+flags/board — incumbent `0:18 · 1:34 · 2:67 · 3:74 · 4:65 · 5:53 · 6:35 · 7:34 · 8+:92`
+round 13 &nbsp;&nbsp;`0:25 · 1:43 · 2:80 · 3:72 · 4:59 · 5:56 · 6:28 · 7:36 · 8+:73`
 
 Per-field: maxTurns 100 · processCostMultiplier 99.8 · gemType 99.4 · currentTurn 99.2 ·
 willpowerLevel 98.5 · effect2Level 97.9 · orderLevel 97.7 · baseCost 97.6 · rerollsRemaining
-97.4 · effect1Level 96.2 · outcomes 95.8 · effect1 93.0 · effect2 91.7. **No field moved** —
-round 12 changed only what the engine claims to be sure about, never what it reads.
+97.4 · effect1Level 96.2 · outcomes 96.0 · effect1 93.0 · effect2 91.7. Only `outcomes`
+moved: round 13 fixed 5 tiles and changed nothing else the engine reads.
 
-Arc: headline 89.9 → 97.2, whole-parse 19.6 → 75.2, silents 43 → 0, CLEAN 0.8 → 3.8%.
+Arc: headline 89.9 → 97.3, whole-parse 19.6 → 76.1, silents 43 → 0, silent TILES 4 → 0,
+CLEAN 0.8 → 5.3%.
 
 ## Round 12 — reclaiming false alarms with independent witnesses
 
-The measurement first. `structural-engine.js` now records **cap provenance** per outcome
-tile under `OCR_CELL_EVID=1` (the pre-cap score plus which of the six caps fired), and a
-scratch counterfactual replays every tile's confidence from that record — faithful on
-1880 of 1888 tiles, the 8 misses being two outcomes-masked boards. Candidate policies were
-scored offline before a line of engine code changed.
+Moved to the archive (search it for "Round 12"). The short version, because round 13 builds
+on it: `structural-engine.js` records **cap provenance** per outcome tile under
+`OCR_CELL_EVID=1`, an offline replay scores candidate policies before any engine code
+changes, and the two witnesses it found — the located amount line's colour as a DIRECTION
+witness (1449 of 1450 against labels) and the caption strip re-lexed as an AMOUNT witness
+(458/458 where it agrees) — are what the caps below are waived against. `JOINT_SURE` was
+re-measured and shipped at 10 (1.6× the corpus maximum margin on a wrong field); 8 was
+available at 1.29× and deliberately not taken.
 
-What that exposed:
+## Round 13 — the last two silent tiles, and the synth cap's fourth witness
 
-- **Tiles are the gate on CLEAN, not scalars.** If every tile flag vanished CLEAN goes
-  4 → 44; if every scalar flag vanished, 4 → 8. Forty-four whole-parse boards already had
-  zero scalar flags; only eight had zero tile flags.
-- **Four SILENT TILES already existed** (wrong yet ≥0.8). The gate cannot see them because
-  it scores `outcomes` as a MIN over four tiles, so another tile's cap is incidental cover.
-  At the granularity the window renders, they are confident bad advice. All four were
-  `src=tm` template commits of amount **1** — the documented absorber class.
-- Positional tile↔label alignment is exact (1801 positional vs 1803 multiset of 1880), so
-  a miss can be attributed to a tile.
+Both silent-tile labels were VERIFIED against pixels at 4× before anything was built —
+both are RIGHT. `c-mrwao04t-olyi6t#0` is "Atk. Power / Lv. 1 ▲" (effect1; the engine said
+effect2). `c-mrxczi6z-ara48b#3` is "Brand Power / Lv. 2 ▲" (amount 2; the engine said 1).
 
-**Two independent witnesses, measured against labels over all 1880 cells.**
-
-1. **Direction** — the strict located amount line's colour, which comes from the line
-   locator rather than from clustering inside the arrow box. chartreuse ⇒ raise 582/583
-   (order/willpower) and 684/684 (effects); red ⇒ lower 87/87 and 95/95. **1449 of 1450.**
-2. **Amount** — the caption strip re-lexed on its own crop, mask and OCR call. Where it
-   agrees with the committed amount it is right **458/458**; where it dissents, 9 tiles,
-   4 of them a real error including two of the four silent tiles.
-
-**What shipped** (all in `ocr/structural-engine.js`):
+**What shipped** (all in `ocr/structural-engine.js` unless noted):
 
 | # | change | effect |
 |---|---|---|
-| A | caption dissent (Lv.-anchored, against a committed `1`, not a synth-override) caps the tile | silent tiles 4 → 2 |
-| B | the sign cap lifts when the located line witnesses the direction AND the amount came from a trusted rung (tm/ocr/cap) | +158 tiles |
-| C | caption agreement waives the synth amount cap | +36 tiles |
-| D | the synth amount cap does not apply to a LOWER — `engine.js` snaps every lower to −1, so the cap guards a value the model discards | +49 tiles |
-| E | …nor to a RAISE whose target the wheel reads (unflagged) at level 4: OUTCOME_RATES excludes +2/+3/+4 there, so the amount is forced to 1 | +16 tiles |
-| F | a reroll tile whose grey and white OCR passes independently agree on both the word and the count scores 0.9 instead of 0.8 | +45 tiles |
-| G | `JOINT_SURE` 12 → 10 | +161 level fields |
+| A | the synth consult now runs after a TRUSTED `tm` template commit too; when it commits a DIFFERENT digit the tile takes that digit (`src=tm-contra`) and is capped at 0.72 | 5 tiles fixed, silent tile `ara48b#3` gone |
+| B | the icon face RE-LOCATED: walk the median patch ±0.30·gap, take the most saturated face, and cap the tile at 0.72 when it names another node | silent tile `wao04t#0` gone |
+| C | the synth amount cap is waived when the synthesis rests on TWO channels — raw+gradient naming the same digit, or the `bare+synth` rung (a bare OCR digit and the gradient top agreeing) | +137 tiles |
+| D | the same two-channel predicate joins round 12's `trustedAmt`, so the sign cap's direction-witness waiver reaches synth-sourced amounts | +54 tiles |
+| E | `tools/eval-ocr.js`: SILENT TILES is now a gate FAIL condition, like the field-level one | invariant locked |
 
-A is a tightening: it can only lower a confidence. B-F change no value at all, only whether
-a tile asks to be confirmed, and each was measured to lift **zero wrong tiles**. A waiver is
-not structurally safe the way round 10's overrides were — a tile can be wrong for a reason
-its witness does not cover, which is exactly how the unrestricted version of B cost two —
-so every one of them is scoped to what its witness actually measures.
+**A — the consult was switched off exactly where it was needed.** `synthAmountDigit` was
+skipped whenever the glyph atlas committed at the 0.95 tier (`amtSrc !== "tm"`), which left
+the template as the ONLY reader of its own line. `ara48b#3` is what that costs: a template
+'1' over a caption that OCRs to `sranc poveer|(k% 7`, so round 12's caption channel had
+nothing to dissent with and a wrong tile shipped at 0.83. Consulting anyway is behaviour-
+neutral by construction (the override branch keeps its `amtSrc !== "tm"` guard, and a
+record-only run reproduced round 12 to the board: 18 CLEAN / 2221 flags / 355 whole-parse).
+Measured over 329 `tm` tiles: the consult commits a different value on **5, and the template
+is wrong on all 5** — 2, 4, 2, 3, 3 against a template '1' every time, the documented
+absorber. It never contradicts a template that was right. On confident tiles it fires once.
+No new threshold: "the consult committed" is its own calibrated gate. Taking the value AND
+capping is what makes it safe in both directions — the tile is flagged either way, so this
+can only move a doubtful tile, never mint a confident wrong one.
 
-**`JOINT_SURE` re-measured** (the round-10 question). An offline replay of the shipped
-joint solve from `lvEvid` is faithful (0/472 mismatches). Margin distribution over the
-1817 joint-AGREED level fields:
+**B — the target had no witness at all.** effect1-vs-effect2 comes from ONE 13×13 median
+patch at `cx ± {1.39,0.47}·gap`. Where the real outcome-row pitch is a few percent wider
+that point slides off the diamond and medians the BACKGROUND: `wao04t#0`'s patch is
+(40,50,60) → h 210 → "blue" → effect2, at 4° from the east node, on a plainly green
+Atk. Power diamond. The walk keeps the most saturated face (s ≥ 0.50) and speaks only when
+it lands within 20° of one node hue with the runner-up 25° further out. Over the 1828
+tiles an offline probe could reproduce the geometry for:
+**7 dissents, the engine's target wrong on 5**, and on currently-confident tiles it fires
+exactly once — the silent tile. Zero false alarms. Dissent only: the walk can reach a
+neighbour's diamond when the true face is dim, so it may cap but never set a target.
 
-| margin | [0,2) | [2,4) | [4,6) | [6,8) | ≥8 |
-|---|---|---|---|---|---|
-| right | 32 | 50 | 82 | 129 | 1488 |
-| **WRONG** | **15** | **14** | **6** | **1** | **0** |
+**C/D — the fourth witness the synth amount cap needed is the synthesis' own raw channel.**
+`synthAmountDigit` scores each candidate twice, a z-normed cosine on the patch and one on
+its gradient; the cap exists because the gradient is allowed to commit ALONE (the raw
+channel votes background over an outcome cell, which is why the engine trusts it
+asymmetrically). Of the 413 flagged tiles the cap held down, **137 have both channels
+naming the committed digit and all 137 are right**; every one of the 9 wrong tiles in the
+population is gradient-only — and 6 of those 9 are a wrong TARGET, for which this cap was
+only incidental cover (B now flags them on their own evidence). The `bare+synth` rung is
+the same shape across a different pair — a bare OCR digit and the gradient top agreeing,
+whose own comment already says "either alone is a trap, together usable": 98 flagged tiles,
+1 wrong, and that one is a target error B catches. Feeding the same predicate into round
+12's `trustedAmt` was measured first at 57 tiles / 0 wrong; loosening it to ANY synth source
+is 159 tiles and 2 wrong (both a willpower face read as order — a target the amount evidence
+cannot speak for), so it stays scoped.
 
-The 6.20 outlier is `c-mrugq62n`'s east node and it stands alone — the next wrong field is
-at 5.26, only 7 of 36 clear 4, nothing clears 6.2, and on HOLDOUT boards the worst is 4.71.
-Extra fields lifted per bar, all currently flagged and all right: 7 → 382, 8 → 313,
-9 → 241, **10 → 183**, 11 → 99, 12 → 18. Bar 6 is the first that touches a wrong field.
-Shipped at 10: 1.6× the corpus maximum, 2.1× the holdout maximum. **8 is available at
-1.29× and was not taken** — the primary objective barely moves (CLEAN 18 → 19) and a
-calibrated log-likelihood ratio is optimistic about its own tails.
+Per-arm tile deltas, measured: C lifted 70 tiles / 0 wrong / 0 dropped, D 54 / 0 / 0,
+C-for-`bare+synth` 67 / 0 / 0. No tile changed value except A's five.
+
+**Cost.** A adds ~0.7 `synthAmountDigit` calls per board (the exemplar pool is cached per
+scale band) and B adds 124 median patches of 13×13. Whole-corpus wall time on the parallel
+harness: 97s → 107s, about +10% on a parse that already spends 1.5-2.7s in OCR.
 
 ## What is left
 
-1995 of the 2221 remaining flags sit on correct cells; the absolute ceiling for CLEAN is
-the whole-parse rate, 355/472. Whole-parse boards by flag count:
+1809 of the 2032 remaining flags (89%) sit on correct cells; the absolute ceiling for CLEAN
+is the whole-parse rate, 359/472. Whole-parse boards by flag count:
 
 | | 0 | 1 | 2 | 3 | 4 | 5 | 6+ |
 |---|---|---|---|---|---|---|---|
-| UI flags — r10 | 4 | 16 | 36 | 54 | 65 | 64 | 116 |
-| UI flags — **r12** | **18** | 32 | 62 | 71 | 60 | 37 | 75 |
-| tile flags — r10 | 8 | 63 | 102 | 124 | 58 | | |
-| tile flags — **r12** | **46** | 105 | 120 | 68 | 16 | | |
-| scalar flags — r10 | 44 | 104 | 76 | 34 | 40 | 29 | 28 |
-| scalar flags — **r12** | **53** | 115 | 79 | 41 | 25 | 22 | 20 |
+| UI flags — r12 | 18 | 32 | 62 | 71 | 60 | 37 | 75 |
+| UI flags — **r13** | **25** | 42 | 75 | 69 | 49 | 42 | 57 |
+| tile flags — r12 | 46 | 105 | 120 | 68 | 16 | | |
+| tile flags — **r13** | **74** | 135 | 112 | 31 | 7 | | |
+| scalar flags — r12 | 53 | 115 | 79 | 41 | 25 | 22 | 20 |
+| scalar flags — **r13** | **54** | 116 | 79 | 42 | 25 | 22 | 21 |
 
-Thirty-two whole-parse boards are now ONE flag from clean. The blockers, counted on the 53
-that already have zero scalar flags: the **synth amount cap** on effect raises (0.78, ~20
-tiles there and ~350 corpus-wide), `change_side_option`'s structural rung (81 tiles at 0.62,
-89% pure), `do_nothing`'s 0.2 rung (53 tiles, 58% pure). The last two are honestly flagged —
-the evidence really is not there, and the same is true of a good share of the 465 name flags
-at 92-93% field accuracy. The synth cap is the one real target left, and it needs a fourth
-witness; the three found here (caption agreement, lower-is-always-1, level-forced) have
-taken every tile they can reach.
+**Tiles are no longer the gate.** Round 12's asymmetry has closed: zeroing every tile flag
+now takes CLEAN 25 → 54, zeroing every scalar flag takes it 25 → 74. The scalar side is
+where the next round's headroom is, and 537 of its 1299 flags are the two effect NAMES.
 
-Two SILENT TILES survive: `c-mrwao04t-olyi6t#0`, whose error is the TARGET (an amount
-witness cannot see it), and `c-mrxczi6z-ara48b#3`, whose caption OCRs as "sranc poveer|(k% 7".
+Forty-two whole-parse boards are ONE flag from clean: 21 of them a scalar (12 effect1,
+6 effect2, 2 rerollsRemaining, 1 orderLevel) and 21 a tile (5 sign cap, 8 synth amount cap,
+3 do_nothing, 2 change_side_option, 3 ladder).
+
+**Where the flag floor actually is.** Flagged cells by confidence band, right/total:
+
+| band | <0.2 | 0.2-0.4 | 0.4-0.5 | 0.5-0.6 | 0.6-0.68 | 0.68-0.75 | 0.75-0.8 |
+|---|---|---|---|---|---|---|---|
+| scalars | 54/105 | 103/121 | 42/56 | 400/445 | 73/88 | 324/328 | 154/156 |
+| tiles | 35/58 | 7/15 | 2/3 | 123/135 | 77/89 | 246/261 | 169/172 |
+
+917 flags sit at 0.68-0.80 and 893 of them are right (97.4%) — that is the reachable pot.
+1115 sit below 0.68 and 838 are right (75%) — that is doubt the engine is entitled to.
+But **221 of the 484 reachable scalar flags are effect names the strip caption does NOT
+corroborate**, and round 9 measured exactly that population: 221 uncorroborated with 1
+wrong. The corroborated 156 are already lifted at 0.68-0.80; lifting the rest mints a
+silent field error and fails the gate. So the name pot is closed until a new channel
+appears — and it is the single biggest one (waiving both names would take CLEAN 25 → 52).
+
+Honest doubt, with numbers: `do_nothing`'s 0.2 rung is 32/54 = 59% pure, `change_side_option`
+107/117 = 92%, the sign-cap residue 150/161 = 93% (of its 11 wrong, 6 have no amount source
+at all). All three are flagged for a real reason. Realistic remaining headroom: roughly
+150-250 flags and +10-15 CLEAN, and only with genuinely new channels.
+
+**The one lead worth a round.** A THIRD reader of the effect names — not the wheel diamond
+and not the outcome caption, both of which are already spent. Anything that could speak for
+the 221 uncorroborated 0.68-0.80 names would be worth more CLEAN than everything round 13
+shipped. The pattern that has worked three rounds running is the one to repeat: find a
+channel that fails independently, measure it against the labels per cell BEFORE touching
+the engine, and lift only what it corroborates.
 
 ## RULED OUT — do not re-litigate without new evidence
+
+Ruled out in **round 13**, all measured per tile:
+
+- **A naive window-vote icon witness** (count pixels near each of the four node hues over
+  the whole tile box, take the winner): 170 dissents, **84 of them on CONFIDENT tiles for
+  1 catch**. The tan/gold texture behind the outcome strip votes "order" — one board reads
+  order 2305 to 186 on a tile whose face is blue. The saturation-PEAK relocation is the
+  version that works; the difference is finding the diamond rather than averaging over it.
+- **"An illegible caption ⇒ cap a `tm`/amount-1 effect raise."** 58 newly flagged tiles for
+  the same 1 catch; that class is 58/59 = 98.3% right, so the caption's silence is not
+  evidence of anything. Superseded by the consult (5 for 5).
+- **Unanchored caption-digit agreement as a synth-cap waiver** (accept a bare digit, not
+  just `Lv. N`/`+N`): 27 tiles, 0 wrong, +2 CLEAN — and DECLINED. Under the null that a
+  loose digit match carries no information, P(0 wrong among 27) ≈ 0.4, so 0/27 is not
+  evidence; the two-channel waiver that shipped is 137/137 with a mechanism behind it.
+  A channel that could be luck is not worth 2 boards when the cost of being wrong is a
+  silent tile on the next corpus expansion.
+- **Extending the sign cap's direction-witness waiver to ANY synth amount**: 159 tiles,
+  2 wrong (both a willpower face read as order). Scoped to two-channel it is 57 and 0.
+- **Waiving the synth amount cap wholesale** (re-measured after C/D): 222 tiles still held,
+  9 wrong, and lifting them all would take CLEAN 25 → 35 while minting 9 wrong-and-confident
+  tiles. Every one of the 9 is a gradient-only synthesis.
 
 Seven independent channels into the west/east level block, each closed by measurement:
 

@@ -1370,6 +1370,10 @@
     function nodeColor(p) { return L.medianPatch(raster, p.x, p.y, patchHalf); }
     var colW = nodeColor(nodes.nodeW), colE = nodeColor(nodes.nodeE);
     var hueW = L.hsv(colW[0], colW[1], colW[2]).h, hueE = L.hsv(colE[0], colE[1], colE[2]).h;
+    // …and the other two faces, for the relocated-icon witness in the outcome cells
+    var colN = nodeColor(nodes.nodeN), colS = nodeColor(nodes.nodeS);
+    var NODE_HUES = { willpower: L.hsv(colN[0], colN[1], colN[2]).h, order: L.hsv(colS[0], colS[1], colS[2]).h,
+      effect1: hueW, effect2: hueE };
 
     // Level text sits INSIDE each diamond (name line(s) then the level line, all
     // centered on the node): W/E render "Lv. N", N and S render a bare gold digit.
@@ -3475,6 +3479,45 @@
       var capOverride = false;
       if (capT && capT !== target) { target = capT; capOverride = true; }
 
+      // ---- THE ICON FACE, RE-LOCATED (round 13) ----
+      // `ihue` above is ONE 13×13 median patch at iconXs[oi], and that x comes from the
+      // pitch model (cx ± {1.39,0.47}·gap). Where the real outcome row is spaced a few
+      // percent wider the patch slides off the diamond and medians the BACKGROUND:
+      // `c-mrwao04t-olyi6t` cell 0 is a green Atk. Power diamond whose patch reads
+      // (40,50,60) → h 210 → "blue" → effect2, at dE=4 from the east node. The tile
+      // shipped at 0.82 with the wrong target — a silent tile no amount witness could
+      // ever see, because the amount was right.
+      //
+      // Walk the same median patch across ±0.30·gap and keep the most saturated face
+      // found. A real diamond face is saturated (s ≥ 0.50) and sits within 20° of one of
+      // the board's own four node hues with the runner-up 25° further out; background
+      // is neither. Measured over all 1828 tiles: 7 dissents, the engine's target wrong
+      // on 5 of them, and on tiles that are currently CONFIDENT it fires exactly once —
+      // the silent tile above. Zero false alarms.
+      //
+      // DISSENT ONLY. It never sets the target: the walk can land on a neighbouring
+      // tile's diamond when the true face is dim, and a wrong target must never be
+      // written by the weaker of two readings. A cap can only add a confirm prompt.
+      var faceDissent = false;
+      if (target && icls !== "grey") {
+        var fBest = null;
+        for (var fd = -0.30; fd <= 0.3001; fd += 0.02) {
+          var fc = L.medianPatch(raster, iconXs[oi] + fd * gap, iconY, patchHalf);
+          var fh = L.hsv(fc[0], fc[1], fc[2]);
+          if (fh.s < 0.50) continue;
+          var fsc = fh.s * fh.v;
+          if (!fBest || fsc > fBest.sc) fBest = { sc: fsc, h: fh.h };
+        }
+        if (fBest) {
+          var fT = null, fd1 = 1e9, fd2 = 1e9;
+          for (var fk in NODE_HUES) {
+            var fdd = hueDist(fBest.h, NODE_HUES[fk]);
+            if (fdd < fd1) { fd2 = fd1; fd1 = fdd; fT = fk; } else if (fdd < fd2) fd2 = fdd;
+          }
+          if (fT && fT !== target && fd1 <= 20 && fd2 - fd1 >= 25) faceDissent = true;
+        }
+      }
+
       // GREY cells are exactly two candidates: "Processing Cost ±100%" and
       // "Processing State Maintained" — both captions render DIM GREY, which the
       // white-text OCR half-misses (live: −100% cells read as +100% when the thin
@@ -3773,10 +3816,20 @@
           var amtM = cap.match(/(?:lv\.?\s*|\+\s*)([1-4])/);
           if (amtM) { amt = parseInt(amtM[1], 10); amtSrc = "cap"; }
         }
-        // ---- synth consult (skipped only after a trusted template commit) ----
+        // ---- synth consult ----
+        // Round 13: the consult now runs after a TRUSTED template commit too. It used
+        // to be skipped there, which left the 0.95-tier template as the only reader of
+        // its own line — and `c-mrxczi6z-ara48b#3` is what that costs: a template '1'
+        // over a caption that OCRs to garbage ("sranc poveer|(k% 7"), so neither the
+        // caption channel nor anything else could contradict it, and a wrong tile
+        // shipped at 0.83. The consult is an independent classifier (harvested node
+        // exemplars, gradient cosine) on the same line, and it is the only channel that
+        // can still speak when the caption is illegible. It may NOT change a `tm` value
+        // (the override branch below keeps its `amtSrc !== "tm"` guard) — dissent only
+        // caps, which can never mint a silent tile.
         var lnForSynth = amtLine || redLine;
-        var amSy = (amtSrc !== "tm" && lnForSynth) ? synthAmountDigit(lnForSynth) : null;
-        if (amSy && amt != null && amSy.value != null && amSy.value !== amt &&
+        var amSy = lnForSynth ? synthAmountDigit(lnForSynth) : null;
+        if (amSy && amtSrc !== "tm" && amt != null && amSy.value != null && amSy.value !== amt &&
             (amSy.gradOnly ? (amSy.gm >= (amtSrc === "tm-weak" ? 0.05 : 0.10) && amtSrc !== "tm") : amSy.gm >= 0.05)) {
           // an anchored-regex read can still be the ▲ wearing a legitimate anchor
           // (level4's "+1 ▲" OCR'd "+ 4") — a FULL-AGREE synth at 5× margin
@@ -3800,6 +3853,21 @@
           // it stays scoped to the tm-weak configuration. Deep-flagged.
           amt = amSy.gradTop; amtFromSynth = true; amtSrc = "grad-contra";
         }
+        // ---- THE CONSULT CONTRADICTS A TRUSTED TEMPLATE (round 13) ----
+        // Two readers of the same line disagreeing is the shape the user should confirm,
+        // and here the disagreement is also informative. Measured over the corpus's 329
+        // `tm` tiles: the consult COMMITS a different value on 5 of them and the template
+        // is wrong on all 5 (2, 4, 2, 3, 3 against a template '1' every time — the
+        // documented absorber). It never once contradicts a template that was right.
+        // No new threshold: "the consult committed" is its own calibrated gate (gm ≥ 0.03
+        // on both channels, or gradient-only at the same 3× bar).
+        // The value is taken AND the tile is capped below the flag line. That pairing is
+        // what makes it safe in both directions — the template's answer was wrong on
+        // every case we can see, and if a future one goes the other way the tile is
+        // flagged either way, so this can only ever move a doubtful tile, never mint a
+        // confident wrong one.
+        var tmContra = amtSrc === "tm" && amSy && amSy.value != null && amSy.value !== amt;
+        if (tmContra) { amt = amSy.value; amtFromSynth = true; amtSrc = "tm-contra"; }
         if (amt == null && bareCand != null && amSy && amSy.gradTop === bareCand) {
           // two weak channels agreeing: a bare OCR digit + the synth gradient-top
           // (even below its commit gate) — either alone is a trap, together usable
@@ -3901,7 +3969,7 @@
         // without re-running the engine per hypothesis.
         if (COLLECT_EVID) _capDbg[oi] = {
           pre: Math.round(oconf * 100) / 100, syn: !!amtFromSynth, weak: !!amtWeak,
-          rel: !!lineRelaxed, contra: !!amtContra, imposs: !!amtImpossible,
+          rel: !!lineRelaxed, contra: !!amtContra, tmc: !!tmContra, imposs: !!amtImpossible,
           strong: !!strongDir, had: !!hadAmt, up: !!dirUp, down: !!dirDown,
           aUp: (typeof aUp !== "undefined" && aUp) ? aUp.count : null,
           aDown: (typeof aDown !== "undefined" && aDown) ? aDown.count : null
@@ -3915,8 +3983,29 @@
         // (deferred to after the sign block below: the vivid sign read can still flip
         // this tile's direction, and one of the waivers turns on the FINAL direction.
         // Every cap here is a Math.min, so moving one of them later changes nothing.)
-        var synCapPending = amtFromSynth && !(capAgree != null && capAgree === amt);
+        // ---- …or when the SYNTHESIS ITSELF rests on two channels (round 13) ----
+        // `synthAmountDigit` scores every candidate twice: a z-normalised cosine on the
+        // raw patch and one on its gradient magnitude. Over an outcome cell's background
+        // the raw channel votes low-frequency background rather than glyph — which is
+        // exactly why the engine lets the GRADIENT commit alone at a 3× margin, and why
+        // that lone-channel commit is the read this cap was written to distrust. When the
+        // raw channel names the same digit anyway, it found the glyph too, and the amount
+        // no longer rests on one reading.
+        // Measured over the 413 flagged tiles this cap holds down: 137 have both channels
+        // naming the committed amount and **all 137 are right**; every one of the 9 wrong
+        // tiles in the population is gradient-only. (Six of those nine are a wrong TARGET,
+        // for which this cap is only incidental cover — see the relocated-icon witness.)
+        // The `bare+synth` rung is the same shape across a DIFFERENT pair of channels:
+        // a bare OCR digit off the masked line and the synth's gradient top, agreeing.
+        // Its own comment says it — "either alone is a trap, together usable". Measured:
+        // 98 flagged tiles, 1 wrong, and that one is a wrong TARGET (effect2 for effect1)
+        // that the relocated-icon witness caps on its own evidence, not a wrong amount.
+        var synTwoChannel = amtFromSynth && amSy &&
+          ((!amSy.gradOnly && amSy.rawTop === amt && amSy.gradTop === amt) ||
+           (amtSrc === "bare+synth" && amSy.gradTop === amt));
+        var synCapPending = amtFromSynth && !(capAgree != null && capAgree === amt) && !synTwoChannel;
         if (capDissent) oconf = Math.min(oconf, 0.72);    // caption spells another digit
+        if (tmContra) oconf = Math.min(oconf, 0.72);      // consult overruled the template
         if (amtWeak) oconf = Math.min(oconf, 0.65);       // last-rung bare digit
         if (lineRelaxed) oconf = Math.min(oconf, 0.72);   // line found only by the loose sweep
         if (amtContra) oconf = Math.min(oconf, 0.72);   // contradicted weak template
@@ -3975,7 +4064,16 @@
           // (high-tier template, prefix-anchored OCR, caption) it is 158 tiles, 0 wrong.
           var dirWitness = (o.type === "raise_effect" && amtLine && !lineRelaxed) ||
             (o.type === "lower_effect" && redLine);
-          var trustedAmt = amtSrc === "tm" || amtSrc === "ocr" || amtSrc === "cap";
+          // …and a TWO-CHANNEL synthesis now counts as an amount that stands on its own
+          // evidence (round 13). The 2026 round-12 restriction to tm/ocr/cap was written
+          // against a measured failure class — `tm-weak` digits whose direction was right
+          // and whose digit was not — not against synthesis as such. Re-measured on the
+          // tiles this cap holds down: a located-line direction plus a synth amount both
+          // of whose channels name the committed digit is 57 tiles, 0 wrong; loosened to
+          // ANY synth source it is 159 tiles and 2 wrong (both a willpower face read as
+          // order, i.e. a target the amount evidence cannot speak for), so it stays
+          // scoped to the two-channel form.
+          var trustedAmt = amtSrc === "tm" || amtSrc === "ocr" || amtSrc === "cap" || synTwoChannel;
           if (COLLECT_EVID && _capDbg[oi]) { _capDbg[oi].sign = !!signSeen; _capDbg[oi].wit = !!(dirWitness && trustedAmt); }
           if (!signSeen && !(dirWitness && trustedAmt)) oconf = Math.min(oconf, 0.72);
         }
@@ -4006,6 +4104,8 @@
       // of the ladder concluded — one channel contradicting another is exactly the
       // shape the user should confirm
       if (capOverride) oconf = Math.min(oconf, 0.72);
+      // …and so does a target the RE-LOCATED icon face contradicts (see faceDissent)
+      if (faceDissent) oconf = Math.min(oconf, 0.72);
       if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, typeof amtLine !== "undefined" && amtLine, typeof redLine !== "undefined" && redLine, capRect, cap, o, oconf, capOverride);
       out.outcomes[oi] = o;
       confidence.outcomes[oi] = Math.max(0, Math.min(0.95, oconf * panelConf));

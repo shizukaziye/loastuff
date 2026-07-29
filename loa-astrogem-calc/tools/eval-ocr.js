@@ -455,9 +455,8 @@ async function main() {
       // Get advice without reading the parse.
       console.log("  CLEAN boards (0 wrong, 0 flags): " + cleanBoards + "/" + n + " (" + pct(cleanBoards / n) + ")" +
         "   UI flags: " + totUiFlags + " (" + (totUiFlags / n).toFixed(1) + "/shot, of which " + totTileFlags + " are outcome tiles)");
-      // Tile-granularity invariant. Not yet a gate FAIL: round 12 cut these 4 -> 2 and
-      // the last two are named in ACCURACY-LOG.md as the next round's first job. Flip to
-      // a FAIL condition the moment it reaches 0, exactly as the field-level one is.
+      // Tile-granularity invariant, and since round 13 a gate FAIL condition exactly as
+      // the field-level one is: 4 -> 2 (round 12) -> 0 (round 13).
       console.log("  SILENT TILES (wrong yet confident at tile granularity): " + totSilentTiles +
         (totSilentTiles ? "  <-- invariant breach the scored-field MIN cannot see" : ""));
       silentTileList.slice(0, 6).forEach(function (l) { console.log("    TILE " + l); });
@@ -494,7 +493,7 @@ async function main() {
       console.log("  per-field: " + line);
       jsonOut.engines[eng.name] = {
         label: eng.label, samples: n,
-        headline: headlineAvg, outcomes: outcomesAvg, silent: totSilent,
+        headline: headlineAvg, outcomes: outcomesAvg, silent: totSilent, silentTiles: totSilentTiles,
         scalarFieldAccuracy: totScalar ? totScalarCorrect / totScalar : 0,
         wholeParse: whole / n,
         flagCoverage: wrongTotal ? wrongFlagged / wrongTotal : null,
@@ -518,11 +517,18 @@ async function main() {
     // reaches the user as bad advice with no warning). Enforce it here, not by habit —
     // every corpus expansion so far has broken it on first contact with unseen boards.
     var okS = (r.silent || 0) === 0;
+    // …and the same invariant at TILE granularity, which is what the Advisor window
+    // actually renders. The scored `outcomes` field is a MIN over four tiles, so a wrong
+    // tile can hide behind a sibling's cap and pass the field-level test above. Round 12
+    // inherited four such tiles and shipped two; round 13 cleared both, so from here it
+    // is a gate condition like any other rather than a number to watch.
+    var okT = (r.silentTiles || 0) === 0;
     console.log("GATE " + g.engine + ": per-field " + pct(r.headline) + (okF ? " ≥ " : " < ") + pct(g.fields) +
       " · outcomes " + pct(r.outcomes) + (okO ? " ≥ " : " < ") + pct(g.outcomes) +
       " · silent " + (r.silent || 0) + (okS ? " = 0" : " > 0") +
-      "  ->  " + (okF && okO && okS ? "PASS" : "FAIL"));
-    if (!(okF && okO && okS)) gateFailed = true;
+      " · silent tiles " + (r.silentTiles || 0) + (okT ? " = 0" : " > 0") +
+      "  ->  " + (okF && okO && okS && okT ? "PASS" : "FAIL"));
+    if (!(okF && okO && okS && okT)) gateFailed = true;
   });
 
   console.log("Done. (Tesseract Node scores are a lower bound; the browser engine adds regional cropping.)");
