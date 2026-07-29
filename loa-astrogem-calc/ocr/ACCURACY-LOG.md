@@ -175,3 +175,108 @@ its own label. Refusing both is correct; layout.js untouched. They belong in
 
 Shipped 2026-07-28 (pins glyphs 55 / level-refs 3 / structural 90; gate ratcheted to
 0.94/0.91). The two non-Processing large frames are now `_unusable` (302 scored pairs).
+
+**Loop model policy (2026-07-29):** campaign rounds run on **Opus 5**. The grind —
+hundreds of eval cycles, pixel forensics, ref rebuilds — is long-horizon tool work
+where Opus 5 is the better rate/throughput trade; Fable 5 hit its session limit twice
+mid-round. Reserve Fable 5 for one-shot reasoning-heavy passes (e.g. label arbitration
+disputes) when its limit is fresh.
+
+### 2026-07-29 · iteration 5 — round 3: the gem title, and who arbitrates a split vote
+Two agents again (the first died to a rate limit mid-round; its working tree was
+picked up and finished). **Eval wall-time is 6m25s, not the ~2.5h the round-2 note
+assumed** — that number came from a run that also scored the tesseract engine.
+`--engines=structural` alone is cheap enough to A/B a whole corpus per idea, and
+this round did five full runs. No data files were rebuilt: glyphs and level-refs
+are byte-identical to round 2, so every point below is engine work.
+
+- **effect1Level 2→1 ×16 → ×5.** The W synth scan was geometrically unable to see
+  a '1': "Lv. N" is node-CENTRED, so a narrow digit pulls the whole line left and
+  the digit lands ~0.148 gap left of the old scan centre, outside its reach —
+  class-2 refs then won on face texture. Centre moved to +0.125 with reach 0.145,
+  plus a fragment-anchored second centre for the 114/604 W/E line locates that come
+  back exactly the "Lv." prefix's width. The scan window (σ=9px Gaussian on the
+  GRADIENT channel only) stops the green face's diagonal rays from doing the
+  matching. Amount-synth kept its own unwindowed calibration — outcome cells are
+  not diamond face art.
+- **baseCost 93.4% → 99.7%** (20 flagged misses → 1). Three separate causes, all
+  in the title read, none of them glyphs:
+  1. The title ink is **rarity-coloured**. Measured over all 307 frames by
+     widest-located-line: magenta(epic) 174 · cyan(rare) 89 · orange(legendary/
+     relic) 31 · blue-violet 7 · gold 3. A magenta-only rescue mask is blind on
+     120 boards. The rescue now locates a line under each family and reads the
+     best few.
+  2. **PSM 7 silently refuses these crops.** On three boards whose mask renders a
+     flawless "Order Astrogem: Solidity", psm 7 returns "" at every scale while
+     psm 13 (RAW_LINE, layout heuristics bypassed) returns the string. The rescue
+     falls back to psm 13 whenever psm 7 comes back short.
+  3. The inherited accept guard compared the rescue **against itself**:
+     `computeTitleScores()` writes `sfxScore` onto the shared GEM_TITLES objects,
+     so reading `keepScores[0].t.sfxScore` after the rescore returns the rescue's
+     own number. Whenever the primary's garbage text happened to rank the same
+     suffix first — the array-order tie, i.e. most garbage reads — a perfect
+     rescue was refused. Two pixel-verified boards read "Order Astrogem:
+     Stability" and kept the default cost anyway. Now snapshotted as a number.
+  Also: the edit-distance rung grew a **d=3 tier** gated on a 2-distance margin to
+  the runner-up (the six suffixes sit ≥4 apart, so d=3 alone is not decisive) and
+  priced at 0.45 — inside the soft band, so it can only commit a FLAGGED value.
+  "stabnigy" (stability 3, solidity 5, immutability 7) is the live case. The
+  ever-present decoy token "astrogem" sits ≥7 from every suffix.
+- **The no-checksum fallback.** With no points read and a refused node, a blind
+  default-to-1 throws away the consult's channel evidence, but a single channel is
+  a coin flip. Three rules measured on the full corpus: agreement-only (default
+  to 1 on a split) order 92.1 · decisive-gradient order 93.0 · **fit-quality**
+  (trust the channel whose PEAK correlation is higher — 0.47 means it found
+  nothing, 0.72 means it locked on) order 94.7. Fit-quality is scoped to N/S:
+  applied to W/E it cost effect2Level 95.7→92.4, for the reason the absorber
+  family already documented — a W/E patch is a "Lv. N" line inside a COLOURED
+  diamond face, so its raw channel correlates on face art.
+- ES/RU clients stayed out of scope; the single remaining baseCost miss
+  (c-mrw1jzpi) is a Russian title.
+
+**Same-labels A/B, full corpus, 302 scored pairs:**
+
+| metric | round 2 | round 3 |
+|---|---|---|
+| headline per-field avg | 95.0% | **96.3%** |
+| whole-parse | 170/302 (56.3%) | **176/302 (58.3%)** |
+| flag coverage | 100.0% | **100.0%** (191/191) |
+| silent errors | 0 | **0** |
+| false alarms/shot | 6.3 | **6.2** |
+
+Per-field (round 2 → round 3), no field regressed: baseCost **94.0 → 99.7** ·
+effect1Level **86.8 → 91.7** · effect2 **92.4 → 94.7** · willpowerLevel 93.0 →
+94.7 · effect2Level 95.0 → 95.7 · gemType 98.7 → 99.3 · effect1 94.4 → 94.7 ·
+orderLevel 94.4 → 94.7 · currentTurn 99.7 · maxTurns 100 · rerollsRemaining 97.7 ·
+processCostMultiplier 97.7 · outcomes 91.6.
+
+Holdout vs in-sample (djb2%5==0, refs unchanged this round): headline 95.4% vs
+96.5%, whole 34/64 vs 142/238 — a narrower gap than round 2's 93.6/95.2.
+
+Gate: lint-labels 0 errors; 96.3% ≥ 94% · outcomes 91.6% ≥ 91% → **PASS**.
+Ratchet the headline gate to **0.96** at ship; outcomes has no headroom (91.6 vs
+91.0) and has not moved in two rounds — it is now the binding constraint.
+
+**Label fix (pixel-arbitrated):** `c-mrwsv1o1-855qdb` baseCost 10 → 8. The raw
+title crop reads "Order Astrogem: Stability" (the order-8 gem) at every scale and
+psm; both labelled effects sit in the cost-8 pool; two other boards showing the
+same title are labelled 8. The 10 is the collection-time default on a field the
+user never corrected, and it survived the trust mask because the promotion-time
+engine defaulted to 10 as well — a shared-mode failure the "engine agrees" rule
+cannot catch.
+
+- Next (iteration 6): the frontier is now **assignment, not digits**. 13 boards
+  fail with the points checksum SATISFIED — 5 outright permutations (W↔E ×3,
+  W↔S, E↔S) and 8 compensating pairs — which no arithmetic can catch; they need
+  stronger per-node evidence than a refused consult's ranking. effect1/effect2
+  names (16+16) are the other block, and they are DATA-bound: 9 boards read a name
+  at confidence 0 with structuralName and synthNameRescue both refusing, so the
+  next win there is NREFS diversity, not another rung. False alarms: the whole
+  population is honest low-confidence, with one characterised cluster —
+  effect1/effect2 at 0.70-0.75 is 219 false alarms against 1 real miss, worth
+  ~0.7/shot, but a threshold move would ship that miss silently, so it needs a
+  verifier rather than a lift.
+
+Shipped 2026-07-29 (structural pin 91; gate ratcheted to 0.96/0.91). Verified
+independently by the orchestrator: `npm run eval-gate` → PASS, 96.3% / 91.6%, 0 silents,
+6m25s wall (the old "~2.5h" figure was a run that also scored tesseract).

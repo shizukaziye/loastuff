@@ -67,7 +67,7 @@
   // them costs ~400 blur+normalize passes and they depend only on the baked
   // refs, so one build serves every parse (they used to be rebuilt inside
   // every parseStructural call)
-  var _synthTVCache = null, _nsynthTVCache = null;
+  var _synthTVCache = null, _nsynthTVCache = null, _amtTVCache = null;
 
   var GEM_NAME_COST = (TESS && TESS.GEM_NAME_COST) || {
     stability: 8, corrosion: 8, solidity: 9, distortion: 9, immutability: 10, destruction: 10
@@ -953,19 +953,169 @@
       if (titleLetters.indexOf(sfx.slice(0, 5)) !== -1) score += 0.25;   // prefix bonus
       return score;
     }
-    function suffixGramScore(t) {
-      var s = gramScoreOne(t.sfx);
-      (t.alt || []).forEach(function (a) { s = Math.max(s, gramScoreOne(a)); });
-      return s;
+    // EDIT-DISTANCE rung (round 3): a mangled-but-whole suffix defeats the
+    // 5-gram scorer completely — live "distartjon" (distortion, 2 subs) and
+    // "soliinty" (solidity) both scored 0.00 and lost to array order. The six
+    // suffixes sit far apart (measured pairwise minimum 4: stability↔solidity,
+    // stability↔immutability, distortion↔destruction), so distance ≤2 on a
+    // long token identifies uniquely. Levenshtein, abandoned past maxD.
+    function editDist(a, b, maxD) {
+      if (Math.abs(a.length - b.length) > maxD) return maxD + 1;
+      var prev = [], cur = [], i, j;
+      for (j = 0; j <= b.length; j++) prev[j] = j;
+      for (i = 1; i <= a.length; i++) {
+        cur[0] = i;
+        var rowMin = i;
+        for (j = 1; j <= b.length; j++) {
+          cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+          if (cur[j] < rowMin) rowMin = cur[j];
+        }
+        if (rowMin > maxD) return maxD + 1;
+        var tmp = prev; prev = cur; cur = tmp;
+      }
+      return Math.min(prev[b.length], maxD + 1);
     }
-    var titleScores = GEM_TITLES.map(function (t) {
-      var s = suffixGramScore(t);
-      t.sfxScore = s;
-      // the type keyword is corroborating, not deciding: the suffix still wins a
-      // conflict (a mangled "Order" can gram-match nothing, never the wrong word)
-      if (kwType) s += (kwType === t.type) ? 0.2 : -0.2;
-      return { t: t, score: s };
-    }).sort(function (a, b) { return b.score - a.score; });
+    var titleToks = nameText.split(/[^a-z]+/).filter(function (tk) { return tk.length >= 6; });
+    // best token distance per gem suffix, its own spelling and localized alts
+    function edTable() {
+      var best = {};
+      GEM_TITLES.forEach(function (t) {
+        var d = 6;
+        [t.sfx].concat(t.alt || []).forEach(function (s) {
+          if (s.length < 8) return;   // long class words only — short fragments stay out
+          for (var ti = 0; ti < titleToks.length; ti++) {
+            // maxD 5, not 3: the d=3 rung below tests the MARGIN to the
+            // runner-up, and a cap at 4 flattens every rival to the same 4 and
+            // erases exactly the margin being measured
+            var dd = editDist(titleToks[ti], s, 5);
+            if (dd < d) d = dd;
+          }
+        });
+        best[t.sfx] = d;
+      });
+      return best;
+    }
+    function computeTitleScores() {
+      // DISTANCE-3 rung: at d=3 the triangle inequality alone leaves a rival as
+      // close as 1 away, so a bare threshold is unsafe — but a 2-distance
+      // MARGIN over the runner-up is decisive, and the whole rung is priced at
+      // 0.45, inside the 0.38-0.5 SOFT band, so it can only ever commit a
+      // FLAGGED value. Live case: "stabnigy" (stability 3, solidity 5,
+      // immutability 7) — the read the gram scorer and the ≤2 rung both miss.
+      // The ever-present decoy token "astrogem" sits ≥7 from every suffix.
+      var edT = edTable();
+      var ds = GEM_TITLES.map(function (t) { return edT[t.sfx]; }).sort(function (a, b) { return a - b; });
+      var edBest = ds[0], edSecond = ds[1];
+      return GEM_TITLES.map(function (t) {
+        var d = edT[t.sfx];
+        var edS = d <= 1 ? 0.9 : d === 2 ? 0.6
+          : (d === 3 && d === edBest && edSecond - d >= 2) ? 0.45 : 0;
+        var s = Math.max(gramScoreOne(t.sfx), edS);
+        (t.alt || []).forEach(function (a) { s = Math.max(s, gramScoreOne(a)); });
+        t.sfxScore = s;
+        // the type keyword is corroborating, not deciding: the suffix still wins a
+        // conflict (a mangled "Order" can gram-match nothing, never the wrong word)
+        if (kwType) s += (kwType === t.type) ? 0.2 : -0.2;
+        return { t: t, score: s };
+      }).sort(function (a, b) { return b.score - a.score; });
+    }
+    var titleScores = computeTitleScores();
+    // TITLE RESCUE rung (round 3): the generic namePred (v>0.45, s>0.15) keeps
+    // so much starfield and nebula that Tesseract returns empty/garbage on a
+    // PERFECTLY legible band (pixel-verified: "Order Astrogem: Solidity"
+    // plainly visible, OCR text ""). A hue-tight mask isolates the title —
+    // but the title ink is RARITY-coloured, not one colour. Measured over the
+    // whole corpus by widest-located-line: magenta(epic) 174, cyan(rare) 89,
+    // orange(legendary/relic) 31, blue-violet 7, gold 3 — a magenta-only mask
+    // was blind on 120 boards. Locate the line under EACH family (mask + row
+    // scan, no OCR), then OCR the best few. Runs only when the primary reads
+    // identified NO suffix (score under the 0.38 soft bar) — empty text, star
+    // junk and kw-only fragments all land here — and whatever it reads must
+    // out-SCORE what the primary got, so a rescue can only ever improve the
+    // identification.
+    if (titleScores[0].t.sfxScore < 0.38) {
+      // SNAPSHOT the primary's score as a NUMBER before anything rescores:
+      // t.sfxScore lives on the shared GEM_TITLES objects and every recompute
+      // overwrites it, so a later read of titleScores[0].t.sfxScore compares
+      // the rescue against ITSELF. Measured: whenever the primary's garbage
+      // text happened to rank the same suffix first (the array-order tie, i.e.
+      // most garbage reads) the guard silently refused a perfect rescue — two
+      // pixel-verified boards read "Order Astrogem: Stability" and kept the
+      // default cost anyway.
+      var keepText = nameText, keepLetters = titleLetters, keepToks = titleToks, keepKw = kwType;
+      var keepVal = titleScores[0].t.sfxScore + (kwType ? 0.2 : 0);
+      function letterLen(s2) { return s2.replace(/[^a-z]/g, "").length; }
+      // install a candidate text, score it, put the old one back
+      function scoreCandidateText(tx) {
+        nameText = tx;
+        titleLetters = tx.replace(/[^a-z]/g, "");
+        titleToks = tx.split(/[^a-z]+/).filter(function (tk) { return tk.length >= 6; });
+        kwType = /chaos|caos|xaoc/.test(tx) ? "chaos" : (/order|orden/.test(tx) ? "order" : null);
+        var sc = computeTitleScores();
+        var v = sc[0].t.sfxScore + (kwType ? 0.2 : 0);
+        nameText = keepText; titleLetters = keepLetters; titleToks = keepToks; kwType = keepKw;
+        return v;
+      }
+      var TITLE_HUES = [[275, 345], [165, 212], [8, 30], [240, 275], [30, 62]];
+      var titleZone = { x: cx - gap * 2.0, y: redY - gap * 1.80, w: gap * 4.0, h: gap * 0.85 };
+      var titleOpts = lineOpts(0.95, 3.4, 0.6);
+      var tCands = [];
+      TITLE_HUES.forEach(function (hw, hi) {
+        var pred = function (r, g, b) {
+          var c = L.hsv(r, g, b);
+          return c.h >= hw[0] && c.h <= hw[1] && c.s > 0.28 && c.v > 0.45;
+        };
+        var rct = locateLine(titleZone, pred, titleOpts);
+        if (rct) tCands.push({ rect: rct, pred: pred, w: rct._line.w, ord: hi });
+      });
+      if (out._debug) out._debug.titleCands = tCands.map(function (c2) { return Math.round(c2.w / gap * 100) / 100; }).join(",");
+      // TWO passes over the families that located ink. Pass 1 reads the FIXED
+      // band under each family's mask, in corpus-frequency order — the band
+      // read needs no successful locate, and locating is the fragile half: on
+      // two boards the magenta locate came back only the FOURTH-widest line
+      // (ornament streaks in other hue families out-width the title) while the
+      // magenta FIXED band read "Chaos Astrogem: Distortion" cleanly. Pass 2
+      // reads the located rect for the widest three, which is what saves the
+      // boards whose title sits off the fixed row. psm 7 first, then RAW-LINE
+      // psm 13 when 7 comes back short: psm 7 runs Tesseract's line-layout
+      // heuristics and on these narrow masked crops they reject the line
+      // outright (three boards whose mask renders a flawless "Order Astrogem:
+      // Solidity" gave "" at every scale under psm 7 and the correct string
+      // under psm 13). All of it is paid only on boards the primary read
+      // already failed, and the loop stops the moment a read is both
+      // keyword-bearing and hard-commit grade.
+      var titleFixed = bandRect(redY - gap * 1.39, 0.2, 1.95);
+      var tries = [];
+      tCands.forEach(function (c2) { tries.push({ rect: titleFixed, pred: c2.pred, ord: c2.ord }); });
+      tries.sort(function (a, b) { return a.ord - b.ord; });
+      tCands.slice().sort(function (a, b) { return b.w - a.w; }).slice(0, 3)
+        .forEach(function (c2) { tries.push({ rect: c2.rect, pred: c2.pred }); });
+      var bestTxt = null, bestVal = keepVal, done = false;
+      for (var tci = 0; tci < tries.length && !done; tci++) {
+        var tRead = await maskedOcr(tries[tci].rect, tries[tci].pred, { psm: 7 });
+        var tTxt = normText(tRead.text).toLowerCase();
+        if (letterLen(tTxt) < 8) {
+          var tRead13 = await maskedOcr(tries[tci].rect, tries[tci].pred, { psm: 13 });
+          var tTxt13 = normText(tRead13.text).toLowerCase();
+          if (letterLen(tTxt13) > letterLen(tTxt)) tTxt = tTxt13;
+        }
+        if (out._debug) (out._debug.titleTry = out._debug.titleTry || []).push(tTxt.slice(0, 40));
+        if (letterLen(tTxt) < 8) continue;
+        var tVal = scoreCandidateText(tTxt);
+        if (tVal > bestVal) { bestVal = tVal; bestTxt = tTxt; }
+        if (bestTxt && bestVal >= 0.7) done = true;   // kw + hard-commit suffix
+      }
+      if (bestTxt) {
+        nameText = bestTxt;
+        titleLetters = nameText.replace(/[^a-z]/g, "");
+        titleToks = nameText.split(/[^a-z]+/).filter(function (tk) { return tk.length >= 6; });
+        kwType = /chaos|caos|xaoc/.test(nameText) ? "chaos" : (/order|orden/.test(nameText) ? "order" : null);
+        if (out._debug) out._debug.titleRescue = bestTxt.slice(0, 48);
+      }
+      // recompute either way: scoreCandidateText left t.sfxScore describing
+      // whatever text it looked at last
+      titleScores = computeTitleScores();
+    }
     var titleBest = titleScores[0], titleSecond = titleScores[1];
     var suffixHit = null, suffixAmbig = false;
     if (titleBest.t.sfxScore >= 0.38) {
@@ -1035,6 +1185,33 @@
     // shipped 8 correct commits and refused every wrong one. Fires only when the
     // template AND OCR ladders both came back empty, so clean frames never pay.
     var SYNTH_PS = 32, SYNTH_PATCH_GAP = 0.13;
+    // CENTER WINDOW (round 3): both correlation channels weight the patch
+    // center. Post-alignment the DIGIT is central and the face ART is
+    // peripheral — several W:2 refs carry the green face's bright diagonal
+    // rays in their corners, and on ray-art boards a digit-free streak patch
+    // grad-correlated 0.70+ with them at light blur (the confident-wrong
+    // W=2-for-1 family: the background, not the digit, was doing the
+    // matching). Gaussian σ=9px with a 0.25 floor (σ=12/0.4 was tried and lost the discrimination — refw re-committed its wrong '2'; the no-checksum refusal fallout is handled at the solve's fallback instead): the periphery still
+    // whispers (offset serifs, the '2' base bar) but can no longer outvote
+    // the digit. GRADIENT CHANNEL ONLY, refs and observations identically;
+    // magnitudes are windowed AFTER differentiation so the window itself
+    // contributes no fake edges. The RAW channel stays unwindowed — measured:
+    // windowed dense luminance at heavy blur collapses every class into the
+    // same central blob (an N raw flipped 1→4 on a true-1 board), while the
+    // sparse edge map only sheds its peripheral art.
+    var _synthWin = (function () {
+      var w = new Float32Array(SYNTH_PS * SYNTH_PS), c = (SYNTH_PS - 1) / 2, s2 = 2 * 9 * 9;
+      for (var y = 0; y < SYNTH_PS; y++) for (var x = 0; x < SYNTH_PS; x++) {
+        var r2 = (x - c) * (x - c) + (y - c) * (y - c);
+        w[y * SYNTH_PS + x] = 0.25 + 0.75 * Math.exp(-r2 / s2);
+      }
+      return w;
+    })();
+    function _synthWinMul(p2) {
+      var out = new Float32Array(p2.length);
+      for (var i = 0; i < p2.length; i++) out[i] = p2[i] * _synthWin[i];
+      return out;
+    }
     function _synthZnorm(p2) {
       var out = new Float32Array(p2.length), mean = 0, i;
       for (i = 0; i < p2.length; i++) mean += p2[i];
@@ -1045,14 +1222,21 @@
       for (i = 0; i < out.length; i++) out[i] /= sd;
       return out;
     }
-    function _synthGrad(p2) {
+    function _synthGradMag(p2) {
       var PSZ = SYNTH_PS, g = new Float32Array(PSZ * PSZ);
       for (var y = 1; y < PSZ - 1; y++) for (var x = 1; x < PSZ - 1; x++) {
         var dx = p2[y * PSZ + x + 1] - p2[y * PSZ + x - 1], dy = p2[(y + 1) * PSZ + x] - p2[(y - 1) * PSZ + x];
         g[y * PSZ + x] = Math.sqrt(dx * dx + dy * dy);
       }
-      return _synthZnorm(g);
+      return g;
     }
+    function _synthGrad(p2) { return _synthZnorm(_synthWinMul(_synthGradMag(p2))); }
+    // unwindowed gradient — the AMOUNT synth's channel: the window measurably
+    // flipped amount reads (an agreeing-wrong '1' for a '+3', and a clean '3'
+    // margin collapsed to 0.001) while the LEVEL consults measurably need it;
+    // outcome-cell backgrounds are not diamond face art, so the two contexts
+    // get their own calibrations.
+    function _synthGradPlain(p2) { return _synthZnorm(_synthGradMag(p2)); }
     function _synthBlur(p2, sigma) {
       var PSZ = SYNTH_PS;
       var r = Math.max(1, Math.ceil(sigma * 2.5)), k = [], ks = 0, i;
@@ -1208,29 +1392,48 @@
           var lrelax = function (r2, g2, b2) { var c2 = L.hsv(r2, g2, b2); return c2.h >= 28 && c2.h <= 72 && c2.s > 0.28 && c2.v > 0.42; };
           lline = L.findMaskedTextLine(raster, lbox, lrelax, Object.assign({}, lopts, { minRowPx: 1 }));
         }
-        if (!lline || lline.w < gap * 0.18) {
-          // NO locatable line — or only a FRAGMENT (a full "Lv. N" line is
-          // ≥0.27 gap wide; a 0.11-gap fragment's right edge points nowhere
-          // near the digit, which is how t8-E anchored off garbage) — position
-          // becomes a fitted parameter: scan the whole plausible Lv-digit
-          // region (covers 1-line and 2-line name layouts). The agreement gate
-          // stays the arbiter; refusal is still the default.
-          cx = p.x + gap * 0.16; cy = p.y + gap * 0.17; wideScan = true;
-        } else {
+        if (lline && lline.w >= gap * 0.18) {
           cx = lline.x + lline.w - gap * 0.05; cy = lline.y + lline.h / 2;
+        } else if (lline && lline.w >= gap * 0.07) {
+          // FRAGMENT line (round 3): the mask kept the "Lv." prefix but the
+          // digit eroded out — the lo-tier NORM, not an edge case (measured:
+          // 114 of 604 W/E line locates come back 0.12-0.13 gap wide, the
+          // prefix's exact width). The digit sits just right of the fragment,
+          // so anchor a MODERATE scan there. The fragment can also be garbage
+          // (t8-E once anchored off a glow blob), so the old wide center runs
+          // as a SECOND candidate — the per-center decisiveness sort picks the
+          // anchor that found real structure.
+          cx = lline.x + lline.w + gap * 0.02; cy = lline.y + lline.h / 2;
+          altCenter = { x: p.x + gap * 0.125, y: p.y + gap * 0.17, xs: 0.145, ys: 0.12 };
+          wideScan = true;
+        } else {
+          // NO locatable line at all: position becomes a fitted parameter.
+          // Center at +0.125 with reach 0.145 (round 3, was 0.16±0.11): the
+          // "Lv. N" TEXT is node-centered, so a narrow digit ('1') pulls the
+          // whole line left and the digit lands near node-center x — measured
+          // -0.148 gap from the old center, OUTSIDE its reach. The old scan
+          // geometrically could not see a '1', and class-2 refs won on face
+          // texture instead (the 2-for-1 ×16 family). New reach [-0.02,+0.27]
+          // covers both the '1' zone and the wide-digit zone.
+          cx = p.x + gap * 0.125; cy = p.y + gap * 0.17; wideScan = true;
         }
       }
       var isBare = kind === "N" || kind === "S";
       // bare-node wide scans reach UP to +0.03 gap (2-line-name boards render
-      // the digit right under the name, far above the +0.175 fixed offset)
-      var xspan = wideScan ? (isBare ? 0.06 : 0.11) : (kind === "W" || kind === "E") ? 0.07 : 0.03;
-      var yspan = wideScan ? (isBare ? 0.15 : 0.12) : 0.03;
+      // the digit right under the name, far above the +0.175 fixed offset).
+      // W/E wide default 0.145 matches the no-line center above; a FRAGMENT
+      // primary center scans tighter (its xs/ys override) — the digit sits
+      // within ~0.08 gap of the fragment's right edge when the fragment is real.
+      var xspan = wideScan ? (isBare ? 0.06 : (altCenter && !isBare ? 0.08 : 0.145)) : (kind === "W" || kind === "E") ? 0.07 : 0.03;
+      var yspan = wideScan ? (isBare ? 0.15 : (altCenter && !isBare ? 0.05 : 0.12)) : 0.03;
       var dy, dx, cls, i;
       // Each candidate center is scored SEPARATELY (a union of maxima mixes one
       // center's face-texture matches into the other's digit evidence — measured:
       // raw voted '1' off center A while grad voted '4' off center B and a real
       // '3' drowned). The center whose ranking is more DECISIVE (larger gradient
       // margin) wins; the commit gate then runs on that center's scores alone.
+      // A center may carry its own spans (xs/ys — the W/E fragment second
+      // center scans the full wide region while the primary hugs the fragment).
       var centers = [{ x: cx, y: cy }];
       if (altCenter) centers.push(altCenter);
       // BARE-node wide scans step at 2× pitch: the refs are BLURRED variants,
@@ -1247,8 +1450,9 @@
         // position — the channels then discuss the same alignment hypothesis
         // and the scan's compute halves.
         var pr = {}, pg = {}, bestPos = {};
-        for (dy = -yspan; dy <= yspan + 0.0001; dy += step) {
-          for (dx = -xspan; dx <= xspan + 0.0001; dx += step) {
+        var xs = ctr.xs != null ? ctr.xs : xspan, ys = ctr.ys != null ? ctr.ys : yspan;
+        for (dy = -ys; dy <= ys + 0.0001; dy += step) {
+          for (dx = -xs; dx <= xs + 0.0001; dx += step) {
             var op = _synthPatch(ctr.x + dx * gap, ctr.y + dy * gap);
             var ograd = _synthGrad(op);
             var oraw = wideScan ? null : _synthZnorm(op);
@@ -1297,7 +1501,11 @@
       // run tighter spreads — a clean capture's S once agree-wronged at exactly
       // 0.010), the others 0.01 (t6-E's correct fill sits at 0.012). Callers
       // that OVERRIDE an existing read demand ≥ 0.03 via the returned gm.
-      var res = { value: null, conf: 0.55, gm: gm, gradTop: rg[0].v, rawTop: ra[0].v, agree: ra[0].v === rg[0].v };
+      // rawScore/gradScore = each channel's PEAK correlation, not just its
+      // winner: the no-checksum fallback arbitrates dissenting channels by
+      // which one actually locked onto something (see there).
+      var res = { value: null, conf: 0.55, gm: gm, gradTop: rg[0].v, rawTop: ra[0].v,
+        rawScore: ra[0].s, gradScore: rg[0].s, agree: ra[0].v === rg[0].v };
       if (res.agree && gm >= (kind === "S" ? 0.015 : 0.01)) res.value = ra[0].v;
       return res;
     }
@@ -1311,19 +1519,37 @@
     // scan the line's right half (the digit sits just left of the arrow), and
     // commit ONLY on raw+gradient ranking agreement with margin. Greyscale
     // patches make it color-blind — chartreuse raises and red lowers both read.
-    function synthAmountDigit(amtLine) {
-      var tv = _synthVariants();
-      if (!tv) return null;
+    function _amtVariants() {
+      // W/E refs pooled per class 1-4 at the full sigma spread, UNWINDOWED
+      // both channels (see _synthGradPlain) — the amount synth's round-2
+      // behavior, kept independent of the level consults' center window.
+      if (!LREFS) return null;
+      var band = scaleF >= 3 ? "u3" : scaleF >= 2 ? "u2" : "n";
+      if (_amtTVCache && _amtTVCache[band]) return _amtTVCache[band];
+      var SIG_FULL = [0.6, 1.0, 1.5, 2.1, 2.8, 3.6];
       var pool = {}, kk, cls;
       for (kk = 0; kk < 2; kk++) {
-        var t = tv[kk === 0 ? "W" : "E"] || {};
+        var t = LREFS[kk === 0 ? "W" : "E"] || {};
         for (cls in t) {
           var v = parseInt(cls, 10);
           if (!(v >= 1 && v <= 4)) continue;
-          (pool[cls] = pool[cls] || []).push.apply(pool[cls], t[cls]);
+          var arr = pool[cls] = pool[cls] || [];
+          (t[cls] || []).forEach(function (ref) {
+            var base = new Float32Array(ref.q);
+            SIG_FULL.forEach(function (sg) {
+              var b = _synthBlur(base, sg);
+              arr.push({ raw: _synthZnorm(b), grad: _synthGradPlain(b) });
+            });
+          });
         }
       }
-      if (!Object.keys(pool).length) return null;
+      _amtTVCache = _amtTVCache || {};
+      _amtTVCache[band] = pool;
+      return pool;
+    }
+    function synthAmountDigit(amtLine) {
+      var pool = _amtVariants(), cls;
+      if (!pool || !Object.keys(pool).length) return null;
       var cy = amtLine.y + amtLine.h / 2;
       // Stop the scan LEFT of a visible ▲/▼ — arrow patches poison the class
       // argmax (mJLklhw: a clean '4' ranked '2' when the scan covered the arrow).
@@ -1342,7 +1568,7 @@
       for (var cxs = x0; cxs <= x1; cxs += gap * 0.0075) {
         for (var dy = -0.03; dy <= 0.0301; dy += 0.0075) {
           var op = _synthPatch(cxs, cy + dy * gap);
-          var oraw = _synthZnorm(op), ograd = _synthGrad(op);
+          var oraw = _synthZnorm(op), ograd = _synthGradPlain(op);
           for (cls in pool) {
             var arr = pool[cls];
             for (i = 0; i < arr.length; i++) {
@@ -1677,7 +1903,12 @@
         // digit collapse to a bar; the relaxed re-mask can hand it a WIDE box
         // that dodges the narrow rule), and a pinned wrong '1' poisons the
         // checksum's arithmetic far beyond its own field.
-        var narrowT = dbBox && dbBox.w / Math.max(1, dbBox.h) < 0.45;
+        // aspect-ANOMALOUS boxes need the cross-check in BOTH directions: tall
+        // slivers (w/h < 0.45, the mask-fragment absorber) and FLAT bars
+        // (w/h > 1.15 — no 1-5 glyph is wider than tall; bitmapSim resizes the
+        // box into the template grid, so a 19×5 gold-ornament bar happily
+        // "matched" a '2' at 0.79 and pinned W on a true-1 board).
+        var narrowT = dbBox && (dbBox.w / Math.max(1, dbBox.h) < 0.45 || dbBox.w / Math.max(1, dbBox.h) > 1.15);
         var smallOne = tmVal === 1 && dbBox && dbBox.h / Math.max(0.5, scaleF) < 16;
         if (LREFS && nodeKind && (isGoldFace || narrowT || smallOne)) {
           var srT = synthLevelRescue(nodeKind, p);
@@ -1717,11 +1948,11 @@
       // (live: a junk band OCR'd '4'@0.90 for a willpower 1, silent) — verify
       // it against the synth or cap it under the flag line.
       var vecless = m && conf >= 0.8 && !vec;
-      if (LREFS && nodeKind && (!m || conf < 0.5 || usedDilate || vecless)) {
+      if (LREFS && nodeKind && (!m || conf < 0.65 || usedDilate || vecless)) {
         // last rung: analysis-by-synthesis vs the pristine reference patches —
         // agreement-gated, modest conf; the checksum arbitrates from here (and
         // for S the value flows through the sHint channel, never pinned). It also
-        // arbitrates a sub-0.5 OCR read: at that confidence the ladder is
+        // arbitrates a sub-0.65 OCR read: at that confidence the ladder is
         // guessing (dilated OCR hallucinates '1's on degraded masks and the junk
         // read was BLOCKING this rung), while the agreement gate measured
         // 8 correct commits / 0 wrong ones on the degraded corpus. AGREEMENT
@@ -1737,6 +1968,19 @@
           if (mVal == null || sr.gm >= 0.03) {
             return { value: sr.value, conf: isGoldFace ? Math.min(sr.conf, 0.5) : sr.conf, vec: vec, src: "synth" };
           }
+        }
+        // GUESSING-grade OCR digit whose consult REFUSED with a DISSENTING
+        // gradient top: contradicted evidence must not PIN the node (mirror of
+        // the sliver un-commit above). Two shapes qualify: a sub-0.4 read (a
+        // pinned junk '3'@0.22 once drove the checksum infeasible and blocked
+        // the enumeration that had the right answer) and a 0.4-0.65 read whose
+        // dissenting gradient ranking is DECISIVE (gm ≥ 0.10 — two live W↔S
+        // swaps rode a '1'@0.60 misread of "Lv. 4" into S while the consult's
+        // gradient said 4 at gm 0.15). Unpinned, the solver still holds the
+        // vec and the consult's own votes.
+        else if (sr && sr.value == null && m && (conf < 0.4 || sr.gm >= 0.10) &&
+                 sr.gradTop != null && sr.gradTop !== parseInt(m[1], 10)) {
+          return { value: null, conf: 0, vec: vec, src: "ocr" };
         }
         // dilated-rung or vec-less digit with no synth corroboration (refused,
         // or a weak dissent): the value stands but never confidently —
@@ -2168,10 +2412,45 @@
     // case: hint=4 correct, pts unreadable, S defaulted to 1)
     for (var f = 0; f < 4; f++) if (levels[f] == null) {
       if (f === 3 && sHint != null) { levels[3] = sHint; conf4[3] = 0.6; continue; }
-      levels[f] = indep[f].v != null ? indep[f].v : 1;
-      // 0.78, not 0.85: with NO checksum the read has no corroborator, and a
-      // junk-band '4'@0.90 for a willpower 1 shipped silently through the old cap
-      conf4[f] = indep[f].v == null ? 0 : Math.min(0.78, indep[f].conf);
+      if (indep[f].v != null) {
+        levels[f] = indep[f].v;
+        // 0.78, not 0.85: with NO checksum the read has no corroborator, and a
+        // junk-band '4'@0.90 for a willpower 1 shipped silently through the old cap
+        conf4[f] = Math.min(0.78, indep[f].conf);
+        continue;
+      }
+      // NULL node with NO checksum (round 3): a blind default-to-1 throws away
+      // the refused consult's channel evidence — on the no-pts boards the
+      // refused channels contain the truth far more often than '1' does.
+      // Arbitrating the two dissenting channels by FIT QUALITY beats the
+      // decisiveness rule ON THE BARE NODES: a channel whose best reference
+      // only reaches 0.47 has found nothing while the other sits at 0.72, so
+      // the higher PEAK says which one locked on. Full-corpus A/B: peak
+      // everywhere gave willpower 94.0→94.7 and order 93.0→94.7 but
+      // effect2Level 95.7→92.4, so it is scoped to N/S. The reason is the one
+      // already documented for the absorber family — a W/E patch is a "Lv. N"
+      // line inside a COLOURED diamond face, and its raw channel correlates on
+      // face art, while N/S are bare digits where raw is real evidence. W/E
+      // therefore keep the decisive-gradient rule. Peaks inside 0.01 express
+      // no preference and fall through to decisiveness either way.
+      // Deep-flagged at 0.4: a last-resort guess with evidence, not a read.
+      var srD = LREFS ? synthLevelRescue(["N", "W", "E", "S"][f],
+        [nodes.nodeN, nodes.nodeW, nodes.nodeE, nodes.nodeS][f]) : null;
+      if (srD && (srD.gradTop != null || srD.rawTop != null)) {
+        var bareF = f === 0 || f === 3;
+        var useGrad = (bareF && srD.rawScore != null && srD.gradScore != null &&
+                       Math.abs(srD.gradScore - srD.rawScore) >= 0.01)
+          ? srD.gradScore > srD.rawScore
+          : srD.gm >= 0.03;
+        levels[f] = (useGrad && srD.gradTop != null) ? srD.gradTop
+          : (srD.rawTop != null ? srD.rawTop : srD.gradTop);
+        // ...EXCEPT the known W/E absorber standoff: raw prefers '2' over a
+        // gradient '1'. The low-tier W:2 refs win the raw channel on true-1
+        // boards structurally (the 2-for-1 family this round attacked) — in
+        // that one pairing the windowed gradient is the trustworthy channel.
+        if ((f === 1 || f === 2) && srD.rawTop === 2 && srD.gradTop === 1) levels[f] = 1;
+        conf4[f] = 0.4;
+      } else { levels[f] = 1; conf4[f] = 0; }
     }
     if (ptsSoft) conf4 = conf4.map(function (cv) { return Math.min(cv, 0.7); });
     // NO checksum at all: every level is a single-source read with nothing to
