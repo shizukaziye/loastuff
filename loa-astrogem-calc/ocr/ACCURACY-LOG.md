@@ -558,3 +558,26 @@ headline is still the binding one.
   each and stay DATA-bound (the corpus-expansion pass feeds them). Outcomes' residual 56
   tiles over 40 boards is now the second-largest block.
 
+
+### 2026-07-29 · corpus merge — 302 → 385 scored pairs (83 unseen boards added)
+samples-v2 merged after round 5 shipped (see samples-v2/MERGE-PLAN.md). Lint 0 errors.
+Re-baseline on the EXPANDED corpus — **not comparable to the 302-pair numbers**:
+
+| metric | 302 pairs (seen) | 385 pairs (+83 unseen) |
+|---|---|---|
+| headline | 96.9% | **95.2%** |
+| whole-parse | 68.2% | 60.5% |
+| flag coverage | 100% | **98.9%** |
+| silent errors | 0 | **3** |
+
+The 1.7pt drop is what unseen data is for — it measures generalization, not regression.
+The serious part is the **3 silent errors, all `rerollsRemaining`** (conf 0.80–0.85),
+breaking the campaign's hard invariant on its first contact with fresh boards:
+- `c-mrxvkvlc-88d6k8` 0≠1 @0.80 — orchestrator pixel-checked: the Charge button is
+  plainly GOLD, so the label's 1 is right and the engine is confidently wrong.
+- `c-mryrst7q-798yaa` 1≠0 @0.85 and `c-ms2kf8ya-dsa1fs` 1≠0 @0.85 — the OPPOSITE
+  direction, so the gold-vs-grey Charge discriminator is not merely biased, it is
+  unreliable on boards it was not tuned against.
+
+Gate reset to 0.95/0.94 for the new corpus (a corpus change resets the scale; ratchet
+resumes from here). Round 6's first job is restoring silents to 0.
