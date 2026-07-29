@@ -581,3 +581,132 @@ breaking the campaign's hard invariant on its first contact with fresh boards:
 
 Gate reset to 0.95/0.94 for the new corpus (a corpus change resets the scale; ratchet
 resumes from here). Round 6's first job is restoring silents to 0.
+
+### 2026-07-29 · iteration 8 — round 6: the button's face, and a data rebuild
+The corpus merge had broken the campaign's hard invariant: **3 silent errors, all
+`rerollsRemaining`, pointing in both directions**. That was the whole of priority 1, and
+it turned out to be one test failing in two independent ways. The round's second half is
+the reference harvest the merge finally made possible. Harness: round 5's `r5/ph.js`
+copied unchanged to `r6/ph.js`; it reproduces HEAD's 385-pair numbers to the digit in
+**251s**. Ten full-corpus harness runs this round, plus the serial gate.
+
+- **The Charge gold-vs-grey test was one-sided, and both sides of it broke.**
+  `chargeGoldPred` required `v > 0.5`; a real gold button on a dim capture measures
+  meanV **0.45**, so only 5% of the located rect passed — 355 px against a 451 px bar —
+  and `c-mrxvkvlc-88d6k8`'s plainly amber button was called grey. In the other
+  direction the "grown" re-measure reaches **0.55·gap DOWN**, which is where the gold
+  CURRENCY COIN icons sit; a coin is small but perfectly compact, so `count ≥
+  0.008·gap² && density > 0.45` passed on 271 px at density 0.81 — `c-mryrst7q-798yaa`
+  and `c-ms2kf8ya-dsa1fs` called gold. All three crops were read by eye; both labels
+  upheld. Replaced by `chargeFace`: a TWO-CLASS measurement of the same pixels — amber
+  FRACTION vs neutral fraction, v floor 0.14. Mined over all **177** corpus boards that
+  reach this branch, amber is **[0.43, 0.97] on every gold button and [0, 0.07] on every
+  grey one** — one gap, no overlap, bar at 0.25. A fraction cannot be carried by a
+  compact foreign blob: the coins are 0.9% of the grown rect. The grey side additionally
+  requires a grey face to FILL the rect (`neutral ≥ 0.25`, corpus min 0.51) so a rect
+  that drifted off the button cannot be read as "spent" by mere absence of amber; when
+  it does not, the value still commits but at **0.7 — below the flag line**, where the
+  old code committed grey at 0.80, exactly AT the silent threshold, warning nobody.
+- **Level-refs rebuilt from the merged corpus, with a locale guard.**
+  `tools/build-level-refs.js` gained a `LOCALIZED` exclusion list — the 6 ru + 2 zh-TW
+  boards from `samples-v2/manifest.json` plus the two older localized boards named in
+  rounds 3-4. It is a LIST on purpose: the supervised verify that guards the W/E digit
+  refs ranks candidates against a pool built from the same candidates, so it cannot be
+  trusted to expel a whole foreign glyph set — the round-2 "Lv."-fragment shape. Measured
+  eligibility (g0 ≥ 110, non-holdout): only `c-mryunsmb` (zh-TW, g0 125) and
+  **`c-mrwgjrp2-1jqlzy` (es, g0 122) actually reached the harvest — the Spanish board had
+  been filing "Daño de jefe" captions under "Boss Damage" since round 2.** Harvest: 271
+  samples, 76 holdout, 10 localized; W/E verify kept 109/138; every name class now has
+  its full 6 exemplars on both nodes, and `W|Ally Attack Enh.` goes from **hi=0 to hi=6**
+  sharp exemplars (measured per-tier, exactly as the merge promised). Isolated A/B
+  (identical engine, only `ocr/level-refs.js` differs): headline 95.2 → **95.5**,
+  whole-parse 235 → **247**, willpowerLevel 94.3 → **95.6**, orderLevel 95.1 → **95.8**,
+  effect1Level 91.2 → **92.2**, effect1 91.7 → **92.5**.
+
+**Same-labels A/B, full corpus, 385 scored pairs.** A-arm = unmodified HEAD in a
+`git worktree` with `samples/` symlinked in, so both arms score the round-6 labels.
+
+| metric | HEAD (A) | round 6 (B) |
+|---|---|---|
+| headline per-field avg | 95.2% | **95.5%** |
+| whole-parse | 232/385 (60.3%) | **246/385 (63.9%)** |
+| flag coverage | 98.6% (276/280) | **100.0%** (263/263) |
+| **silent errors** | **4** | **0** |
+| false alarms/shot | 6.3 (2419) | 6.3 (2434) |
+| outcomes | 94.2% | **94.4%** |
+
+Per-field (A → B): willpowerLevel 94.3 → **95.6** · effect1 91.7 → **92.5** ·
+rerollsRemaining 96.1 → **97.1** · orderLevel 94.8 → **95.6** · effect1Level 91.2 →
+**91.9** · effect2 91.4 → **91.7** · effect2Level 94.8 → **94.3** (the only regression,
+−2 boards, from the ref rebuild) · baseCost 96.9 · gemType 99.2 · currentTurn 97.9 ·
+maxTurns 99.7 · processCostMultiplier 95.0. Field-level: **42 fixed, 25 broken**; scalar
+misses 219 → **202** over 127 → **116** boards; outcome tiles 89 → 87.
+
+Residual wrong fields (B): effect2 32 · effect1Level 31 · effect1 29 · effect2Level 22 ·
+processCostMultiplier 19 · willpowerLevel 17 · orderLevel 17 · baseCost 12 ·
+rerollsRemaining 11 · currentTurn 8 · gemType 3 · maxTurns 1.
+
+Holdout vs in-sample (djb2%5==0, and the refs were rebuilt this round so the split is
+load-bearing): holdout headline 94.9% both arms with whole-parse **45 → 49**; in-sample
+95.2 → 95.7 with whole **187 → 197**. The ref gain shows on frames the templates never
+saw, proportionally more than in-sample — it is not memorization.
+
+**Label fix (pixel-arbitrated):** `c-mrw7refw-f4n86c` rerollsRemaining 0 → 1. The located
+pill rect is a solid amber face (amber fraction 0.93, mean s 0.68) with bright white
+"Charge" text — the same rendering as the 100+ boards labelled 1, and nothing like the
+grey face (amber 0.00, neutral 0.51-0.75) on every board labelled 0. The collection-time
+engine also read 0, so the promotion trust mask kept it: **shared mode again**, and it
+means HEAD actually carried 4 silents, not 3.
+
+**RULED OUT, with numbers — the whole "finish the checksum-less boards" line.**
+Round 5 named this the tractable part of the level-field frontier. It is not tractable
+and it is not worth anything; the population that lacks a checksum is exactly the
+population whose node reads refuse. On the expanded corpus **40 boards** have no
+checksum, carrying 25 of the 96 level misses. A new `opts.trace` on
+`findMaskedTextLine` (kept — a null locate was previously unattributable) showed the
+header is PLAINLY LEGIBLE on all of them and the locate is what fails, two ways:
+- *`opts.colMinFrac` — a robust band width* (a column must hold ≥20% of the band height
+  in mask pixels, so one background sparkle at each side cannot stretch a centred
+  1.0·gap header to 2.3-3.1·gap and get it rejected). It recovers 3 checksums alone and
+  12 in combination, all matching the label sum, and it is **UNSAFE**: on five boards
+  whose header located correctly at dy −0.09..−0.13, narrowing let a DIFFERENT white line
+  at dy +0.17..+0.18 clear the width accept first — the scan is bottom-up and stops at
+  the first accepted band — and the correct checksums 11/8/6/11/8 became **8/9/8/null/9**.
+  The over-wide measurement had been accidentally protecting the header. The dy window
+  cannot be tightened past +0.16 either: real headers sit at +0.19 on six boards.
+  Reverted, implementation and all.
+- *A BRIGHTER second locate predicate* (s<0.3 v>0.78) when the strict locate returns
+  null — the other direction from round 5's ruled-out dimmer predicate, and unlike it,
+  it works as a locate: **6 boards recover a header and all 6 checksums match the label
+  sum**. Still a net LOSS: whole-parse 246 → 245, willpowerLevel 95.6 → 95.3,
+  effect1Level 91.9 → 91.7. `_debug.lvl` says why — `c-mrw5h45e` pins N=3 against a
+  labelled 5 with W/E/S all `null@0.00`, so a correct pts=8 makes the enumeration push a
+  compensating 3 into E: one wrong field becomes two. `c-mrw55ewi` is the same shape.
+  Reverted; the negative is written beside the locate it would have extended.
+- *Widening the header locate's width cap 1.9 → 2.6·gap* (accept the sparkle-stretched
+  bands instead of rejecting them): recovered boards 12 → **4**, because a too-wide band
+  then passes the PRIMARY locate and the crop committed to is mostly background.
+- *False alarms*: not touched again. 2434 FAs against 0 silents.
+
+Gate: lint-labels 0 errors; **95.5% ≥ 95% · 94.4% ≥ 94% → PASS** (`npm run eval-gate`,
+serial; the parallel harness reproduces it to the digit — 246/385 whole, 263/263 flagged,
+0 silents). Thresholds untouched: the corpus-change reset stands and the headline clears
+by only 0.5, so the ratchet resumes next round, not this one.
+
+**NOT DONE (owner's call at ship time):** version pins in `index.html` were left alone as
+instructed — `ocr/layout.js?v=54`, `ocr/level-refs.js?v=3` and
+`ocr/structural-engine.js?v=93` all need a bump before this deploys, and level-refs is a
+597KB lazily-loaded payload that a stale pin would keep serving from cache.
+
+- Next (iteration 9): the frontier is unchanged in shape and now unambiguous —
+  **per-node evidence on a degraded W/E node**, with the checksum route closed by
+  measurement. The three name/level blocks are effect2 32 · effect1Level 31 · effect1 29.
+  Of the 65 effect-name misses, **35 sit at confidence ≤ 0.30** (22 at 0.00, where both
+  `structuralName` and `synthNameRescue` refuse, and 13 at 0.30, the constraint-snap's
+  forced-into-pool substitution, which is **0 for 13** — a tier that is always wrong is
+  worth a look on its own). Everything at 0.68+ is essentially perfect (0 wrong in 500+),
+  so the names are still DATA-bound and the next lever there is more sharp exemplars, not
+  another rung. `processCostMultiplier` (19 misses, 95.0%) has not been touched since
+  round 1 and is now the largest non-name block. The 8 localized boards remain excluded
+  by design; a locale-aware `extractPts` would recover their checksums but they are out
+  of the "normal screenshots" goal.

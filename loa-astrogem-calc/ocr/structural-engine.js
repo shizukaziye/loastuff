@@ -234,7 +234,7 @@
     // band-specific glyph templates for THIS capture's normalization factor
     // (function-scoped: every closure below reads this local, not the pooled set)
     var GLYPHS = pickGlyphAtlas(scaleF);
-    out._debug = { panel: found };
+    out._debug = { panel: found, norm: { ox: out._srcPanel.x, oy: out._srcPanel.y, scaleF: scaleF } };
     tmark("normalize");
 
     function roiCrop(key) { return L.crop(raster, L.roiRect(panel, key)); }
@@ -400,20 +400,43 @@
     // client's "Carga" (measured live); the pill ROI has no other word-bearing
     // text, so the loose net stays safe.
     var CHARGE_RX = /c[a-z+.−-]{0,2}arg[ea]|harge|harga|chorge/i;   // the dim 'h' also reads as +/-
-    // Charge-button gold: the face test + a cluster-solidity fallback. frac alone
-    // dilutes when the anchor-derived rect clips the button (live: gold called grey
-    // at 0.80). A solid gold rectangle ≥~1.5% of gap² at ≥0.4 density is the face;
-    // the ⟳ pill icon (~0.2% of gap², outline) can never reach it.
-    var chargeGoldPred = function (r, g, b) {
-      var c = L.hsv(r, g, b); return c.h >= 30 && c.h < 55 && c.s > 0.45 && c.v > 0.5;
-    };
-    function chargeGoldSolid(stats) {
-      // count bar 0.008·gap² (a half-clipped face still clears it; a live full
-      // button measured 667 px against a 0.015 bar of 1054 and was called grey);
-      // the ⟳ pill icon is PALE gold — it fails s>0.45 outright (measured 0 px),
-      // so it cannot ride the looser bar.
-      return stats.frac > 0.35 || (stats.count >= gap * gap * 0.008 && stats.density > 0.45);
+    // ---- Charge button FACE colour (round 6, 2026-07-29) ----
+    // The gold/grey decision used to be one-sided: "is there a solid gold CLUSTER
+    // anywhere in (a generously grown) pill rect", counted in pixels with a density
+    // guard. Both halves of that broke on unseen boards and produced this campaign's
+    // first silent errors, in BOTH directions:
+    //   · the count+density test needs h30-55 s>.45 **v>.5**, and a real gold button
+    //     renders at meanV 0.45 on a dim capture — 5% of the rect passed, 355px
+    //     against a 451px bar, so a plainly amber button was called grey (mrxvkvlc);
+    //   · the "grown" re-measure reaches 0.55·gap DOWN, where the gold CURRENCY COIN
+    //     icons live. A coin is small but perfectly compact, so it sails through
+    //     count≥0.008·gap² at density 0.81 — two grey buttons called gold
+    //     (mryrst7q, ms2kf8ya). Both cost a model reroll, silently.
+    // Replaced by a TWO-CLASS measurement of the same pixels: the word sits on a
+    // face that is either amber or neutral-grey, so measure both FRACTIONS and let
+    // them argue. A fraction cannot be fooled by a compact foreign blob (the coins
+    // are 0.9% of the grown rect), and dropping the v floor to 0.14 keeps the dim
+    // renderings. Measured over all 177 corpus boards that reach this branch:
+    // amber ∈ [0.43, 0.97] on every gold button, ∈ [0, 0.07] on every grey one —
+    // one gap, no overlap, so the 0.25 bar sits in open space.
+    function chargeFace(rect) {
+      var img = L.crop(raster, rect);
+      var n = img.width * img.height, amber = 0, neutral = 0;
+      for (var i = 0; i < n; i++) {
+        var c = L.hsv(img.data[i * 4], img.data[i * 4 + 1], img.data[i * 4 + 2]);
+        // amber: the button face, hue-wide and dim-tolerant (a live gold face
+        // measured h 30-45 s 0.76 v 0.45 — the old v>0.5 floor missed most of it)
+        if (c.h >= 18 && c.h < 62 && c.s >= 0.30 && c.v >= 0.14) amber++;
+        // neutral: the SPENT button's grey face. Required for a decisive "grey"
+        // so that a rect which drifted off the button entirely (dark navy panel,
+        // s≈0.5) cannot be read as a grey button by mere absence of amber.
+        else if (c.s < 0.22 && c.v >= 0.10) neutral++;
+      }
+      return { amber: amber / n, neutral: neutral / n };
     }
+    var CHARGE_AMBER = 0.25;    // ≥ ⇒ gold face   (corpus min on a true gold: 0.43)
+    var CHARGE_NOAMBER = 0.12;  // ≤ ⇒ no amber    (corpus max on a true grey: 0.07)
+    var CHARGE_NEUTRAL = 0.25;  // grey face must FILL the rect (corpus min: 0.51)
 
     // ---- footer: Process (x/N) — anchored tight button first, block fallback ----
     // Wrapped as a CONCURRENT phase (launched here, awaited before outcomes): its
@@ -751,39 +774,52 @@
       // Confirm the WORD (any brightness), then the BUTTON COLOR decides —
       // gold = paid reroll purchasable (1), grey = paid spent (0).
       var pillCrop = L.crop(raster, pillRect);
-      var goldBtn = L.colorClusterStats(pillCrop, chargeGoldPred);
+      var face = chargeFace(pillRect);
       var chRead = await maskedOcr(pillRect, dimBtnWhite, { psm: 7 });
       var chWord = CHARGE_RX.test(normText(chRead.text));
-      if (!chWord && !chargeGoldSolid(goldBtn)) {
+      if (!chWord && face.amber < CHARGE_AMBER) {
         // the DISABLED (all-spent) Charge renders dimmer than the standard mask
         // floor — retry the word at a low floor with dilation
         var chDimPred = function (r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.4 && c.v > 0.32; };
         var chRead2 = await dilatedOcr(pillCrop, chDimPred, { scale: 3, psm: 7 });
         chWord = CHARGE_RX.test(normText(chRead2.text));
       }
-      if (chargeGoldSolid(goldBtn)) {
-        out.state.rerollsChargeSeen = true;                       // gold face is decisive
+      if (face.amber >= CHARGE_AMBER) {
+        out.state.rerollsChargeSeen = true;                       // amber face is decisive
         confidence.state.rerollsRemaining = 0.85;
       } else if (chWord) {
-        // word confirmed but no gold in THIS rect — re-measure grown toward the
-        // panel edge before calling it grey: on some framings the anchor-derived
-        // rect clips the button and frac dilutes (live: a gold Charge called
-        // "spent" at 0.80 — one model reroll short, silently)
-        // reach a full 0.55·gap down: one live framing had the button sit
-        // ~0.45·gap below the anchor-derived rect (word matched, gold missed)
-        var chGrown = L.crop(raster, {
+        // Word confirmed, no amber in THIS rect. Re-measure GROWN toward the panel
+        // edge before calling it grey — the historical failure is a framing whose
+        // anchor-derived rect clips the button (the face then sits up to ~0.45·gap
+        // below). The grown rect also reaches the currency coins, which is why this
+        // reads a FRACTION: a coin is 0.9% of it and cannot carry the 0.25 bar.
+        var grown = chargeFace({
           x: pillRect.x - gap * 0.15, y: pillRect.y - gap * 0.10,
           w: pillRect.w + gap * 0.45, h: pillRect.h + gap * 0.55
         });
-        var goldGrown = L.colorClusterStats(chGrown, chargeGoldPred);
-        if (chargeGoldSolid(goldGrown)) {
+        if (grown.amber >= CHARGE_AMBER) {
           out.state.rerollsChargeSeen = true;
           confidence.state.rerollsRemaining = 0.85;
         } else {
           out.state.rerollsChargeSpent = true;                    // grey Charge
-          confidence.state.rerollsRemaining = 0.8;
+          // Decisive only when the rect holds a grey FACE and no amber at all.
+          // An in-between reading (partial amber, or a rect that drifted off the
+          // button so neither class fills it) still commits — grey is the better
+          // guess once the word is confirmed and no amber was found anywhere —
+          // but it commits BELOW the flag line so the user is asked to look.
+          var decisive = face.amber <= CHARGE_NOAMBER &&
+            Math.max(face.neutral, grown.neutral) >= CHARGE_NEUTRAL;
+          confidence.state.rerollsRemaining = decisive ? 0.85 : 0.7;
         }
+        if (out._debug) out._debug.pillGrown = Math.round(grown.amber * 100) / 100;
       }
+      if (out._debug) out._debug.pill = {
+        rect: [Math.round(pillRect.x), Math.round(pillRect.y), Math.round(pillRect.w), Math.round(pillRect.h)],
+        gap: Math.round(gap * 10) / 10,
+        a: Math.round(face.amber * 100) / 100, ne: Math.round(face.neutral * 100) / 100,
+        txt: String(chRead.text || "").replace(/\n/g, "|").slice(0, 40), word: chWord,
+        dec: out.state.rerollsChargeSeen ? "gold" : (out.state.rerollsChargeSpent ? "grey" : "none")
+      };
     }
     if (out.state.rerollsShownFree == null && !out.state.rerollsChargeSeen && !out.state.rerollsChargeSpent) {
       // dim-pill rescue: on dark captures BOTH the plain OCR and the template view
@@ -861,11 +897,11 @@
       if (out._debug) out._debug.chReadW = String(chReadW.text || "").replace(/\n/g, "|").slice(0, 40);
       if (CHARGE_RX.test(normText(chReadW.text))) {
         // color check on a DEEPER rect than the word read: the gold face can sit
-        // below the text rect on drifted framings (live: word hit, face missed)
-        var goldW = L.colorClusterStats(L.crop(raster, {
-          x: chRectW.x, y: chRectW.y, w: chRectW.w, h: chRectW.h + gap * 0.30
-        }), chargeGoldPred);
-        if (goldW.frac > 0.2 || chargeGoldSolid(goldW)) out.state.rerollsChargeSeen = true;   // gold face
+        // below the text rect on drifted framings (live: word hit, face missed).
+        // Same FRACTION metric as the primary decision — a compact coin cannot
+        // carry it — and a lower bar, since this rect is known to be off-centre.
+        var faceW = chargeFace({ x: chRectW.x, y: chRectW.y, w: chRectW.w, h: chRectW.h + gap * 0.30 });
+        if (faceW.amber >= 0.18) out.state.rerollsChargeSeen = true;   // gold face
         else out.state.rerollsChargeSpent = true;                    // grey
         confidence.state.rerollsRemaining = 0.7;   // clipped-geometry read — flagged
       }
@@ -2095,7 +2131,9 @@
     // extra headers and changed no board's pts; those frames have no white-ish
     // line in the zone at all, and most of them read the header fine from the
     // fixed rect anyway.)
+    var ptsTrace = out._debug ? [] : null;
     function locatePts(pred) { return locateLine(ptsZone, pred, {
+      trace: ptsTrace,
       maxRowFill: 0.6, minH: Math.max(4, Math.round(gap * 0.045)), maxH: Math.round(gap * 0.22),
       minRowPx: Math.max(3, Math.round(gap * 0.05)), rejectFill: 0.45,
       accept: function (r) {
@@ -2105,12 +2143,26 @@
         // width (a merged Reset+neighbour band comes back ≥2.0·gap wide). A rejected
         // candidate keeps findMaskedTextLine scanning upward, so the header still wins.
         var c = r.x + r.w / 2, dy = ((r.y + r.h / 2) - (redY - gap * 1.10)) / gap;
-        return Math.abs(c - cx) <= gap * 0.45 && r.w >= gap * 0.45 && r.w <= gap * 1.9 &&
+        var okv = Math.abs(c - cx) <= gap * 0.45 && r.w >= gap * 0.45 && r.w <= gap * 1.9 &&
           dy >= -0.34 && dy <= 0.20;
+        if (ptsTrace) ptsTrace.push({ dy: Math.round(dy * 100) / 100, wG: Math.round(r.w / gap * 100) / 100,
+          hG: Math.round(r.h / gap * 100) / 100, dx: Math.round((c - cx) / gap * 100) / 100, ok: okv });
+        return okv;
       }
     }); }
+    // (RULED OUT 2026-07-29 round 6: a BRIGHTER second predicate — s<0.3 v>0.78 —
+    // when the strict locate returns null. It works as a LOCATE: 6 of the 40
+    // checksum-less boards recover a header and all 6 checksums match the label sum.
+    // It is still a net LOSS — whole-parse 246 → 245, willpowerLevel 95.6 → 95.3,
+    // effect1Level 91.9 → 91.7. A board with no checksum is a board whose NODE reads
+    // refuse: c-mrw5h45e pins N=3 against a labelled 5 with W/E/S all null@0.00, and
+    // a correct pts=8 makes the enumeration push a compensating 3 into E — one wrong
+    // field becomes two. The checksum is not the binding constraint on that
+    // population; the per-node evidence is.)
     var ptsLoc = locatePts(dimBtnWhite), ptsPred = dimBtnWhite;
     var ptsRect = ptsLoc || ptsFixed;
+    if (out._debug) { out._debug.ptsZone = [Math.round(ptsZone.x), Math.round(ptsZone.y), Math.round(ptsZone.w), Math.round(ptsZone.h)];
+      out._debug.ptsTrace = ptsTrace; out._debug.ptsGap = Math.round(gap); }
     if (out._debug) out._debug.ptsLoc = ptsLoc
       ? { dy: Math.round(((ptsLoc.y + ptsLoc.h / 2) - (redY - gap * 1.10)) / gap * 1000) / 1000,
           w: Math.round(ptsLoc.w / gap * 100) / 100, h: Math.round(ptsLoc.h / gap * 100) / 100 }

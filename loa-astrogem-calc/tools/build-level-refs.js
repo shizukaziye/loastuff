@@ -39,6 +39,31 @@ var DEGRADED = {
   "live-share-0719-rare7t-tooltip": 1, "rare1-c9-chaos-station": 1
 };
 
+// NON-ENGLISH CLIENTS — hard-excluded from BOTH harvests (2026-07-29, round 6).
+// The name-band harvest keys a patch by the LABEL's canonical English name, so a
+// Spanish "Daño de jefe" or a Cyrillic "Урон по боссу" caption lands in the
+// "Boss Damage" class and every English board then correlates against a foreign
+// glyph run. The W/E digit patch is line-anchored on "Lv. N" and carries the
+// prefix letters, which localize too ("Ур."), so those are poison as well.
+// This is a LIST, deliberately, not a learned filter: the supervised verify that
+// guards the W/E digit refs ranks candidates against a pool built from the same
+// candidates, so it cannot be trusted to expel a whole foreign glyph set — the
+// same shape of bug as the round-2 "Lv."-fragment poisoning.
+// Sources: samples-v2/manifest.json `locale` (6 ru + 2 zh-TW) and the two older
+// localized boards named in ocr/ACCURACY-LOG.md (rounds 3-4).
+// Eligibility measured 2026-07-29 (g0 >= MIN_NATIVE_GAP, non-holdout): only
+// c-mryunsmb (zh-TW, g0 125) and c-mrwgjrp2 (es, g0 122) actually reached the
+// harvest — c-mrwgjrp2 had been contributing Spanish name patches since round 2.
+var LOCALIZED = {
+  // ru (samples-v2 manifest)
+  "c-mrxg5t94-dvelwi": "ru", "c-ms044mq4-ox2kn6": "ru", "c-ms045fyu-cjm6qp": "ru",
+  "c-ms047dnw-e6xuyd": "ru", "c-ms06qk9w-ioqb7a": "ru", "c-ms06r85o-iulyf9": "ru",
+  // zh-TW (samples-v2 manifest)
+  "c-mryunsmb-h6d7uj": "zh-TW", "c-mryur6to-n3a5jk": "zh-TW",
+  // older corpus (ACCURACY-LOG rounds 3-4)
+  "c-mrwgjrp2-1jqlzy": "es", "c-mrw1jzpi-9b314w": "ru"
+};
+
 function lumOf(sub) {
   var out = new Float32Array(sub.width * sub.height);
   for (var i = 0, j = 0; i < sub.data.length; i += 4, j++) {
@@ -193,11 +218,12 @@ function patchInkOk(patch, mode) {
   var refs = { N: {}, S: {}, W: {}, E: {} };
   var nrefs = { W: {}, E: {} };   // name-band refs keyed by canonical effect name
   var weCands = [];               // W/E candidates, verified after the loop
-  var used = 0, heldOut = 0;
+  var used = 0, heldOut = 0, localized = 0;
   for (var fi = 0; fi < files.length; fi++) {
     var f = files[fi];
     var base = f.replace(/\.(png|webp|jpe?g)$/i, "");
     if (DEGRADED[base]) continue;
+    if (LOCALIZED[base]) { localized++; continue; }
     if (isHoldout(base)) { heldOut++; continue; }
     var lblFile = path.join(ROOT, "samples", base + ".json");
     if (!fs.existsSync(lblFile)) continue;
@@ -348,7 +374,8 @@ function patchInkOk(patch, mode) {
   lines.push("// Pristine 32x32 level-digit reference patches (g0>=" + MIN_NATIVE_GAP + " sources, 2 per");
   lines.push("// g0 tier: >=180 / 140-179 / 110-139), keyed refs[node][digit] = [{q:...}];");
   lines.push("// used by the engine's analysis-by-synthesis level rescue. Holdout");
-  lines.push("// (djb2%5==0, " + heldOut + " samples) excluded — see tools/build-level-refs.js.");
+  lines.push("// (djb2%5==0, " + heldOut + " samples) and " + localized + " non-English-client");
+  lines.push("// samples excluded — see tools/build-level-refs.js.");
   lines.push("(function (root) {");
   lines.push("  \"use strict\";");
   lines.push("  var LEVEL_REFS = " + JSON.stringify(refs) + ";");
@@ -364,7 +391,7 @@ function patchInkOk(patch, mode) {
   var covW = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.W[v] || []).length); }).join(" ");
   var covE = [1, 2, 3, 4, 5].map(function (v) { return v + ":" + ((refs.E[v] || []).length); }).join(" ");
   var kb = Math.round(fs.statSync(path.join(ROOT, "ocr", "level-refs.js")).size / 1024);
-  console.log("harvested from " + used + " samples (holdout skipped: " + heldOut + ") -> ocr/level-refs.js (" + kb + "KB)");
+  console.log("harvested from " + used + " samples (holdout skipped: " + heldOut + ", localized skipped: " + localized + ") -> ocr/level-refs.js (" + kb + "KB)");
   console.log("coverage  N " + covN + "  |  S " + covS + "  |  W " + covW + "  |  E " + covE);
   console.log("name refs W: " + Object.keys(nrefs.W).map(function (n) { return n + ":" + nrefs.W[n].length; }).join(" "));
   console.log("name refs E: " + Object.keys(nrefs.E).map(function (n) { return n + ":" + nrefs.E[n].length; }).join(" "));

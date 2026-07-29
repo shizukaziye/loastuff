@@ -458,7 +458,12 @@
       }
       rows[y] = c; total += c;
     }
-    if (opts.rejectFill != null && total / (w * h) > opts.rejectFill) return null;
+    // opts.trace (optional array): every banded candidate is pushed with the
+    // accept verdict, plus a "fill" entry when the whole-box bail fires. Costs
+    // nothing when absent; without it a null locate is unattributable.
+    var fill = total / (w * h);
+    if (opts.trace) opts.trace.push({ fill: Math.round(fill * 100) / 100, w: w, h: h });
+    if (opts.rejectFill != null && fill > opts.rejectFill) return null;
     var accept = opts.accept || function () { return true; };
     function finish(yTop, yBot) {
       var x0 = w, x1 = -1;
@@ -479,8 +484,12 @@
         var bandH = yEnd - yy2;
         if (bandH >= minH && bandH <= maxH) {
           var r = finish(yy2 + 1, yEnd);
+          // trace the GEOMETRY only — never call accept() a second time: a caller's
+          // accept may record its own verdict (the points header does), and a
+          // double call would double-log it and pay for the test twice.
+          if (opts.trace && r) opts.trace.push({ y: Math.round(r.y), w: Math.round(r.w), h: Math.round(r.h) });
           if (r && accept(r)) return r;   // rejected candidates keep the scan moving up
-        }
+        } else if (opts.trace) opts.trace.push({ bandH: bandH, skipH: 1 });
         yEnd = -1;
       }
     }
