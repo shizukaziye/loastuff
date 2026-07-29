@@ -280,3 +280,137 @@ cannot catch.
 Shipped 2026-07-29 (structural pin 91; gate ratcheted to 0.96/0.91). Verified
 independently by the orchestrator: `npm run eval-gate` → PASS, 96.3% / 91.6%, 0 silents,
 6m25s wall (the old "~2.5h" figure was a run that also scored tesseract).
+
+### 2026-07-29 · iteration 6 — round 4: the four-tile strip
+Outcomes had not moved in two rounds and was the binding gate constraint (91.6 vs a
+91.0 floor). This round is entirely the outcome strip; no data files were rebuilt, so
+glyphs and level-refs stay byte-identical to round 2.
+
+**Harness first.** A scratch parallel harness (6 tesseract lanes, one per image, so a
+lane's `setParameters` can never interleave with another's `recognize`) scores the
+whole corpus in **200s** instead of 6m25s. That is what made a rule-mining loop
+possible: `OCR_CELL_EVID=1` makes the cell reader attach the raw evidence it decided
+on, and candidate decision rules were then scored against the labels OFFLINE, so a
+6-minute run was spent only on ideas that already measured well. `tools/eval-ocr.js`
+is untouched and remains the gate.
+
+**Taxonomy of the 101 missed tiles going in** (73 boards; 51 miss exactly one tile):
+AMOUNT 32 · TYPE 29 (28 of them `change:effectN` read as `raise:effectN:1`) ·
+TARGET 16 · DROPPED 17 · DIRECTION 4 · COSTSIGN 2.
+
+- **"Effect Changed" is the tile with no coloured amount line** (28 tiles). The
+  `/chang/` caption test missed 28 of 116 change tiles because the word degrades past
+  any regex — measured: "chanaod", "crangod", "cangoc", "cmarged", "charzed", "erect
+  crarsed", and the ES client's "camb ado". The signature is STRUCTURAL: a change
+  tile's second line is white like the name, while a raise renders a chartreuse
+  "Lv. N" and a lower a red one. The corpus is emphatic — among effect-target cells a
+  located chartreuse line is a raise **436/436** times, a located red line is a lower
+  **55/55**, and NEITHER line means change 114 times against 21 everything-else.
+  Defaulting that bucket to raise:1 was the largest single miss class. The rung commits
+  flagged (the bucket is 84% pure, not certain) and refuses on a cell with no white ink
+  at all, which is a blocked tile rather than a change.
+- **The amount OCR crop included the ▲/▼** (10 tiles). `'Lv. 3 ▲'` comes back `'vv 3 4'`
+  and the last-bare-digit rule takes the 4; `'+1 ▲'` came back `'+ 4'`. The synthesis
+  has clipped at the arrow's measured centroid since round 2 — the OCR and template
+  passes never did. `arrowEnd()` now owns that measurement and all three readers share
+  it. (The SOLIDITY VETO exists only because an unclipped triangle template-matches '4'.)
+- **The caption names its own target** (8 tiles, and it is the only channel that speaks
+  at all on 13 boards whose icon renders so dark — v < 0.31 — that the hue test calls it
+  grey and the tile came out `do_nothing`). "Efficiency"/"Eficiencia" is unique to
+  willpower, "Points/Puntos" to the order axis, and the effect rung reuses `EFFECT_LEX`
+  in its own order so "atk. power" cannot become Ally Attack Enh. A bare "power" is
+  deliberately not evidence — it is the stem Brand and Attack Power share, and reading
+  it as either was the only wrong answer this channel gave. Measured: decisive on 632
+  of 1200 cells, agreeing with the label on **629**, and it never once fired on a truly
+  grey (cost/reroll/maintained) tile. An override stays flagged.
+- **Amount ladder**, three measured rungs: a gradient-only synth may override a weak
+  template or caption read at gm ≥ 0.10, double the full-agree bar (+4 tiles, −0); the
+  synth's own agree-commit gate went 0.01 → 0.03, since at 0.01 it shipped a '4' on a
+  true '1' (+1, −0); and when every channel refuses, the bare OCR digit now stands
+  instead of a blind default of 1 (+3, −1) — safe only because the crop is arrow-clipped
+  now. A weak template saying '1' against a refused consult's non-1 gradient over the
+  noise floor also loses (+3, −0): the asymmetry that makes THAT safe is that a weak
+  template firing at all proves there is ink, and the same rule on cells with no digit
+  read at all is wrong 7 times in 10.
+
+**Same-labels A/B, full corpus, 302 scored pairs** (A-arm = unmodified HEAD run in a
+`git worktree` against the same corrected labels):
+
+| metric | round 3 | round 4 |
+|---|---|---|
+| headline per-field avg | 96.4% | **96.7%** |
+| whole-parse | 176/302 (58.3%) | **197/302 (65.2%)** |
+| flag coverage | 100.0% (189/189) | **100.0%** (157/157) |
+| silent errors | 0 | **0** |
+| false alarms/shot | 6.2 | 6.3 |
+| **outcomes** | **91.4%** | **95.0%** |
+
+Every one of the 12 scalar fields is byte-identical between the arms — the whole gain
+is the outcome set, and the 32-board drop in wrong fields is 32 boards whose strip went
+from partly wrong to exactly right. Missed tiles 101 → **57**.
+
+Per-field: maxTurns 100 · baseCost 99.7 · currentTurn 99.7 · gemType 99.3 ·
+rerollsRemaining 97.7 · processCostMultiplier 97.7 · effect2Level 95.7 · effect1 95.4 ·
+effect2 95.4 · **outcomes 95.0** · willpowerLevel 94.7 · orderLevel 94.7 ·
+effect1Level 91.7.
+
+Gate: lint-labels 0 errors; 96.7% ≥ 96% · 95.0% ≥ 91% → **PASS**. Outcomes now carries
+4 points of headroom instead of 0.6, so **effect1Level (91.7) is the binding field** and
+the outcomes gate can ratchet to 0.94 at ship.
+
+**Label fixes (all pixel-arbitrated, all four disproved by the crop):**
+- `c-mrwqwzkm-uy8rg9` — wheel reads "Ally Attack Enh. Lv. 3" (W) and "Atk. Power Lv. 4"
+  (E); the label said effect1 "Attack Power" / effect2 "Boss Damage". Both names wrong,
+  both levels right. The engine already read it correctly.
+- `c-mrwgjrp2-1jqlzy` (ES) — wheel reads "Daño de jefe nv. 4" and "Daño adicional nv. 1",
+  so effect1 "Brand Power"→"Boss Damage", effect2 "Boss Damage"→"Additional Damage";
+  strip tile 2 is "Efecto cambiado" (labelled a raise) and tile 3 "Ver otros objetos
+  +1 vez" (labelled do_nothing).
+- `c-mrxig5cd-qqr89b` — strip tile 1 reads "Ally Damage Enh. / Effect Changed"; labelled
+  `raise_effect effect2 1`.
+- `c-mrwpng89-skdblh` — the two `change_side_option` targets were swapped (tile 2 is the
+  BLUE "Atk. Power" = effect2). Multiset-neutral for scoring; corrected for honesty.
+The first two are the shared-mode class again in reverse: the engine disagreed and was
+right, and nobody had corrected the field.
+
+**RULED OUT, with numbers, so nobody re-derives them:**
+- *4-way self-calibrated icon hue* for outcome targets (nearest of the image's own
+  N/S/W/E node hues, replacing the absolute `hueClass`): over all 1070 target cells the
+  current rule is right 1039, nearest-node-hue 1043. It trades 5 willpower drifts for 4
+  new effect1↔effect2 and 2 new order confusions. The caption channel fixes the same
+  cells without the churn.
+- *A relaxed RED line sweep* in the locate ladder: −2 tiles, all raise→lower. Red is the
+  willpower face, the ▼ and the ▲'s shadow; only chartreuse is unique to the amount, so
+  the loose sweep is chartreuse-only.
+- *W/E "dissent + ink-geometry corroboration"* — the round-5 swap idea, and the one with
+  a genuinely independent channel (segmentation, not correlation). Offline it looked
+  strong: the last column-run's w/h < 0.42 at W catches 92% of true 1s at 17% misfire.
+  Inside the engine it collapses — the synth's own line locate yields a usable last run
+  on only 210 of 545 W/E consults, and against the labels E splits narrow 15:4 but
+  **wide 54:18**, i.e. the measurement is not finding the digit. Wired in it fired 7
+  times, 4 right and 3 wrong: effect1Level 25 → 26 misses. Reverted; the negative is
+  written into `synthLevelRescue` beside the gate it would have loosened.
+- *False alarms*: reclaimed none again, deliberately. The 0.70-0.75 effect band is still
+  219 FAs against 1 real miss and `processCostMultiplier` still has 149 FAs whose default
+  happens to be right. Nothing this round created new certainty about either.
+
+- Next (iteration 7): **effect1Level 91.7 is now the binding field**, and the assignment
+  block is where it lives — 13 boards fail with the checksum satisfied. The provenance
+  dump added this round (`_debug.lvl`, per node: pinned / enumerated / filled) shows the
+  wrong node is FREE on 6 of them and a wrong PIN poisons the enumeration on the rest, so
+  a verifier has to be able to un-pin, not just vote. The evidence that looks live: on
+  four separate boards the W/E consult reads "raw 4 / grad 1" at gm 0.17-0.24 with a
+  labelled 1 — the raw scan correlating on the coloured diamond face — and the refusal
+  hands the enumeration a coin flip. Gradient alone was measured as a loss in round 3 and
+  the ink-geometry corroborator failed above, so the third channel still has to be found.
+  On outcomes the residual 57 is: TYPE 9 (8 of them rule B's own false side, on cells with
+  no chartreuse ink at all) · AMOUNT 17 · TARGET 10 · DROPPED 12 (grey-rendered icons with
+  unreadable captions) · DIRECTION 4 · COSTSIGN 2. The cheapest-looking next tile is the
+  willpower/order **direction**: those amounts render vivid YELLOW ("+1"/"−1"), which
+  `isAmountText` (h 55-95) cannot see at all, so those cells reach the fallback with no
+  located line — a third locate predicate for the vivid band is the obvious try.
+
+Shipped 2026-07-29 (structural pin 92; outcomes gate ratcheted 0.91 → 0.94). Orchestrator
+verified: gate PASS at 96.7% / 95.0%, 0 silents, 100% flag coverage; one of the round's
+four label fixes (c-mrwqwzkm) re-checked against pixels — west "Ally Attack Enh. Lv. 3",
+east "Atk. Power Lv. 4", levels sum 12 = header. Frontier is now effect1Level (91.7).

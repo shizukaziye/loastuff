@@ -45,6 +45,10 @@
   // pooled-native '+' template outscored a true ×2 serif-'1' in the points
   // header, killing the level checksum). The band overlays the pooled atlas so
   // classes a band lacks still match. Cached per band — the merge is tiny.
+  // Calibration hook (off in production): OCR_CELL_EVID=1 makes the outcome-cell
+  // reader attach the raw per-cell evidence it decided on, so a scratch harness can
+  // score candidate decision rules offline against the labels.
+  var COLLECT_EVID = (typeof process !== "undefined" && process.env && process.env.OCR_CELL_EVID === "1");
   var _atlasCache = {};
   function pickGlyphAtlas(scaleF) {
     if (!GLYPHS_POOLED) return null;
@@ -1507,6 +1511,20 @@
       var res = { value: null, conf: 0.55, gm: gm, gradTop: rg[0].v, rawTop: ra[0].v,
         rawScore: ra[0].s, gradScore: rg[0].s, agree: ra[0].v === rg[0].v };
       if (res.agree && gm >= (kind === "S" ? 0.015 : 0.01)) res.value = ra[0].v;
+      // RULED OUT (round 4) — a W/E "dissent + ink-geometry corroboration" commit.
+      // The idea: when raw and gradient disagree decisively (gm ≥ 0.10) at W/E, the
+      // raw scan is correlating on the COLOURED DIAMOND FACE (four boards read
+      // "raw 4 / grad 1" at gm 0.17-0.24 with a labelled 1), so let a second,
+      // differently-derived witness break it — the ink ASPECT of the last column
+      // run on the "Lv. N" line, which comes from segmentation rather than
+      // correlation. Offline on the corpus it looked strong (w/h < 0.42 at W caught
+      // 92% of true 1s at 17% misfire). Inside the engine it collapses: the line
+      // the synth actually locates yields a usable last run on only 210 of 545 W/E
+      // consults, and against the labels it splits W narrow 46:14 / wide 21:38 and
+      // E narrow 15:4 / **wide 54:18** — the wide side is mostly 1s, i.e. the
+      // measurement is not finding the digit. Wired up it fired 7 times, 4 right
+      // and 3 wrong, for effect1Level 25 → 26 misses. The geometry channel is not
+      // decisive at this mask quality; a swap verifier needs different evidence.
       return res;
     }
 
@@ -1547,15 +1565,24 @@
       _amtTVCache[band] = pool;
       return pool;
     }
-    function synthAmountDigit(amtLine) {
-      var pool = _amtVariants(), cls;
-      if (!pool || !Object.keys(pool).length) return null;
-      var cy = amtLine.y + amtLine.h / 2;
-      // Stop the scan LEFT of a visible ▲/▼ — arrow patches poison the class
-      // argmax (mJLklhw: a clean '4' ranked '2' when the scan covered the arrow).
-      // The located line INCLUDES the arrow on some tiers and EXCLUDES it on
-      // others (level4 vs mJLklhw — assumed geometry burned once already), so
-      // the clip anchors on the arrow's MEASURED centroid, not the line end.
+    // The ▲/▼ blob at an amount line's right end, located by its OWN colour
+    // centroid. EVERY reader that looks at the line has to clip here:
+    //   - the synthesis scan — an arrow patch poisons the class argmax
+    //     (mJLklhw: a clean '4' ranked '2' when the scan covered the arrow);
+    //   - the amount OCR crop — tesseract reads a solid triangle as a digit
+    //     ("Lv. 3 ▲" comes back 'vv 3 4' and the last-bare-digit rule takes
+    //     the 4; "+1 ▲" came back "+ 4"), which is round 4's AMOUNT(1→4)
+    //     family and most of the 3→1 family;
+    //   - the template pass — the SOLIDITY VETO exists only because a solid
+    //     triangle template-matches '4'.
+    // The located line INCLUDES the arrow on some tiers and EXCLUDES it on
+    // others (level4 vs mJLklhw — assumed geometry burned once already), so
+    // the clip anchors on the arrow's MEASURED centroid, not the line end.
+    // Memoized per line: three readers ask about the same line.
+    var _arrowMemo = {};
+    function arrowEnd(amtLine) {
+      var key = Math.round(amtLine.x) + "," + Math.round(amtLine.y) + "," + Math.round(amtLine.w) + "," + Math.round(amtLine.h);
+      if (_arrowMemo[key]) return _arrowMemo[key];
       var endBox = { x: amtLine.x + amtLine.w - gap * 0.18, y: amtLine.y - amtLine.h * 0.5, w: gap * 0.30, h: amtLine.h * 2 };
       var endCrop = L.crop(raster, endBox);
       var eUp = L.colorClusterStats(endCrop, function (r2, g2, b2) { var c2 = L.hsv(r2, g2, b2); return c2.h >= 75 && c2.h < 145 && c2.s > 0.35 && c2.v > 0.45; });
@@ -1563,6 +1590,13 @@
       var arrow = (eUp.count >= 8 && eUp.density > 0.25) ? eUp : (eDn.count >= 8 && eDn.density > 0.25) ? eDn : null;
       var x1 = amtLine.x + amtLine.w - gap * 0.05;
       if (arrow) x1 = Math.min(x1, endBox.x + arrow.cx - gap * 0.09);
+      return (_arrowMemo[key] = { x1: x1, arrow: arrow, up: eUp, down: eDn, box: endBox });
+    }
+    function synthAmountDigit(amtLine) {
+      var pool = _amtVariants(), cls;
+      if (!pool || !Object.keys(pool).length) return null;
+      var cy = amtLine.y + amtLine.h / 2;
+      var x1 = arrowEnd(amtLine).x1;
       var x0 = Math.max(amtLine.x, x1 - gap * 0.24);
       var perRaw = {}, perGrad = {}, i;
       for (var cxs = x0; cxs <= x1; cxs += gap * 0.0075) {
@@ -1589,7 +1623,7 @@
       var gm = rg.length > 1 ? rg[0].s - rg[1].s : 1;
       if (out._debug) (out._debug.amtSynthDet = out._debug.amtSynthDet || []).push({
         line: { x: Math.round(amtLine.x), y: Math.round(amtLine.y), w: Math.round(amtLine.w), h: Math.round(amtLine.h) },
-        arrowCx: arrow ? Math.round(endBox.x + arrow.cx) : null,
+        arrowCx: arrowEnd(amtLine).arrow ? Math.round(arrowEnd(amtLine).box.x + arrowEnd(amtLine).arrow.cx) : null,
         span: [Math.round(x0), Math.round(x1)],
         raw: ra.slice(0, 2).map(function (r3) { return r3.v + "@" + r3.s.toFixed(3); }).join(" "),
         grad: rg.slice(0, 2).map(function (r3) { return r3.v + "@" + r3.s.toFixed(3); }).join(" "),
@@ -1597,7 +1631,8 @@
       });
       // Always report the gradient-top (the transferable channel) even on refusal —
       // the bare-digit rung accepts a weak OCR digit only when it AGREES with it.
-      var res = { value: null, gm: gm, gradOnly: false, gradTop: rg[0].v, agree: ra[0].v === rg[0].v };
+      var res = { value: null, gm: gm, gradOnly: false, gradTop: rg[0].v, rawTop: ra[0].v,
+        gradScore: rg[0].s, rawScore: ra[0].s, agree: ra[0].v === rg[0].v };
       if (ra[0].v !== rg[0].v) {
         // The refs are node-harvested; over an OUTCOME CELL's background the raw
         // channel votes low-frequency background, not glyph (level4: raw said '1'
@@ -1606,7 +1641,10 @@
         if (gm >= 0.03) { res.value = rg[0].v; res.gradOnly = true; }
         return res;
       }
-      if (gm >= 0.01) res.value = ra[0].v;
+      // Both channels agreeing still needs a margin: at 0.01 the amount synth
+      // committed a '4' on a true '1' at gm 0.017 (c-mrw50ekq). 0.03 is the same
+      // 3× bar the gradient-only branch above uses. Measured: +1 tile, −0 tiles.
+      if (gm >= 0.03) res.value = ra[0].v;
       return res;
     }
 
@@ -2492,6 +2530,10 @@
     out.config.effect2Level = levels[2]; confidence.config.effect2Level = conf4[2];
     out.config.orderLevel = levels[3]; confidence.config.orderLevel = conf4[3];
     if (out._debug) out._debug.pts = pts + (ptsSoft ? "(soft)" : "") + " levels=" + levels.join(",");
+    if (out._debug) out._debug.lvl = [0, 1, 2, 3].map(function (q) {
+      return ["N", "W", "E", "S"][q] + "=" + levels[q] + "@" + (conf4[q] || 0).toFixed(2) +
+        (pinned[q] ? " pin(" + indep[q].v + "@" + indep[q].conf.toFixed(2) + ")" : enumAssigned[q] ? " enum" : " fill");
+    }).join("  ");
     tmark("ptsAndSolve");
 
     // ---- effect NAMES: W/E caption OCR (white serif over art — masked) ----
@@ -2819,9 +2861,56 @@
     var iconXs = geo ? geo.outIconXs : L.ROI.outIconXs.map(function (fx) { return panel.x + fx * panel.w; });
     var iconY = geo ? geo.outIconY : panel.y + L.ROI.outIconY * panel.h;
     var _typeVotes = { chaos: 0, order: 0 };   // gold-cell caption votes (gemType backstop)
+    // ---- the caption NAMES its own target (round 4) ----
+    // Every tile writes its target above the amount: "Willpower Efficiency",
+    // "Order/Chaos Points", or the side effect's own name. The cell reader used to
+    // decide targets from the icon's median hue ALONE, and that patch drifts: a dim
+    // willpower diamond lands at h=20-32 (the gold class) or in the violet class on
+    // washed captures, and 13 boards render it so dark (v<0.31) that it reads grey
+    // and the whole tile came out `do_nothing`. The caption comes from the TEXT
+    // mask, so it fails independently of the face colour. Measured over the corpus:
+    // decisive on 632 of 1200 cells and agreeing with the label on 629 — and it
+    // never once fired on a truly grey (cost/reroll/maintained) tile.
+    // "Efficiency"/"Eficiencia" is unique to willpower, "Points/Puntos/Очки" to the
+    // order axis, and neither shares a stem with any effect name.
+    var CAP_WILLPOWER = /wil+\s*po|[il]lpo|efficien|fficien|ficienc|iciency|icienc|volunta/;
+    var CAP_POINTS = /[o0]rd\w*\s*[,.]?\s*[pf]|cha[o0]?s|ca[o0]s|xaoc|punt|p[o0][il1]?[nmr][tf]|f[o0][il1][nmr]|[o0]unt[cs]|[o0]rder|rder|qrder|sdor/;
+    // The effect rung reuses EFFECT_LEX in ITS order, first match wins — that is
+    // what keeps "atk. power" out of Ally Attack Enh. and "ally attack enh." out of
+    // Attack Power. A bare "power" is deliberately NOT evidence: it is the stem
+    // "Brand Power" and "Attack Power" share, and reading it as either was the only
+    // wrong answer this channel gave ("srang povier", "bramd power").
+    function captionTarget(t) {
+      var hits = [];
+      if (CAP_WILLPOWER.test(t)) hits.push("willpower");
+      if (CAP_POINTS.test(t)) hits.push("order");
+      var nm = null;
+      for (var li = 0; li < EFFECT_LEX.length; li++) { if (EFFECT_LEX[li][1].test(t)) { nm = EFFECT_LEX[li][0]; break; } }
+      if (nm && out.config.effect1 && nm === out.config.effect1) hits.push("effect1");
+      else if (nm && out.config.effect2 && nm === out.config.effect2) hits.push("effect2");
+      // two lexicons firing at once is garbage text arguing with itself — refuse
+      return hits.length === 1 ? hits[0] : null;
+    }
     // the four cells are data-independent — read them CONCURRENTLY (the OCR pool
     // overlaps them; serialized backends preserve old order via their queues);
     // every write below is oi-indexed, so completion order cannot matter
+    var _evExtra = {};
+    function cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, o, oconf) {
+      var capCrop = L.crop(raster, capRect);
+      var evUp = L.colorClusterStats(capCrop, function (rr, gg, bb) { var c = L.hsv(rr, gg, bb); return c.h >= 75 && c.h < 145 && c.s > 0.35 && c.v > 0.45; });
+      var evAm = L.colorClusterStats(capCrop, L.isAmountText);
+      var evWh = L.colorClusterStats(capCrop, L.isWhiteText);
+      (out._debug.cellEvid = out._debug.cellEvid || [])[oi] = {
+        icls: icls, ihue: Math.round(ihue), target: target,
+        dW: Math.round(hueDist(ihue, hueW)), dE: Math.round(hueDist(ihue, hueE)),
+        amt: !!amtLine, red: !!redLine,
+        up: { n: evUp.count, d: Math.round(evUp.density * 100) / 100 },
+        am: { n: evAm.count, d: Math.round(evAm.density * 100) / 100 },
+        wh: { n: evWh.count, d: Math.round(evWh.density * 100) / 100 },
+        gap2: Math.round(gap * gap), cap: cap.replace(/\n/g, "|").slice(0, 60),
+        o: JSON.stringify(o), conf: Math.round(oconf * 100) / 100, x: _evExtra[oi] || null
+      };
+    }
     async function readOutcomeCell(oi) {
       var icol = L.medianPatch(raster, iconXs[oi], iconY, patchHalf);
       var icls = L.hueClass(icol[0], icol[1], icol[2]);
@@ -2850,6 +2939,13 @@
         target = dW <= dE ? "effect1" : "effect2";
         if (Math.abs(dW - dE) < 12) oconf -= 0.35;   // near-tie: same-family effects
       }
+      // the caption's own name outranks the icon patch (see captionTarget): it is a
+      // different channel, and it is the only one that can speak at all on the dark
+      // tiles the hue test calls grey. An override stays FLAGGED — the channel is
+      // 99.5% right, not certain, and a wrong target must never look confident.
+      var capT = captionTarget(cap);
+      var capOverride = false;
+      if (capT && capT !== target) { target = capT; capOverride = true; }
 
       // GREY cells are exactly two candidates: "Processing Cost ±100%" and
       // "Processing State Maintained" — both captions render DIM GREY, which the
@@ -2858,8 +2954,11 @@
       // TEMPLATE: a '1','0','0' digit run under a grey mask = the cost cell, and
       // the sign is the box left of the run classified by SHAPE — the '−' bar is
       // short and wide, geometrically unlike '+'.
+      // (…and a grey-looking cell whose caption NAMES a target is not one of those
+      // two: it is a dark-rendered effect/willpower/order tile, so let it fall
+      // through to the target ladder instead of the ±100%/maintained decision.)
       var greyCost = null;
-      if (icls === "grey") {
+      if (icls === "grey" && !capT) {
         var greyPred = function (r, g, b) { var c = L.hsv(r, g, b); return c.s < 0.32 && c.v > 0.42; };
         // dedicated dim-grey OCR: dilate + ×4 (the standard caption pass only gets ×2
         // and misses most of the grey text — 4 live −100% cells parsed as do_nothing)
@@ -2941,17 +3040,48 @@
         var amt = null, dirUp = false, dirDown = false;
         var amtSrc = null, bareCand = null, amtFromSynth = false;
         var capCx = iconXs[oi];
-        var amtLine = L.findMaskedTextLine(raster, capRect, L.isAmountText, {
-          maxRowFill: 0.7, minH: Math.max(4, Math.round(gap * 0.05)), maxH: Math.round(gap * 0.2), minRowPx: 3,
-          // amount text is centered on the cell — skip icon tips / stray sparkles
-          accept: function (r) {
-            var cx = r.x + r.w / 2;
-            return Math.abs(cx - capCx) <= gap * 0.24 && r.w >= gap * 0.05 && r.w <= gap * 0.6;
-          }
-        });
+        // LOCATE LADDER (round 4). "No coloured line" now decides the tile's TYPE
+        // (see the Effect-Changed rung below), so it has to mean "no line after a
+        // real search", not "the strict locate declined". Strict first for both
+        // colours, then one relaxed sweep — the same rescue shape every other read
+        // in this engine has. A relaxed hit never reaches the unflagged zone.
+        // CHARTREUSE ONLY: a loose RED sweep measured -2 tiles, all of them
+        // raise→lower. Nothing else in a cell is chartreuse, but red is the
+        // willpower face, the ▼ AND the ▲'s shadow, so a relaxed red hit sets
+        // dirDown on tiles that are plainly raises. The strict red locate keeps
+        // its rejectFill guard for exactly that reason.
+        function locateAmt(pred, loose) {
+          return L.findMaskedTextLine(raster, capRect, pred, {
+            maxRowFill: loose ? 0.85 : 0.7,
+            rejectFill: pred === L.isRedAmountText ? 0.3 : undefined,
+            minH: loose ? Math.max(3, Math.round(gap * 0.03)) : Math.max(4, Math.round(gap * 0.05)),
+            maxH: Math.round(gap * (loose ? 0.24 : 0.2)), minRowPx: loose ? 1 : 3,
+            // amount text is centered on the cell — skip icon tips / stray sparkles
+            accept: function (r) {
+              var cx = r.x + r.w / 2;
+              return Math.abs(cx - capCx) <= gap * (loose ? 0.3 : 0.24) &&
+                r.w >= gap * (loose ? 0.03 : 0.05) && r.w <= gap * (loose ? 0.7 : 0.6);
+            }
+          });
+        }
+        var amtLine = locateAmt(L.isAmountText, false);
+        var redLine = amtLine ? null : locateAmt(L.isRedAmountText, false);
+        var lineRelaxed = false;
+        if (!amtLine && !redLine) {
+          amtLine = locateAmt(L.isAmountText, true);
+          lineRelaxed = !!amtLine;
+        }
         if (amtLine) {
           var agrow = Math.round(amtLine.h * 0.5);
           var amtRectX = { x: amtLine.x, y: amtLine.y - agrow, w: amtLine.w, h: amtLine.h + agrow * 2 };
+          // CLIP THE ARROW OUT OF THE READ (round 4). The located line usually
+          // contains the ▲/▼, and tesseract reads a solid triangle as a digit —
+          // 'Lv. 3 ▲' → 'vv 3 4', and the last-bare-digit rule then takes the 4.
+          // The synthesis has clipped here since round 2; the OCR and template
+          // passes were still reading the whole line. Only clip on a MEASURED
+          // arrow (see arrowEnd) and only when a readable strip survives.
+          var aClip = arrowEnd(amtLine);
+          if (aClip.arrow && aClip.x1 - amtLine.x >= gap * 0.06) amtRectX.w = aClip.x1 - amtLine.x;
           // template match first (amounts use the same glyph art as the wheel
           // digits). Only the HIGH-tier commit (score≥0.86 with margin) skips
           // the synth consult — a 0.85-tier commit shipped a "+1 ▲" as +4
@@ -3001,23 +3131,19 @@
             down: { count: aDown.count, frac: Math.round(aDown.frac * 1000) / 1000, density: Math.round(aDown.density * 100) / 100 }
           };
         }
-        var redLine = null;
-        if (!amtLine) {
+        {
           // LOWER amounts render RED with a red ▼ — a red text line is itself the
           // direction signal. Red-on-red (a lower on the red willpower face) is
           // colorimetrically unreadable, like the gold S digit: rejectFill bails and
-          // the willpower fallback below covers it.
-          redLine = L.findMaskedTextLine(raster, capRect, L.isRedAmountText, {
-            rejectFill: 0.3, maxRowFill: 0.7,
-            minH: Math.max(4, Math.round(gap * 0.05)), maxH: Math.round(gap * 0.2), minRowPx: 3,
-            accept: function (r) {
-              var cx = r.x + r.w / 2;
-              return Math.abs(cx - capCx) <= gap * 0.24 && r.w >= gap * 0.04 && r.w <= gap * 0.6;
-            }
-          });
+          // the willpower fallback below covers it. (The locate itself moved up into
+          // the ladder; this block only READS what the ladder found.)
           if (redLine) {
             var rgrow = Math.round(redLine.h * 0.5);
             var redRectX = { x: redLine.x, y: redLine.y - rgrow, w: redLine.w, h: redLine.h + rgrow * 2 };
+            // the red ▼ is INSIDE the red mask, so this crop needs the same
+            // arrow clip as the chartreuse one above
+            var rClip = arrowEnd(redLine);
+            if (rClip.arrow && rClip.x1 - redLine.x >= gap * 0.06) redRectX.w = rClip.x1 - redLine.x;
             // template first: the red lower digits are the same glyph art as the gold
             // ones (the chroma mask makes them identical binary shapes); weak-tier
             // commits stay consultable (see the raise path)
@@ -3036,6 +3162,29 @@
             dirDown = true; dirUp = false;
           }
         }
+        // ---- "Effect Changed" IS the tile with no coloured amount line ----
+        // The /chang/ caption test misses 28 of 116 change tiles because the word
+        // degrades past any regex — measured: "chanaod", "crangod", "cangoc",
+        // "cmarged", "charzed", "erect crarsed", plus the ES client's "camb ado".
+        // The signature is structural, not lexical: a change tile's second line is
+        // WHITE like the name above it, while every raise renders a chartreuse
+        // "Lv. N" and every lower a red one. The corpus is emphatic — among
+        // effect-target cells, a located chartreuse line is a raise 436/436 times
+        // and a located red line is a lower 55/55, while NEITHER line means change
+        // 114 times against 21 everything-else. Defaulting that bucket to raise:1
+        // (what it did) is the single largest outcome-miss class.
+        // The bucket is 84% pure, not certain, so the commit is deliberately
+        // FLAGGED; and a cell with no white ink at all is a blocked/blank tile, not
+        // a change — three such cells are all this guard costs.
+        if (!amtLine && !redLine && (target === "effect1" || target === "effect2")) {
+          var whInk = L.colorClusterStats(L.crop(raster, capRect), L.isWhiteText);
+          if (whInk.count >= 8) {
+            out.outcomes[oi] = { type: "change_side_option", target: target };
+            confidence.outcomes[oi] = Math.max(0, Math.min(0.95, (capOverride ? 0.55 : 0.62) * panelConf));
+            if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, out.outcomes[oi], 0.62);
+            return;
+          }
+        }
         if (amt == null) {
           // prefix-anchored only — the caption's trailing garbage ends in stray
           // digits at collect-crop blur ("…1 7 4" from "+1 ▲" + sparkle)
@@ -3045,11 +3194,29 @@
         // ---- synth consult (skipped only after a trusted template commit) ----
         var lnForSynth = amtLine || redLine;
         var amSy = (amtSrc !== "tm" && lnForSynth) ? synthAmountDigit(lnForSynth) : null;
-        if (amSy && amt != null && amSy.value != null && !amSy.gradOnly && amSy.gm >= 0.05 && amSy.value !== amt) {
+        if (amSy && amt != null && amSy.value != null && amSy.value !== amt &&
+            (amSy.gradOnly ? (amSy.gm >= 0.10 && amtSrc !== "tm") : amSy.gm >= 0.05)) {
           // an anchored-regex read can still be the ▲ wearing a legitimate anchor
           // (level4's "+1 ▲" OCR'd "+ 4") — a FULL-AGREE synth at 5× margin
-          // outranks OCR/cap rungs. gradOnly synth never overrides anything.
+          // outranks OCR/cap rungs. A GRADIENT-ONLY synth may now override too, at
+          // double that bar (round 4): the transferable channel finding one class
+          // 10× clear of the runner-up beats a 0.85-tier template or a caption
+          // regex, and it is the only thing that catches the survivors of the
+          // arrow-in-the-crop family. Measured on the full corpus: +4 tiles, −0.
           amt = amSy.value; amtFromSynth = true; amtSrc = "synth-override";
+        }
+        else if (amtSrc === "tm-weak" && amSy && amSy.value == null &&
+                 amSy.gradTop != null && amSy.gradTop !== amt &&
+                 amSy.gradTop !== 1 && amSy.gm >= 0.006) {
+          // A 0.85-tier template that says '1' while a REFUSED consult's gradient
+          // says something else is the absorber class showing up in the outcome
+          // cells: eroded strokes template-match '1', which is also the modal
+          // amount, so the two conspire. The asymmetry that makes this safe is
+          // measured: on cells where the weak template fired at all (so there IS
+          // ink), a dissenting non-1 gradient over the noise floor is right 3 of 3;
+          // on cells where NOTHING read a digit the same rule is wrong 7 of 10, so
+          // it stays scoped to the tm-weak configuration. Deep-flagged.
+          amt = amSy.gradTop; amtFromSynth = true; amtSrc = "grad-contra";
         }
         if (amt == null && bareCand != null && amSy && amSy.gradTop === bareCand) {
           // two weak channels agreeing: a bare OCR digit + the synth gradient-top
@@ -3060,6 +3227,17 @@
           // synth alone (agreement-gated or grad-only at 3× margin) fills the null
           amt = amSy.value; amtFromSynth = true; amtSrc = "synth";
         }
+        var amtWeak = false;
+        if (amt == null && bareCand != null) {
+          // LAST RUNG (round 4): every channel refused, so the alternative is a
+          // blind default of 1 — and the corpus says the bare OCR digit beats that
+          // 3 to 1. The rung used to demand agreement with the synth's gradient
+          // top, from an era when the OCR crop still INCLUDED the ▲ and a bare
+          // digit was as likely to be the arrow as the amount; the crop is clipped
+          // now (see arrowEnd), which is what makes this safe enough to stand
+          // alone. Deep-flagged: a guess with evidence, not a read.
+          amt = bareCand; amtSrc = "bare"; amtWeak = true;
+        }
         if (out._debug) (out._debug.amtSynth = out._debug.amtSynth || [])[oi] =
           (amSy ? (amSy.value != null ? "synth " + amSy.value : "refuse(top " + amSy.gradTop + ")") + "@gm" + amSy.gm.toFixed(3) + (amSy.gradOnly ? " gradOnly" : "") : "n/a") +
           " src=" + (amtSrc || "none");
@@ -3068,6 +3246,11 @@
         var amtContra = amtSrc === "tm-weak" && amSy && amSy.value == null &&
           amSy.gradTop != null && amSy.gradTop !== amt;
         var hadAmt = amt != null;
+        if (COLLECT_EVID) _evExtra[oi] = {
+          had: hadAmt, src: amtSrc, bare: bareCand, rel: lineRelaxed,
+          sv: amSy ? amSy.value : null, sg: amSy ? amSy.gradTop : null, sr: amSy ? amSy.rawTop : null,
+          sm: amSy ? Math.round(amSy.gm * 1000) / 1000 : null, go: amSy ? !!amSy.gradOnly : null
+        };
         if (amt == null) amt = 1;
         // direction earns full confidence only with a STRONG signal: a located red
         // amount line, or an arrow blob of real size — a borderline arrow read stays
@@ -3091,6 +3274,8 @@
         // a synth-sourced amount NEVER reaches the unflagged zone — the rescue is
         // user/verifier-checkable, not silently authoritative (silent-error class)
         if (amtFromSynth) oconf = Math.min(oconf, 0.78);
+        if (amtWeak) oconf = Math.min(oconf, 0.65);       // last-rung bare digit
+        if (lineRelaxed) oconf = Math.min(oconf, 0.72);   // line found only by the loose sweep
         if (amtContra) oconf = Math.min(oconf, 0.72);   // contradicted weak template
         // SAFETY: on order/points/willpower the direction arrow renders in the icon's
         // OWN hue family (a red raise ▲ on the gold order icon), so the color test is
@@ -3118,6 +3303,11 @@
         o = { type: "do_nothing" };
         oconf += 0.2;
       }
+      // a target the caption OVERRODE stays under the flag line, whatever the rest
+      // of the ladder concluded — one channel contradicting another is exactly the
+      // shape the user should confirm
+      if (capOverride) oconf = Math.min(oconf, 0.72);
+      if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, typeof amtLine !== "undefined" && amtLine, typeof redLine !== "undefined" && redLine, capRect, cap, o, oconf);
       out.outcomes[oi] = o;
       confidence.outcomes[oi] = Math.max(0, Math.min(0.95, oconf * panelConf));
     }
