@@ -1470,3 +1470,166 @@ and `ocr/glyphs.js` are byte-identical to the shipped build.
   4. The level residual is now demonstrably a capture-resolution population (×3+ tier is
      5-8× denser in misses): one larger screenshot from a small-monitor user is worth more
      than any further level rule.
+
+---
+
+# Round 12 (2026-07-29) — full workings: reclaiming false alarms
+
+## The measurement that made the round possible
+
+`ocr/structural-engine.js` gained CAP PROVENANCE per outcome tile, recorded only under
+`OCR_CELL_EVID=1`: `_capDbg[oi] = {pre, syn, weak, rel, contra, imposs, sign, wit, strong,
+had, up, down, aUp, aDown}` plus `capOv` on the `cellEvid` record. Six caps can bind a tile
+and the shipped confidence is their MIN, so a flagged tile never said which rung it was
+waiting on. With `pre` and the predicates recorded, a scratch script replays any subset of
+the caps offline. Faithful on 1880 of 1888 tiles; the 8 misses are the two outcomes-masked
+boards (`c-mrw4veza-rjv4k1`, `c-mrwsy5gx-96afo7`), where `tileConf` is empty by design.
+
+Scratch files: `<scratch>/r12/{ph.js,worker.js,an-tiles.js,cf.js,cf2.js,cf3.js,cf4.js,jr.js}`.
+`ph.js --lanes=8` runs the whole corpus in 97s; `jr.js` replays the joint level solve from
+`lvEvid` and reproduces the shipped levels on 472/472 boards.
+
+## Baseline anatomy (incumbent, 1880 tiles)
+
+    tile flags 1214   wrong tiles 79   flagged-and-wrong 75   flagged-but-CORRECT 1139
+    SILENT TILES 4    positional matches 1801 vs multiset 1803  (attribution is sound)
+
+By type: raise 1284 (755 flags, 720 FA, 39 wrong, 4 silent) · lower 187 (168/166/2) ·
+change_side 191 (117/107/10) · reroll 74 (74/72/2) · cost 81 (46/42/4) · do_nothing 63
+(54/32/22).
+
+By amount source: synth 363 (all flagged, 7 wrong) · none 515 (397/55) · tm-weak 258
+(118/3) · bare+synth 114 (all flagged, 1 wrong) · tm 329 (113 flagged, 6 wrong, **all 4
+silents**) · ocr 186 (63 flagged, 0 wrong) · synth-override 30 (all flagged, 0 wrong) ·
+cap 73 (4 flagged) · bare 8 (all flagged, 4 wrong).
+
+Counterfactual ceilings: all tile flags gone → CLEAN 44; all scalar flags gone → CLEAN 8.
+Whole-parse boards by TILE flag count `0:8 · 1:63 · 2:102 · 3:124 · 4:58`; by SCALAR flag
+count `0:44 · 1:104 · 2:76 · 3:34 · 4:40 · 5:29 · 6:19 · 7:1 · 8:3 · 10:5`.
+
+Blocking classes on the 44 whole-parse/zero-scalar-flag boards (83 tile flags): 25 at
+raw 0.78 (synth amount cap), 34 at raw 0.72 (order/willpower sign cap), 9 reroll at raw
+0.80 pushed under by panelConf, 15 assorted.
+
+## The four pre-existing SILENT TILES
+
+    c-mrv2mntg-8t0145#1  0.824  raise effect1 1 (truth 2)  src=tm  cap "acditiona|damage|iv 2 a|"
+    c-mrwao04t-olyi6t#0  0.822  raise effect2 1 (truth effect1 1) src=tm  cap "wv 1. a|"
+    c-mrxczi6z-ara48b#3  0.832  raise effect1 1 (truth 2)  src=tm  cap "sranc poveer|(k% 7 a|"
+    c-ms0lcj9n-snau3j#3  0.846  raise effect1 1 (truth 3)  src=tm  cap "atk. power|v.33 a|"
+
+Identical signature: a HIGH-tier template commit (which SKIPS the synth consult entirely,
+`amSy = (amtSrc !== "tm" && lnForSynth) ? ... : null`) reading the absorber digit '1'. The
+caption spells the true digit on two of them ("iv 2", "v.33"); the third's caption is
+unreadable and the fourth's error is the TARGET, which an amount witness cannot see.
+Round 12 flags the first two. The remaining two are the honest residue.
+
+## Witness 1 — the located line as a DIRECTION witness (component-wise)
+
+Measured positionally against the labels, splitting the tile into its three components:
+
+    order/willpower  strict-chartreuse -> raise   n=583  DIRECTION 582  target 580  amount 573  whole 570
+    order/willpower  strict-red        -> lower   n= 87  DIRECTION  87  target  86  amount  87  whole  86
+    effect1/effect2  strict-chartreuse -> raise   n=684  DIRECTION 684
+    effect1/effect2  strict-red        -> lower   n= 95  DIRECTION  95
+
+So the witness is 1449/1450 on DIRECTION and materially weaker on the whole tile — which is
+exactly why round 9's unrestricted lift cost a silent. The single direction miss is
+`c-ms1leu1v-fvexkp#3` at conf 0.30, far below any lift.
+
+## Witness 2 — the caption as a second read of the AMOUNT
+
+Four extractors measured over the 1468 raise/lower tiles with a parseable label:
+
+    E1 shipped /(lv.|+)N/     fired 406   ==truth 402 (99.0%)   agrees 402 (right 402)   dissents  4 (catches 0)
+    E2 v-anchored             fired 289   ==truth 286 (99.0%)   agrees 282 (right 282)   dissents  7 (catches 4)
+    E3 v- or +-anchored, last fired 467   ==truth 462 (98.9%)   agrees 458 (right 458)   dissents  9 (catches 4)
+    E4 last line, first digit fired 744   ==truth 643 (86.4%)   agrees 637 (right 637)   dissents107 (catches 8)
+
+The nine E3 dissents, in full:
+
+    2aa9a4b2…#0   commit 1 caption 4 TRUTH 1  FALSE  src=synth-override  "brand power|lv. 4a|"
+    c-mrv2mntg#1  commit 1 caption 2 TRUTH 2  CATCH  src=tm              "acditiona|damage|iv 2 a|"
+    c-mrwgh87c#2  commit 1 caption 3 TRUTH 3  CATCH  src=tm-weak         "poder de mara|nv. 3 a|"
+    c-mrwifzcb#3  commit 1 caption 4 TRUTH 4  CATCH  src=tm              "ally attack enn.|iv.4 &|"
+    c-mrwr7a1r#3  commit 3 caption 1 TRUTH 3  FALSE  src=ocr             "ywillpower|efficiency|+1 a|"
+    c-mrx9avkw#0  commit 1 caption 4 TRUTH 1  FALSE  src=synth-override  "boss damage|lv 4&6|"
+    c-mrxod11j#2  commit 3 caption 4 TRUTH 3  FALSE  src=bare            "branc poser|fv 4b|"
+    c-ms0lcj9n#3  commit 1 caption 3 TRUTH 3  CATCH  src=tm              "atk. power|v.33 a|"
+    c-ms15fny6#0  commit 1 caption 4 TRUTH 1  FALSE  src=tm-weak         "vd|oykut flopsaaxa|+ 4|"
+
+Three conditions cut it to 4 catches / 1 false, each independently motivated: commit == 1
+(the absorber class), src != synth-override (that rung already arbitrated OCR vs synth at
+5× margin on measured evidence), and the Lv.-anchor only (the bare "+N" form is where the
+solid ▲ reads as a '4'). The last condition also scopes the rule to effect targets, which
+is the only place a "Lv. N" line renders.
+
+## Policy sweep (offline, then confirmed in-engine)
+
+    BASE                            CLEAN  4  ui 2674  tileFlags 1214  tileFA 1139  tileSILENT 4  gateSILENT 0
+    A  caption dissent -> cap       CLEAN  4  ui 2676  tileFlags 1216  tileFA 1139  tileSILENT 2  gateSILENT 0
+    B' sign lift, witness only      CLEAN  9  ui 2417  tileFlags  957  tileFA  884  tileSILENT 6  gateSILENT 1
+    B  sign lift + trusted amount   CLEAN  8  ui 2516  tileFlags 1056  tileFA  981  tileSILENT 4  gateSILENT 1
+    C  caption agree waives synth   CLEAN  4  ui 2638  tileFlags 1178  tileFA 1103  tileSILENT 4  gateSILENT 0
+    A+B+C                           CLEAN  9  ui 2482  tileFlags 1022  tileFA  945  tileSILENT 2  gateSILENT 0
+    synth cap off wholesale         CLEAN  7  ui  ---  tileFlags  878  tileFA  808  tileSILENT 9  gateSILENT ≥1
+    every cap off                   CLEAN 32  ui  ---  tileFlags  350  tileFA  291  tileSILENT 20
+
+Note B alone still shows `gateSILENT 1` despite lifting **zero** wrong tiles: it removes
+cell 2's incidental cover on `c-ms0lcj9n-snau3j`, whose cell 3 was already silent. A must
+ship with B. This is the concrete mechanism behind round 9's "every per-tile cap is
+incidental cover for the other three".
+
+## Witness 3 — the game's own rate table
+
+`OUTCOME_RATES` excludes `change:+k` on a target at level ≥ 6−k, so a raise on a target the
+wheel reads at level 4 can only be +1, and a lower needs level ≥ 2. Using the wheel level
+(a different crop, a different reader) as the channel, and requiring that level to be
+unflagged: **207 forced tiles, 207 right, 119 of them flagged today, 0 wrong.**
+
+Separately, `engine.js:snapOutcome` snaps every lower to −1, so on a lower tile the read
+amount never reaches the output at all — the `amtFromSynth` cap there guards a value the
+model discards. Waiving it: 49 tiles, 0 wrong.
+
+## Witness 4 — the reroll rung's two OCR passes
+
+Every reroll rung is a disjunction (`gTxt` OR `cap`), commits at exactly 0.80 — the flag
+threshold — and is then pushed under by the panelConf multiplier. All 74 corpus reroll
+tiles are flagged and 72 are right. Requiring the dim-grey dilated pass and the plain
+white-text pass to agree INDEPENDENTLY on both the word and the count: 45 tiles, 45 right.
+
+## `JOINT_SURE` — the round-10 question, re-measured
+
+`jr.js` replays `jointLevelSolve()` from `lvEvid` with the shipped `LEVEL_MODEL` tables and
+reproduces the shipped levels on 472/472 boards. Over the 1817 joint-AGREED level fields:
+
+    margin   [0,2) [2,4) [4,6) [6,8)   >=8
+    right       32    50    82   129  1488
+    WRONG       15    14     6     1     0
+
+Every wrong field, by margin: 6.20 c-mrugq62n effect2Level · 5.26 c-mrw5h45e willpowerLevel ·
+5.11 c-mrwip7q5 effect1Level · 5.11 c-mrwip7q5 orderLevel · 5.08 c-mrugq62n effect1Level ·
+4.71 c-mrxd1quv willpowerLevel [holdout] · 4.19 c-mrw6hugm willpowerLevel · 3.92 c-mrw8gmxg
+effect1Level [holdout] · then 28 more below 3.6. Holdout maximum 4.71; the five highest are
+all training boards.
+
+Sweep of additional fields lifted (agreed, currently flagged): 4 → 526 (7 wrong) ·
+5 → 484 (5) · 6 → 440 (1) · 7 → 382 (0) · 8 → 313 (0) · 9 → 241 (0) · 10 → 183 (0) ·
+11 → 99 (0) · 12 → 18 (0). CLEAN by bar with the tile package: 12 → 13, 11 → 15, 10 → 15,
+9 → 15, 8 → 16, 7 → 16. Shipped at 10.
+
+## Result
+
+                        incumbent      round 12
+    CLEAN boards        4/472 (0.8%)   18/472 (3.8%)
+    UI flags            2674 (5.7/sh)  2221 (4.7/sh)
+      tiles             1214            922
+      scalars           1460           1299
+    flags on CORRECT    2450           1995
+    SILENT TILES        4              2
+    whole-parse         355/472        355/472
+    headline            97.2%          97.2%
+    flag coverage       100%           100%
+    gate silents        0              0
+
+455 of the 2450 false alarms reclaimed (18.6%), no value changed, two silent tiles removed.

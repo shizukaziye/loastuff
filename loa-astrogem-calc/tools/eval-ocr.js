@@ -196,6 +196,22 @@ function scoreOne(parsed, truthRaw) {
     uiFlags: scalarFields.filter(function (f) { return (f.conf == null ? 1 : f.conf) < CONF_T; }).length
       + (outcomesMasked ? 0 : confO.filter(function (c) { return c != null && c < CONF_T; }).length),
     uiTileFlags: outcomesMasked ? 0 : confO.filter(function (c) { return c != null && c < CONF_T; }).length,
+    // SILENT TILES — the invariant at the granularity the window actually renders.
+    // The scored `outcomes` field is a MIN over four tiles, so one tile's low cap gives
+    // its siblings incidental cover: a tile can be WRONG and >=0.8 while the field looks
+    // flagged. Round 12 found four such tiles hiding behind that MIN. Counted here per
+    // tile, matched positionally (a tile is wrong if its key differs from the label's at
+    // the same index; a length mismatch counts every surplus/missing tile as wrong).
+    silentTiles: outcomesMasked ? [] : (function () {
+      var out = [];
+      var maxLen = Math.max(gotKeys.length, wantKeys.length);
+      for (var i = 0; i < maxLen; i++) {
+        if (gotKeys[i] === wantKeys[i]) continue;
+        var c = confO[i];
+        if (c != null && c >= CONF_T) out.push("#" + i + "(" + (gotKeys[i] || "-") + "≠" + (wantKeys[i] || "-") + ") conf=" + c.toFixed(2));
+      }
+      return out;
+    })(),
     wholeParse: correct === scalarFields.length && matched === wantKeys.length,
     wrongTotal: wrongAll.length,
     wrongFlagged: wrongFlagged,
@@ -377,6 +393,7 @@ async function main() {
     console.log("--- " + eng.label + " ---");
     var totScalarCorrect = 0, totScalar = 0, totOutcome = 0, totHeadline = 0, n = 0, skippedUnusable = 0;
     var totUiFlags = 0, totTileFlags = 0, cleanBoards = 0, uiFlagHist = {};
+    var totSilentTiles = 0, silentTileList = [];
     var whole = 0, wrongTotal = 0, wrongFlagged = 0;
     var totSilent = 0, totFalseAlarms = 0, silentList = [];
     var fieldAgg = {}; // label -> {ok,total}
@@ -399,6 +416,7 @@ async function main() {
       wrongTotal += sc.wrongTotal; wrongFlagged += sc.wrongFlagged;
       totSilent += sc.silent.length; totFalseAlarms += sc.falseAlarms;
       totUiFlags += sc.uiFlags; totTileFlags += sc.uiTileFlags;
+      if (sc.silentTiles && sc.silentTiles.length) { totSilentTiles += sc.silentTiles.length; silentTileList.push(s.name + ": " + sc.silentTiles.join(", ")); }
       uiFlagHist[Math.min(sc.uiFlags, 8)] = (uiFlagHist[Math.min(sc.uiFlags, 8)] || 0) + 1;
       if (sc.wholeParse && sc.uiFlags === 0) cleanBoards++;
       if (sc.faDetail) faAll = faAll.concat(sc.faDetail);
@@ -437,6 +455,12 @@ async function main() {
       // Get advice without reading the parse.
       console.log("  CLEAN boards (0 wrong, 0 flags): " + cleanBoards + "/" + n + " (" + pct(cleanBoards / n) + ")" +
         "   UI flags: " + totUiFlags + " (" + (totUiFlags / n).toFixed(1) + "/shot, of which " + totTileFlags + " are outcome tiles)");
+      // Tile-granularity invariant. Not yet a gate FAIL: round 12 cut these 4 -> 2 and
+      // the last two are named in ACCURACY-LOG.md as the next round's first job. Flip to
+      // a FAIL condition the moment it reaches 0, exactly as the field-level one is.
+      console.log("  SILENT TILES (wrong yet confident at tile granularity): " + totSilentTiles +
+        (totSilentTiles ? "  <-- invariant breach the scored-field MIN cannot see" : ""));
+      silentTileList.slice(0, 6).forEach(function (l) { console.log("    TILE " + l); });
       console.log("  flags/board: " + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (k) {
         return (k === 8 ? "8+" : k) + ":" + (uiFlagHist[k] || 0);
       }).join(" · "));

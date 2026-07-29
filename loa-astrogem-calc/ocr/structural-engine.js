@@ -81,7 +81,7 @@
   // The joint reader's decisive-margin bar; see the AGREEMENT lift in the level
   // solve for how it was measured. Raising it costs false alarms, lowering it
   // spends the safety factor.
-  var JOINT_SURE = 12;
+  var JOINT_SURE = 10;
   try {
     var _lm = IS_NODE ? require("./level-model.js") : root.OcrLevelModel;
     if (_lm) LMODEL = _lm.LEVEL_MODEL;
@@ -2948,14 +2948,25 @@
           // (ptsSoft → 0.70, no-checksum → 0.78) are worst-case guards against a
           // junk header; they fire on 1447 level fields of which 1401 are right,
           // and this is the first measure of a node that is independent of the
-          // header. `JOINT_SURE` is set at TWICE the highest margin any WRONG
-          // level field reaches on the 472-pair corpus (6.2, on `c-mrugq62n`'s
-          // east node) — at the bar itself it lifts 758 fields, every one of them
-          // correct, 138 of those on holdout boards the tables never saw. The
-          // factor of two is the safety margin: a calibrated log-likelihood ratio
-          // is optimistic about its own tails, and every corpus expansion so far
-          // has produced a confident read worse than anything the previous corpus
-          // held. Overrides are excluded on purpose, so the rule stays "the joint
+          // header. `JOINT_SURE` was set in round 10 at TWICE the highest margin any
+          // WRONG level field reaches on the 472-pair corpus, and round 12 re-measured
+          // that distribution over the 1817 joint-AGREED fields:
+          //
+          //   margin  [0,2)  [2,4)  [4,6)  [6,8)   >=8
+          //   right      32     50     82    129  1488
+          //   WRONG      15     14      6      1     0
+          //
+          // The 6.2 outlier is `c-mrugq62n`'s east node and it is alone: the next wrong
+          // field sits at 5.26, only 7 of the 36 clear 4, and nothing at all clears 6.2.
+          // On the HOLDOUT boards the tables never saw, the worst wrong field reaches
+          // 4.71. Additional fields lifted at each bar, all currently flagged and all
+          // measured right: 7 → 382, 8 → 313, 9 → 241, 10 → 183, 11 → 99, 12 → 18.
+          // Bar 6 is the first that touches a wrong field. The bar sits at 10 — a 1.6×
+          // factor over the corpus maximum and 2.1× over the holdout maximum — because
+          // a calibrated log-likelihood ratio is optimistic about its own tails and
+          // every corpus expansion so far has produced a confident read worse than
+          // anything the previous corpus held; 8 is available at 1.29× and was not
+          // taken. Overrides are excluded on purpose, so the rule stays "the joint
           // reader raises confidence only where it changed nothing".
           if (_jr.margin[jq] >= JOINT_SURE) conf4[jq] = Math.max(conf4[jq], 0.85);
         }
@@ -3408,8 +3419,8 @@
     // the four cells are data-independent — read them CONCURRENTLY (the OCR pool
     // overlaps them; serialized backends preserve old order via their queues);
     // every write below is oi-indexed, so completion order cannot matter
-    var _evExtra = {};
-    function cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, o, oconf) {
+    var _evExtra = {}, _capDbg = {};
+    function cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, o, oconf, capOverride) {
       var capCrop = L.crop(raster, capRect);
       var evUp = L.colorClusterStats(capCrop, function (rr, gg, bb) { var c = L.hsv(rr, gg, bb); return c.h >= 75 && c.h < 145 && c.s > 0.35 && c.v > 0.45; });
       var evAm = L.colorClusterStats(capCrop, L.isAmountText);
@@ -3422,7 +3433,8 @@
         am: { n: evAm.count, d: Math.round(evAm.density * 100) / 100 },
         wh: { n: evWh.count, d: Math.round(evWh.density * 100) / 100 },
         gap2: Math.round(gap * gap), cap: cap.replace(/\n/g, "|").slice(0, 60),
-        o: JSON.stringify(o), conf: Math.round(oconf * 100) / 100, x: _evExtra[oi] || null
+        o: JSON.stringify(o), conf: Math.round(oconf * 100) / 100, x: _evExtra[oi] || null,
+        cd: _capDbg[oi] || null, capOv: !!capOverride
       };
     }
     async function readOutcomeCell(oi) {
@@ -3505,9 +3517,20 @@
           var plusSeen = /\+/.test(gTxt) || /\+/.test(cap);
           greyCost = { neg: !plusSeen, conf: plusSeen ? 0.85 : 0.7 };
         } else if (rerollish && !maintainish) {
-          var rrG = gTxt.match(/\+\s*([12])/) || cap.match(/\+\s*([12])/);
+          var rrGrey = gTxt.match(/\+\s*([12])/), rrWhite = cap.match(/\+\s*([12])/);
+          var rrG = rrGrey || rrWhite;
           o = { type: "reroll_increase", change: rrG ? parseInt(rrG[1], 10) : 1 };
           oconf += rrG ? 0.8 : 0.55;
+          // TWO-CHANNEL CORROBORATOR (round 12). Every rung above is a disjunction —
+          // the dim-grey dilated pass OR the plain white-text pass — so a reroll tile
+          // commits on one reading and scores 0.8, exactly the flag threshold, which
+          // the panel attenuation then pushes back under. All 74 reroll tiles in the
+          // corpus are flagged and 72 are right; that is not doubt, it is a rung
+          // written on the line. When the two passes agree INDEPENDENTLY on both the
+          // word and the count — different mask, different scale, different OCR call —
+          // there is a real second witness: measured, 45 tiles and 45 correct.
+          if (rrGrey && rrWhite && rrGrey[1] === rrWhite[1] &&
+              /time|view|item|other/.test(gTxt) && /time|view|item|other/.test(cap)) oconf += 0.1;
         }
       }
 
@@ -3740,7 +3763,7 @@
           if (whInk.count >= 8) {
             out.outcomes[oi] = { type: "change_side_option", target: target };
             confidence.outcomes[oi] = Math.max(0, Math.min(0.95, (capOverride ? 0.55 : 0.62) * panelConf));
-            if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, out.outcomes[oi], 0.62);
+            if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, out.outcomes[oi], 0.62, capOverride);
             return;
           }
         }
@@ -3818,6 +3841,35 @@
           sm: amSy ? Math.round(amSy.gm * 1000) / 1000 : null, go: amSy ? !!amSy.gradOnly : null
         };
         if (amt == null) amt = 1;
+        // ---- THE CAPTION AS A SECOND READ OF THE AMOUNT (round 12) ----
+        // Everything above reads the amount off the LOCATED LINE: one crop, one chroma
+        // mask, one psm-7 OCR call. `cap` is a different read of the same pixels — the
+        // whole caption band, the caption mask, psm 6 — and it is only consulted as a
+        // last-resort rung (`amtSrc === "cap"`), never as a witness. Measured against
+        // the labels over all 1880 cells: where it speaks and AGREES with the committed
+        // amount it is right 458/458; where it DISSENTS, 9 tiles, 4 of them a real error
+        // (two are silent today). Two extractors, because the two directions of evidence
+        // are not equally cheap:
+        //   capAgree — "Lv."- OR "+"-anchored. Agreement only ever confirms a value some
+        //              other channel already committed, so the looser anchor is safe.
+        //   capV     — "Lv."-anchored ONLY. Dissent OVERRULES a committed read, and the
+        //              "+N" form is exactly where the ▲-as-a-digit trap lives: three of
+        //              the four false dissents are a solid triangle read as '4' behind a
+        //              '+' with no Lv. anchor ("+ 4", "lv 4&6", "fv 4b").
+        var capV = null, capAgree = null, _cm, _cre;
+        _cre = /[a-z(%]{0,3}v[.,]{0,2}\s*([1-4])/g;
+        while ((_cm = _cre.exec(cap))) capV = parseInt(_cm[1], 10);
+        _cre = /(?:[a-z(%]{0,3}v[.,]{0,2}\s*|\+\s*)([1-4])/g;
+        while ((_cm = _cre.exec(cap))) capAgree = parseInt(_cm[1], 10);
+        // SCOPE of the dissent: effect targets only (the "Lv. N" rendering), against a
+        // committed amount of exactly 1, and never against a synth-override. '1' is the
+        // documented ABSORBER class — eroded strokes template-match '1', which is also
+        // the modal amount, so the two conspire; all four of the corpus's silent tiles
+        // are a template '1' over a caption that spells 2, 3 or 4. The synth-override
+        // rung is excluded because it has already arbitrated OCR against synth at a 5×
+        // margin on measured evidence, and re-opening it is what the false dissents are.
+        var capDissent = (target === "effect1" || target === "effect2") && amt === 1 &&
+          amtSrc !== "synth-override" && capV != null && capV !== amt;
         // direction earns full confidence only with a STRONG signal: a located red
         // amount line, or an arrow blob of real size — a borderline arrow read stays
         // below the flag threshold (two silent lower→raise errors came from here)
@@ -3842,9 +3894,29 @@
         if (amtImpossible) amt = 1;
         o = { type: type, target: target, amount: amt };
         oconf += (hadAmt ? 0.55 : 0.25) + (strongDir ? 0.3 : (dirUp || dirDown) ? 0.15 : 0.05);
+        // CAP PROVENANCE (round 12, debug only). Six caps below can bind a tile and the
+        // shipped confidence is their MIN, so a flagged tile does not say which rung it
+        // is waiting on. Recording the pre-cap score and each predicate is what lets the
+        // offline harness ask "what would this tile score if cap X were corroborated"
+        // without re-running the engine per hypothesis.
+        if (COLLECT_EVID) _capDbg[oi] = {
+          pre: Math.round(oconf * 100) / 100, syn: !!amtFromSynth, weak: !!amtWeak,
+          rel: !!lineRelaxed, contra: !!amtContra, imposs: !!amtImpossible,
+          strong: !!strongDir, had: !!hadAmt, up: !!dirUp, down: !!dirDown,
+          aUp: (typeof aUp !== "undefined" && aUp) ? aUp.count : null,
+          aDown: (typeof aDown !== "undefined" && aDown) ? aDown.count : null
+        };
         // a synth-sourced amount NEVER reaches the unflagged zone — the rescue is
-        // user/verifier-checkable, not silently authoritative (silent-error class)
-        if (amtFromSynth) oconf = Math.min(oconf, 0.78);
+        // user/verifier-checkable, not silently authoritative (silent-error class) —
+        // UNLESS the caption independently spells the same digit (round 12). That cap
+        // is about amount quality, and the caption is a second read of the amount with
+        // no shared failure mode; it corroborates 36 of the flagged synth tiles and is
+        // right on every tile it agrees with corpus-wide.
+        // (deferred to after the sign block below: the vivid sign read can still flip
+        // this tile's direction, and one of the waivers turns on the FINAL direction.
+        // Every cap here is a Math.min, so moving one of them later changes nothing.)
+        var synCapPending = amtFromSynth && !(capAgree != null && capAgree === amt);
+        if (capDissent) oconf = Math.min(oconf, 0.72);    // caption spells another digit
         if (amtWeak) oconf = Math.min(oconf, 0.65);       // last-rung bare digit
         if (lineRelaxed) oconf = Math.min(oconf, 0.72);   // line found only by the loose sweep
         if (amtContra) oconf = Math.min(oconf, 0.72);   // contradicted weak template
@@ -3876,21 +3948,55 @@
               if (vAmt && !hadAmt) o.amount = parseInt(vAmt[1], 10);
             }
           }
-          // (RULED OUT 2026-07-29, round 9 — the located LINE as a direction witness
-          // independent of the sign glyph. The evidence is real: measured positionally
-          // against the labels over every order/willpower raise-or-lower cell,
-          // a strict CHARTREUSE locate means raise — willpower 297:0, order 286:1 —
-          // and a strict RED locate, chartreuse having declined, means lower —
-          // willpower 0:44, order 0:43. Lifting this cap on a witnessed direction
-          // reclaimed only **35 false alarms** and cost **one SILENT error**, and the
-          // silent is not in the witnessed cell at all: `c-ms0lcj9n-snau3j` cell 3
-          // reads "Lv. 3 ▲" as amount 1 at oconf 0.85, and the board was flagged only
-          // because THIS cap held cell 2 at 0.72. The `outcomes` confidence is a MIN
-          // over the four tiles, so every per-tile cap is incidental cover for the
-          // other three — which is also why the yield is so small: 242 in-band outcome
-          // false alarms, and lifting one tile family clears 35 boards. Reclaiming
-          // outcome false alarms needs all four tiles at once, not a better tile.)
-          if (!signSeen) oconf = Math.min(oconf, 0.72);
+          // THE LOCATED LINE IS THE DIRECTION WITNESS THIS CAP WAS WAITING FOR
+          // (round 12; round 9 measured it and correctly declined to ship it). The cap
+          // exists because on order/willpower the arrow renders in the icon's OWN hue
+          // family, so the ARROW-BLOB test is unreliable there. The located line's colour
+          // is a different measurement: it comes from the line locator, not from
+          // clustering inside the arrow box. Re-measured positionally against the labels
+          // over every raise-or-lower cell, DIRECTION ONLY: a strict chartreuse locate
+          // means raise 582/583 on order/willpower and 684/684 on effect targets; a
+          // strict red locate means lower 87/87 and 95/95. 1449 of 1450.
+          //
+          // Round 9 measured this witness and got one SILENT error for 35 reclaimed
+          // false alarms. Two things have changed. (a) The 35 was an artefact of scoring
+          // `outcomes` as a MIN over four tiles; the window flags tiles individually, and
+          // at that granularity the lift is worth 158. (b) The silent was never in the
+          // witnessed cell — `c-ms0lcj9n-snau3j` cell 3 is a template '1' over a caption
+          // that plainly reads "Lv. 3", and cell 2's cap was only incidental cover for
+          // it. The caption-dissent rule above now flags cell 3 on its own evidence, so
+          // that cover is no longer load-bearing.
+          //
+          // The witness speaks about DIRECTION and nothing else, so the lift must not
+          // extend to a tile whose AMOUNT rests on a rung the engine itself distrusts:
+          // lifting on the witness alone reclaims 257 tiles and gets 2 of them wrong,
+          // both `tm-weak` digits whose direction was right and whose amount was not.
+          // Restricted to the amount rungs that stand unflagged on their own evidence
+          // (high-tier template, prefix-anchored OCR, caption) it is 158 tiles, 0 wrong.
+          var dirWitness = (o.type === "raise_effect" && amtLine && !lineRelaxed) ||
+            (o.type === "lower_effect" && redLine);
+          var trustedAmt = amtSrc === "tm" || amtSrc === "ocr" || amtSrc === "cap";
+          if (COLLECT_EVID && _capDbg[oi]) { _capDbg[oi].sign = !!signSeen; _capDbg[oi].wit = !!(dirWitness && trustedAmt); }
+          if (!signSeen && !(dirWitness && trustedAmt)) oconf = Math.min(oconf, 0.72);
+        }
+        // ---- the synth amount cap, and the two cases where it guards nothing ----
+        // (a) A LOWER's amount never reaches the output: `engine.js` snaps every lower
+        //     to −1 because OUTCOME_RATES has no −2/−3/−4 rung. Whatever the synthesis
+        //     read, the model discards it, so capping the tile for the QUALITY of that
+        //     read is capping it for a value the user will never see. 49 tiles.
+        // (b) A RAISE on a target the wheel reads at level 4 can only be +1 — the rate
+        //     table excludes +2/+3/+4 there. The wheel diamond is a different crop and
+        //     a different reader from the outcome strip, so this is the game's own rule
+        //     corroborating the amount, not the reader agreeing with itself. Scoped to
+        //     a level that is itself unflagged, so the chain never rests on a doubtful
+        //     read. Measured over the corpus: 207 tiles the rule forces, 207 right.
+        if (synCapPending) {
+          var lvKey = target === "willpower" ? "willpowerLevel" : target === "order" ? "orderLevel"
+            : target === "effect1" ? "effect1Level" : target === "effect2" ? "effect2Level" : null;
+          var lvConf = lvKey ? (confidence.config[lvKey] || 0) * panelConf : 0;
+          var forcedAmt = o.type === "lower_effect" ||
+            (o.type === "raise_effect" && lvConf >= 0.8 && out.config[lvKey] === 4 && o.amount === 1);
+          if (!forcedAmt) oconf = Math.min(oconf, 0.78);
         }
       } else {
         o = { type: "do_nothing" };
@@ -3900,7 +4006,7 @@
       // of the ladder concluded — one channel contradicting another is exactly the
       // shape the user should confirm
       if (capOverride) oconf = Math.min(oconf, 0.72);
-      if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, typeof amtLine !== "undefined" && amtLine, typeof redLine !== "undefined" && redLine, capRect, cap, o, oconf);
+      if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, typeof amtLine !== "undefined" && amtLine, typeof redLine !== "undefined" && redLine, capRect, cap, o, oconf, capOverride);
       out.outcomes[oi] = o;
       confidence.outcomes[oi] = Math.max(0, Math.min(0.95, oconf * panelConf));
     }
