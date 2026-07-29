@@ -74,7 +74,8 @@
   var _synthTVCache = null, _nsynthTVCache = null, _amtTVCache = null;
 
   var GEM_NAME_COST = (TESS && TESS.GEM_NAME_COST) || {
-    stability: 8, corrosion: 8, solidity: 9, distortion: 9, immutability: 10, destruction: 10
+    stability: 8, corrosion: 8, solidity: 9, distortion: 9, immutability: 10, destruction: 10,
+    collapse: 10
   };
   function normText(s) {
     if (TESS && typeof TESS.normalizeOcrText === "function") return TESS.normalizeOcrText(s);
@@ -940,7 +941,13 @@
       // (measured live: "astrogema del aos: distosion" — a Spanish Distortion)
       { sfx: "corrosion", type: "chaos" }, { sfx: "stability", type: "order", alt: ["estabilidad"] },
       { sfx: "distortion", type: "chaos", alt: ["distorsion"] }, { sfx: "solidity", type: "order", alt: ["solidez"] },
-      { sfx: "destruction", type: "chaos", alt: ["destruccion"] }, { sfx: "immutability", type: "order", alt: ["inmutabilidad"] }
+      { sfx: "destruction", type: "chaos", alt: ["destruccion"] }, { sfx: "immutability", type: "order", alt: ["inmutabilidad"] },
+      // 2026-07-29: "Collapse" (chaos, cost 10) — absent from the vocabulary until
+      // now, so a gem carrying it had neither a cost nor a type the title could
+      // give. It is ≥6 edits from every other suffix (nearest: solidity 6), so it
+      // cannot reach the ≤2 or the d=3-with-margin rung on anything but itself, and
+      // the minimum pairwise distance among the suffixes stays 4.
+      { sfx: "collapse", type: "chaos" }
     ];
     var kwType = /chaos|caos|xaoc/.test(nameText) ? "chaos" : (/order|orden/.test(nameText) ? "order" : null);
     var titleLetters = nameText.replace(/[^a-z]/g, "");
@@ -1060,7 +1067,11 @@
         nameText = keepText; titleLetters = keepLetters; titleToks = keepToks; kwType = keepKw;
         return v;
       }
-      var TITLE_HUES = [[275, 345], [165, 212], [8, 30], [240, 275], [30, 62]];
+      // magenta(epic) · cyan(rare) · orange(legendary/relic) · blue-violet · gold,
+      // in the corpus-frequency order round 3 measured — plus GREEN for UNCOMMON
+      // gems (2026-07-29: a pixel-verified "Processed Order Astrogem: Stability"
+      // renders its title in green ink, and every mask above is blind on it).
+      var TITLE_HUES = [[275, 345], [165, 212], [8, 30], [240, 275], [30, 62], [80, 150]];
       var titleZone = { x: cx - gap * 2.0, y: redY - gap * 1.80, w: gap * 4.0, h: gap * 0.85 };
       var titleOpts = lineOpts(0.95, 3.4, 0.6);
       var tCands = [];
@@ -1806,7 +1817,14 @@
       var lineOptsLv = {
         rejectFill: 0.22, maxRowFill: 0.6,
         minH: Math.max(4, Math.round(gap * 0.05)), maxH: Math.round(gap * 0.22), minRowPx: 3,
-        accept: function (r) { var c = r.x + r.w / 2; return Math.abs(c - p.x) <= gap * 0.28 && r.w >= gap * 0.03 && r.w <= gap * 0.85; }
+        // A W/E "Lv. N" row spans ~0.27·gap of ink; anything ≥0.34 is a MERGED band
+        // (the name line above bridged into it, or a neighbour's art), and the
+        // rightmost digit box the template pass then picks is not the level digit.
+        // Measured over the corpus: pins off a 0.22-0.34 line are right 236/236,
+        // off a ≥0.34 line 4/8. Rejecting the merged band routes the node to the
+        // no-line synth rescue, whose pins are right 133/139. The bare-digit N/S
+        // nodes keep the loose cap — their line IS just the digit.
+        accept: function (r) { var c = r.x + r.w / 2; return Math.abs(c - p.x) <= gap * 0.28 && r.w >= gap * 0.03 && r.w <= gap * (hasLvPrefix ? 0.34 : 0.85); }
       };
       var line = L.findMaskedTextLine(raster, box, pred, lineOptsLv);
       // erosion rescue (windowed native scale, gap≈202): the digit mask is clean but
@@ -1833,6 +1851,10 @@
         }
         return { value: null, conf: 0, vec: null };
       }
+      if (out._debug) (out._debug.lvLine = out._debug.lvLine || {})[nodeKind] = {
+        w: Math.round(line.w / gap * 1000) / 1000, h: Math.round(line.h / gap * 1000) / 1000,
+        dx: Math.round(((line.x + line.w / 2) - p.x) / gap * 1000) / 1000
+      };
       var grow = Math.round(line.h * 0.5);
       var lineX = { x: line.x, y: line.y - grow, w: line.w, h: line.h + grow * 2 };
 
@@ -2058,12 +2080,46 @@
       var v = parseInt(m[1], 10);
       return v >= 4 && v <= 20 ? v : null;
     }
-    var ptsRect = bandRect(redY - gap * 1.10, 0.13, 1.55);
+    // LOCATE the header line; do not trust the fixed −1.10·gap offset. Measured on
+    // the corpus: the fixed band lands between the gem title and the points line on
+    // a whole class of captures — the crop then contains the rarity-coloured TITLE
+    // and no digit at all, the checksum dies, and every free node falls back to a
+    // blind default (the single largest level-miss class). White is the
+    // discriminator: the title renders rarity-coloured (magenta/cyan/orange) while
+    // the header is plain white, and findMaskedTextLine scans BOTTOM-UP, so a zone
+    // spanning both returns the points line first either way.
+    var ptsFixed = bandRect(redY - gap * 1.10, 0.13, 1.55);
+    var ptsZone = bandRect(redY - gap * 1.02, 0.36, 1.55);
+    // (RULED OUT 2026-07-29: a second, dimmer white predicate — s<0.36 v>0.42 —
+    // for the 24 captures where the strict locate finds nothing. It located ZERO
+    // extra headers and changed no board's pts; those frames have no white-ish
+    // line in the zone at all, and most of them read the header fine from the
+    // fixed rect anyway.)
+    function locatePts(pred) { return locateLine(ptsZone, pred, {
+      maxRowFill: 0.6, minH: Math.max(4, Math.round(gap * 0.045)), maxH: Math.round(gap * 0.22),
+      minRowPx: Math.max(3, Math.round(gap * 0.05)), rejectFill: 0.45,
+      accept: function (r) {
+        // the "Reset (1/1)" row lives just BELOW the header and is white too, so the
+        // bottom-up scan meets it first: bound the drift (measured header centres sit
+        // at −0.24..+0.16·gap of the old fixed centre, Reset at +0.26..+0.37) and the
+        // width (a merged Reset+neighbour band comes back ≥2.0·gap wide). A rejected
+        // candidate keeps findMaskedTextLine scanning upward, so the header still wins.
+        var c = r.x + r.w / 2, dy = ((r.y + r.h / 2) - (redY - gap * 1.10)) / gap;
+        return Math.abs(c - cx) <= gap * 0.45 && r.w >= gap * 0.45 && r.w <= gap * 1.9 &&
+          dy >= -0.34 && dy <= 0.20;
+      }
+    }); }
+    var ptsLoc = locatePts(dimBtnWhite), ptsPred = dimBtnWhite;
+    var ptsRect = ptsLoc || ptsFixed;
+    if (out._debug) out._debug.ptsLoc = ptsLoc
+      ? { dy: Math.round(((ptsLoc.y + ptsLoc.h / 2) - (redY - gap * 1.10)) / gap * 1000) / 1000,
+          w: Math.round(ptsLoc.w / gap * 100) / 100, h: Math.round(ptsLoc.h / gap * 100) / 100 }
+      : null;
     var ptsSub = L.crop(raster, ptsRect);
     // template rung first: leading digit run before the first letter-matched box
     // ("Astrogem" letters are distractor classes)
     var ptsT = null;
-    var tgP = templateGlyphs(ptsRect, dimBtnWhite);
+    var tgP = templateGlyphs(ptsRect, ptsPred);
     if (out._debug) out._debug.ptsTG = tgP ? tgP.map(function (g) {
       return (g.ch || "?") + ":" + (g.score != null ? g.score.toFixed(2) : "-") + "/" + (g.margin != null ? g.margin.toFixed(2) : "-");
     }).join(" ") : "null";
@@ -2185,10 +2241,14 @@
               var runX0 = tgP[0].box.x, runX1 = tgP[aIdx - 1].box.x + tgP[aIdx - 1].box.w;
               var runBox = { x: ptsRect.x + Math.max(0, runX0 - 3), y: ptsRect.y, w: (runX1 - runX0) + 6, h: ptsRect.h };
               var runSub = L.crop(raster, runBox);
-              var runRead = await dilatedOcr(runSub, dimBtnWhite, { scale: 4, whitelist: "0123456789", psm: 7 });
+              var runRead = await dilatedOcr(runSub, ptsPred, { scale: 4, whitelist: "0123456789", psm: 7 });
               var runM = (runRead.text || "").match(/(\d{1,2})/);
               if (runM) {
                 var rv2 = parseInt(runM[1], 10);
+                // (RULED OUT 2026-07-29: also accepting a bounds-DEFYING value here,
+                // on the theory that the bounds come from pinned reads that may be
+                // wrong. Full corpus: orderLevel 95.4 → 94.4, whole-parse 206 → 203.
+                // The bounds are the better evidence.)
                 if (rv2 >= Math.max(4, loP) && rv2 <= Math.min(20, hiP)) { ptsT = rv2; ptsTSoft = true; }
               }
             }
@@ -2270,6 +2330,15 @@
     // resolves a sum mismatch. (Overriding low-conf-but-correct reads was the
     // regression.) A committed read keeps its own confidence unless the checksum
     // confirms it. Free nodes (gold-on-gold S, unreadable blur) are the null ones.
+    // (RULED OUT 2026-07-29, and this is the round-4 "a verifier must be able to
+    // UN-PIN" idea measured directly: un-pinning a SYNTH-sourced W/E read whenever a
+    // checksum exists, so the enumeration can question it instead of inheriting it as
+    // a premise. Full corpus: 7 boards better, 5 worse — whole-parse 206 → 210 and
+    // orderLevel 95.4 → 96.0, but effect2Level 96.0 → 95.0 and FA 6.2 → 6.3/shot, with
+    // the headline flat at 96.9. The losses are boards where BOTH W and E are synth
+    // reads: three free nodes and the enumeration wanders (c-mrwrevz3 went from a
+    // perfect parse to three wrong levels). Gating on "≤2 free" kills the wins too —
+    // nearly every case un-pins both. Net −1 field for no headline gain.)
     var pinned = indep.map(function (x) { return x.v != null; });
     var levels = [null, null, null, null], conf4 = [0, 0, 0, 0];
     var enumAssigned = [false, false, false, false];
@@ -3050,8 +3119,18 @@
         // willpower face, the ▼ AND the ▲'s shadow, so a relaxed red hit sets
         // dirDown on tiles that are plainly raises. The strict red locate keeps
         // its rejectFill guard for exactly that reason.
-        function locateAmt(pred, loose) {
-          return L.findMaskedTextLine(raster, capRect, pred, {
+        // THE AMOUNT LINE FALLS OUTSIDE capRect on two-line-caption tiles (measured
+        // 2026-07-29 by eye on the direction misses): "Willpower / Efficiency" and
+        // "Ally Damage / Enh." push the "+3 ▲" / "Lv. 2 ▲" row down past the
+        // 0.52·gap crop, so the strict chartreuse locate finds nothing, the RED
+        // sweep latches onto the willpower diamond's own face, and the tile becomes
+        // a `lower`. Search a zone extended to 0.66·gap. The gold divider below the
+        // strip cannot be mistaken for an amount: it is neither chartreuse nor red,
+        // it fills its whole row (maxRowFill rejects it) and it spans far wider than
+        // the 0.6·gap accept bound.
+        var amtZone = { x: capRect.x, y: capRect.y, w: capRect.w, h: gap * 0.66 };
+        function locateAmt(pred, loose, zone) {
+          return L.findMaskedTextLine(raster, zone || capRect, pred, {
             maxRowFill: loose ? 0.85 : 0.7,
             rejectFill: pred === L.isRedAmountText ? 0.3 : undefined,
             minH: loose ? Math.max(3, Math.round(gap * 0.03)) : Math.max(4, Math.round(gap * 0.05)),
@@ -3067,6 +3146,18 @@
         var amtLine = locateAmt(L.isAmountText, false);
         var redLine = amtLine ? null : locateAmt(L.isRedAmountText, false);
         var lineRelaxed = false;
+        if (!amtLine && !redLine) {
+          // EXTENDED ZONE, and only here. A two-line caption ("Willpower /
+          // Efficiency", "Ally Damage / Enh.") pushes the "+3 ▲" row past capRect's
+          // 0.52·gap bottom, so the strict locate finds nothing and the tile falls
+          // through to the direction guesswork. Searching 0.66·gap recovers it.
+          // It must stay a FALLBACK: run unconditionally, the deeper bottom-up scan
+          // meets a chartreuse fragment below the amount (the divider's edge, the
+          // ▲'s glow on the diamond tip) FIRST and the arrow box lands on red —
+          // measured, that alone flipped five correct `raise willpower` tiles to
+          // `lower` (outcomes 95.0 → 94.7).
+          amtLine = locateAmt(L.isAmountText, false, amtZone);
+        }
         if (!amtLine && !redLine) {
           amtLine = locateAmt(L.isAmountText, true);
           lineRelaxed = !!amtLine;
@@ -3261,7 +3352,7 @@
           // red face + red text + red arrow: a willpower LOWER is invisible to every
           // color mask. But a willpower RAISE always shows a green ▲ (green-on-red
           // separates at any resolution) — so green anywhere in the cell decides.
-          var wCrop = L.crop(raster, capRect);
+          var wCrop = L.crop(raster, amtZone);
           var wUp = L.colorClusterStats(wCrop, function (rr, gg, bb) {
             var c = L.hsv(rr, gg, bb); return c.h >= 75 && c.h < 145 && c.s > 0.4 && c.v > 0.45;
           });
@@ -3269,6 +3360,11 @@
           else { dirDown = true; dirUp = false; oconf -= 0.25; }
         }
         var type = dirDown && !dirUp ? "lower_effect" : "raise_effect";
+        // a LOWER is always by 1 (OUTCOME_RATES has no −2/−3/−4 rung), so a lower
+        // carrying a read amount ≥2 has two channels contradicting each other:
+        // take the game's rule, keep the tile flagged.
+        var amtImpossible = (type === "lower_effect" && amt >= 2);
+        if (amtImpossible) amt = 1;
         o = { type: type, target: target, amount: amt };
         oconf += (hadAmt ? 0.55 : 0.25) + (strongDir ? 0.3 : (dirUp || dirDown) ? 0.15 : 0.05);
         // a synth-sourced amount NEVER reaches the unflagged zone — the rescue is
@@ -3277,6 +3373,7 @@
         if (amtWeak) oconf = Math.min(oconf, 0.65);       // last-rung bare digit
         if (lineRelaxed) oconf = Math.min(oconf, 0.72);   // line found only by the loose sweep
         if (amtContra) oconf = Math.min(oconf, 0.72);   // contradicted weak template
+        if (amtImpossible) oconf = Math.min(oconf, 0.7);  // lower-by-2+: rule-repaired
         // SAFETY: on order/points/willpower the direction arrow renders in the icon's
         // OWN hue family (a red raise ▲ on the gold order icon), so the color test is
         // unreliable there — a wrong direction must never be CONFIDENT. Require a clear
@@ -3288,7 +3385,14 @@
             // yellow that unlocked the gold-on-gold S digit — a mask the caption's
             // white words and the icon face can't leak into. Sign + digit, directly.
             var vividPred = function (r, g, b) { var c = L.hsv(r, g, b); return c.h >= 38 && c.h <= 64 && c.s > 0.7 && c.v > 0.68; };
-            var vRead = await maskedOcr(capRect, vividPred, { whitelist: "+-−12345 ", psm: 7 });
+            // read the LOCATED line when there is one: the whole-cell crop drags in
+            // the icon's own vivid rim and (once the zone reaches past the strip) the
+            // gold divider, either of which the "+-−" whitelist happily reads as a
+            // minus sign — a false LOWER on a raise tile.
+            var vRect = amtLine
+              ? { x: amtLine.x, y: amtLine.y - Math.round(amtLine.h * 0.4), w: amtLine.w, h: amtLine.h + Math.round(amtLine.h * 0.8) }
+              : capRect;
+            var vRead = await maskedOcr(vRect, vividPred, { whitelist: "+-−12345 ", psm: 7 });
             var vTxt = vRead.text || "";
             if (/\+\s*\d/.test(vTxt)) { o.type = "raise_effect"; signSeen = true; }
             else if (/[-−]\s*\d/.test(vTxt)) { o.type = "lower_effect"; signSeen = true; }

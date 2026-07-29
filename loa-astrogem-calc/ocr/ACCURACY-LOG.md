@@ -414,3 +414,147 @@ Shipped 2026-07-29 (structural pin 92; outcomes gate ratcheted 0.91 → 0.94). O
 verified: gate PASS at 96.7% / 95.0%, 0 silents, 100% flag coverage; one of the round's
 four label fixes (c-mrwqwzkm) re-checked against pixels — west "Ally Attack Enh. Lv. 3",
 east "Atk. Power Lv. 4", levels sum 12 = header. Frontier is now effect1Level (91.7).
+
+### 2026-07-29 · iteration 7 — round 5: the reads that were looking in the wrong place
+effect1Level (91.7) was the binding field and round 4 pointed at the assignment block.
+The assignment block turned out to be a symptom. Three of this round's four wins are the
+same bug in three places: **a read anchored by a fixed offset instead of locating its own
+line**, so the crop clips the very ink it is meant to read. No data files were rebuilt —
+glyphs and level-refs stay byte-identical to round 2.
+
+**Harness.** Round 4's parallel harness was re-created as `r5/ph.js` (6 dedicated
+tesseract lanes, one per image) and extended to mirror `tools/eval-ocr.js`'s `scoreOne`
+exactly — headline, whole-parse, flag coverage, silents, FA, per-field — plus the level
+provenance and the per-cell evidence. Full corpus in **202s** against the gate's ~6m25s,
+and it reproduces HEAD's shipped numbers to the digit. Eleven full-corpus runs this round.
+
+- **The points header was never LOCATED, only offset** — and it is worth more than every
+  digit-level idea of the last two rounds combined. `ptsRect = bandRect(redY − 1.10·gap,
+  0.13, 1.55)`: a half-height of 0.13·gap against a line whose own half-height is ~0.10
+  and whose centre drifts ±0.16, so the band clips the digits (crops verified by eye —
+  the gem TITLE's descenders in, the header's baseline out). **48 of 302 boards had no
+  checksum at all and carried 31 of the 70 level-field misses**; on a checksum-less board
+  the free nodes fall back to a blind default. Replaced with `locateLine` over a 0.36·gap
+  zone under `dimBtnWhite` — the title renders rarity-COLOURED, the header plain white,
+  and `findMaskedTextLine` scans bottom-up so the header wins the zone regardless. The
+  accept bounds the drift (−0.34..+0.20·gap) and the width (≤1.9·gap): the "Reset (1/1)"
+  row sits just below at +0.26..+0.37 and is white too, and a rejected candidate keeps
+  the scan moving up. **pts-null 48 → 20**, effect1Level 91.7 → 93.0, orderLevel
+  94.7 → 95.0, whole-parse 197 → 203.
+- **A merged W/E level line.** The "Lv. N" row spans ~0.27·gap of ink; the locate's accept
+  allowed up to 0.85·gap, so a band that bridged the name line above (or a neighbour's
+  art) passed and the template pass read a digit out of the wrong row. Measured: pins off
+  a 0.22-0.34·gap line are right **236/236**, off a ≥0.34·gap line **4/8**. Capping at
+  0.34 for the `hasLvPrefix` nodes routes those to the no-line synth rescue (right
+  133/139). effect1Level 93.0 → **93.4**, effect2Level 95.7 → 96.0, FA 6.3 → 6.2/shot.
+- **The outcome amount row falls outside its own cell.** `capRect` is 0.52·gap tall; a
+  two-line caption ("Willpower / Efficiency", "Ally Damage / Enh.") pushes the "+3 ▲" row
+  below it, the strict chartreuse locate finds nothing, the RED sweep latches onto the
+  willpower diamond's own face and the tile becomes a `lower`. A 0.66·gap zone as a
+  FALLBACK rung (after strict chartreuse and strict red, before the relaxed sweep), and
+  the vivid-yellow sign read moved off the whole-cell crop onto the located line. Run
+  UNCONDITIONALLY it is a loss — the deeper bottom-up scan meets a chartreuse fragment
+  below the amount first and the arrow box lands on red: five correct `raise willpower`
+  tiles flipped to `lower`, outcomes 95.0 → 94.7 measured. As a fallback: 95.0 → 95.1.
+- **A LOWER is always by 1.** `model/astrogem.js` OUTCOME_RATES carries one `change: -1`
+  rung per target and no −2/−3/−4, so a parsed "lower by 2" is not a rare event, it is a
+  misread — and the wrong channel is the AMOUNT (on a lower tile the amount renders red
+  and the chartreuse reader picks up the ▼). Corpus check: **0 of 302 labels** contain a
+  lower ≥2; the engine emitted 3 and every one of their labels is the same target lowered
+  by 1. Enforced in `snapOutcome` (so manual entry and any other engine get it too) and
+  in the cell reader, flagged at 0.7. outcomes 95.1 → **95.4**, whole 204 → 206.
+- **Title vocabulary** (from the corpus-expansion pass, verified against samples-v2, which
+  stays out of this round's eval): `collapse` (chaos, cost 10) added to GEM_NAME_COST,
+  GEM_TITLES and `canonicalGemSuffix` — it sits ≥6 edits from every other suffix (nearest
+  solidity 6), so it cannot reach the ≤2 or the d=3-with-margin rung on anything but
+  itself, and the minimum pairwise distance among suffixes stays 4. A **green** TITLE_HUES
+  family for uncommon gems, a rarity the round-3 survey never saw. Measured on the two
+  Collapse boards: HEAD read `corrosion@0.20` and shipped baseCost 10 at conf **0.50** — a
+  flagged default that happened to be right; they now read `collapse@1.50` and ship 10 at
+  **0.85**. The `Processed ` title PREFIX needs no code: the suffix matcher is not anchored
+  and "processed" sits ≥7 edits from every suffix, exactly like the ever-present "astrogem"
+  decoy — confirmed by parsing all four affected boards.
+
+**Same-labels A/B, full corpus, 302 scored pairs** (A-arm = unmodified HEAD in a
+`git worktree` with `samples/` symlinked in; it reproduces the shipped round-4 numbers
+exactly). **No labels were changed this round**, so the arms are identical by construction.
+
+| metric | round 4 (A) | round 5 (B) |
+|---|---|---|
+| headline per-field avg | 96.7% | **96.9%** |
+| whole-parse | 197/302 (65.2%) | **206/302 (68.2%)** |
+| flag coverage | 100.0% (157/157) | **100.0%** (147/147) |
+| silent errors | 0 | **0** |
+| false alarms/shot | 6.3 (1902) | **6.2** (1885) |
+| outcomes | 95.0% | **95.4%** |
+
+Per-field (A → B): effect1Level **91.7 → 93.4** · orderLevel 94.7 → **95.4** · outcomes
+95.0 → **95.4** · effect2Level 95.7 → **96.0** · willpowerLevel 94.7 → **94.4** (the only
+regression, one board — see below) · baseCost 99.7 · gemType 99.3 · currentTurn 99.7 ·
+maxTurns 100 · rerollsRemaining 97.7 · processCostMultiplier 97.7 · effect1 95.4 ·
+effect2 95.4.
+
+Residual wrong fields (A → B): effect1Level 25 → **20** · willpowerLevel 16 → 17 ·
+orderLevel 16 → **14** · effect1 14 → 14 · effect2 14 → 14 · effect2Level 13 → **12** ·
+rerollsRemaining 7 · processCostMultiplier 7 · gemType 2 · baseCost 1 · currentTurn 1.
+Outcome tiles missed 60 → **56** over 40 boards. Boards with ≥1 level miss 49 → 40.
+
+**The one regression is understood and is not a label error.** `c-mrvlbn9s-qc0o42`:
+the recovered checksum (pts=6, correct) plus a wrong W pin forces willpower to 2. The
+wheel was cropped and read by eye — N=1, W "Ally Attack Enh. Lv. 2", E "Brand Power Lv.
+1", S "Chaos Points 2", sum 6 — the label is right and the engine's W='1' is the miss.
+Same shape on `c-mrw7u3ou-v97a0f` (N=3, W Lv.2, E Lv.2, S=5, sum 12) and
+`c-mrwinias-d061v7` (N=2, W "Boss Damage Lv. 4", E "Atk. Power Lv. 1", S=2, sum 9): all
+three labels verified correct against pixels, all three are a synth-sourced W='1'. A
+recovered checksum makes a wrong pin louder — it moves the error rather than adding one,
+and the board was already wrong.
+
+**No label changes this round.** Every label the new numbers put in question was checked
+against the pixels and upheld.
+
+**RULED OUT, with numbers:**
+- *The "Lv. N" LINE-WIDTH channel as a 1-vs-not-1 verifier* — the round-4 lead for an
+  independent third channel, and it is genuinely independent (whole-line ink extent, not
+  correlation and not per-glyph segmentation). On full-line locates (245 W/E rows)
+  `w/h < 2.56` predicts value 1 at **97.6% precision / 66% recall**. Scored against the
+  labels it is worth **exactly zero**: 0 fixes, 2 breaks, and 81 no-ops on nodes the
+  engine already reads right. The reason is the same one that sank round 4's ink
+  geometry, seen from the other end: **22 of the 34 residual W/E misses have no located
+  line at all** and 8 more locate as a merged band. The channel is absent precisely where
+  it is needed. Any future verifier for this family has to work from a node with NO
+  usable line — that is the actual constraint.
+- *Un-pinning a synth-sourced W/E read whenever a checksum exists* — round 4's "a verifier
+  must be able to UN-PIN", measured directly. 7 boards better, 5 worse: whole-parse
+  206 → 210 and orderLevel 95.4 → 96.0, but effect2Level 96.0 → 95.0 and FA 6.2 → 6.3,
+  headline flat at 96.9. The losses are boards where BOTH W and E are synth reads — three
+  free nodes and the enumeration wanders (`c-mrwrevz3-2gkoti` went from a perfect parse to
+  three wrong levels). Gating on "≤2 free nodes" kills the wins too, because nearly every
+  case un-pins both. Net −1 field for no headline gain.
+- *Accepting a bounds-DEFYING header OCR* (the pts run-crop rescue currently rejects a
+  value outside the pinned reads' feasible range; the theory was that the bounds come from
+  pins that may be wrong): orderLevel 95.4 → 94.4, whole-parse 206 → 203. The bounds are
+  the better evidence.
+- *A dimmer white predicate for the header locate* (s<0.36 v>0.42, on the 24 frames where
+  the strict locate finds nothing): located **zero** extra headers and changed no board's
+  pts. Removed.
+- *Tightening the W/E line-locate centring* (|dx| 0.28 → 0.12·gap): byte-identical corpus
+  result. Reverted.
+- *False alarms*: not touched again, deliberately. 1885 FAs against 0 silents, and nothing
+  this round created new certainty about the 0.70-0.75 effect band.
+
+Gate: lint-labels 0 errors; 96.9% ≥ 96% · 95.4% ≥ 94% → **PASS**. Both gate numbers have
+headroom now (0.9 and 1.4 points), so the ladder can go to **0.96/0.95** at ship — the
+headline is still the binding one.
+
+- Next (iteration 8): the frontier is **a W/E node with no located line**. 20 of the
+  remaining level misses are effect1Level and the dominant cause is a synth-sourced W='1'
+  on a node whose "Lv. N" row never located — the absorber class, now with a working
+  checksum standing behind it, which means one extra channel there converts directly. The
+  measured hard constraint on any candidate: it must not need the line locate, because
+  that is exactly what is missing. Second: **20 boards still have no checksum**; the
+  survivors split into localized clients (a Russian frame reads "Уровень рунита: 4" — a
+  different UI), captures whose header carries no white-ish ink at all, and geometry that
+  puts "Reset (1/1)" where the header should be. Third: effect1/effect2 names hold at 14
+  each and stay DATA-bound (the corpus-expansion pass feeds them). Outcomes' residual 56
+  tiles over 40 boards is now the second-largest block.
+

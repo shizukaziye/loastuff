@@ -158,7 +158,14 @@
 
     if (t === "raise_effect" || t === "lower_effect") {
       var target = OUTCOME_TARGETS.indexOf(o.target) !== -1 ? o.target : "willpower";
-      var amount = clampInt(o.amount, 1, 4, 1); // game deltas are +/-1..4
+      // Raises step +1..+4; a LOWER is always exactly −1 — model/astrogem.js's
+      // OUTCOME_RATES has a single `change: -1` rung per target and no −2/−3/−4.
+      // So a parsed "lower by 2" is not a rare event, it is a misread, and the
+      // wrong channel is the AMOUNT: on a lower tile the amount renders red and
+      // the chartreuse reader picks up the ▼ or the face instead. Measured over
+      // the 302-board corpus: the engine emitted 3 such tiles and the label for
+      // every one of them is the same target lowered by 1.
+      var amount = t === "lower_effect" ? 1 : clampInt(o.amount, 1, 4, 1);
       var nm = target === "willpower" ? "Willpower"
         : target === "order" ? (config && config.gemType === "chaos" ? "Chaos" : "Order")
         : target === "effect1" ? (config ? config.effect1 : "Effect 1")

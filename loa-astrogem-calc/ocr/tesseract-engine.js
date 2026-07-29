@@ -76,7 +76,12 @@
   }
 
   var GEM_NAME_COST = {
-    stability: 8, corrosion: 8, solidity: 9, distortion: 9, immutability: 10, destruction: 10
+    stability: 8, corrosion: 8, solidity: 9, distortion: 9, immutability: 10, destruction: 10,
+    // 2026-07-29: a seventh suffix found in the wild — "Processed Chaos Astrogem:
+    // COLLAPSE" on two pixel-verified boards, both pinned to chaos-10 by pool
+    // intersection (Additional Damage ∈ {8,10} ∩ Boss Damage ∈ {9,10}). Until it
+    // was here the engine could read neither the cost nor the type of that gem.
+    collapse: 10
   };
 
   function canonicalGemSuffix(word) {
@@ -84,6 +89,7 @@
     var w = String(word).toLowerCase().replace(/[^a-z]/g, "");
     if (/^stab/.test(w)) return "stability";
     if (/^corr|^cor[mo]/.test(w)) return "corrosion";
+    if (/^coll/.test(w)) return "collapse";
     if (/^solid/.test(w)) return "solidity";
     if (/^dist/.test(w)) return "distortion";
     if (/^imm/.test(w)) return "immutability";
