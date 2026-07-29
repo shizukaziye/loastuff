@@ -188,6 +188,14 @@ function scoreOne(parsed, truthRaw) {
     scalarTotal: scalarFields.length,
     outcomeScore: outcomeScore,
     headline: headline,
+    // What the USER actually sees, which the scored-field view above cannot show.
+    // advisor-window.js flags each outcome tile separately ("outcomes.<i>"), so a board
+    // with three confident tiles and one doubtful one shows ONE amber tile, not four —
+    // whereas `outcomeConf` above is a MIN and collapses the strip into a single field.
+    // Count flags at the granularity the interface uses: 12 scalars + up to 4 tiles.
+    uiFlags: scalarFields.filter(function (f) { return (f.conf == null ? 1 : f.conf) < CONF_T; }).length
+      + (outcomesMasked ? 0 : confO.filter(function (c) { return c != null && c < CONF_T; }).length),
+    uiTileFlags: outcomesMasked ? 0 : confO.filter(function (c) { return c != null && c < CONF_T; }).length,
     wholeParse: correct === scalarFields.length && matched === wantKeys.length,
     wrongTotal: wrongAll.length,
     wrongFlagged: wrongFlagged,
@@ -368,6 +376,7 @@ async function main() {
     var eng = engines[ei];
     console.log("--- " + eng.label + " ---");
     var totScalarCorrect = 0, totScalar = 0, totOutcome = 0, totHeadline = 0, n = 0, skippedUnusable = 0;
+    var totUiFlags = 0, totTileFlags = 0, cleanBoards = 0, uiFlagHist = {};
     var whole = 0, wrongTotal = 0, wrongFlagged = 0;
     var totSilent = 0, totFalseAlarms = 0, silentList = [];
     var fieldAgg = {}; // label -> {ok,total}
@@ -389,6 +398,9 @@ async function main() {
       if (sc.wholeParse) whole++;
       wrongTotal += sc.wrongTotal; wrongFlagged += sc.wrongFlagged;
       totSilent += sc.silent.length; totFalseAlarms += sc.falseAlarms;
+      totUiFlags += sc.uiFlags; totTileFlags += sc.uiTileFlags;
+      uiFlagHist[Math.min(sc.uiFlags, 8)] = (uiFlagHist[Math.min(sc.uiFlags, 8)] || 0) + 1;
+      if (sc.wholeParse && sc.uiFlags === 0) cleanBoards++;
       if (sc.faDetail) faAll = faAll.concat(sc.faDetail);
       if (sc.silent.length) silentList.push(s.name + ": " + sc.silent.join(", "));
       sc.fields.forEach(function (f) {
@@ -420,6 +432,14 @@ async function main() {
         " fields " + pct(totScalar ? totScalarCorrect / totScalar : 0) +
         "  outcomes " + pct(outcomesAvg) + "  (" + n + " samples)");
       if (skippedUnusable) console.log("  (skipped " + skippedUnusable + " _unusable non-Processing images)");
+      // The user-facing view: what the Advisor window actually shows. CLEAN = nothing
+      // wrong AND nothing asking to be confirmed — the only state where a user can press
+      // Get advice without reading the parse.
+      console.log("  CLEAN boards (0 wrong, 0 flags): " + cleanBoards + "/" + n + " (" + pct(cleanBoards / n) + ")" +
+        "   UI flags: " + totUiFlags + " (" + (totUiFlags / n).toFixed(1) + "/shot, of which " + totTileFlags + " are outcome tiles)");
+      console.log("  flags/board: " + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (k) {
+        return (k === 8 ? "8+" : k) + ":" + (uiFlagHist[k] || 0);
+      }).join(" · "));
       console.log("  HEADLINE per-field avg (12 scalars + outcome set): " + pct(headlineAvg) +
         "   whole-parse: " + whole + "/" + n + " (" + pct(whole / n) + ")" +
         "   flag-coverage: " + (wrongTotal ? wrongFlagged + "/" + wrongTotal + " wrong fields flagged (" + pct(wrongFlagged / wrongTotal) + ")" : "n/a (no errors)"));

@@ -45,15 +45,33 @@ willpowerLevel 98.5 · effect2Level 97.9 · orderLevel 97.7 · baseCost 97.6 · 
 
 Arc: headline 89.9 → 97.2, whole-parse 19.6 → 75.2, silents 43 → 0.
 
-## The next lever, with its cross-tab
+## The next lever — corrected 2026-07-29 (the earlier reading was wrong)
 
-Clean-board is 0.8% against a 75.2% whole-parse rate. Of the **356 boards that parse
-perfectly**, `outcomes` flags **347 (97%)** — solely because outcomes confidence is a single
-MIN over four tiles. **40 boards are flagged by nothing else.** Then names: effect2 flags
-192, effect1 180. Levels: 133/102/86/82.
+**The product already flags outcome tiles individually.** `advisor-window.js:648` does
+`oc.forEach(function (v, i) { if (v < CT) win.unconfirmed["outcomes." + i] = 1; })` — three
+confident tiles stay quiet while the fourth asks. The MIN over four tiles that rounds 9-10
+described lives ONLY in `tools/eval-ocr.js`, the measurement. So "347 of 356 perfect boards
+are flagged by outcomes" was an artifact of collapsing the strip into one scored field, and
+the "40 boards are one policy change from clean" projection was measuring the harness, not
+the app. **Do not "fix" per-tile flagging — it exists.**
 
-Projection if nothing else flagged: levels-only 5 · **+outcomes → 74 (15.7%)** ·
-**+names → 294 (62.3%)**.
+`tools/eval-ocr.js` now also reports the user-facing view, counting flags at the granularity
+the window renders (12 scalars + up to 4 tiles = up to 16 per board):
+
+| user-facing metric | value |
+|---|---|
+| CLEAN boards (0 wrong, 0 flags) | **4/472 (0.8%)** |
+| UI flags | **2674 (5.7/shot)**, of which **1214 are outcome tiles** |
+| flags/board | 0:4 · 1:17 · 2:39 · 3:59 · 4:68 · 5:72 · 6:44 · 7:40 · **8+:129** |
+
+The clean-board rate is unchanged at 0.8% — it was already computed correctly. What changed
+is the shape of the problem: flags are **broad, not concentrated**. 129 boards raise 8+ of a
+possible 16, the median board raises 5, and only 21 boards are within one flag of clean.
+There is no single policy change that unlocks this; 1460 of the 2674 flags are scalar fields
+and 1214 are tiles, so both halves need real evidence.
+
+Ranked by flags on boards that PARSE PERFECTLY (where a flag is pure cost): outcome tiles
+first, then effect2/effect1 names, then the four level nodes.
 
 ## RULED OUT — do not re-litigate without new evidence
 
