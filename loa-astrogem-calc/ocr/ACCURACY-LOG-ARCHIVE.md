@@ -1701,3 +1701,87 @@ Shipped at 10: 1.6× the corpus maximum, 2.1× the holdout maximum. **8 is avail
 1.29× and was not taken** — the primary objective barely moves (CLEAN 18 → 19) and a
 calibrated log-likelihood ratio is optimistic about its own tails.
 
+## Round 13 — the last two silent tiles, and the synth cap's fourth witness
+
+Both silent-tile labels were VERIFIED against pixels at 4× before anything was built —
+both are RIGHT. `c-mrwao04t-olyi6t#0` is "Atk. Power / Lv. 1 ▲" (effect1; the engine said
+effect2). `c-mrxczi6z-ara48b#3` is "Brand Power / Lv. 2 ▲" (amount 2; the engine said 1).
+
+**What shipped** (all in `ocr/structural-engine.js` unless noted):
+
+| # | change | effect |
+|---|---|---|
+| A | the synth consult now runs after a TRUSTED `tm` template commit too; when it commits a DIFFERENT digit the tile takes that digit (`src=tm-contra`) and is capped at 0.72 | 5 tiles fixed, silent tile `ara48b#3` gone |
+| B | the icon face RE-LOCATED: walk the median patch ±0.30·gap, take the most saturated face, and cap the tile at 0.72 when it names another node | silent tile `wao04t#0` gone |
+| C | the synth amount cap is waived when the synthesis rests on TWO channels — raw+gradient naming the same digit, or the `bare+synth` rung (a bare OCR digit and the gradient top agreeing) | +137 tiles |
+| D | the same two-channel predicate joins round 12's `trustedAmt`, so the sign cap's direction-witness waiver reaches synth-sourced amounts | +54 tiles |
+| E | `tools/eval-ocr.js`: SILENT TILES is now a gate FAIL condition, like the field-level one | invariant locked |
+
+**A — the consult was switched off exactly where it was needed.** `synthAmountDigit` was
+skipped whenever the glyph atlas committed at the 0.95 tier (`amtSrc !== "tm"`), which left
+the template as the ONLY reader of its own line. `ara48b#3` is what that costs: a template
+'1' over a caption that OCRs to `sranc poveer|(k% 7`, so round 12's caption channel had
+nothing to dissent with and a wrong tile shipped at 0.83. Consulting anyway is behaviour-
+neutral by construction (the override branch keeps its `amtSrc !== "tm"` guard, and a
+record-only run reproduced round 12 to the board: 18 CLEAN / 2221 flags / 355 whole-parse).
+Measured over 329 `tm` tiles: the consult commits a different value on **5, and the template
+is wrong on all 5** — 2, 4, 2, 3, 3 against a template '1' every time, the documented
+absorber. It never contradicts a template that was right. On confident tiles it fires once.
+No new threshold: "the consult committed" is its own calibrated gate. Taking the value AND
+capping is what makes it safe in both directions — the tile is flagged either way, so this
+can only move a doubtful tile, never mint a confident wrong one.
+
+**B — the target had no witness at all.** effect1-vs-effect2 comes from ONE 13×13 median
+patch at `cx ± {1.39,0.47}·gap`. Where the real outcome-row pitch is a few percent wider
+that point slides off the diamond and medians the BACKGROUND: `wao04t#0`'s patch is
+(40,50,60) → h 210 → "blue" → effect2, at 4° from the east node, on a plainly green
+Atk. Power diamond. The walk keeps the most saturated face (s ≥ 0.50) and speaks only when
+it lands within 20° of one node hue with the runner-up 25° further out. Over the 1828
+tiles an offline probe could reproduce the geometry for:
+**7 dissents, the engine's target wrong on 5**, and on currently-confident tiles it fires
+exactly once — the silent tile. Zero false alarms. Dissent only: the walk can reach a
+neighbour's diamond when the true face is dim, so it may cap but never set a target.
+
+**C/D — the fourth witness the synth amount cap needed is the synthesis' own raw channel.**
+`synthAmountDigit` scores each candidate twice, a z-normed cosine on the patch and one on
+its gradient; the cap exists because the gradient is allowed to commit ALONE (the raw
+channel votes background over an outcome cell, which is why the engine trusts it
+asymmetrically). Of the 413 flagged tiles the cap held down, **137 have both channels
+naming the committed digit and all 137 are right**; every one of the 9 wrong tiles in the
+population is gradient-only — and 6 of those 9 are a wrong TARGET, for which this cap was
+only incidental cover (B now flags them on their own evidence). The `bare+synth` rung is
+the same shape across a different pair — a bare OCR digit and the gradient top agreeing,
+whose own comment already says "either alone is a trap, together usable": 98 flagged tiles,
+1 wrong, and that one is a target error B catches. Feeding the same predicate into round
+12's `trustedAmt` was measured first at 57 tiles / 0 wrong; loosening it to ANY synth source
+is 159 tiles and 2 wrong (both a willpower face read as order — a target the amount evidence
+cannot speak for), so it stays scoped.
+
+Per-arm tile deltas, measured: C lifted 70 tiles / 0 wrong / 0 dropped, D 54 / 0 / 0,
+C-for-`bare+synth` 67 / 0 / 0. No tile changed value except A's five.
+
+**Cost.** A adds ~0.7 `synthAmountDigit` calls per board (the exemplar pool is cached per
+scale band) and B adds 124 median patches of 13×13. Whole-corpus wall time on the parallel
+harness: 97s → 107s, about +10% on a parse that already spends 1.5-2.7s in OCR.
+
+## Round 12 — RULED OUT (moved from the working log, round 14)
+
+Ruled out in **round 12**, all measured per tile:
+
+- The direction witness on its **own** (round 9's shape): 257 tiles, **2 wrong**, silent
+  tiles 4 → 6. Both were `tm-weak` amounts whose direction was right and whose digit was
+  not — the witness speaks about direction only. Restricted to trusted amount rungs it is
+  158 tiles and 0 wrong, and that is what shipped. (Round 9's "35 FAs for 1 silent" was a
+  MIN-over-tiles artefact; the silent it found was a pre-existing silent TILE on another
+  cell, now flagged on its own evidence by the caption-dissent rule.)
+- Waiving the synth amount cap **wholesale**: 336 tiles, 5 wrong, silent tiles 4 → 9.
+- Dropping the `panelConf` multiplier from outcome tiles: 80 tiles, 1 wrong. Worth noting
+  that panelConf is 0.95-1.00 on 451 of 470 boards, so it is close to a flat 5% haircut
+  and it is what pushes rungs written at exactly 0.80 under the line — but the reroll
+  two-channel corroborator recovers the same CLEAN boards with evidence, so this was not
+  taken.
+- The looser caption-amount extractor (`+N` as well as `Lv. N`) as a dissent channel:
+  4 catches for 5 false dissents, three of them a solid ▲ read as '4' behind a bare '+'.
+  The `Lv.`-anchored form is 4 catches for 1.
+- `change_side_option`'s structural rung (81 tiles at 0.62) is 72/81 = 89% pure and
+  `do_nothing`'s 0.2 rung is 31/53 = 58%. Both are flagged for a real reason; leave them.

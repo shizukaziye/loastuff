@@ -47,6 +47,14 @@ function parseArgs(argv) {
     if ((m = a.match(/^--dir=(.+)$/))) out.dir = m[1];   // score pairs from another dir (e.g. samples/candidates)
     else if ((m = a.match(/^--engines=(.+)$/))) out.engines = m[1].split(",").map(function (s) { return s.trim(); });
     else if ((m = a.match(/^--only=(.+)$/))) out.only = m[1].split(",").map(function (s) { return s.trim().toLowerCase(); });
+    // --shard=<i>/<n>: score only every n-th sample. A full serial run is ~10 min, so
+    // A/B iteration runs n of these at once and merges the --recjson files. Sharding
+    // touches WHICH samples this process scores and nothing about how they are scored.
+    else if ((m = a.match(/^--shard=(\d+)\/(\d+)$/))) out.shard = { i: parseInt(m[1], 10), n: parseInt(m[2], 10) };
+    // --recjson=<path>: write one JSON record per scored sample (every number the
+    // summary below is derived from), so a merger can rebuild the full report from
+    // shards without re-deriving the scoring.
+    else if ((m = a.match(/^--recjson=(.+)$/))) out.recjson = m[1];
     else if ((m = a.match(/^--worker-url=(.+)$/))) out.workerUrl = m[1];
     else if (a === "--json") out.json = true;
     else if (a === "--dump") out.dump = true;
@@ -73,6 +81,8 @@ function findSamples() {
     var lf = f.toLowerCase();
     return ARGS.only.some(function (s) { return lf.indexOf(s) !== -1; });
   });
+  imgs.sort();   // deterministic order, so shard membership is stable across arms
+  if (ARGS.shard) imgs = imgs.filter(function (_, i) { return i % ARGS.shard.n === ARGS.shard.i; });
   var pairs = [];
   imgs.forEach(function (img) {
     var base = img.replace(/\.(png|jpg|jpeg|webp)$/i, "");
@@ -388,6 +398,7 @@ async function main() {
   console.log("");
 
   var jsonOut = { samples: scored.length, engines: {} };
+  var recs = [];
   for (var ei = 0; ei < engines.length; ei++) {
     var eng = engines[ei];
     console.log("--- " + eng.label + " ---");
@@ -431,6 +442,14 @@ async function main() {
       var wrong = sc.fields.filter(function (f) { return f.score == null && !f.ok; })
         .map(function (f) { return f.label + "(" + f.got + "≠" + f.want + ")"; });
       perSample.push({ name: s.name, headline: sc.headline, wholeParse: sc.wholeParse, outcomes: sc.outcomeScore });
+      if (ARGS.recjson) recs.push({
+        name: s.name, engine: eng.name, headline: sc.headline, wholeParse: sc.wholeParse,
+        outcomeScore: sc.outcomeScore, scalarCorrect: sc.scalarCorrect, scalarTotal: sc.scalarTotal,
+        uiFlags: sc.uiFlags, uiTileFlags: sc.uiTileFlags, silent: sc.silent, silentTiles: sc.silentTiles,
+        wrongTotal: sc.wrongTotal, wrongFlagged: sc.wrongFlagged, falseAlarms: sc.falseAlarms,
+        fields: sc.fields.filter(function (f) { return f.score == null; })
+          .map(function (f) { return { l: f.label, ok: !!f.ok, c: f.conf == null ? 1 : f.conf, got: f.got, want: f.want }; })
+      });
       console.log("  " + pad(s.name, 18) +
         " fields " + sc.scalarCorrect + "/" + sc.scalarTotal +
         "  outcomes " + pct(sc.outcomeScore) +
@@ -506,6 +525,7 @@ async function main() {
   }
 
   if (ARGS.json) console.log(JSON.stringify(jsonOut, null, 2));
+  if (ARGS.recjson) fs.writeFileSync(ARGS.recjson, recs.map(function (r) { return JSON.stringify(r); }).join("\n") + "\n");
 
   // ---- release gates (--gate=<engine>:<fields>,<outcomes>) ----
   var gateFailed = false;

@@ -57,6 +57,14 @@
   // forces a consult on all four nodes; the consult is memoized, so this costs
   // compute only on nodes the engine did not already ask about.
   var COLLECT_LEVID = (typeof process !== "undefined" && process.env && process.env.OCR_LEVEL_EVID === "1");
+  // Third calibration hook (off in production): OCR_NAME_EVID=1 makes the effect-NAME
+  // reader attach every channel it has about the two names — the graded lexical
+  // evidence per slot, the raw name text, the measured line count, the patch
+  // synthesis' complete per-class raw/gradient rankings, and the strip captions'
+  // name votes — so a scratch harness can train and score whole (effect1, effect2)
+  // hypotheses offline against the labels. It also forces the patch synthesis to run
+  // on both slots; the scores are memoized, so the rescue rungs pay nothing extra.
+  var COLLECT_NEVID = (typeof process !== "undefined" && process.env && process.env.OCR_NAME_EVID === "1");
   var _atlasCache = {};
   function pickGlyphAtlas(scaleF) {
     if (!GLYPHS_POOLED) return null;
@@ -78,6 +86,13 @@
   // Trained observation tables for the JOINT level solve (tools/build-level-model.js).
   // Optional: absent, the engine falls back to the per-node solve alone.
   var LMODEL = null;
+  // The same, for the two effect NAMES (tools/build-name-model.js). Optional in
+  // exactly the same way: without it the hand-graded lexicon decides alone.
+  var NMODEL = null, NMODEL_NAMES = null;
+  // The name reader's decisive-margin bar. Set at 1.66x the highest margin any WRONG
+  // name reaches on the 472-board corpus once the base cost is confident (7.21), the
+  // same safety factor round 12 shipped JOINT_SURE at. See the lift below.
+  var NAME_SURE = 12;
   // The joint reader's decisive-margin bar; see the AGREEMENT lift in the level
   // solve for how it was measured. Raising it costs false alarms, lowering it
   // spends the safety factor.
@@ -85,6 +100,10 @@
   try {
     var _lm = IS_NODE ? require("./level-model.js") : root.OcrLevelModel;
     if (_lm) LMODEL = _lm.LEVEL_MODEL;
+  } catch (e) {}
+  try {
+    var _nm = IS_NODE ? require("./name-model.js") : root.OcrNameModel;
+    if (_nm) { NMODEL = _nm.NAME_MODEL; NMODEL_NAMES = _nm.NAME_MODEL_NAMES; }
   } catch (e) {}
   // blurred-variant caches for the synthesis rescues — MODULE scope: building
   // them costs ~400 blur+normalize passes and they depend only on the baked
@@ -1954,17 +1973,17 @@
       _nsynthTVCache = _nsynthTV;
       return _nsynthTVCache;
     }
-    // Classify the name band against reference patches; candidates constrained to
-    // `allowed` (the cost pool) minus `avoid`. Same dual-scoring agreement gate.
-    function synthNameRescue(kind, p, allowed, avoid) {
+    // Score the name band against EVERY reference class this side holds, memoized
+    // per slot. A name's score does not depend on which other names were in the
+    // loop, so scoring all six once and filtering afterwards is identical to the
+    // old candidate-restricted pass — and it makes the whole ranking available as
+    // EVIDENCE (the trained name model) for the price of one pass, not two.
+    var _nsynthScoreCache = {};
+    function synthNameScores(kind, p) {
+      if (_nsynthScoreCache[kind] !== undefined) return _nsynthScoreCache[kind];
       var tv = _nsynthVariants();
-      if (!tv || !tv[kind]) return null;
-      var cands = Object.keys(tv[kind]).filter(function (n) {
-        if (avoid && n === avoid) return false;
-        if (allowed && allowed.indexOf(n) === -1) return false;
-        return true;
-      });
-      if (cands.length < 2) return null;   // a 1-candidate "choice" proves nothing
+      if (!tv || !tv[kind]) return (_nsynthScoreCache[kind] = null);
+      var cands = Object.keys(tv[kind]);
       var cx = p.x, cy = p.y - gap * 0.16;
       var perRaw = {}, perGrad = {}, dy, dx, i;
       for (dy = -0.03; dy <= 0.0301; dy += 0.01) {
@@ -1983,6 +2002,21 @@
           }
         }
       }
+      return (_nsynthScoreCache[kind] = { perRaw: perRaw, perGrad: perGrad });
+    }
+    // Classify the name band against reference patches; candidates constrained to
+    // `allowed` (the cost pool) minus `avoid`. Same dual-scoring agreement gate.
+    function synthNameRescue(kind, p, allowed, avoid) {
+      var all = synthNameScores(kind, p);
+      if (!all) return null;
+      var cands = Object.keys(all.perRaw).filter(function (n) {
+        if (avoid && n === avoid) return false;
+        if (allowed && allowed.indexOf(n) === -1) return false;
+        return true;
+      });
+      if (cands.length < 2) return null;   // a 1-candidate "choice" proves nothing
+      var perRaw = {}, perGrad = {};
+      cands.forEach(function (n) { perRaw[n] = all.perRaw[n]; perGrad[n] = all.perGrad[n]; });
       function rank(per) {
         return Object.keys(per).map(function (n) { return { n: n, s: per[n] }; })
           .sort(function (a, b) { return b.s - a.s; });
@@ -3113,25 +3147,45 @@
       }
       return edits + (a.length - i) + (b.length - j) <= 1;
     }
-    function countNameLines(p) {
+    // One pass over the name band's white-text mask, memoized per node: the line
+    // count (long-standing) and the widest line's INK EXTENT as a fraction of the
+    // band (round 14). The extent is what tells "Brand Power" from "Atk. Power" —
+    // the pair the patch synthesis confuses, and the pair that set the name reader's
+    // safety bar. It is measured, not asserted: the trained tables decide what a
+    // given extent is worth for each name.
+    var _nmMaskCache = {};
+    function nameMask(p) {
+      var key = Math.round(p.x) + "," + Math.round(p.y);
+      if (_nmMaskCache[key]) return _nmMaskCache[key];
       var zone = { x: p.x - gap * 0.55, y: p.y - gap * 0.36, w: gap * 1.1, h: gap * 0.40 };
       var sub = L.crop(raster, zone);
       var mask = L.chromaMask(sub, L.isWhiteText);
-      var rows = [], y, x;
+      var rows = [], lo = [], hi = [], y, x;
       for (y = 0; y < mask.height; y++) {
-        var on = 0;
-        for (x = 0; x < mask.width; x++) if (mask.data[(y * mask.width + x) * 4] < 128) on++;
-        rows.push(on);
+        var on = 0, l = -1, h2 = -1;
+        for (x = 0; x < mask.width; x++) {
+          if (mask.data[(y * mask.width + x) * 4] < 128) { on++; if (l < 0) l = x; h2 = x; }
+        }
+        rows.push(on); lo.push(l); hi.push(h2);
       }
       var minPx = Math.max(2, Math.round(mask.width * 0.03));
       var bands = 0, run = 0, minRun = Math.max(3, Math.round(gap * 0.035));
+      var wid = 0, curLo = 1e9, curHi = -1;
       for (y = 0; y < rows.length; y++) {
-        if (rows[y] >= minPx) run++;
-        else { if (run >= minRun) bands++; run = 0; }
+        if (rows[y] >= minPx) {
+          run++;
+          if (lo[y] >= 0) { if (lo[y] < curLo) curLo = lo[y]; if (hi[y] > curHi) curHi = hi[y]; }
+        } else {
+          if (run >= minRun) { bands++; if (curHi >= curLo) wid = Math.max(wid, curHi - curLo + 1); }
+          run = 0; curLo = 1e9; curHi = -1;
+        }
       }
-      if (run >= minRun) bands++;
-      return bands;
+      if (run >= minRun) { bands++; if (curHi >= curLo) wid = Math.max(wid, curHi - curLo + 1); }
+      var r = { lines: bands, ink: mask.width ? wid / mask.width : 0 };
+      _nmMaskCache[key] = r;
+      return r;
     }
+    function countNameLines(p) { return nameMask(p).lines; }
 
     // ---- JOINT (cost, pool, name-assignment) SOLVE ----
     // The production confusions this replaces (the pairwise cross-check): a failed
@@ -3331,6 +3385,156 @@
       var rnE = structuralName(nmE.text, nodes.nodeE, poolNames, out.config.effect1) ||
         (NREFS ? synthNameRescue("E", nodes.nodeE, poolNames, out.config.effect1) : null);
       if (rnE) { out.config.effect2 = rnE; confidence.config.effect2 = 0.6; }
+    }
+    // the state the trained name solve sees, captured before it may change it
+    var _preNames = [out.config.effect1 || null, out.config.effect2 || null];
+    var _preConf = [confidence.config.effect1 || 0, confidence.config.effect2 || 0];
+    var _preCostConf = out.config.baseCost == null ? 0 : (confidence.config.baseCost == null ? 1 : confidence.config.baseCost);
+
+    // ---- THE TWO NAMES, READ AS ONE HYPOTHESIS (round 14) ----
+    // Everything above reads each name ONCE, from the wheel's white caption, and
+    // grades that read with hand-written lexical rules; the patch synthesis and the
+    // line count only ever speak after the lexicon has already failed. That is the
+    // wrong shape for this field. The vocabulary is closed and tiny — EFFECT_POOLS
+    // gives four legal names per base cost and the two slots hold different ones —
+    // so the board's names are a 12-way choice under a known constraint, and every
+    // channel can be scored against every candidate at once.
+    //
+    // So score whole HYPOTHESES. A hypothesis is an ordered distinct pair from the
+    // cost's pool; each is Σ log P(observation | name) over the synthesis' raw and
+    // gradient rankings, the measured line count, the lexicon's graded evidence, a
+    // per-candidate count of the name's own words found in the read text, and the
+    // engine's own committed read bucketed by its confidence. The tables are TRAINED
+    // (tools/build-name-model.js) on the 376 non-holdout boards; the holdout gained
+    // MORE than the training split, which is the only evidence that matters when
+    // 472 boards are available to overfit.
+    //
+    // Measured on the 894 name slots this reader is in scope for: 879 right (98.3%)
+    // against the incumbent's 857 (95.9%); on the holdout alone 180/184 (97.8%) vs
+    // 173 (94.0%); 5-fold CV inside the training split 695/710 vs 684.
+    var NM_NAMES = NMODEL_NAMES || ["Additional Damage", "Attack Power", "Brand Power",
+                                    "Ally Damage Enh.", "Boss Damage", "Ally Attack Enh."];
+    var NM_IX = {}; NM_NAMES.forEach(function (n, i) { NM_IX[n] = i; });
+    // A name is its own words. "Atk. Power" is what the wheel actually renders, so
+    // `attack` carries `atk` as an alias. Counting how many of a candidate's words a
+    // fuzzy token match finds is what separates "firand power" (2 of Brand Power's
+    // words, 1 of Attack Power's) from the graded lexicon, which scored that read
+    // 0.7 for both and had to guess. Three-letter words must match exactly: one edit
+    // inside three characters is most of the word.
+    var NM_WORDS = {
+      "Additional Damage": [["additional"], ["damage"]],
+      "Attack Power": [["attack", "atk"], ["power"]],
+      "Brand Power": [["brand"], ["power"]],
+      "Ally Damage Enh.": [["ally"], ["damage"], ["enh"]],
+      "Boss Damage": [["boss"], ["damage"]],
+      "Ally Attack Enh.": [["ally"], ["attack", "atk"], ["enh"]]
+    };
+    function nmWordHits(text, name) {
+      var toks = String(text || "").split(/[^a-z]+/).filter(function (t) { return t.length >= 3; });
+      var slots = NM_WORDS[name] || [], hits = 0;
+      slots.forEach(function (alts) {
+        for (var i = 0; i < toks.length; i++) {
+          for (var j = 0; j < alts.length; j++) {
+            var w = alts[j];
+            if (toks[i] === w || (w.length >= 4 && toks[i].length >= 4 && editDist1(toks[i], w))) { hits++; return; }
+          }
+        }
+      });
+      return Math.min(3, hits);
+    }
+    function nmLexBucket(v) { return v == null ? 0 : v >= 1.0 ? 4 : v >= 0.8 ? 3 : v >= 0.6 ? 2 : 1; }
+    function nmSynObs(map) {
+      if (!map) return { top: -1, mb: 0 };
+      var r = NM_NAMES.map(function (n, i) { return { i: i, s: map[n] }; })
+        .filter(function (x) { return x.s != null; }).sort(function (a, b) { return b.s - a.s; });
+      if (!r.length) return { top: -1, mb: 0 };
+      return { top: r[0].i, mb: (r.length > 1 ? r[0].s - r[1].s : 1) >= 0.05 ? 1 : 0 };
+    }
+    function jointNameSolve(pool) {
+      if (!NMODEL || !NREFS || !pool || pool.length < 2) return null;
+      var M = NMODEL, W = M.w, NN2 = NM_NAMES.length;
+      var pn2 = [nodes.nodeW, nodes.nodeE], tx = [nmW.text, nmE.text], ev2 = [evW, evE];
+      var per = [], i, v;
+      for (i = 0; i < 2; i++) {
+        var k = i ? "E" : "W";
+        var sy2 = synthNameScores(k, pn2[i]);
+        var ro = nmSynObs(sy2 && sy2.perRaw), go = nmSynObs(sy2 && sy2.perGrad);
+        var ln = countNameLines(pn2[i]); ln = ln === 1 ? 1 : ln === 2 ? 2 : 0;
+        var rIx = _preNames[i] ? NM_IX[_preNames[i]] : -1;
+        if (rIx == null) rIx = -1;
+        var rB = _preConf[i] >= 0.8 ? 2 : _preConf[i] >= 0.6 ? 1 : 0;
+        var acc = [];
+        for (v = 0; v < NN2; v++) {
+          var s = W.wPrior * M.prior[k][v];
+          s += W.wRaw * M.raw[k][ro.mb][v][ro.top < 0 ? NN2 : ro.top];
+          s += W.wGrad * M.grad[k][go.mb][v][go.top < 0 ? NN2 : go.top];
+          s += W.wLines * M.lines[k][v][ln];
+          s += W.wRead * M.read[k][rB][v][rIx < 0 ? NN2 : rIx];
+          var lb = nmLexBucket(ev2[i][NM_NAMES[v]]);
+          s += W.wLex * (M.lex[k][1][lb] - M.lex[k][0][lb]);
+          var wb = nmWordHits(tx[i], NM_NAMES[v]);
+          s += W.wWh * (M.wh[k][1][wb] - M.wh[k][0][wb]);
+          acc.push(s);
+        }
+        per.push(acc);
+      }
+      var best = null, bestS = -Infinity, altA = [], altB = [], ai, bi;
+      for (v = 0; v < NN2; v++) { altA.push(-1e18); altB.push(-1e18); }
+      for (ai = 0; ai < pool.length; ai++) for (bi = 0; bi < pool.length; bi++) {
+        if (ai === bi) continue;
+        var a2 = NM_IX[pool[ai]], b3 = NM_IX[pool[bi]];
+        if (a2 == null || b3 == null) continue;
+        var s2 = per[0][a2] + per[1][b3];
+        if (s2 > bestS) { bestS = s2; best = [a2, b3]; }
+        if (s2 > altA[a2]) altA[a2] = s2;
+        if (s2 > altB[b3]) altB[b3] = s2;
+      }
+      if (!best) return null;
+      function marg(alt, chosen) {
+        var mx = -1e18;
+        for (var q = 0; q < NN2; q++) if (q !== chosen && alt[q] > mx) mx = alt[q];
+        return bestS - mx;
+      }
+      return { v: [NM_NAMES[best[0]], NM_NAMES[best[1]]], margin: [marg(altA, best[0]), marg(altB, best[1])] };
+    }
+    // The lift is applied at the very end, after the panel attenuation, exactly where
+    // the round-9 caption verifier applies its own — a 0.82 written here would be
+    // multiplied back under the line by panelConf.
+    var _nameSure = [false, false], _nameJointRan = false;
+    if (NMODEL) {
+      var _nr = jointNameSolve(poolNames);
+      if (_nr) {
+        _nameJointRan = true;
+        if (out._debug) out._debug.nameJoint = _nr.v.join(" | ") + " m " + _nr.margin.map(function (m) { return m.toFixed(1); }).join("/");
+        ["effect1", "effect2"].forEach(function (slot, i) {
+          if (_nr.v[i] !== out.config[slot]) {
+            // OVERRIDE — always flagged, and deliberately below the caption
+            // verifier's 0.68 floor so a replaced name cannot be lifted by a channel
+            // that was measured on the engine's own reads. Like the level solve's,
+            // this can only ever shrink the confident set.
+            out.config[slot] = _nr.v[i];
+            confidence.config[slot] = Math.min(confidence.config[slot] || 0, 0.66);
+            return;
+          }
+          // AGREEMENT at a decisive margin. Two readers that fail independently —
+          // the wheel's OCR text and the name band's pixel synthesis — landing on
+          // the same name is the third channel round 9 could not find for the 221
+          // uncorroborated names in the 0.68-0.80 band. Scoped to a CONFIDENT base
+          // cost because the whole enumeration rests on the pool: measured over the
+          // corpus, all 20 slots whose true name falls outside the committed pool
+          // sit on boards whose baseCost was itself flagged.
+          //
+          //   margin (cost-confident)  <2    2-6   6-8    >=8
+          //   right                    16     25    23    775
+          //   WRONG                     8      5     2      0
+          //
+          // The worst WRONG name reaches 7.21 and nothing clears 8; NAME_SURE is set
+          // at 12, 1.66x that, the same factor round 12 shipped JOINT_SURE at. At 12
+          // the lift population is 651 slots, every one of them right, and every one
+          // of them a slot where the solve KEPT the engine's own read.
+          if (_preCostConf >= 0.8 && _nr.margin[i] >= NAME_SURE) _nameSure[i] = true;
+        });
+      }
     }
 
     // ---- pool backstop: a NULL cost is not evidence, a read NAME is (round 7) ----
@@ -4161,13 +4365,67 @@
     // name that truly sits at E and a tile duly spells it out), and 0.50-0.60 would
     // add 92 more with 0 wrong — one silent for 98 false alarms is not a trade this
     // campaign makes. Runs AFTER the panel attenuation so the lift is the final word.
+    //
+    // ROUND 14 — THE FLOOR COMES OFF, for the reason it was there. The 0.68 floor was
+    // never about the caption: it was about the SLOT, and the joint reader above now
+    // decides both slots as one hypothesis, so a swap is a candidate it scores rather
+    // than a blind spot it inherits. `c-ms0uhvso-gj1ae8`, the single silent that set
+    // the floor, is read RIGHT by it: the wheel gave ["Ally Damage Enh.", "Ally Attack
+    // Enh."] and the solve returns ["Boss Damage", "Ally Damage Enh."], the labels.
+    // So the floor drops to 0 when — and only when — the trained reader decided this
+    // board's names AND the base cost is confident (the pool it chose inside must be
+    // the right pool; every slot in the corpus whose true name falls outside the
+    // committed pool sits on a board whose baseCost was itself flagged).
+    // Measured per slot against the labels on the 472-board corpus, over the flags the
+    // trained reader leaves behind: **87 corroborated, every one of them right**, 26 of
+    // them on the holdout. Of the 50 name slots still wrong-and-flagged, NOT ONE is
+    // both cost-confident and corroborated. Under the null that a caption carries no
+    // information the surviving population is 82% right, so P(0 wrong in 87) ≈ 4e-8 —
+    // this is not the 0-out-of-27 coincidence round 13 declined.
+    var _capFloor = (NMODEL && _nameJointRan && _preCostConf >= 0.8) ? 0 : 0.68;
     ["effect1", "effect2"].forEach(function (slot) {
       var c = confidence.config[slot] || 0;
-      if (c < 0.68 || c >= 0.8) return;
+      if (c < _capFloor || c >= 0.8) return;
       if (!out.config[slot] || !_nameVotes[out.config[slot]]) return;
       confidence.config[slot] = 0.82;
       if (out._debug) (out._debug.capName = out._debug.capName || []).push(slot + "<-" + out.config[slot]);
     });
+
+    // ---- the trained name reader's AGREEMENT lift (round 14; decided above) ----
+    // Applied here, after the panel attenuation, for the same reason the caption
+    // verifier is: written earlier, 0.82 comes back multiplied under the flag line.
+    ["effect1", "effect2"].forEach(function (slot, i) {
+      if (_nameSure[i] && out.config[slot]) confidence.config[slot] = Math.max(confidence.config[slot] || 0, 0.82);
+    });
+
+    // ---- name-model calibration record (OCR_NAME_EVID=1; see COLLECT_NEVID) ----
+    if (COLLECT_NEVID && out._debug) {
+      var _r3 = function (m) {
+        if (!m) return null;
+        var o2 = {}; Object.keys(m).forEach(function (k) { o2[k] = Math.round(m[k] * 10000) / 10000; }); return o2;
+      };
+      var _nsW = synthNameScores("W", nodes.nodeW), _nsE = synthNameScores("E", nodes.nodeE);
+      out._debug.nmEvid = {
+        baseCost: out.config.baseCost, titleCost: titleCost,
+        gemType: out.config.gemType, pool: poolNames ? poolNames.slice() : null,
+        W: { ev: _r3(evW), text: nmW.text.slice(0, 80), conf: Math.round(nmW.conf * 1000) / 1000,
+             lines: nameMask(nodes.nodeW).lines, ink: Math.round(nameMask(nodes.nodeW).ink * 1000) / 1000,
+             raw: _nsW ? _r3(_nsW.perRaw) : null, grad: _nsW ? _r3(_nsW.perGrad) : null },
+        E: { ev: _r3(evE), text: nmE.text.slice(0, 80), conf: Math.round(nmE.conf * 1000) / 1000,
+             lines: nameMask(nodes.nodeE).lines, ink: Math.round(nameMask(nodes.nodeE).ink * 1000) / 1000,
+             raw: _nsE ? _r3(_nsE.perRaw) : null, grad: _nsE ? _r3(_nsE.perGrad) : null },
+        capVotes: _nameVotes,
+        pre: _preNames, preConf: _preConf.map(function (c) { return Math.round(c * 1000) / 1000; }),
+        preCostConf: Math.round((_preCostConf || 0) * 1000) / 1000,
+        geom: { gap: gap, W: { x: nodes.nodeW.x, y: nodes.nodeW.y }, E: { x: nodes.nodeE.x, y: nodes.nodeE.y },
+                ox: out._debug.norm.ox, oy: out._debug.norm.oy, scaleF: out._debug.norm.scaleF },
+        asg: { 8: asg[8], 9: asg[9], 10: asg[10] },
+        panelConf: Math.round(panelConf * 1000) / 1000,
+        got: [out.config.effect1 || null, out.config.effect2 || null],
+        conf: [Math.round((confidence.config.effect1 || 0) * 1000) / 1000,
+               Math.round((confidence.config.effect2 || 0) * 1000) / 1000]
+      };
+    }
 
     // ---- HONESTY GUARD: degraded OCR must never look confident ----
     // If the OCR backend died (worker failed to load, CDN blocked, crash), the
@@ -4303,7 +4561,7 @@
     return [
       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
       f("astrogem.js", "../model/"), f("engine.js"), f("layout.js"), f("glyphs.js"),
-      f("level-refs.js"), f("level-model.js"), f("tesseract-engine.js"), f("structural-engine.js")
+      f("level-refs.js"), f("level-model.js"), f("name-model.js"), f("tesseract-engine.js"), f("structural-engine.js")
     ];
   }
   function getBgWorker() {
