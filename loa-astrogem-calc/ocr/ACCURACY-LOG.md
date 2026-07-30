@@ -14,7 +14,7 @@ raises five flags is still untrustworthy.
 
 Rank objectives in this order:
 1. **Clean-board rate** — boards with 0 wrong fields AND 0 flags. The real "trust it at a
-   glance" number. **Currently 136/472 = 28.8%** (it was 25/472 when this was written).
+   glance" number. **Currently 147/472 = 31.1%** (it was 25/472 when this was written).
 2. **Whole-parse rate** — boards with 0 wrong fields. **Currently 381/472 = 80.7%.**
 3. Per-field average (97.7%) — the metric that HIDES the above. Report it last.
 
@@ -33,48 +33,24 @@ a silent error the FIELD test cannot see: it was 4 such tiles at the start of ro
 2 at the end. Round 13 cleared both, so **SILENT TILES is now a gate FAIL condition too**
 (`tools/eval-ocr.js`) and the invariant holds at the granularity the window renders.
 
-## Where things stand (round 15 shipped)
+## Where things stand (round 16 shipped — the campaign is now on maintenance)
 
-Both arms measured in one session against the same labels, on the same parallel harness:
-the incumbent from a worktree at unmodified HEAD with `samples/` symlinked, the candidate
-from the working tree. Two labels changed this round (both disproved by pixel crops, see
-round 15) and BOTH arms were re-run against them. The serial `npm run eval-gate` agrees
-with the parallel harness on every headline number.
+Current build: **CLEAN 147/472 (31.1%)** · UI flags **1234 (2.6/shot)** — 322 tiles, 912
+scalars · whole-parse 381/472 (80.7%) · headline 97.7% · **SILENT fields 0 · SILENT TILES
+0** · gate PASS. The round-16 A/B table and the verdict are below.
 
-| metric | incumbent (r14) | **round 15** |
-|---|---|---|
-| **CLEAN boards** (0 wrong, 0 flags) | 47/472 (10.0%) | **136/472 (28.8%)** |
-| UI flags (12 scalars + up to 4 tiles) | 1687 (3.6/shot) | **1276 (2.7/shot)** |
-| …of which outcome tiles | 733 | **322** |
-| …of which scalar fields | 954 | 954 |
-| UI flags sitting on CORRECT cells | 1165 | **981** |
-| **SILENT fields** | 0 | **0** |
-| **SILENT TILES** (wrong yet ≥0.8) | 0 | **0** |
-| wrong TILES (of 1880) | 71 | **61** |
-| whole-parse | 376/472 (79.7%) | **381/472 (80.7%)** |
-| headline per-field | 97.6% | **97.7%** |
-| outcomes | 96.2% | **96.7%** |
-| flag coverage | 175/175 | 167/167 |
-| gate 0.97/0.95 + zero silents + zero silent TILES | PASS | PASS |
+Every round measures both arms in one session against the same labels, on the same parallel
+harness: the incumbent from a worktree at unmodified HEAD with `samples/` symlinked, the
+candidate from the working tree. When a round fixes a label, BOTH arms are re-run against it.
+The serial `npm run eval-gate` agrees with the parallel harness on every headline number.
 
-**Holdout, reported separately** (the 96 boards `djb2%5==0`, which no trained artefact has
-seen): CLEAN 12 → **32** (12.5% → 33.3%), flags 342 → **257**, tile flags 148 → **63**,
-whole-parse 75 → 75, outcomes 95.6 → **95.8**, silents 0/0. In-sample (376): CLEAN 35 →
-**104**, flags 1345 → **1019**, tile flags 585 → **259**, whole-parse 301 → **306**.
-The tile-flag reclamation is the same fraction on both sides — 57% held out, 56% in
-sample — which is what says the tables generalise. The whole-parse gain does NOT: it is
-9 fixed tiles in sample against 1 on the holdout (see the override, below).
+Per-field, current build: maxTurns 100 · processCostMultiplier 99.8 · gemType 99.4 ·
+currentTurn 99.2 · willpowerLevel 98.5 · effect2Level 97.9 · rerollsRemaining 97.9 ·
+orderLevel 97.7 · baseCost 97.6 · outcomes 96.7 · effect1Level 96.2 · effect1 95.3 ·
+effect2 94.1.
 
-flags/board — incumbent `0:47 · 1:91 · 2:77 · 3:61 · 4:43 · 5:41 · 6:29 · 7:30 · 8+:73`
-round 15 &nbsp;&nbsp;`0:136 · 1:87 · 2:53 · 3:45 · 4:44 · 5:25 · 6:24 · 7:20 · 8+:38`
-
-Per-field (unchanged — nothing this round touched a scalar): maxTurns 100 ·
-processCostMultiplier 99.8 · gemType 99.4 · currentTurn 99.2 · willpowerLevel 98.5 ·
-effect2Level 97.9 · orderLevel 97.7 · baseCost 97.6 · rerollsRemaining 97.4 ·
-effect1Level 96.2 · outcomes **96.7** · effect1 95.3 · effect2 94.1.
-
-Arc: headline 89.9 → 97.7, whole-parse 19.6 → 80.7, silents 43 → 0, silent TILES 4 → 0,
-CLEAN 0.8 → **28.8%**.
+Arc across sixteen rounds: headline 89.9 → 97.7, whole-parse 19.6 → 80.7, silents 43 → 0,
+silent TILES 4 → 0, CLEAN 0.8 → **31.1%**.
 
 ## Round 12 — reclaiming false alarms with independent witnesses
 
@@ -110,142 +86,221 @@ did not survive trained tables.
 
 ## Round 15 — the four tiles, read as one hypothesis
 
-Round 10's move applied to the field two rounds of hand-written witnesses had left at 733
-flags. A tile is a better fit than the levels or the names, because its vocabulary is not
-merely closed — **it is enumerated by the game**. `model/astrogem.js` OUTCOME_RATES lists
-exactly 27 keys, gives each a base probability and says which of them the current
-levels/turns exclude. Measured before anything was built: of the 1828 scored tiles in the
-corpus **exactly one label falls outside the legal set**, and pixels say that label was the
-error. So a tile is a ~20-way choice under a known prior, and the ladder decides it in three
-passes — target from the icon hue, kind from the caption and the located line, amount from
-whichever of six digit channels spoke first — that never see each other's evidence.
+Moved to the archive (search it for "Round 15"). The short version: a tile's vocabulary is
+not merely closed, it is ENUMERATED by the game — `model/astrogem.js` OUTCOME_RATES lists 27
+keys with base probabilities and says which the current levels/turns exclude, and exactly one
+label in the corpus fell outside the legal set (pixels said that label was the error). So
+`tools/collect-tile-evid.js` → `tools/build-tile-model.js` → `ocr/tile-model.js`, and
+`tileSolve()` in `structural-engine.js` enumerates 27 keys × 4 tiles jointly with a duplicate
+penalty. Overrides commit at 0.72 (below the flag line, so they cannot mint a silent):
+11 disagreements, 10 fixes, 0 breaks. The AGREEMENT lift at `TILE_SURE = 9` reclaimed
+**411 flagged tiles, every one right**.
 
-**What shipped**
+**The lexical witness is the whole result, and it is the template every later round follows.**
+A lift can mint a silent tile, so agreement alone was not enough: a TEXT channel — the caption
+OCR or the dim-grey dilated pass — must independently name the same key's target or kind.
+Every other channel (icon hue, relocated face, located line, arrow blob, template, both synth
+rankings) reads the same rendered pixels through a colour mask, and they fail together.
+Measured over the flagged tiles the solve agrees with: no gate → 697 tiles, 40 wrong, worst
+wrong margin 20.06, so the 1.6× bar lifts 34; with the witness → 440 tiles, **3 wrong**,
+worst wrong margin **5.56**, so `TILE_SURE = 9` is 1.62× and lifts **411 with 0 wrong**.
+Both of the >10-margin wrongs the witness removes are non-English captures — no caption, no
+second family of evidence, which is the mechanism said out loud.
 
-| # | change | effect |
+Results: tile flags 733 → 322, wrong tiles 71 → 61, CLEAN 47 → 136, whole-parse 376 → 381.
+With `ocr/tile-model.js` removed the tree reproduces the incumbent to the board. Two labels
+were disproved by pixel crops and fixed; four more were checked and were right.
+
+## Round 16 — the turn-1 invariant, and the end of the campaign
+
+Round 15 named two targets and priced them at "roughly +40 CLEAN". **The price was wrong,
+and so was one of the targets.** Measured first, built second:
+
+| target | flags it clears | **CLEAN it buys** |
 |---|---|---|
-| A | every channel the cell ladder consults is now recorded per tile under `out._debug.tileEvid`, unconditionally | the trained solve and `tools/build-tile-model.js` read the SAME record, so they cannot drift |
-| B | `tools/collect-tile-evid.js` → the JSONL cache; `tools/build-tile-model.js` → `ocr/tile-model.js` (9.7 KB) | the reader |
-| C | `tileSolve()` in `structural-engine.js`: 27-key enumeration × 4 tiles, joint, with a duplicate penalty | overrides commit at 0.72 (flagged) |
-| D | AGREEMENT lift at `TILE_SURE = 9` | **411 flagged tiles reclaimed, every one right** (85 on the holdout) |
-| E | the legality mask reads `out.state.turnsRemaining`, not a `currentTurn` that only exists after `constraintSnap` | a real bug the mirror check caught; 1 tile |
+| `maxTurns` | 26 | **0** |
+| `rerollsRemaining` | 42 of 91 | **+11** |
 
-**The model.** Five class variables per key — kind / target / amount / cost-sign /
-reroll-count — and 17 observation channels plus 3 that encode the engine's own committed
-read bucketed by its confidence. Every channel is scored against every candidate, so the
-comparison is a like-for-like likelihood and not a count of terms. Weights are per channel,
-fitted by coordinate ascent on the 375 non-holdout boards; the prior is OUTCOME_RATES
-renormalised over the legal set, and a level bound is applied only when that level is itself
-unflagged (round 14's discipline).
+**`maxTurns` is worth nothing, and here is why.** It carries no confidence of its own: the
+UI keys it on `state.rarity`, which is `pairConf` — the confidence of the WHOLE `Process
+(x/N)` pair. So `maxTurns` flags exactly when `currentTurn` flags, on the same 26 boards. The
+cap is not waiting on corroboration of N. It is waiting on the pair, and the pair is shaky
+because **only one of its three votes survived**: of the 26, five have NO vote at all, 20
+have exactly one, and one has two votes that agree on N. So the 26 are false alarms on
+`maxTurns` and honest doubt on the `currentTurn` they share a confidence with — which is why
+they never appear alone.
 
-**The model does NOT read better, and that is the point.** 5-fold CV inside the training
-split: model 1446/1500, engine 1447/1500. Holdout 363/380 vs 362/380. What it adds is a
-CALIBRATED margin over the ladder's own reads — the engine's 733 flagged tiles were 90%
-right and it had no way to say which 90%.
+The witness the round was told to look for does exist. `rerollsShownDenom` is parsed and
+`constraintSnap` never reads it; d=1⇒rare(7), d=2⇒epic(9); it is present on 272 boards and
+names the TRUE `maxTurns` on **272 of 272**, and it covers 17 of the 26. It was still not
+shipped, because the arithmetic kills it: **every one of the 26 boards carries between 2 and
+12 further flags** after `maxTurns` and `currentTurn` are cleared (median 7). Directly
+measured on the final build — `maxTurns never flags: 147 → 147`, `maxTurns+currentTurn never
+flag: 147 → 147`. The user is reviewing all 26 boards either way. Spending the one field
+that has never been wrong in sixteen rounds, to remove 2% of the flags from the corpus's
+worst captures, is a bad trade. Left unshipped, and reproducible: `_debug.turnEvid`.
 
-**The lexical witness is the whole result.** A lift can mint a silent tile, so it carries a
-second condition beyond agreement: a TEXT channel — the caption OCR or the dim-grey dilated
-pass — must name the same key's target or kind. Every other channel here (icon hue,
-relocated face, located line, arrow blob, template, both synth rankings) reads the same
-rendered pixels through a colour mask, and they fail together. Measured over the flagged
-tiles the solve agrees with:
+**What shipped: the turn-1 invariant** (`ocr/engine.js`, in `constraintSnap`'s confidence
+block). A reroll can only be spent by rerolling, and the game offers no reroll until the gem
+has been processed once — `advisor-window.js` greys the pill on turn 1 for exactly that
+reason and clamps the count up to the allotment. So on turn 1 the number is not a reading:
+it is the rarity's allotment, and the pill only displays it. The pixels agree —
+`turn1-epic-c9-chaos` renders a GREYED pill still showing the full `2/2`.
 
-| gate | population | wrong in it | worst wrong margin | 1.6× bar | lifts |
-|---|---|---|---|---|---|
-| none | 697 | 40 | 20.06 | 32.1 | 34 |
-| lexical witness | 440 | **3** | **5.56** | 8.9 | **411, 0 wrong** |
+This is the round-15 standard with the second family being a rule rather than a read: the
+turn comes from the `Process (x/N)` footer — a different region, mask and OCR call than the
+pill. Three guards, and the second is what makes it safe:
 
-`TILE_SURE = 9` is 1.62× — the factor rounds 12 and 14 shipped `JOINT_SURE` and `NAME_SURE`
-at. The three wrong tiles inside the gate sit at 5.56, 4.82 and 1.77, i.e. all three are in
-the bottom 29 of the 441 by margin; under a null where the margin does not rank errors that
-is P ≈ 2.6e-4. Both of the >10-margin wrongs the witness removes are non-English captures,
-which is the mechanism said out loud: no caption, no second family of evidence.
+1. the TURN read must itself be unflagged (≥ 0.8), so a shaky turn cannot license a
+   confident reroll count;
+2. **the committed value must ALREADY equal the allotment.** The lift never changes a
+   number — it only withdraws a needless question. A turn-1 board whose pill says anything
+   else contradicts itself and stays flagged;
+3. an ambiguous `0/d` read is excluded outright.
 
-**The override, gated the same way.** Where the solve disagrees it takes the key only if the
-witness names the SOLVE's key, and caps the tile at 0.72 — below the flag line, so it can
-never mint a silent. Shipped: **11 disagreements, 10 fixes, 0 breaks** (10 in sample, 1 on
-the holdout; the eleventh was already wrong both ways). Ungated it is 36 disagreements for 22 fixes and 5 breaks; that version was
-declined, and its holdout record — 2 fixes, 1 break, 2 both-wrong — is why.
-Wrong tiles overall: 71 → **61**.
+Measured: 60 boards whose LABEL says turn 1, and after two pixel-disproved labels were fixed
+**all 60 carry exactly the allotment**. The engine reads 46 as turn 1 with a confident turn,
+and on all 46 the committed value is already the allotment — **0 values changed, 0 fixes, 0
+breaks**. No board has its turn misread as 1 while the turn read is confident.
 
-**Honesty checks.** With `ocr/tile-model.js` removed the working tree reproduces the
-incumbent **to the board**: CLEAN 47, 1687 flags (733 tiles, 954 scalars), whole-parse 376,
-97.6%, 1165 flags on correct cells — identical to the HEAD worktree. Re-training on a cache
-collected AFTER the solve ships reproduces the tables byte for byte (the engine channel is
-taken from `tileEvid[i].o`, which is written inside `readOutcomeCell` and so cannot see the
-solve's own overrides). And the offline trainer's solve and the engine's `tileSolve` agree
-on **1880 of 1880 tiles, key and confidence** — the first pass of that check found 1
-mismatch and it was change E, a real bug.
+**Labels fixed (pixel-arbitrated).** `c-mryunsmb-h6d7uj` and `c-mryur6to-n3a5jk`,
+`rerollsRemaining` 0 → 1. Both are CJK captures whose reroll control is a GREY 補充 (Charge)
+button, and both labels also say `currentTurn: 1` — jointly unreachable, since no reroll can
+be spent before the first process. The control board proves grey-on-turn-1 means "not yet
+available", not "spent"; the corpus's two other uncommon boards (turns 2 and 3) both label 1.
+This lifted `rerollsRemaining` 97.4 → 97.9 in BOTH arms.
 
-**Labels verified against pixels** (`scratchpad/crop-tiles.js`, 3× crops). Two were WRONG
-and were fixed; four were RIGHT and the engine is wrong on them.
-- `c-mrw7jp61-dyhlfs#2` was `raise effect2 4`; the tile renders "Additional Damage / Lv. 1 ▲".
-  It was also the single label OUTCOME_RATES excludes (effect2 at level 2 admits at most +3).
-- `c-mrwstng4-kgk3ib#0` was `cost +100`; the tile renders "Processing Cost −100%", and the
-  dim-grey pass reads it literally as `cessing cost|-100%`.
-- Right, engine wrong: `c-mrxoe1au-ixrhbp#3` ("+100%" read as −100%), `c-mrw7nme7-cd4nfz#0`
-  ("Order Points +2" read as +3), `c-mrw7kdtl-taqai2#0` (ES, a red "voluntad: +1" read as
-  order), `c-mrxg5t94-dvelwi#3` (RU, "3 ур." read as 2).
+**A/B.** Incumbent = a worktree at unmodified HEAD with `samples/` symlinked, re-run against
+the fixed labels. The strict board-for-board diff over all 472 boards × every field:
+**42 boards differ, and the only difference is `rerollsRemaining`'s confidence.** No value,
+no other field's confidence, no headline, no whole-parse, no tile metric moved — which is
+also the proof that the two new `_debug` evidence records are inert.
 
-**Cost.** The solve is 27 keys × 4 tiles of table lookups plus a 8⁴ enumeration — no pixels,
-no OCR. Whole-corpus wall time on the parallel harness 108s → 108s; unmeasurable.
+| metric | incumbent (r15, fixed labels) | **round 16** |
+|---|---|---|
+| **CLEAN boards** | 136/472 (28.8%) | **147/472 (31.1%)** |
+| UI flags | 1276 (2.7/shot) | **1234 (2.6/shot)** |
+| …outcome tiles / scalars | 322 / 954 | 322 / **912** |
+| **SILENT fields / SILENT TILES** | 0 / 0 | **0 / 0** |
+| whole-parse | 381/472 (80.7%) | 381/472 (80.7%) |
+| headline per-field | 97.7% | 97.7% |
+| flag coverage | 165/165 | 165/165 |
+| gate 0.97/0.95 + both silent counts | PASS | PASS |
 
-**DEPLOY NOTE — one line this round did not touch.** `ocr/tile-model.js` is a new file. The
-background parse worker already loads it (`engineScriptUrls` in `structural-engine.js`), but
-the main-thread inline fallback loads its stack from `LAZY_TABS.advisor` in `index.html`,
-which needs `"ocr/tile-model.js?v=1"` inserted **before** `"ocr/structural-engine.js"` —
-along with the usual `?v=` bumps. Without it the fallback path degrades silently to the
-round-14 reader (TMODEL null ⇒ no solve, every tile keeps its round-14 confidence), which is
-safe but is not the build measured above.
+flags/board — incumbent `0:136 · 1:87 · 2:53 · 3:45 · 4:44 · 5:25 · 6:24 · 7:20 · 8+:38`
+round 16 &nbsp;&nbsp;`0:147 · 1:87 · 2:48 · 3:43 · 4:41 · 5:26 · 6:23 · 7:20 · 8+:37`
 
-## What is left
+Holdout (96 boards): CLEAN 32 → **33**, flags 257 → **250**, silents 0/0. In-sample (376):
+CLEAN 104 → **114**, flags 1019 → **984**. The split is lopsided only because that is where
+the one-flag boards fell — nothing here is fitted, so holdout and in-sample are the same
+experiment. The flag reduction is proportional: 7 of 42 on a holdout that is 20% of the corpus.
 
-**The tiles are no longer the biggest pot — the scalars are.** 981 of the 1276 remaining
-flags (77%) sit on correct cells; the ceiling for CLEAN is the whole-parse rate, 381/472.
+**Cost.** Table lookups in `constraintSnap`; no pixels, no OCR. Whole-corpus wall time
+111s → 111s.
 
-| | CLEAN if… |
-|---|---|
-| every SCALAR flag went away | 136 → **256** |
-| every TILE flag went away | 136 → 174 |
-| both NAMES never flagged again | 136 → 160 |
+**DEPLOY NOTE.** No new data file, so `LAZY_TABS.advisor` in `index.html` needs no new line
+(round 15's `"ocr/tile-model.js?v=1"` is already there). Bump `ocr/engine.js?v=54` and
+`ocr/structural-engine.js?v=102`.
 
-**83 whole-parse boards are ONE flag from clean**, and the split has inverted: 30 are a
-tile, 53 are a scalar — `rerollsRemaining` 20, `effect1` 11, `effect2` 11, `effect1Level` 9,
-`orderLevel` 1, `willpowerLevel` 1.
+## The verdict: stop here and go to maintenance
 
-Scalar flags by field, with the wrong count: effect1Level 182 (18 wrong) · orderLevel 149
-(11) · effect2Level 118 (10) · effect2 109 (28) · willpowerLevel 97 (7) · rerollsRemaining
-91 (12) · effect1 83 (22) · baseCost 35 (11) · gemType 27 (3) · currentTurn 26 (4) ·
-**maxTurns 26 (0 wrong)** · processCostMultiplier 11 (1).
+Sixteen rounds took CLEAN from 0.8% to 31.1% and silents from 43 to 0. **The campaign is
+done, and the measurement that says so is this one:** after round 16 there is no flagged
+population left that is both large and near-perfect.
 
-`maxTurns` is 100.0% accurate corpus-wide and still raises 26 flags — 26 pure false alarms
-on a field that has never once been wrong. `rerollsRemaining` is 91 flags for 12 errors and
-is 20 of the 83 one-flag boards. Those two are the cheapest ground left.
+Flagged SCALARS — for each field, how many of its flags sit on a value that is actually
+RIGHT (a false alarm) rather than wrong. 912 flags, 125 wrong, **86.3% right overall**:
 
-Flagged scalars by confidence band, right/total: `<0.30` 98/149 · `0.30-0.50` 102/131 ·
-`0.50-0.60` 296/334 · `0.60-0.68` 60/64 · `0.68-0.75` 150/154 · `0.75-0.80` 121/122.
+| field | flags | wrong | right |
+|---|---|---|---|
+| **maxTurns** | 26 | **0** | **100.0%** — and worth 0 CLEAN (above) |
+| willpowerLevel | 97 | 7 | 92.8% |
+| orderLevel | 149 | 11 | 92.6% |
+| effect2Level | 118 | 10 | 91.5% |
+| effect1Level | 182 | 18 | 90.1% |
+| gemType | 27 | 3 | 88.9% |
+| currentTurn | 26 | 4 | 84.6% |
+| rerollsRemaining | 49 | 10 | 79.6% |
+| **effect2** | 109 | **28** | **74.3%** |
+| **effect1** | 83 | **22** | **73.5%** |
+| **baseCost** | 35 | **11** | **68.6%** |
 
-**The residual TILE flags, by why the solve did not lift them** (322 total): 257 have no
-lexical witness (85.6% right), 29 are below `TILE_SURE` (89.7%), 25 are a disagreement the
-witness refused (and the engine is right on only 5 of those 25), 11 are the overrides
-themselves. The honest floor is now explicit and it is a caption-legibility floor: on a tile
-whose caption OCRs to nothing, every remaining channel is the same family of pixels.
+Flagged TILES: 322, of which **61 are wrong — 81.1% right**, and every wrong tile in the
+corpus flags (61 of 61). By committed key: `do_nothing` 26 flags and **22 wrong (15.4%
+right)** — when the reader says `do_nothing` and flags it, it is wrong five times in six;
+`change:effect2` 23 flags 8 wrong (65.2%); `raise_effect:effect2:1` 65 flags 7 wrong (89.2%).
 
-`do_nothing` remains the worst rung: 21 of the surviving no-witness flags are `do_nothing`
-and only 3 are right. That is the class round 14 predicted would be the floor, and it is.
+Read those two tables together and the picture is plain. Excluding `maxTurns`, **every
+remaining flagged population runs between 68.6% and 92.8% right** — between one in three and
+one in fourteen of those flags is a REAL error. There is nothing left resembling the two
+populations this round found (26 of 26, and 42 of 42). A lift needs a witness that separates
+right from wrong inside the population; when a quarter of the population is wrong and no
+channel separates it, the flag is the correct answer.
 
-**The lead for round 16, and an honest note on where the campaign is.** Three fields now
-have trained tables and the tile round was the last big structural pot; CLEAN has gone
-0.8% → 28.8% and the remaining flags are 77% false alarms spread thin. The two cheapest
-targets are both narrow: `maxTurns`, which is 100.0% accurate and still flags 26 boards,
-and `rerollsRemaining`, 91 flags for 12 errors and 20 of the 83 one-flag-from-clean boards.
-Together they are worth roughly +40 CLEAN and neither needs a model — they need the same
-question round 12 asked of the tiles, "what is this cap waiting on and is it already
-corroborated". After that the honest ceiling is the residual TILE floor above (a caption
-that OCRs to nothing) plus the scalar reads themselves, and the campaign is maintenance:
-run the gate on corpus expansions and keep the two silent counts at zero.
+The remaining pots, and why each is honest doubt:
+
+| pot | one-flag boards | why it holds |
+|---|---|---|
+| TILES | 35 | the biggest pot (+43) and round 15's caption floor — no caption, and every other channel is the same colour mask. 81.1% right, `do_nothing` 15.4% |
+| the NAMES (`effect1`/`effect2`) | 25 | the biggest SCALAR pot (+28) and the DOUBTIEST population, 73-74% right. Round 14 already fitted a joint model with a calibrated margin and took the safe lifts |
+| `effect1Level` | 10 | 90.1% right; SEVEN independent channels into this block have been closed by measurement (rounds 4-10) |
+| `rerollsRemaining` | 9 | what is left after this round: 5 grey-Charge at 0.70 (15 boards, 1 wrong — no channel separates it), 2 with no read at all, 2 rescue rungs |
+
+83 whole-parse boards remain one flag from clean: TILE 35 · effect2 13 · effect1 12 ·
+effect1Level 10 · rerollsRemaining 9 · effect2Level 2 · orderLevel 1 · willpowerLevel 1.
+Ceilings from here: every scalar flag gone → 256, every tile flag gone → 190, both names →
+175, absolute (whole-parse) → 381.
+
+**Maintenance from now on:** run `npm run eval-gate` on every corpus expansion and keep both
+silent counts at zero. Expansions have broken the invariant on first contact every time —
+that is what they are for.
+
+The one lead left, recorded rather than pursued: flagged scalars in the `0.68-0.80` bands are
+**265 of 270 right (98.1%)**. That looks liftable and is not — the 5 errors sit inside the
+level block, the same block seven channels have already failed against, and a lift with no
+separating witness mints 5 silents.
+
+Flagged scalars by confidence band, right/total: `<0.30` 64/113 · `0.30-0.50` 102/131 ·
+`0.50-0.60` 296/334 · `0.60-0.68` 60/64 · `0.68-0.75` 150/154 · `0.75-0.80` 115/116.
+
+**The residual TILE flags, by why the solve did not lift them** (322 total, unchanged by
+round 16): 257 have no lexical witness (85.6% right), 29 are below `TILE_SURE` (89.7%), 25
+are a disagreement the witness refused (and the engine is right on only 5 of those 25), 11
+are the overrides themselves. The floor is a caption-legibility floor: on a tile whose
+caption OCRs to nothing, every remaining channel is the same family of pixels.
 
 ## RULED OUT — do not re-litigate without new evidence
+
+Ruled out in **round 16**:
+
+- **Lifting `maxTurns` on the reroll-denominator witness.** The witness is real —
+  `rerollsShownDenom` is parsed and never read, d=1⇒rare and d=2⇒epic, and it names the true
+  `maxTurns` on **272 of 272** boards where it exists, covering 17 of the 26 flagged. It buys
+  **0 CLEAN**, measured directly on the final build: every one of the 26 boards carries 2 to
+  12 further flags (median 7) once `maxTurns` and `currentTurn` are cleared, because
+  `maxTurns` shares `pairConf` with `currentTurn` and a bad footer read travels with a bad
+  capture. Not worth spending the only field that has never been wrong. `_debug.turnEvid`
+  records every vote if this ever needs revisiting.
+- **The 26 `maxTurns` flags are not "the votes disagree on N".** Five of the 26 have NO
+  surviving vote, 20 have exactly one, one has two that agree. There is no free
+  corroboration inside the pair to harvest.
+- **Lifting the `0.75` reroll rescue rungs wholesale** (dim-pill rescue, relocation rescue,
+  template-vs-OCR disagreement): 20 boards, 0 wrong, ≤4 CLEAN — and DECLINED. The rescue
+  rungs as a whole (0.75 plus the `0/d`-ambiguous 0.40 band) are 23 reads with 3 wrong, 87%;
+  under that null P(20 of 20 right) = 0.062. Same bar that declined round 13's 27-of-27 and
+  round 15's fuzzy word hits. The obvious gate — the pill's denominator agreeing with the
+  rarity — is VACUOUS here: all 20 already pass it, so it separates nothing.
+- **Lifting the grey-Charge `0.70` rung**: 15 boards, 1 wrong (a "2/2" pill read as a grey
+  Charge by the wide dilated word pass). Worth ≤5 CLEAN. No channel separates the one error:
+  amber and neutral fractions on the wrong board sit inside the right ones' range, and the
+  narrow word read fails on all 15. Picking it out post hoc is a 1-in-15 event, P = 0.067.
+- **Forcing the VALUE on turn 1** rather than only the confidence: unmeasurable on this
+  corpus (46 of 46 boards already commit the allotment, 0 fixes, 0 breaks), so it was not
+  shipped. Related and left alone for the same reason: an ENGLISH turn-1 uncommon board would
+  read a grey "Charge" and commit `rerollsRemaining = 0`, which the turn-1 invariant says is
+  wrong — but no such board exists in the corpus, so the fix cannot be measured. The two CJK
+  boards of that shape fall through to the correct default because `CHARGE_RX` never matches
+  補充.
 
 Ruled out in **round 15**, all measured per tile:
 
@@ -371,3 +426,4 @@ the public repo; backup at `~/loseii-ocr-corpus-backup.tgz`). 22 non-English/deg
 are excluded from the English reference harvest via `LOCALIZED` in `tools/build-level-refs.js`
 — a Spanish board filed "Daño de jefe" under "Boss Damage" for four rounds before that guard.
 Residual level misses are a resolution tier: native 7.0%, ×2 4.0%, ×3+ 31.3%.
+

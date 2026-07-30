@@ -637,6 +637,18 @@
       }
     }
     var turnsRemaining = pair ? pair.a : null, maxT = pair ? pair.b : null;
+    // Round 16 evidence record (unconditional, decides nothing here): every vote the
+    // Process (x/N) ladder consulted, kept raw. `maxTurns` and `currentTurn` share
+    // ONE confidence (pairConf) even though N is a 3-way closed choice and x is not,
+    // so an offline pass needs the votes separated to price them apart.
+    out._debug.turnEvid = {
+      A: pairA ? [pairA.a, pairA.b] : null,
+      T: pairT ? [pairT.a, pairT.b] : null,
+      B: (typeof pairB !== "undefined" && pairB) ? [pairB.a, pairB.b] : null,
+      R: (typeof rm2 !== "undefined" && rm2 && pair && pairConf === 0.75) ? [pair.a, pair.b] : null,
+      blockRan: footBlockRan, conf: pairConf,
+      got: pair ? [pair.a, pair.b] : null
+    };
     out.rarity = maxT === 5 ? "uncommon" : maxT === 7 ? "rare" : maxT === 9 ? "epic" : null;
     out.state.maxTurns = maxT;
     out.state.turnsRemaining = turnsRemaining;
@@ -1118,6 +1130,20 @@
     if (out.state.rerollsShownFree == null && !out.state.rerollsChargeSeen && !out.state.rerollsChargeSpent) {
       confidence.state.rerollsRemaining = 0.25;
     }
+    // Round 16 evidence record (unconditional, decides nothing here). The pill has
+    // five reading rungs and three of them cap at 0.70-0.75; this keeps every rung's
+    // raw vote so an offline pass can ask which caps are already corroborated.
+    out._debug.rollEvid = {
+      ocr: (typeof pillM !== "undefined" && pillM) ? [parseInt(pillM[1], 10), parseInt(pillM[2], 10)] : null,
+      tpl: tPair ? [tPair.n, tPair.d] : null,
+      dim: (typeof pillM2 !== "undefined" && pillM2) ? [parseInt(pillM2[1], 10), parseInt(pillM2[2], 10)] : null,
+      rel: (typeof pReM !== "undefined" && pReM) ? [parseInt(pReM[1], 10), parseInt(pReM[2], 10)] : null,
+      free: out.state.rerollsShownFree == null ? null : out.state.rerollsShownFree,
+      den: out.state.rerollsShownDenom == null ? null : out.state.rerollsShownDenom,
+      gold: !!out.state.rerollsChargeSeen, grey: !!out.state.rerollsChargeSpent,
+      conf: confidence.state.rerollsRemaining,
+      pill: out._debug.pill || null
+    };
 
     tmark("pill");
     // ---- reset pill ("Reset (x/1)": x ∈ {0,1}) ----

@@ -371,6 +371,11 @@
       if (changed) return Math.min(c, 0.3);
       return c;
     }
+    // The turn's own confidence, hoisted: the turn-1 reroll invariant below is
+    // gated on it, so it must be one value and not two copies that can drift.
+    var turnConf = fieldConf(sconf.currentTurn, sIn.currentTurn != null || sIn.turnsRemaining != null, false);
+    var TURN1_TURN_SURE = 0.8;   // the UI flag threshold — the turn must be unflagged
+    var TURN1_SURE = 0.9;        // below the pill's own agreeing rungs (0.92/0.96)
     var confidence = {
       config: {
         baseCost: fieldConf(cconf.baseCost, cIn.baseCost != null, baseCost !== parseInt(cIn.baseCost, 10)),
@@ -384,12 +389,57 @@
       },
       state: {
         rarity: fieldConf(sconf.rarity, (parsed.rarity || sIn.rarity || sIn.maxTurns) != null, false),
-        currentTurn: fieldConf(sconf.currentTurn, sIn.currentTurn != null || sIn.turnsRemaining != null, false),
+        currentTurn: turnConf,
         rerollsRemaining: (function () {
           var base = fieldConf(sconf.rerollsRemaining,
             sIn.rerollsShownFree != null || sIn.rerollsRemaining != null ||
             sIn.rerollsChargeSeen || sIn.rerollsChargeSpent || currentTurn === 1, false);
-          return rerollAmbiguous ? Math.min(base, 0.4) : base;
+          if (rerollAmbiguous) base = Math.min(base, 0.4);
+          // ---- TURN-1 INVARIANT (round 16) -------------------------------------
+          // A reroll can only be spent by rerolling, and the game does not offer a
+          // reroll until the gem has been processed once (advisor-window greys the
+          // pill on turn 1 for exactly this reason). So on turn 1 the count is not
+          // a reading at all — it is the rarity's allotment, and the pill merely
+          // displays it. The pixels agree: the control board turn1-epic-c9-chaos
+          // renders a GREYED pill still showing the full "2/2".
+          //
+          // This is the same standard as the rest of the engine — a second, wholly
+          // independent family of evidence naming the same value — except that the
+          // second family is a rule rather than a read: the turn comes from the
+          // Process (x/N) footer, a different region, mask and OCR call than the
+          // pill. Three guards keep it from ever minting a silent:
+          //   1. the TURN read must itself be unflagged (>= the UI threshold), so a
+          //      shaky turn cannot license a confident reroll count;
+          //   2. the committed value must ALREADY equal the allotment — the lift
+          //      never changes a number, it only withdraws a needless question. A
+          //      turn-1 board whose pill says anything else is self-contradictory
+          //      and stays flagged;
+          //   3. an ambiguous "0/d" read is excluded outright.
+          // Measured over the 472-board corpus: 60 boards whose LABEL says turn 1,
+          // and after two pixel-disproved labels were fixed all 60 carry exactly
+          // the allotment; the engine reads 46 of them as turn 1 with a confident
+          // turn, and on all 46 the committed value is already the allotment (0
+          // changed, 0 fixes, 0 breaks). No board in the corpus has its turn
+          // misread as 1 while the turn read is confident.
+          if (currentTurn === 1 && !rerollAmbiguous && turnConf >= TURN1_TURN_SURE &&
+              rerollsRemaining === maxRerolls) {
+            base = Math.max(base, TURN1_SURE);
+          }
+          // The same invariant read the other way, which is the direction that
+          // protects the user. If the turn is confidently 1 and the committed count
+          // does NOT equal the allotment, the read contradicts a game rule: nothing
+          // can have spent a reroll yet. That is a misread, so it must ask rather
+          // than commit. Round 16 could not measure this because no such board
+          // exists in the corpus — an English turn-1 uncommon board would reach it
+          // by reading a grey "Charge" as 0 (the two CJK boards of that shape land
+          // on the right value only because CHARGE_RX never matches 補充). Capping
+          // is safe in the way the lift above is not: it can only add a flag, never
+          // remove one, so it cannot mint a silent error even if the guess is wrong.
+          if (currentTurn === 1 && turnConf >= TURN1_TURN_SURE &&
+              rerollsRemaining !== maxRerolls) {
+            base = Math.min(base, 0.6);
+          }
+          return base;
         })(),
         // absent when unread (fieldConf's !inputPresent -> 0 would phantom-flag a
         // field that has no UI control; the window's null-guard skips undefined)

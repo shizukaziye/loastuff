@@ -1881,3 +1881,125 @@ along with the usual `?v=` bumps. Without it the fallback path degrades silently
 round-13 reader (NMODEL null ⇒ the solve refuses and the caption floor stays 0.68), which is
 safe but is not the build measured above.
 
+## Round 15 (moved from the current log) — the four tiles, read as one hypothesis
+
+Round 10's move applied to the field two rounds of hand-written witnesses had left at 733
+flags. A tile is a better fit than the levels or the names, because its vocabulary is not
+merely closed — **it is enumerated by the game**. `model/astrogem.js` OUTCOME_RATES lists
+exactly 27 keys, gives each a base probability and says which of them the current
+levels/turns exclude. Measured before anything was built: of the 1828 scored tiles in the
+corpus **exactly one label falls outside the legal set**, and pixels say that label was the
+error. So a tile is a ~20-way choice under a known prior, and the ladder decides it in three
+passes — target from the icon hue, kind from the caption and the located line, amount from
+whichever of six digit channels spoke first — that never see each other's evidence.
+
+**What shipped**
+
+| # | change | effect |
+|---|---|---|
+| A | every channel the cell ladder consults is now recorded per tile under `out._debug.tileEvid`, unconditionally | the trained solve and `tools/build-tile-model.js` read the SAME record, so they cannot drift |
+| B | `tools/collect-tile-evid.js` → the JSONL cache; `tools/build-tile-model.js` → `ocr/tile-model.js` (9.7 KB) | the reader |
+| C | `tileSolve()` in `structural-engine.js`: 27-key enumeration × 4 tiles, joint, with a duplicate penalty | overrides commit at 0.72 (flagged) |
+| D | AGREEMENT lift at `TILE_SURE = 9` | **411 flagged tiles reclaimed, every one right** (85 on the holdout) |
+| E | the legality mask reads `out.state.turnsRemaining`, not a `currentTurn` that only exists after `constraintSnap` | a real bug the mirror check caught; 1 tile |
+
+**The model.** Five class variables per key — kind / target / amount / cost-sign /
+reroll-count — and 17 observation channels plus 3 that encode the engine's own committed
+read bucketed by its confidence. Every channel is scored against every candidate, so the
+comparison is a like-for-like likelihood and not a count of terms. Weights are per channel,
+fitted by coordinate ascent on the 375 non-holdout boards; the prior is OUTCOME_RATES
+renormalised over the legal set, and a level bound is applied only when that level is itself
+unflagged (round 14's discipline).
+
+**The model does NOT read better, and that is the point.** 5-fold CV inside the training
+split: model 1446/1500, engine 1447/1500. Holdout 363/380 vs 362/380. What it adds is a
+CALIBRATED margin over the ladder's own reads — the engine's 733 flagged tiles were 90%
+right and it had no way to say which 90%.
+
+**The lexical witness is the whole result.** A lift can mint a silent tile, so it carries a
+second condition beyond agreement: a TEXT channel — the caption OCR or the dim-grey dilated
+pass — must name the same key's target or kind. Every other channel here (icon hue,
+relocated face, located line, arrow blob, template, both synth rankings) reads the same
+rendered pixels through a colour mask, and they fail together. Measured over the flagged
+tiles the solve agrees with:
+
+| gate | population | wrong in it | worst wrong margin | 1.6× bar | lifts |
+|---|---|---|---|---|---|
+| none | 697 | 40 | 20.06 | 32.1 | 34 |
+| lexical witness | 440 | **3** | **5.56** | 8.9 | **411, 0 wrong** |
+
+`TILE_SURE = 9` is 1.62× — the factor rounds 12 and 14 shipped `JOINT_SURE` and `NAME_SURE`
+at. The three wrong tiles inside the gate sit at 5.56, 4.82 and 1.77, i.e. all three are in
+the bottom 29 of the 441 by margin; under a null where the margin does not rank errors that
+is P ≈ 2.6e-4. Both of the >10-margin wrongs the witness removes are non-English captures,
+which is the mechanism said out loud: no caption, no second family of evidence.
+
+**The override, gated the same way.** Where the solve disagrees it takes the key only if the
+witness names the SOLVE's key, and caps the tile at 0.72 — below the flag line, so it can
+never mint a silent. Shipped: **11 disagreements, 10 fixes, 0 breaks** (10 in sample, 1 on
+the holdout; the eleventh was already wrong both ways). Ungated it is 36 disagreements for 22 fixes and 5 breaks; that version was
+declined, and its holdout record — 2 fixes, 1 break, 2 both-wrong — is why.
+Wrong tiles overall: 71 → **61**.
+
+**Honesty checks.** With `ocr/tile-model.js` removed the working tree reproduces the
+incumbent **to the board**: CLEAN 47, 1687 flags (733 tiles, 954 scalars), whole-parse 376,
+97.6%, 1165 flags on correct cells — identical to the HEAD worktree. Re-training on a cache
+collected AFTER the solve ships reproduces the tables byte for byte (the engine channel is
+taken from `tileEvid[i].o`, which is written inside `readOutcomeCell` and so cannot see the
+solve's own overrides). And the offline trainer's solve and the engine's `tileSolve` agree
+on **1880 of 1880 tiles, key and confidence** — the first pass of that check found 1
+mismatch and it was change E, a real bug.
+
+**Labels verified against pixels** (`scratchpad/crop-tiles.js`, 3× crops). Two were WRONG
+and were fixed; four were RIGHT and the engine is wrong on them.
+- `c-mrw7jp61-dyhlfs#2` was `raise effect2 4`; the tile renders "Additional Damage / Lv. 1 ▲".
+  It was also the single label OUTCOME_RATES excludes (effect2 at level 2 admits at most +3).
+- `c-mrwstng4-kgk3ib#0` was `cost +100`; the tile renders "Processing Cost −100%", and the
+  dim-grey pass reads it literally as `cessing cost|-100%`.
+- Right, engine wrong: `c-mrxoe1au-ixrhbp#3` ("+100%" read as −100%), `c-mrw7nme7-cd4nfz#0`
+  ("Order Points +2" read as +3), `c-mrw7kdtl-taqai2#0` (ES, a red "voluntad: +1" read as
+  order), `c-mrxg5t94-dvelwi#3` (RU, "3 ур." read as 2).
+
+**Cost.** The solve is 27 keys × 4 tiles of table lookups plus a 8⁴ enumeration — no pixels,
+no OCR. Whole-corpus wall time on the parallel harness 108s → 108s; unmeasurable.
+
+**DEPLOY NOTE — one line this round did not touch.** `ocr/tile-model.js` is a new file. The
+background parse worker already loads it (`engineScriptUrls` in `structural-engine.js`), but
+the main-thread inline fallback loads its stack from `LAZY_TABS.advisor` in `index.html`,
+which needs `"ocr/tile-model.js?v=1"` inserted **before** `"ocr/structural-engine.js"` —
+along with the usual `?v=` bumps. Without it the fallback path degrades silently to the
+round-14 reader (TMODEL null ⇒ no solve, every tile keeps its round-14 confidence), which is
+safe but is not the build measured above.
+
+### Round 15 — the A/B table (moved out of the current log by round 16)
+
+| metric | incumbent (r14) | **round 15** |
+|---|---|---|
+| **CLEAN boards** (0 wrong, 0 flags) | 47/472 (10.0%) | **136/472 (28.8%)** |
+| UI flags (12 scalars + up to 4 tiles) | 1687 (3.6/shot) | **1276 (2.7/shot)** |
+| …of which outcome tiles | 733 | **322** |
+| …of which scalar fields | 954 | 954 |
+| UI flags sitting on CORRECT cells | 1165 | **981** |
+| **SILENT fields** | 0 | **0** |
+| **SILENT TILES** (wrong yet ≥0.8) | 0 | **0** |
+| wrong TILES (of 1880) | 71 | **61** |
+| whole-parse | 376/472 (79.7%) | **381/472 (80.7%)** |
+| headline per-field | 97.6% | **97.7%** |
+| outcomes | 96.2% | **96.7%** |
+| flag coverage | 175/175 | 167/167 |
+| gate 0.97/0.95 + zero silents + zero silent TILES | PASS | PASS |
+
+Holdout (96 boards `djb2%5==0`): CLEAN 12 → 32, flags 342 → 257, tile flags 148 → 63,
+whole-parse 75 → 75, outcomes 95.6 → 95.8, silents 0/0. In-sample (376): CLEAN 35 → 104,
+flags 1345 → 1019, tile flags 585 → 259, whole-parse 301 → 306. The tile-flag reclamation
+is the same fraction on both sides — 57% held out, 56% in sample — which is what says the
+tables generalise. The whole-parse gain does NOT: 9 fixed tiles in sample against 1 on the
+holdout.
+
+flags/board — r14 `0:47 · 1:91 · 2:77 · 3:61 · 4:43 · 5:41 · 6:29 · 7:30 · 8+:73`;
+r15 `0:136 · 1:87 · 2:53 · 3:45 · 4:44 · 5:25 · 6:24 · 7:20 · 8+:38`.
+
+Per-field after r15 (before round 16's two label fixes lifted rerollsRemaining to 97.9):
+maxTurns 100 · processCostMultiplier 99.8 · gemType 99.4 · currentTurn 99.2 ·
+willpowerLevel 98.5 · effect2Level 97.9 · orderLevel 97.7 · baseCost 97.6 ·
+rerollsRemaining 97.4 · effect1Level 96.2 · outcomes 96.7 · effect1 95.3 · effect2 94.1.
