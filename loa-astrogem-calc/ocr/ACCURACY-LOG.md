@@ -33,11 +33,15 @@ a silent error the FIELD test cannot see: it was 4 such tiles at the start of ro
 2 at the end. Round 13 cleared both, so **SILENT TILES is now a gate FAIL condition too**
 (`tools/eval-ocr.js`) and the invariant holds at the granularity the window renders.
 
-## Where things stand (round 16 shipped — the campaign is now on maintenance)
+## Where things stand (round 16 shipped; round 17 changed no code — maintenance)
 
 Current build: **CLEAN 147/472 (31.1%)** · UI flags **1234 (2.6/shot)** — 322 tiles, 912
 scalars · whole-parse 381/472 (80.7%) · headline 97.7% · **SILENT fields 0 · SILENT TILES
 0** · gate PASS. The round-16 A/B table and the verdict are below.
+
+**Round 17 chased one lead and shipped nothing** — the "sharp captures fail" cluster was two
+sittings by one player, and every capture-property axis turns out to be a proxy for sitting
+identity. Read round 17 before proposing any cross-tab by resolution, size or sharpness.
 
 Every round measures both arms in one session against the same labels, on the same parallel
 harness: the incumbent from a worktree at unmodified HEAD with `samples/` symlinked, the
@@ -202,7 +206,114 @@ experiment. The flag reduction is proportional: 7 of 42 on a holdout that is 20%
 (round 15's `"ocr/tile-model.js?v=1"` is already there). Bump `ocr/engine.js?v=54` and
 `ocr/structural-engine.js?v=102`.
 
-## The verdict: stop here and go to maintenance
+## Round 17 — the cluster was a sitting, and every capture axis is a proxy for one
+
+Round 17 chased a cross-tab that said the SHARPEST captures fail: inside width band A, the
+sizes `1478x1769` (n=7), `1504x1800` (n=6) and `1477x1768` (n=4) had **zero** clean boards
+while the neighbouring `1491x1785` was mostly fine. **Nothing shipped. The code is HEAD.**
+
+**1. It was not 17 boards. It was two sittings.** The collected ids are `c-<base36 ms>`, so
+they decode. The `1477-1479` boards are ONE sitting — 13 boards, 2026-07-22 13:49-14:06 UTC,
+17 minutes, five gems read as consecutive turns. The `1501-1521` boards are ONE sitting — 24
+boards, 2026-07-23 15:00-15:53 UTC, ~7 gems, again consecutive turns. They do not even fail
+the same way: sitting 1 is the LEVEL block (`effect1Level` flags on 12 of 13), sitting 2 is
+NAMES + reroll + turn (`effect1` 11/24, `effect2` 10/24 — and **21 of 21 flagged name reads
+are RIGHT**). Two situations, not one mechanism, and each is one player at one keyboard.
+
+**2. That is the corpus's shape, not a quirk of this cluster — and it is the round's real
+finding.** 405 of 472 boards carry a decodable timestamp; splitting on a 30-minute break
+gives **63 sittings, 79% of the boards inside a sitting of ≥5**. The between-sitting variance
+of the CLEAN rate is far above chance: observed 0.0452 against a null median of 0.0118,
+**P(null ≥ observed) < 0.0005** over 2000 shuffles. Sittings run from 0% to 66.7% CLEAN:
+
+| sitting (UTC) | n | CLEAN | median gap | median lapN | median luma |
+|---|---|---|---|---|---|
+| 07-23 10:15 | 16 | 62.5% | 160.7 | 8.13 | 59.6 |
+| 07-22 22:11 | 52 | 46.2% | 121.8 | 8.27 | 58.5 |
+| **07-23 15:00** | 24 | **0.0%** | 241.6 | **21.65** | 59.2 |
+| **07-26 09:24** | 15 | **0.0%** | 160.1 | 11.84 | **126.9** |
+| **07-27 15:31** | 12 | **0.0%** | 120.6 | **6.79** | 70.6 |
+
+Three sittings score 0% at three unrelated scales (gap 241 / 160 / 120), and other sittings
+at those same scales score 40-66%. **So any subgroup carved out of this corpus by a capture
+property is mostly relabelling a sitting.** Width did it; so does everything else below.
+
+**3. Scale is not the axis, measured directly.** A scan of `L.findPanel` + `L.fitWheel` over
+all 480 samples (the fitted red→gold wheel gap, which is the engine's own ruler) puts every
+board in the cluster AND every CLEAN neighbour at **gap 238-248 px** — `fRaw = 246/gap ≈
+1.0`, the captures that need no normalization at all. `c-mrwkadmb` (gap 239.1) is CLEAN and
+`c-mrxny0m6` (gap 239.0) carries six flags. Panel rects, anchors and panel score are likewise
+indistinguishable. The geometry does not separate them.
+
+**4. The band table, recomputed on the wheel gap.** Width was blunt because it mixes
+fullscreen captures (band A held 17 of those, gap<225, CLEAN 47.1%) with cropped modals (57,
+gap≥225, CLEAN 26.3%). By the engine's own `scaleF`:
+
+| tier | gap px | n | whole | CLEAN | flags/bd | tiles/bd | share of all flags |
+|---|---|---|---|---|---|---|---|
+| ×1 | 165-377 | 143 | 86.0% | 37.1% | 2.17 | 0.52 | 25.2% |
+| ×2 | 99-164 | 297 | 85.9% | 31.6% | 2.26 | 0.54 | 54.4% |
+| **×3** | **≤98** | **32** | **9.4%** | **0.0%** | **7.88** | **2.69** | **20.4%** |
+
+So the user's finding #1 is **half right and worth recording both ways**: ×1 and ×2 are
+statistically identical, so above the cliff resolution carries no signal and "the residual is
+a low-resolution tier" is false for 94% of the corpus — but the ×3 tier is real, sharp and
+severe. It is 6.8% of the boards, 20.4% of every flag, 484-590 px captures, **0 CLEAN and
+9.4% whole-parse**, and **not one of its 32 boards is one flag from clean**. No confidence
+work reaches it; only a bigger screenshot does.
+
+**5. Sharpness looked like the mechanism and is another proxy.** Mean |Laplacian| over the
+wheel box, resampled to gap 246 (`lapN`), separates the cluster beautifully at first sight:
+in the gap 235-250 band the 15 CLEAN boards run lapN 10.0-13.6 and the 38 others 12.7-22.8,
+and every one of the 38 with lapN>13.6 fails. It does not survive the sitting control. All 38
+`x1` boards with lapN>13.6 come from **three sittings**, 35 of them from the two already
+named; drop those two and the sharper half of `x1` is BETTER, not worse — **CLEAN 62.5% (48
+boards) against 44.7% (47)**. Within a sitting there is no monotone effect either (07-22
+18:25 spans lapN 9.6-20.3 and its blurrier half wins 5/5 to 2/5).
+
+**6. One real correlate, one candidate built, measured and rejected.** `fitWheel` returns the
+uncorrected coarse anchors on 63 boards, and those boards are much worse: CLEAN **13.1%** vs
+33.8%, whole 54.1% vs 84.7%, flags **4.93** vs 2.27, and it survives conditioning on scale
+(×1 16.7% vs 42.5%; ×2 18.8% vs 32.4%). Instrumenting the three rejection paths: **57 of the
+63 are the ruler cross-check**, `|gapV-gapH|/max > 0.08`, and 43 of those sit in the 8-10%
+band, barely over. Only 7 are a missing diamond face. So the candidate: when the W/E ruler
+dissents, keep the N/S bbox ruler instead of falling all the way back to the glow-biased
+centroids — the same two diamonds, measured better, and the existing band guard retained.
+**It measures worse and breaks the invariant** (below). The cross-check earns its keep.
+
+**A/B.** Incumbent = a worktree at unmodified HEAD with `samples/` symlinked. It reproduces
+the shipped numbers exactly, and it IS the final tree — round 17 changes no code.
+
+| metric | incumbent = FINAL | candidate C1 (`fitWheel` N/S fallback) |
+|---|---|---|
+| **CLEAN boards** | **147/472 (31.1%)** | 148/472 (31.4%) |
+| UI flags | **1234** (2.6/shot) | 1246 |
+| …tiles / scalars | **322 / 912** | 333 / 913 |
+| **SILENT fields / TILES** | **0 / 0** | 0 / **1** |
+| whole-parse | **381/472 (80.7%)** | **375/472 (79.4%)** |
+| headline per-field | **97.7%** | 97.4% |
+| outcomes | **96.7%** | 96.3% |
+| flag coverage | 165/165 | 183/183 |
+| gate 0.97/0.95 + both silent counts | **PASS** | **FAIL** |
+
+flags/board, final: `0:147 · 1:87 · 2:48 · 3:43 · 4:41 · 5:26 · 6:23 · 7:20 · 8+:37`.
+Holdout (96): CLEAN 33 (34.4%), flags 250, whole 75 (78.1%), silents 0/0. In-sample (376):
+CLEAN 114 (30.3%), flags 984, whole 306 (81.4%). Serial `npm run eval-gate`: per-field 97.7%
+≥ 97.0 · outcomes 96.7% ≥ 95.0 · silent 0 · silent tiles 0 → **PASS**.
+
+**The verdict: maintenance, and the door is now shut on capture-property cross-tabs.** The
+lead was a sitting. Every capture axis that can be measured off the image — width, wheel gap,
+`scaleF`, panel score, `fitWheel` outcome, normalized sharpness, luma — is confounded with
+sitting identity, and the variance test says sitting identity is the dominant term. The
+residual is what round 16 said it was: 83 boards one flag from clean, spread across
+populations each of which has already had its separating witness hunted and closed (tiles 35,
+names 25, `effect1Level` 10, `rerollsRemaining` 9), plus a 32-board capture-size tier that no
+engine change reaches. **The one thing left that would move the user's number is not an OCR
+change**: the engine already knows `scaleF === 3` before it reads a pixel, and telling that
+user their screenshot is too small to trust is worth more than 20% of the corpus's flags.
+That is `advisor*.js`, not `ocr/*`, so it is recorded here rather than done.
+
+## Why nothing is left: the flagged populations (measured in round 16, re-confirmed in 17)
 
 Sixteen rounds took CLEAN from 0.8% to 31.1% and silents from 43 to 0. **The campaign is
 done, and the measurement that says so is this one:** after round 16 there is no flagged
@@ -270,6 +381,30 @@ are the overrides themselves. The floor is a caption-legibility floor: on a tile
 caption OCRs to nothing, every remaining channel is the same family of pixels.
 
 ## RULED OUT — do not re-litigate without new evidence
+
+Ruled out in **round 17**:
+
+- **Cross-tabulating the corpus by any CAPTURE PROPERTY.** 63 sittings, 79% of boards inside
+  a sitting of ≥5, between-sitting CLEAN variance 0.0452 vs a null median of 0.0118,
+  **P < 0.0005**. Three sittings are 0% CLEAN at gap 241, 160 and 120 while other sittings at
+  those same scales are 40-66%. Width, wheel gap, `scaleF`, panel score, `fitWheel` outcome,
+  scale-normalized sharpness and luma have all now been tried; each mostly relabels sittings.
+  A band that "fails systematically" needs a within-sitting control before it means anything.
+- **`fitWheel`'s N/S-only fallback when the W/E ruler dissents.** Real correlate (63 rejected
+  boards: CLEAN 13.1% vs 33.8%, flags 4.93 vs 2.27, holds within tier), real diagnosis (57 of
+  63 are the ruler check, 43 of those in the 8-10% band), and the fix measures NEGATIVE:
+  whole-parse 381 → **375**, headline 97.7 → 97.4, flags 1234 → 1246, and it mints a **silent
+  tile** (`c-mrx9yfiv-1fussq` #0 at conf 0.83) → gate FAIL. The rejected boards are boards
+  whose diamonds genuinely cannot be localized; the coarse anchors are the better answer, and
+  the would-be correction is small anyway (median Δgap 2.9%, median Δcy 2.9% of the gap).
+- **Lifting the `0.55` confidence rung.** It is the biggest near-clean rung left — 66 flagged
+  scalars, **1 wrong (98.5% right)**, all in the level block (`effect1Level` 34, `effect2Level`
+  18, `willpowerLevel` 14). Lifting it mints that one silent, and it is the same block seven
+  channels have already failed to separate. Same shape as round 16's `0.68-0.80` note, and it
+  dies the same way. (`0.54`: 36 flags, 2 wrong. `0.75`: 51 flags, 0 wrong, 8 fields deep —
+  a post-hoc slice of ~100 rungs × 12 fields, so 0-of-51 is not evidence.)
+- **A `_mask` artefact inflating CLEAN.** Checked because masked fields cannot flag: only 18
+  boards carry one, and they are LESS clean (16.7% vs 31.7%). No artefact.
 
 Ruled out in **round 16**:
 
@@ -425,5 +560,14 @@ rate limits, stalls and connection drops; that note is what saves the successor.
 the public repo; backup at `~/loseii-ocr-corpus-backup.tgz`). 22 non-English/degraded boards
 are excluded from the English reference harvest via `LOCALIZED` in `tools/build-level-refs.js`
 — a Spanish board filed "Daño de jefe" under "Boss Damage" for four rounds before that guard.
-Residual level misses are a resolution tier: native 7.0%, ×2 4.0%, ×3+ 31.3%.
 
+**The corpus is a stack of SITTINGS, not independent boards** (round 17): 63 of them, 79% of
+the boards inside a sitting of ≥5 consecutive turns, and sitting identity dominates the CLEAN
+rate (P < 0.0005). Score any subgroup against a within-sitting control.
+
+Resolution, measured on the engine's own ruler (the fitted red→gold wheel gap, `scaleF =
+246/gap`) rather than image width: **×1 (gap 165-377) n=143, whole 86.0%, CLEAN 37.1% · ×2
+(99-164) n=297, whole 85.9%, CLEAN 31.6% · ×3 (≤98) n=32, whole 9.4%, CLEAN 0.0%, 7.9
+flags/board.** ×1 and ×2 are indistinguishable; ×3 is a cliff holding 20.4% of every flag on
+6.8% of the boards, and none of its 32 boards is one flag from clean. Image WIDTH is a bad
+proxy for this — it mixes fullscreen captures with cropped modals.

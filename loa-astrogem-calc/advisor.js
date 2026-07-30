@@ -672,6 +672,15 @@
         if (b) pendingCollect = { blob: b, parsed: parsed, source: sourceNoun === "shared screen" ? "share" : "upload" };
       }).catch(function () {});
       var n = window.AdvisorWindow.unconfirmedCount();
+      // CAPTURE TOO SMALL (round 17). The engine picks a scale factor from the wheel
+      // gap before it reads a single pixel, and scaleF 3 means the panel had to be
+      // tripled to be legible. Measured over the 472-board corpus: those boards are
+      // 6.8% of captures yet carry 20.4% of ALL flags — 7.9 per board against 2.2 —
+      // and NOT ONE of the 32 parses cleanly or even lands one flag short. No engine
+      // change reaches them; the fix is upstream, in how the screenshot was taken.
+      // Say so plainly instead of letting the user confirm eight fields one by one.
+      var scaleF = parsed._debug && parsed._debug.norm && parsed._debug.norm.scaleF;
+      var tooSmall = !parsed.ocrDegraded && scaleF >= 3;
       if (parsed.ocrDegraded) {
         // the Tesseract worker never loaded (blocked CDN / network) or crashed —
         // text reads are guesses, every field is flagged; tell the user why
@@ -681,9 +690,14 @@
         // vision double-check first (LockedIn-gated; skipped when locked, clean, or
         // the worker is slow/down), then the solver runs — no click needed. Neither
         // step ships the collection record; only a MANUAL Get advice does.
-        setStatus(n
-          ? "Parsed — " + n + " field" + (n > 1 ? "s" : "") + " highlighted below need a look." + (window.astrogemGate && window.astrogemGate.isUnlocked() ? " Asking the AI checker…" : "")
-          : "Parsed. Double-check the window, then Get advice.", n ? "working" : "");
+        // A too-small capture still parses, still verifies and still gets advice —
+        // it just leads with WHY it is asking so much, since recapturing bigger is
+        // worth more than confirming eight fields by hand.
+        setStatus(tooSmall
+          ? "Small capture — the Processing window is about a third the size the reader wants, and small captures misread far more often. Recapturing with the game window larger (or grabbing just the Processing panel) will read much better. Parsed anyway" + (n ? "; check the " + n + " highlighted field" + (n > 1 ? "s" : "") + " closely." : " — check it over.")
+          : n
+            ? "Parsed — " + n + " field" + (n > 1 ? "s" : "") + " highlighted below need a look." + (window.astrogemGate && window.astrogemGate.isUnlocked() ? " Asking the AI checker…" : "")
+            : "Parsed. Double-check the window, then Get advice.", tooSmall ? "err" : (n ? "working" : ""));
         verifyFlagged(parsed, input).then(function (vr) {
           if (vr) window.AdvisorWindow.setParsed(parsed);   // re-render with lifted/corrected fields
           // the verify summary rides on runAdvice's own final status — runAdvice
