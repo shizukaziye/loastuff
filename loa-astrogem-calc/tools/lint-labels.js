@@ -70,9 +70,17 @@ jsons.forEach(function (f) {
   try { t = JSON.parse(fs.readFileSync(path.join(SAMPLES, f), "utf8")); }
   catch (e) { err(f, "invalid JSON: " + e.message); return; }
   var c = t.config || {}, s = t.state || {}, outs = t.outcomes;
+  // A field in `_mask.skip` is one a human could not read off the pixels (an
+  // untranslatable client's gem name, a tooltip over the footer). The eval harness
+  // already excludes those from scoring; the linter must not demand a value the
+  // label deliberately declines to guess, or the only honest option becomes to
+  // invent one. Null is the correct content for a masked field.
+  var masked = {};
+  ((t._mask && t._mask.skip) || []).forEach(function (k) { masked[k] = true; });
 
   // config
-  if ([8, 9, 10].indexOf(c.baseCost) === -1) err(f, "baseCost " + c.baseCost + " ∉ {8,9,10}");
+  if (!(masked.baseCost && c.baseCost == null) &&
+      [8, 9, 10].indexOf(c.baseCost) === -1) err(f, "baseCost " + c.baseCost + " ∉ {8,9,10}");
   if (["order", "chaos"].indexOf(c.gemType) === -1) err(f, "gemType '" + c.gemType + "'");
   ["willpowerLevel", "orderLevel", "effect1Level", "effect2Level"].forEach(function (k) {
     if (!(c[k] >= 1 && c[k] <= 5)) err(f, k + " " + c[k] + " ∉ 1..5");
@@ -84,8 +92,10 @@ jsons.forEach(function (f) {
   if (c.effect1 && c.effect1 === c.effect2) err(f, "effect1 === effect2 ('" + c.effect1 + "')");
 
   // state
-  if ([5, 7, 9].indexOf(s.maxTurns) === -1) err(f, "maxTurns " + s.maxTurns + " ∉ {5,7,9}");
-  else if (!(s.currentTurn >= 1 && s.currentTurn <= s.maxTurns)) err(f, "currentTurn " + s.currentTurn + " ∉ 1.." + s.maxTurns);
+  if (!((masked.maxTurns || masked.rarity) && s.maxTurns == null) &&
+      [5, 7, 9].indexOf(s.maxTurns) === -1) err(f, "maxTurns " + s.maxTurns + " ∉ {5,7,9}");
+  else if (!(masked.currentTurn && s.currentTurn == null) &&
+           !(s.currentTurn >= 1 && s.currentTurn <= s.maxTurns)) err(f, "currentTurn " + s.currentTurn + " ∉ 1.." + s.maxTurns);
   if (!(s.rerollsRemaining >= 0 && s.rerollsRemaining <= 9)) err(f, "rerollsRemaining " + s.rerollsRemaining + " ∉ 0..9");
   if ([-100, 0, 100].indexOf(s.processCostMultiplier) === -1) err(f, "processCostMultiplier " + s.processCostMultiplier);
   else {
