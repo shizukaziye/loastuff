@@ -1,4 +1,31 @@
-# Advisor OCR accuracy campaign — current state
+# Advisor OCR accuracy campaign — CAMPAIGN CLOSED 2026-07-30, maintenance mode
+
+**17 rounds. Final: CLEAN 147/472 (31.1%) · whole-parse 80.7% · headline 97.7% ·
+2.6 flags/shot · silent errors 0 at BOTH field and tile granularity, gate-enforced.**
+Arc: CLEAN 0.8→31.1 · whole-parse 19.6→80.7 · headline 89.9→97.7 · silents 43→0.
+
+**Do not restart engine rounds without new evidence.** Eight channels are closed by
+measurement (table below), three principled ideas LOST their A/B and were correctly not
+shipped, and two clean-looking wins were declined for failing a null test. Round 17
+changed no engine code at all — everything it tried failed the gate or died on the
+sitting control.
+
+**MEASUREMENT WARNING (round 17, the campaign's most reusable finding):** the corpus has
+a SITTING structure. Record ids encode capture time; 79% of boards sit inside a group of
+≥5 taken minutes apart, and between-sitting CLEAN variance is significant at P < 0.0005.
+**Almost any subgroup carved out by a capture property is really relabelling one player's
+session.** Cross-tabs by resolution/sharpness/dimensions measured that, not the engine.
+Always run a sitting control before believing a capture-property effect.
+
+**The one real capture tier:** boards the engine must triple (scaleF 3, from the wheel
+gap, known BEFORE any pixel is read) are 6.8% of the corpus and carry 20.4% of all flags
+— 7.9/board vs 2.2 — and none parses cleanly. No engine change reaches them; the advisor
+now tells that user to recapture larger (advisor.js, round 17).
+
+**Maintenance from here:** pull records, expand the corpus when the feed refills (it has
+dried up: 473 → 49 → 1 new records over the last three pulls), run `npm run eval-gate`,
+keep both silent counts at zero. That gate is the whole safety net.
+
 
 Read this file, not the archive. Full per-round workings live in `ACCURACY-LOG-ARCHIVE.md`
 (100KB+; reading it end to end has stalled agents — open it only for a specific round).
