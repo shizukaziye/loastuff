@@ -49,6 +49,13 @@
   // reader attach the raw per-cell evidence it decided on, so a scratch harness can
   // score candidate decision rules offline against the labels.
   var COLLECT_EVID = (typeof process !== "undefined" && process.env && process.env.OCR_CELL_EVID === "1");
+  // The outcome-cell reader records EVERY channel it consulted, per tile, under
+  // `out._debug.tileEvid` — the target channels (icon hue, relocated face), the type
+  // channels (caption text, located line, arrow blobs, white ink) and the amount
+  // channels (template, anchored OCR, bare digit, caption digit, both synth rankings),
+  // each kept RAW rather than after the ladder collapsed them. This is not a debug
+  // hook: the trained tile solve below reads it, and tools/build-tile-model.js trains
+  // from exactly the same record, so the two cannot drift apart silently.
   // Second calibration hook (off in production): OCR_LEVEL_EVID=1 makes the level
   // solve attach the FULL per-node evidence it decided on — every node's template
   // score vector and both synth channels' complete per-class rankings, plus the
@@ -89,6 +96,15 @@
   // The same, for the two effect NAMES (tools/build-name-model.js). Optional in
   // exactly the same way: without it the hand-graded lexicon decides alone.
   var NMODEL = null, NMODEL_NAMES = null;
+  // …and for the four outcome TILES (tools/build-tile-model.js). Optional in exactly
+  // the same way: without it the hand-written cell ladder decides alone and every
+  // tile keeps the confidence it had in round 14.
+  var TMODEL = null;
+  // The tile solve's decisive-margin bar. Set at 1.62x the highest margin any WRONG
+  // tile reaches among the flagged tiles the solve agrees with AND a lexical channel
+  // corroborates (5.56) — the same safety factor rounds 12 and 14 shipped JOINT_SURE
+  // and NAME_SURE at. See the AGREEMENT lift in tileSolve() for how it was measured.
+  var TILE_SURE = 9;
   // The name reader's decisive-margin bar. Set at 1.66x the highest margin any WRONG
   // name reaches on the 472-board corpus once the base cost is confident (7.21), the
   // same safety factor round 12 shipped JOINT_SURE at. See the lift below.
@@ -104,6 +120,10 @@
   try {
     var _nm = IS_NODE ? require("./name-model.js") : root.OcrNameModel;
     if (_nm) { NMODEL = _nm.NAME_MODEL; NMODEL_NAMES = _nm.NAME_MODEL_NAMES; }
+  } catch (e) {}
+  try {
+    var _tm = IS_NODE ? require("./tile-model.js") : root.OcrTileModel;
+    if (_tm) TMODEL = _tm.TILE_MODEL;
   } catch (e) {}
   // blurred-variant caches for the synthesis rescues — MODULE scope: building
   // them costs ~400 blur+normalize passes and they depend only on the baked
@@ -3645,10 +3665,30 @@
         cd: _capDbg[oi] || null, capOv: !!capOverride
       };
     }
+    // ---- the trainer's view of a tile (OCR_TILE_EVID=1) ----
+    // One record per cell, written as the ladder runs and emitted at whichever exit
+    // the cell takes. Nothing here is read by the engine.
+    var _tev = {};
+    function tev(oi) { return (_tev[oi] = _tev[oi] || {}); }
+    function emitTev(oi, o, oconf) {
+      var t = tev(oi);
+      t.o = o ? JSON.stringify(o) : null;
+      t.conf = Math.round(Math.max(0, Math.min(0.95, oconf * panelConf)) * 1000) / 1000;
+      t.pre = Math.round(oconf * 1000) / 1000;
+      t.panelConf = Math.round(panelConf * 1000) / 1000;
+      (out._debug.tileEvid = out._debug.tileEvid || [])[oi] = t;
+    }
     async function readOutcomeCell(oi) {
       var icol = L.medianPatch(raster, iconXs[oi], iconY, patchHalf);
       var icls = L.hueClass(icol[0], icol[1], icol[2]);
       var ihue = L.hsv(icol[0], icol[1], icol[2]).h;
+      {
+        var _t0 = tev(oi);
+        _t0.icls = icls; _t0.ihue = Math.round(ihue);
+        _t0.nd = {};
+        for (var _nk in NODE_HUES) _t0.nd[_nk] = Math.round(hueDist(ihue, NODE_HUES[_nk]));
+        _t0.gap = Math.round(gap);
+      }
 
       // caption band under/around the icon
       var capRect = { x: iconXs[oi] - gap * 0.44, y: iconY - gap * 0.16, w: gap * 0.88, h: gap * 0.52 };
@@ -3657,6 +3697,10 @@
       if (out._debug) (out._debug.caps = out._debug.caps || [])[oi] = icls + "· '" + cap.replace(/\n/g, "|").slice(0, 45) + "'";
       var capNm = captionName(cap);
       if (capNm) _nameVotes[capNm] = (_nameVotes[capNm] || 0) + 1;   // reaped after the cells
+      {
+        tev(oi).cap = cap; tev(oi).capConf = Math.round(capRead.conf * 100) / 100;
+        tev(oi).rect = { x: Math.round(capRect.x), y: Math.round(capRect.y), w: Math.round(capRect.w), h: Math.round(gap * 0.8) };
+      }
 
       var o = null, oconf = 0;
       var target = null;
@@ -3719,8 +3763,10 @@
             if (fdd < fd1) { fd2 = fd1; fd1 = fdd; fT = fk; } else if (fdd < fd2) fd2 = fdd;
           }
           if (fT && fT !== target && fd1 <= 20 && fd2 - fd1 >= 25) faceDissent = true;
+          { tev(oi).fT = fT; tev(oi).fd1 = Math.round(fd1); tev(oi).fd2 = Math.round(fd2); tev(oi).fs = Math.round(fBest.sc * 100) / 100; }
         }
       }
+      { tev(oi).target = target; tev(oi).capT = capT; tev(oi).capOv = !!capOverride; tev(oi).faceD = !!faceDissent; }
 
       // GREY cells are exactly two candidates: "Processing Cost ±100%" and
       // "Processing State Maintained" — both captions render DIM GREY, which the
@@ -3758,6 +3804,12 @@
         // the third grey candidate: "View Other Items +N time(s)" — two live cells
         // read as do_nothing because only THIS dilated pass can see their captions
         var rerollish = /time|view|item|other/.test(gTxt) || /time|view|item|other/.test(cap);
+        {
+          var _tg = tev(oi);
+          _tg.gTxt = gTxt; _tg.zeroPair = !!zeroPair;
+          _tg.costish = !!costish; _tg.maintainish = !!maintainish; _tg.rerollish = !!rerollish;
+          _tg.plusSeen = /\+/.test(gTxt) || /\+/.test(cap);
+        }
         if (costish && !maintainish) {
           // SIGN: a '+' is fat and survives dim OCR; the thin '−' is what drops.
           // '+' anywhere ⇒ +100; cost-confirmed with no '+' ⇒ −100, kept flagged.
@@ -3873,13 +3925,18 @@
         // different one: running the deep zone as the PRIMARY chartreuse locate, which
         // cost 5 tiles. This rung still only runs when the strict capRect locate found
         // nothing.)
+        var _lineKind = amtLine ? "chartreuse" : null;
         if (!amtLine) amtLine = locateAmt(L.isAmountText, false, amtZone);
+        if (!_lineKind && amtLine) _lineKind = "chartreuse-deep";
         var redLine = amtLine ? null : locateAmt(L.isRedAmountText, false);
+        if (!_lineKind && redLine) _lineKind = "red";
         var lineRelaxed = false;
         if (!amtLine && !redLine) {
           amtLine = locateAmt(L.isAmountText, true);
           lineRelaxed = !!amtLine;
+          if (amtLine) _lineKind = "relaxed";
         }
+        tev(oi).line = _lineKind || "none";
         if (amtLine) {
           var agrow = Math.round(amtLine.h * 0.5);
           var amtRectX = { x: amtLine.x, y: amtLine.y - agrow, w: amtLine.w, h: amtLine.h + agrow * 2 };
@@ -3897,6 +3954,7 @@
           // SILENTLY twice (round 2), so the weak tier stays consultable.
           var amTm = lastGoldDigit(amtRectX, L.isAmountText, 4);
           if (amTm) { amt = amTm.value; amtSrc = amTm.conf >= 0.9 ? "tm" : "tm-weak"; }
+          { tev(oi).tm = amTm ? amTm.value : null; tev(oi).tmConf = amTm ? Math.round(amTm.conf * 100) / 100 : null; }
           if (amt == null) {
             var amtRead = await maskedOcr(amtRectX, L.isAmountText, { whitelist: "Lv.+12345 ", psm: 7 });
             // prefix-anchored — a bare digit here is a trap ('L' of a garbled
@@ -3910,6 +3968,7 @@
             }
             if (out._debug) (out._debug.amtOcr = out._debug.amtOcr || [])[oi] =
               "'" + amtRead.text.replace(/\n/g, "|").slice(0, 24) + "' -> " + (am ? am[1] : "null") + (bareCand != null ? " bare=" + bareCand : "");
+            { tev(oi).lineOcr = amtRead.text.replace(/\n/g, "|").slice(0, 24); tev(oi).ocrAmt = am ? parseInt(am[1], 10) : null; }
           }
           // ▲/▼ sits at the line's right end; classify green-vs-red in that box only.
           // (Whole-cell clustering is hopeless: the outcome ICON — red willpower, green
@@ -3959,6 +4018,12 @@
             up: { count: aUp.count, frac: Math.round(aUp.frac * 1000) / 1000, density: Math.round(aUp.density * 100) / 100 },
             down: { count: aDown.count, frac: Math.round(aDown.frac * 1000) / 1000, density: Math.round(aDown.density * 100) / 100 }
           };
+          {
+            var _ta = tev(oi);
+            _ta.aUp = { n: aUp.count, f: Math.round(aUp.frac * 1000) / 1000, d: Math.round(aUp.density * 100) / 100 };
+            _ta.aDn = { n: aDown.count, f: Math.round(aDown.frac * 1000) / 1000, d: Math.round(aDown.density * 100) / 100 };
+            _ta.upSolid = !!upSolid; _ta.downSolid = !!downSolid;
+          }
         }
         {
           // LOWER amounts render RED with a red ▼ — a red text line is itself the
@@ -3978,10 +4043,12 @@
             // commits stay consultable (see the raise path)
             var redTm = lastGoldDigit(redRectX, L.isRedAmountText, 4);
             if (redTm) { amt = redTm.value; amtSrc = redTm.conf >= 0.9 ? "tm" : "tm-weak"; }
+            { tev(oi).tm = redTm ? redTm.value : null; tev(oi).tmConf = redTm ? Math.round(redTm.conf * 100) / 100 : null; }
             if (amt == null) {
               var redRead = await maskedOcr(redRectX, L.isRedAmountText, { whitelist: "Lv.-12345 ", psm: 7 });
               // prefix-anchored; bare digits are weak candidates (see raise path)
               var rm2 = redRead.text.match(/(?:lv\.?|-|−)\s*([1-4])/i);
+              { tev(oi).lineOcr = redRead.text.replace(/\n/g, "|").slice(0, 24); tev(oi).ocrAmt = rm2 ? parseInt(rm2[1], 10) : null; }
               if (rm2) { amt = parseInt(rm2[1], 10); amtSrc = "ocr"; }
               else {
                 var rbm = redRead.text.match(/([1-4])(?![\s\S]*[1-4])/);
@@ -4007,10 +4074,12 @@
         // a change — three such cells are all this guard costs.
         if (!amtLine && !redLine && (target === "effect1" || target === "effect2")) {
           var whInk = L.colorClusterStats(L.crop(raster, capRect), L.isWhiteText);
+          tev(oi).whInk = whInk.count;
           if (whInk.count >= 8) {
             out.outcomes[oi] = { type: "change_side_option", target: target };
             confidence.outcomes[oi] = Math.max(0, Math.min(0.95, (capOverride ? 0.55 : 0.62) * panelConf));
             if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, amtLine, redLine, capRect, cap, out.outcomes[oi], 0.62, capOverride);
+            { tev(oi).exit = "changeStruct"; emitTev(oi, out.outcomes[oi], capOverride ? 0.55 : 0.62); }
             return;
           }
         }
@@ -4033,6 +4102,12 @@
         // caps, which can never mint a silent tile.
         var lnForSynth = amtLine || redLine;
         var amSy = lnForSynth ? synthAmountDigit(lnForSynth) : null;
+        {
+          var _ts = tev(oi);
+          _ts.bare = bareCand;
+          _ts.sy = amSy ? { v: amSy.value, g: amSy.gradTop, r: amSy.rawTop, gm: Math.round(amSy.gm * 1000) / 1000,
+            go: !!amSy.gradOnly, gs: Math.round(amSy.gradScore * 1000) / 1000, rs: Math.round(amSy.rawScore * 1000) / 1000 } : null;
+        }
         if (amSy && amtSrc !== "tm" && amt != null && amSy.value != null && amSy.value !== amt &&
             (amSy.gradOnly ? (amSy.gm >= (amtSrc === "tm-weak" ? 0.05 : 0.10) && amtSrc !== "tm") : amSy.gm >= 0.05)) {
           // an anchored-regex read can still be the ▲ wearing a legitimate anchor
@@ -4133,6 +4208,7 @@
         while ((_cm = _cre.exec(cap))) capV = parseInt(_cm[1], 10);
         _cre = /(?:[a-z(%]{0,3}v[.,]{0,2}\s*|\+\s*)([1-4])/g;
         while ((_cm = _cre.exec(cap))) capAgree = parseInt(_cm[1], 10);
+        { tev(oi).capV = capV; tev(oi).capAgree = capAgree; tev(oi).amtSrc = amtSrc; tev(oi).hadAmt = !!hadAmt; }
         // SCOPE of the dissent: effect targets only (the "Lv. N" rendering), against a
         // committed amount of exactly 1, and never against a synth-override. '1' is the
         // documented ABSORBER class — eroded strokes template-match '1', which is also
@@ -4208,6 +4284,11 @@
           ((!amSy.gradOnly && amSy.rawTop === amt && amSy.gradTop === amt) ||
            (amtSrc === "bare+synth" && amSy.gradTop === amt));
         var synCapPending = amtFromSynth && !(capAgree != null && capAgree === amt) && !synTwoChannel;
+        {
+          tev(oi).caps = { pre: Math.round(oconf * 1000) / 1000, capDissent: !!capDissent, tmContra: !!tmContra,
+            amtWeak: !!amtWeak, lineRelaxed: !!lineRelaxed, amtContra: !!amtContra, amtImpossible: !!amtImpossible,
+            synTwo: !!synTwoChannel, synPending: !!synCapPending, strongDir: !!strongDir, hadAmt: !!hadAmt };
+        }
         if (capDissent) oconf = Math.min(oconf, 0.72);    // caption spells another digit
         if (tmContra) oconf = Math.min(oconf, 0.72);      // consult overruled the template
         if (amtWeak) oconf = Math.min(oconf, 0.65);       // last-rung bare digit
@@ -4279,6 +4360,8 @@
           // scoped to the two-channel form.
           var trustedAmt = amtSrc === "tm" || amtSrc === "ocr" || amtSrc === "cap" || synTwoChannel;
           if (COLLECT_EVID && _capDbg[oi]) { _capDbg[oi].sign = !!signSeen; _capDbg[oi].wit = !!(dirWitness && trustedAmt); }
+          { tev(oi).sign = !!signSeen; tev(oi).vTxt = typeof vTxt !== "undefined" ? String(vTxt).replace(/\n/g, "|").slice(0, 16) : null; }
+          if (tev(oi).caps) { tev(oi).caps.signCap = !signSeen && !(dirWitness && trustedAmt); tev(oi).caps.dirWit = !!dirWitness; tev(oi).caps.trustedAmt = !!trustedAmt; }
           if (!signSeen && !(dirWitness && trustedAmt)) oconf = Math.min(oconf, 0.72);
         }
         // ---- the synth amount cap, and the two cases where it guards nothing ----
@@ -4298,6 +4381,7 @@
           var lvConf = lvKey ? (confidence.config[lvKey] || 0) * panelConf : 0;
           var forcedAmt = o.type === "lower_effect" ||
             (o.type === "raise_effect" && lvConf >= 0.8 && out.config[lvKey] === 4 && o.amount === 1);
+          if (tev(oi).caps) { tev(oi).caps.forcedAmt = !!forcedAmt; tev(oi).caps.synCap78 = !forcedAmt; }
           if (!forcedAmt) oconf = Math.min(oconf, 0.78);
         }
       } else {
@@ -4311,10 +4395,326 @@
       // …and so does a target the RE-LOCATED icon face contradicts (see faceDissent)
       if (faceDissent) oconf = Math.min(oconf, 0.72);
       if (COLLECT_EVID) cellEvid(oi, icls, ihue, target, typeof amtLine !== "undefined" && amtLine, typeof redLine !== "undefined" && redLine, capRect, cap, o, oconf, capOverride);
+      { tev(oi).exit = "main"; emitTev(oi, o, oconf); }
       out.outcomes[oi] = o;
       confidence.outcomes[oi] = Math.max(0, Math.min(0.95, oconf * panelConf));
     }
     await Promise.all([0, 1, 2, 3].map(readOutcomeCell));
+
+    // =====================================================================
+    // THE FOUR TILES, READ AS ONE HYPOTHESIS (round 15)
+    // =====================================================================
+    // Round 10 did this for the levels and round 14 for the names; a tile is the
+    // better fit than either, because its vocabulary is not merely closed, it is
+    // ENUMERATED BY THE GAME. model/astrogem.js OUTCOME_RATES lists 27 keys, gives
+    // each a base probability and says which the current levels/turns exclude —
+    // and over the 1828 scored tiles in the corpus exactly ONE label falls outside
+    // the legal set (and that one turned out to be the label: see the round log).
+    //
+    // The ladder above decides a tile in three passes that never see each other's
+    // evidence — target from the icon hue, kind from the caption and the located
+    // line, amount from whichever of six digit channels spoke first. `tileSolve`
+    // scores every legal WHOLE key against every channel at once, with the game's
+    // own rate table as the prior.
+    //
+    // It is allowed to do exactly two things, and neither can mint a silent tile:
+    //   OVERRIDE  where it disagrees, take its key and cap the tile at 0.72 — below
+    //             the flag line, so the user is asked either way.
+    //   LIFT      where it AGREES, the tile is flagged, its margin clears TILE_SURE
+    //             and a LEXICAL channel names the same key, raise the tile to 0.80.
+    //
+    // Both moves require the lexical witness — the caption text or the dim-grey
+    // dilated pass — because every other channel here (icon hue, relocated face,
+    // located line, arrow blob, template, both synth rankings) reads the same
+    // rendered pixels through a colour mask and they fail together. Measured: over
+    // the 441 flagged tiles the solve agrees with, requiring the lexical witness
+    // leaves 3 wrong ones, the worst at margin 5.56; WITHOUT it the population is
+    // 697 with 40 wrong and the worst reaches 20.06. Both boards above margin 10
+    // that the witness removes are non-English captures, which is the mechanism
+    // stated out loud: no caption, no second family of evidence.
+    if (TMODEL) tileSolve();
+    function tileSolve() {
+      var TM = TMODEL, KEYS = TM.keys, NKY = KEYS.length, i, k;
+      var TGS = ["willpower", "order", "effect1", "effect2"];
+      function kindOf(kk) {
+        if (kk.indexOf("raise_effect") === 0) return 0;
+        if (kk.indexOf("lower_effect") === 0) return 1;
+        if (kk.indexOf("change:") === 0) return 2;
+        if (kk.indexOf("cost:") === 0) return 3;
+        if (kk.indexOf("reroll:") === 0) return 4;
+        return 5;
+      }
+      function targetOf(kk) {
+        var p = kk.split(":");
+        if (p[0] === "raise_effect" || p[0] === "lower_effect" || p[0] === "change") {
+          var ix = TGS.indexOf(p[1]); return ix < 0 ? 4 : ix;
+        }
+        return 4;
+      }
+      function amtClsOf(kk) {
+        if (kk.indexOf("raise_effect") === 0) return parseInt(kk.split(":")[2], 10) - 1;
+        if (kk.indexOf("lower_effect") === 0) return 4;
+        return 5;
+      }
+      var CLS = [];
+      for (k = 0; k < NKY; k++) CLS.push({ kind: kindOf(KEYS[k].k), tgt: targetOf(KEYS[k].k), amt: amtClsOf(KEYS[k].k),
+        sgn: KEYS[k].k === "cost:+" ? 0 : KEYS[k].k === "cost:-" ? 1 : 2,
+        rr: KEYS[k].k === "reroll:1" ? 0 : KEYS[k].k === "reroll:2" ? 1 : 2 });
+
+      // ---- legality + the state prior, both from OUTCOME_RATES ----
+      // A constraint that rests on a doubtful read is not applied at all: round 14's
+      // discipline, because an enumeration can never reach a truth its own constraint
+      // excluded (all 20 name slots outside their committed pool sat on boards whose
+      // baseCost was flagged).
+      // the raw parse stores the counter as READ — `turnsRemaining`, the left half of
+      // the "n/9" pill; `currentTurn` only exists after constraintSnap derives it
+      var turnsOk = (confidence.state.currentTurn || 0) >= 0.8 && out.state.turnsRemaining != null;
+      var turnsRem = out.state.turnsRemaining != null ? out.state.turnsRemaining
+        : (out.state.maxTurns || 0) - (out.state.currentTurn || 1) + 1;
+      var cmOk = (confidence.state.processCostMultiplier || 0) >= 0.8 && out.state.processCost != null;
+      var cmRaw = out.state.processCost != null ? Math.round((out.state.processCost / 900 - 1) * 100) : 0;
+      var costMult = cmRaw <= -50 ? -100 : cmRaw >= 50 ? 100 : 0;
+      var prior = [], sumBase = 0, legal = [];
+      for (k = 0; k < NKY; k++) {
+        var e = KEYS[k], ok = true;
+        if (e.lvl) {
+          var lk = e.lvl === "willpower" ? "willpowerLevel" : e.lvl === "order" ? "orderLevel"
+            : e.lvl === "effect1" ? "effect1Level" : "effect2Level";
+          var lv = out.config[lk], lc = confidence.config[lk] || 0;
+          if (lv != null && lc >= 0.8) {
+            if (e.lvlMax != null && lv > e.lvlMax) ok = false;
+            if (e.lvlMin != null && lv < e.lvlMin) ok = false;
+          }
+        }
+        if (e.turns != null && turnsOk && turnsRem <= 1) ok = false;
+        if (e.cmMax != null && cmOk && costMult >= 100) ok = false;
+        if (e.cmMin != null && cmOk && costMult <= -100) ok = false;
+        legal.push(ok);
+        if (ok) sumBase += e.base;
+      }
+      for (k = 0; k < NKY; k++) prior.push(legal[k] && sumBase > 0 ? Math.log(KEYS[k].base / sumBase) : null);
+
+      // ---- observations ----
+      // Every discretization below is duplicated verbatim in tools/build-tile-model.js.
+      // Change one, change the other, or the trained tables stop describing the reader.
+      var CAP_NAME_LEX = [
+        ["Ally Damage Enh.", /a[li1|]{2}y\s*dam|ally\s*dam|damage\s*enh|dmg\s*enh|aly\s*dam/],
+        ["Ally Attack Enh.", /a[li1|]{2}y\s*at|ally\s*at|attack\s*enh|atk\s*enh/],
+        ["Additional Damage", /additional|addit/],
+        ["Boss Damage", /boss/],
+        ["Brand Power", /brand|srand|bramd/],
+        ["Attack Power", /(atk|attack)\D{0,4}(pow|ower)/]
+      ];
+      function captObs(cp) {
+        var t = String(cp || ""), hits = [];
+        if (CAP_WILLPOWER.test(t)) hits.push(0);
+        if (CAP_POINTS.test(t)) hits.push(1);
+        var nm = null;
+        for (var li = 0; li < CAP_NAME_LEX.length; li++) { if (CAP_NAME_LEX[li][1].test(t)) { nm = CAP_NAME_LEX[li][0]; break; } }
+        if (nm && out.config.effect1 && nm === out.config.effect1) hits.push(2);
+        else if (nm && out.config.effect2 && nm === out.config.effect2) hits.push(3);
+        if (!hits.length) return 0;
+        if (hits.length > 1) return 5;
+        return 1 + hits[0];
+      }
+      function hueObs(te) {
+        if (!te || !te.nd) return 13;
+        if (te.icls === "grey") return 0;
+        var best = -1, d1 = 1e9, d2 = 1e9;
+        for (var q = 0; q < 4; q++) {
+          var d = te.nd[TGS[q]]; if (d == null) continue;
+          if (d < d1) { d2 = d1; d1 = d; best = q; } else if (d < d2) d2 = d;
+        }
+        if (best < 0) return 13;
+        return 1 + best * 3 + ((d2 - d1) >= 40 ? 2 : (d2 - d1) >= 15 ? 1 : 0);
+      }
+      function faceObs(te) {
+        if (!te || !te.fT) return 0;
+        var q = TGS.indexOf(te.fT); if (q < 0) return 0;
+        return 1 + q * 2 + ((te.fd1 <= 20 && (te.fd2 - te.fd1) >= 25) ? 1 : 0);
+      }
+      var LINEV = { "n/a": 0, "none": 1, "chartreuse": 2, "chartreuse-deep": 3, "red": 4, "relaxed": 5 };
+      function lineObs(te) { return te && te.line != null && LINEV[te.line] != null ? LINEV[te.line] : 0; }
+      function arrowObs(te) {
+        if (!te || !te.aUp) return 0;
+        if (te.upSolid && te.downSolid) return 4;
+        if (te.upSolid) return 2;
+        if (te.downSolid) return 3;
+        return 1;
+      }
+      function capkObs(cp, gt) {
+        var t = String(cp || "") + " " + String(gt || "");
+        if (/maintain|tained|state/.test(t)) return 1;
+        if (/1\s*[o0]\s*[o0]|[cjg]ost|[cjg]os\b/.test(t)) return 2;
+        if (/time|view|item|other/.test(t)) return 3;
+        if (/chang|crang|cang|charz|cmarg|camb\s*ado|erect\s*cra/.test(t)) return 4;
+        if (/[a-z(%]{0,3}v[.,]{0,2}\s*[1-4]/.test(t)) return 5;
+        if (/\+\s*[1-4]/.test(t)) return 6;
+        return 0;
+      }
+      function greyObs(te) {
+        if (!te || te.gTxt == null) return 0;
+        return 1 + (te.costish ? 1 : 0) + (te.maintainish ? 2 : 0) + (te.rerollish ? 4 : 0);
+      }
+      function inkObs(te) { return !te || te.whInk == null ? 0 : (te.whInk < 8 ? 1 : te.whInk < 40 ? 2 : 3); }
+      function dObs(v) { return v == null ? 0 : (v >= 1 && v <= 4 ? v : 0); }
+      function tmObs(te) {
+        if (!te || te.tm == null) return 0;
+        var v = dObs(te.tm); if (!v) return 0;
+        return v + ((te.tmConf != null && te.tmConf >= 0.9) ? 4 : 0);
+      }
+      function syGObs(te) {
+        if (!te || !te.sy || te.sy.g == null) return 0;
+        var v = dObs(te.sy.g); if (!v) return 0;
+        var gm = te.sy.gm == null ? 0 : te.sy.gm;
+        return v + (gm >= 0.10 ? 2 : gm >= 0.03 ? 1 : 0) * 4;
+      }
+      function syRObs(te) { return te && te.sy ? dObs(te.sy.r) : 0; }
+      function plusObs(te) { return !te || te.plusSeen == null ? 0 : (te.plusSeen ? 2 : 1); }
+      function capSignObs(te) {
+        var t = String((te && te.cap) || "") + " " + String((te && te.gTxt) || "");
+        var minus = /[-−]\s*1\s*[o0]\s*[o0]|[-−]\s*100/.test(t), plus = /\+\s*1\s*[o0]\s*[o0]|\+\s*100/.test(t);
+        return minus && !plus ? 2 : plus && !minus ? 1 : 0;
+      }
+      function rrObs(te) {
+        var m2 = (String((te && te.cap) || "") + " " + String((te && te.gTxt) || "")).match(/\+\s*([12])/);
+        return m2 ? parseInt(m2[1], 10) : 0;
+      }
+      function keyOf(o) {
+        if (!o) return null;
+        if (o.type === "raise_effect" || o.type === "lower_effect") return o.type + ":" + o.target + ":" + o.amount;
+        if (o.type === "change_side_option") return "change:" + o.target;
+        if (o.type === "change_gold_cost") return "cost:" + (o.change > 0 ? "+" : "-");
+        if (o.type === "reroll_increase") return "reroll:" + o.change;
+        return "do_nothing";
+      }
+      var evid = (out._debug && out._debug.tileEvid) || [];
+      var obs = [], engK = [], engConf = [];
+      for (i = 0; i < 4; i++) {
+        var te2 = evid[i] || {}, gk = keyOf(out.outcomes[i]);
+        var cf = confidence.outcomes[i] == null ? 1 : confidence.outcomes[i];
+        engK.push(gk); engConf.push(cf);
+        obs.push({
+          hue: hueObs(te2), face: faceObs(te2), capt: captObs(te2.cap),
+          line: lineObs(te2), arrow: arrowObs(te2), capk: capkObs(te2.cap, te2.gTxt),
+          grey: greyObs(te2), ink: inkObs(te2),
+          tm: tmObs(te2), ocrA: dObs(te2.ocrAmt), capV: dObs(te2.capV), bare: dObs(te2.bare),
+          syG: syGObs(te2), syR: syRObs(te2), plus: plusObs(te2), capSign: capSignObs(te2), rr: rrObs(te2),
+          eK: gk == null ? 6 : kindOf(gk), eT: gk == null ? 5 : targetOf(gk), eA: gk == null ? 6 : amtClsOf(gk),
+          eB: cf >= 0.8 ? 2 : cf >= 0.6 ? 1 : 0
+        });
+      }
+
+      // ---- per-tile log-scores over every legal key ----
+      var M = TM.M, W = TM.w, per = [];
+      for (i = 0; i < 4; i++) {
+        var o2 = obs[i], acc = new Array(NKY);
+        for (k = 0; k < NKY; k++) {
+          if (prior[k] == null) { acc[k] = null; continue; }
+          var c3 = CLS[k];
+          var sc = W.wPrior * prior[k] + W.wKindPrior * M.kindPrior[c3.kind];
+          sc += W.wHue * M.hue[c3.tgt][o2.hue] + W.wFace * M.face[c3.tgt][o2.face] + W.wCapt * M.capt[c3.tgt][o2.capt];
+          sc += W.wLine * M.line[c3.kind][o2.line] + W.wArrow * M.arrow[c3.kind][o2.arrow] +
+                W.wCapk * M.capk[c3.kind][o2.capk] + W.wGrey * M.grey[c3.kind][o2.grey] + W.wInk * M.ink[c3.kind][o2.ink];
+          sc += W.wTm * M.tm[c3.amt][o2.tm] + W.wOcrA * M.ocrA[c3.amt][o2.ocrA] + W.wCapV * M.capV[c3.amt][o2.capV] +
+                W.wBare * M.bare[c3.amt][o2.bare] + W.wSyG * M.syG[c3.amt][o2.syG] + W.wSyR * M.syR[c3.amt][o2.syR];
+          sc += W.wSgn * (M.plus[c3.sgn][o2.plus] + M.capSign[c3.sgn][o2.capSign]) + W.wRr * M.rr[c3.rr][o2.rr];
+          sc += W.wEngK * M.eK[o2.eB][c3.kind][o2.eK] + W.wEngT * M.eT[o2.eB][c3.tgt][o2.eT] + W.wEngA * M.eA[o2.eB][c3.amt][o2.eA];
+          acc[k] = sc;
+        }
+        per.push(acc);
+      }
+
+      // ---- the joint. The only coupling is a DUPLICATE penalty: 3 of the 457 scored
+      // boards repeat a key, so repetition is rare but real and is priced, not banned.
+      var cand = [];
+      for (i = 0; i < 4; i++) {
+        var lst = [];
+        for (k = 0; k < NKY; k++) if (per[i][k] != null) lst.push({ k: k, s: per[i][k] });
+        lst.sort(function (a, b) { return b.s - a.s; });
+        if (!lst.length) return null;
+        cand.push(lst.slice(0, TM.topk));
+      }
+      var best = null, bestS = -Infinity, chosen = new Array(4);
+      function dupCount(ch) { var d = 0, seen = {}; for (var q = 0; q < 4; q++) { if (seen[ch[q]]) d++; seen[ch[q]] = 1; } return d; }
+      (function rec(ix, acc2) {
+        if (ix === 4) {
+          var s2 = acc2 + W.wDup * dupCount(chosen);
+          if (s2 > bestS) { bestS = s2; best = chosen.slice(); }
+          return;
+        }
+        for (var j = 0; j < cand[ix].length; j++) { chosen[ix] = cand[ix][j].k; rec(ix + 1, acc2 + cand[ix][j].s); }
+      })(0, 0);
+      if (!best) return null;
+
+      // margins over EVERY legal key at this tile with the other three pinned to the
+      // joint best — never over the truncated candidate list, so a margin can never be
+      // inflated by a candidate that was dropped before the enumeration
+      var margins = [];
+      for (i = 0; i < 4; i++) {
+        var bi = best[i], alt = new Array(4);
+        for (var q2 = 0; q2 < 4; q2++) alt[q2] = best[q2];
+        var refS = per[i][bi] + W.wDup * dupCount(alt), mx = -Infinity;
+        for (k = 0; k < NKY; k++) {
+          if (k === bi || per[i][k] == null) continue;
+          alt[i] = k;
+          var v2 = per[i][k] + W.wDup * dupCount(alt);
+          if (v2 > mx) mx = v2;
+        }
+        alt[i] = bi;
+        margins.push(mx === -Infinity ? 99 : refS - mx);
+      }
+
+      // ---- the lexical witness ----
+      // Not "a caption existed" but "a TEXT reader named this key's own target or
+      // kind". The pixel channels all read the same rendered diamond through a colour
+      // mask; the caption OCR and the dim-grey dilated pass are a different family and
+      // fail on different boards.
+      function lexAgree(o3, kk) {
+        var p = kk.split(":"), okT = false, okK = false;
+        var tgt = (p[0] === "raise_effect" || p[0] === "lower_effect" || p[0] === "change") ? p[1] : null;
+        if (o3.capt >= 1 && o3.capt <= 4) okT = (tgt === TGS[o3.capt - 1]);
+        if (o3.capk === 1) okK = (kk === "do_nothing");
+        else if (o3.capk === 2) okK = (p[0] === "cost");
+        else if (o3.capk === 3) okK = (p[0] === "reroll");
+        else if (o3.capk === 4) okK = (p[0] === "change");
+        else if (o3.capk === 5 || o3.capk === 6) okK = (p[0] === "raise_effect" || p[0] === "lower_effect");
+        if (o3.grey === 2) okK = okK || (p[0] === "cost");
+        if (o3.grey === 3) okK = okK || (kk === "do_nothing");
+        if (o3.grey === 5) okK = okK || (p[0] === "reroll");
+        return okT || okK;
+      }
+      function outcomeOf(kk) {
+        var p = kk.split(":");
+        if (p[0] === "raise_effect" || p[0] === "lower_effect") return { type: p[0], target: p[1], amount: parseInt(p[2], 10) };
+        if (p[0] === "change") return { type: "change_side_option", target: p[1] };
+        if (p[0] === "cost") return { type: "change_gold_cost", change: p[1] === "+" ? 100 : -100 };
+        if (p[0] === "reroll") return { type: "reroll_increase", change: parseInt(p[1], 10) };
+        return { type: "do_nothing" };
+      }
+
+      var dbg = [];
+      for (i = 0; i < 4; i++) {
+        var mk = KEYS[best[i]].k, mg = margins[i], lex = lexAgree(obs[i], mk);
+        dbg.push(mk + "@" + mg.toFixed(1) + (lex ? " lex" : "") + (engK[i] === mk ? "" : "  (eng " + engK[i] + ")"));
+        if (!engK[i]) continue;
+        if (mk !== engK[i]) {
+          // OVERRIDE — gated on the lexical witness naming the SOLVE's key. Measured
+          // over the corpus: 10 disagreements, 9 in sample and 1 on the holdout,
+          // 10 fixes and 0 breaks. Ungated it is 36 for 22 fixes and 5 breaks, so
+          // the witness is what makes this a repair rather than a coin toss.
+          if (!lex) continue;
+          out.outcomes[i] = outcomeOf(mk);
+          confidence.outcomes[i] = Math.min(confidence.outcomes[i] == null ? 1 : confidence.outcomes[i], 0.72);
+        } else if (engConf[i] < 0.8 && mg >= TILE_SURE && lex) {
+          // LIFT. 412 flagged tiles clear this bar corpus-wide and every one of them
+          // is right; 85 of them are holdout boards the tables never saw.
+          confidence.outcomes[i] = 0.8;
+        }
+      }
+      if (out._debug) out._debug.tileSolve = dbg;
+      return dbg;
+    }
 
     // ---- gemType backstops (title unreadable / weak) ----
     // 1) the gold outcome-caption votes collected above; 2) the S-node's own
@@ -4561,7 +4961,7 @@
     return [
       "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
       f("astrogem.js", "../model/"), f("engine.js"), f("layout.js"), f("glyphs.js"),
-      f("level-refs.js"), f("level-model.js"), f("name-model.js"), f("tesseract-engine.js"), f("structural-engine.js")
+      f("level-refs.js"), f("level-model.js"), f("name-model.js"), f("tile-model.js"), f("tesseract-engine.js"), f("structural-engine.js")
     ];
   }
   function getBgWorker() {

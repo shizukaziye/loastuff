@@ -1785,3 +1785,99 @@ Ruled out in **round 12**, all measured per tile:
   The `Lv.`-anchored form is 4 catches for 1.
 - `change_side_option`'s structural rung (81 tiles at 0.62) is 72/81 = 89% pure and
   `do_nothing`'s 0.2 rung is 31/53 = 58%. Both are flagged for a real reason; leave them.
+
+
+## Round 14 (moved from the current log) — the names, read as one hypothesis
+
+Round 10's method, applied to the field it was ruled out for. The names were the last big
+pot: 537 of the 1299 scalar flags, and per-field the two worst columns by a wide margin.
+Round 10 had rejected *joint framing* for them because only 2 of 72 name misses are a W↔E
+swap — a finding about SWAPS, not about trained likelihoods, and the distinction is the
+whole round.
+
+**Why the names fit this treatment.** `model/astrogem.js` EFFECT_POOLS gives exactly four
+legal names per base cost and the two slots hold different ones, so a board's names are a
+**12-way choice under a known constraint**, not open-ended OCR. Every channel can be scored
+against every candidate at once.
+
+**What shipped**
+
+| # | change | effect |
+|---|---|---|
+| A | `synthNameRescue` split into `synthNameScores` (all six classes, memoized per slot) + the old gates. Identical by construction — a name's score never depended on which others were in the loop | the pixel channel becomes available as evidence, not just as a last-resort rescue |
+| B | `tools/build-name-model.js` → `ocr/name-model.js` (6.1 KB): log P(observation \| true name) per slot and channel, smoothed, trained on the 376 non-holdout boards | the reader |
+| C | a 12-way joint solve in `structural-engine.js`; overrides commit at 0.66 (flagged, and below the caption verifier's floor) | 24 names fixed, 2 broken |
+| D | AGREEMENT lift at `NAME_SURE = 12` when the base cost is confident | 258 flags reclaimed |
+| E | the caption verifier's 0.68 floor comes off when the trained reader ran and the cost is confident | 87 more flags |
+| F | `tools/eval-ocr.js` gained `--shard=i/N` and `--recjson=` | a 105s parallel A/B, exact against the serial run |
+
+**The channels.** Two of them existed and were only ever consulted after the lexicon had
+already failed; one is new.
+
+- `synRaw` / `synGrad` — the patch synthesis' full per-class ranking on the name band and
+  on its gradient. Alone, restricted to the true pool, the raw channel is **90.8%** — within
+  two points of the whole incumbent reader, and it fails on pixels where the other fails on
+  tokens.
+- `wh` (new) — WORD HITS. A name is just its own words ("Atk. Power" is what the wheel
+  renders, so `attack` carries `atk`); count how many a fuzzy token match finds. This is
+  what separates `firand power` — 2 of Brand Power's words, 1 of Attack Power's — from the
+  graded lexicon, which scored that read 0.7 for both and had to guess.
+- `lines`, `lex`, `read` — the measured line count, the lexicon's own graded evidence, and
+  the engine's committed read bucketed by confidence. Including the engine's read is what
+  makes the model a refinement of the incumbent rather than a replacement for it.
+
+**Measured, solve in isolation** (894 slots — the 50 on boards whose cost is unknown at
+solve time are out of scope and the solve refuses them): model **879 (98.3%)** vs incumbent
+857 (95.9%). HOLDOUT **180/184 (97.8%)** vs 173 (94.0%). 5-fold CV *inside the training
+split* 695/710 vs 684. The holdout gained more than the training split, as in round 10.
+
+**The lift, and why 12.** A lift is the one thing here that can mint a silent error, so it
+carries two conditions and a factor.
+
+1. *The base cost must be confident.* The enumeration cannot reach a name the pool excludes.
+   Measured: 20 slots in the corpus have a true name outside the committed pool and **all 20
+   sit on boards whose `baseCost` was itself flagged**.
+2. *The solve must AGREE with the engine's own read.* Structural in the code — an override
+   returns before the lift branch. At the shipped bar this costs nothing: every one of the
+   651 slots above it is an agreement.
+
+Margins among the 862 cost-confident slots, right/wrong: `<2` 11/5 · `2-6` 25/5 · `6-8` 39/2
+· **`≥8` 775/0**. The worst WRONG name reaches 7.21 (then 6.76, 4.86) and nothing wrong
+clears 8. `NAME_SURE` is 12 — **1.66×**, the factor round 12 shipped `JOINT_SURE` at. 651
+slots clear it, every one right, and 258 of them were previously flagged (confirmed
+end-to-end: scalar flags 1299 → 1041 with this change alone).
+
+**E — the caption floor comes off, for the reason it was there.** Round 9 set the 0.68 floor
+because the failure below it was a SLOT SWAP: a caption can witness that a name is on the
+board, never which node holds it. The joint reader decides both slots as one hypothesis, so
+a swap is now a candidate it scores. `c-ms0uhvso-gj1ae8`, the single silent that set the
+floor, is read RIGHT by it — the wheel gives `["Ally Damage Enh.", "Ally Attack Enh."]` and
+the solve returns `["Boss Damage", "Ally Damage Enh."]`, the labels. Measured over the flags
+the trained reader leaves behind: **87 corroborated, every one right**, 26 on the holdout;
+and of the 50 name slots still wrong-and-flagged, **not one** is both cost-confident and
+corroborated. The surviving population is 82% right, so P(0 wrong in 87) ≈ 4e-8 under the
+null — this is not the 0-of-27 coincidence round 13 declined.
+
+**Honesty checks.** With `ocr/name-model.js` removed, the working tree reproduces the
+incumbent **to the board** — 25 CLEAN, 2032 flags (733 tiles, 1299 scalars), 359 whole-parse,
+97.3% — so every difference above comes from the trained tables and nothing else. And the
+trainer's solver and the engine's `jointNameSolve` disagree on **0 of 894 slots**.
+
+**Labels verified against pixels** (4× crops, `scratchpad/crop-names.js`): `c-mrx9wkcl-k6e9mq`
+W really is "Brand Power" and `c-mryhg1e0-cpohfd` E really is "Atk. Power". Both labels are
+RIGHT and the model is wrong on both — they are the 7.21/6.76 errors that set the bar. No
+label was changed this round.
+
+**Cost.** The synthesis now runs on both name slots on every board instead of only on the
+ambiguous ones. Whole-corpus wall time on the parallel harness 106s → 109s (~3%); median
+parse 2.17s. `countNameLines` is memoized alongside it (it was recomputing the same mask up
+to three times per node).
+
+**DEPLOY NOTE — one line this round did not touch.** `ocr/name-model.js` is a new file. The
+background parse worker already loads it (`engineScriptUrls` in `structural-engine.js`), but
+the main-thread inline fallback loads its stack from `LAZY_TABS.advisor` in `index.html`,
+which needs `"ocr/name-model.js?v=1"` inserted **before** `"ocr/structural-engine.js"` —
+along with the usual `?v=` bumps. Without it the fallback path degrades silently to the
+round-13 reader (NMODEL null ⇒ the solve refuses and the caption floor stays 0.68), which is
+safe but is not the build measured above.
+
