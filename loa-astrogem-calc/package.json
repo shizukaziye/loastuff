@@ -10,8 +10,9 @@
     "genrefs": "node tools/gen-refs.js",
     "eval-ocr": "node tools/eval-ocr.js",
     "lint-labels": "node tools/lint-labels.js",
-    "eval-gate": "node tools/lint-labels.js && node tools/eval-ocr.js --engines=structural --gate=structural:0.97,0.95",
-    "serve": "npx http-server -p 8080 -c-1 ."
+    "eval-gate": "node tools/lint-pins.js && node tools/lint-labels.js && node tools/eval-ocr.js --engines=structural --gate=structural:0.97,0.95",
+    "serve": "npx http-server -p 8080 -c-1 .",
+    "lint-pins": "node tools/lint-pins.js"
   },
   "license": "MIT",
   "devDependencies": {
