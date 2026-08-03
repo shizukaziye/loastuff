@@ -40,6 +40,13 @@
       ]
     },
     {
+      label: "TCG",
+      items: [
+        { name: "CN Card Finder",    url: "https://shizukaziye.github.io/cn-card-finder/" },
+        { name: "TCG Price Tracker", url: "https://tcg-price-tracker.pages.dev/" }
+      ]
+    },
+    {
       label: "Finance",
       items: [
         { name: "FIRE Calculator", url: "https://shizukaziye.github.io/fire-calculator/" }

@@ -33,6 +33,7 @@
     --blue:#62c6df;
     --blue-dim:#2f7d92;
     --green:#5fd08a;
+    --purple:#c78cff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
@@ -160,6 +161,7 @@
 
   .blue{--accent:var(--blue)}
   .green{--accent:var(--green)}
+  .purple{--accent:var(--purple)}
 
   /* ---------- Footer ---------- */
   footer{
@@ -185,7 +187,7 @@
     <h1>Loseii</h1>
     <p class="tagline">Everything I've built — calculators &amp; tools for Lost Ark, League, and personal finance, in one place. Bookmark it.</p>
     <div class="meta-row">
-      <span class="pill-stat"><span class="dot"></span>8 live tools</span>
+      <span class="pill-stat"><span class="dot"></span>10 live tools</span>
       <span class="pill-stat">Free &amp; in-browser</span>
       <span class="pill-stat">No login</span>
     </div>
@@ -294,6 +296,34 @@
         <h3>Champion Pool Coverage</h3>
         <p>Analyze your champion pool against the live meta — best adds, cuts, and blind picks, refreshed weekly from lolalytics.</p>
         <div class="host">shizukaziye.github.io/lol-pool-coverage</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ============ TCG ============ -->
+  <section class="section">
+    <div class="section-head"><h2>Trading Card Games</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <a class="card purple" href="https://shizukaziye.github.io/cn-card-finder/" rel="noopener">
+        <div class="card-top">
+          <span class="tag">Sourcing</span>
+          <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </div>
+        <h3>CN Card Finder</h3>
+        <p>Find a Pokémon, One Piece or Riftbound card in English, confirm the picture, and get the Chinese name + search strings for jihuanshe / Superbuy / Taobao.</p>
+        <div class="host">shizukaziye.github.io/cn-card-finder</div>
+      </a>
+
+      <a class="card purple" href="https://tcg-price-tracker.pages.dev/" rel="noopener">
+        <div class="card-top">
+          <span class="tag">Tracker</span>
+          <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </div>
+        <h3>TCG Price Tracker</h3>
+        <p>Card price watchlist with a Chinese-market view — jihuanshe CNY against PriceCharting USD, refreshed daily.</p>
+        <div class="host">tcg-price-tracker.pages.dev</div>
       </a>
 
     </div>

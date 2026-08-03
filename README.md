@@ -30,6 +30,10 @@ Cloudflare Pages deploys `main` on every push. The custom domain is `www.loseii.
 **League of Legends**
 - [Champion Pool Coverage](https://shizukaziye.github.io/lol-pool-coverage/) — analyze your pool vs the live meta (own repo)
 
+**Trading Card Games**
+- [CN Card Finder](https://shizukaziye.github.io/cn-card-finder/) — EN→CN card names + search strings for sourcing from China (own repo)
+- [TCG Price Tracker](https://tcg-price-tracker.pages.dev/) — price watchlist incl. jihuanshe CNY vs PriceCharting USD (own repo)
+
 **Finance**
 - [FIRE Calculator](https://shizukaziye.github.io/fire-calculator/) — FIRE planner with fixed, historical, and Monte-Carlo modes (own repo)
 
