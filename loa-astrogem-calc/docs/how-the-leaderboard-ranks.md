@@ -25,6 +25,9 @@ multiplicative total from *how-a-gem-is-graded.md §9*:
   the support axis. It is already the **per-ally** party damage: the support
   coefficients in the model are stored per-DPS (÷3), so no extra division happens
   here (the ×3 party benefit exists only at the pipeline's gold step).
+  Caveat: `gridDamage` scores gems, not the cores they sit in — core **rarity**
+  (relic vs ancient threshold effects) is not counted, and can shift a real grid
+  by ~±0.2pp party (grading doc §9). Two close neighbors can flip on that alone.
 
 ### Avg grade — *the quality column*
 

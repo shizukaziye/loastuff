@@ -231,6 +231,9 @@ METHODOLOGY §3) — so when that model changes, these move with it.
 > lifts it further). Values below are the corrected numbers, and they are **live**:
 > `model/astrogem.js` carries them and the committed 2026-07-23
 > `data/pipeline-support.json` bake was built from them (verified in sync).
+> Independent corroboration (2026-08-06): lostark.bible's CP itemization, built on
+> the game's own combat-power algorithm, prices ally-damage at 0.95× and brand at
+> 0.55× of ally-attack per stat-% — within 10% of this model's 0.90× / 0.58×.
 
 | Support line | per-level value (per-DPS) | was |
 |---|---:|---:|
@@ -303,6 +306,18 @@ linear** (the party per-level values are flat in this model — no bucket dimini
 and order is the per-core 17-floor form with each core's own rate. The support
 coefficients are stored per-ally (÷3, §8), so this total already IS the per-ally
 party % — the UI shows it as-is, with no division.
+
+> **Known limitation — core rarity is not scored.** The grid total sees gems
+> (effects + order points over the 17 floor) but not the core items they sit in:
+> the 0→17 threshold effects are treated as universal baseline, and the
+> relic↔ancient gap in those thresholds (e.g. ancient Faith Enhancement grants
+> ~+1.6% more ally damage than relic) is invisible. Two same-gem grids can differ
+> by ~±0.2pp real party % per rarity-mismatched core. Found 2026-08-06 comparing
+> two live support grids against lostark.bible's ark-grid CP: bible's flip vs this
+> model's ordering traced almost entirely to one ancient-vs-relic Chaos Sun core
+> (bible credits full thresholds + rarity — though its weapon-type cores hide
+> their rarity bonus in base stats, so its ark-grid line isn't apples-to-apples
+> either).
 
 > **Important:** per-gem grades use the lvl-30 *marginal* yardstick, while the grid
 > total uses the lvl-0 *cumulative* model with diminishing returns. So **the per-gem

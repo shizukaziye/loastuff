@@ -251,6 +251,9 @@ DPS/Support toggle picks which file it reads.
 > committed 2026-07-23 `data/pipeline-support.json` bake carries these corrected
 > constants (code and bake verified in sync). The **leaderboard** computes
 > `gridDamage(support)` live in the browser, so it re-ranked on redeploy.
+> Independent cross-check (2026-08-06): lostark.bible's CP itemization (the game's
+> own combat-power algorithm) prices ally-dmg at 0.95× and brand at 0.55× of
+> ally-attack per stat-%, vs this model's 0.90× / 0.58× — agreement within 10%.
 
 ### Per cost-cell rendering
 
@@ -363,9 +366,10 @@ The green floor and the reset cost live in `pipeline.js`'s `CONST` block
 yellow bands match the baked `meta.verdict`, whose `green: 18000` is the legacy
 deployed-page band that `CONST` now overrides. The purple test is computed
 block-level from the real unopened rarity-upgrade fusion mixes (not per-bucket
-`fusionValueForTier`). **Roster-bound (RB)** gems are free to cut, so the RB
-section shows the per-bucket cut value + % only (no pipeline lane, no purple — you
-always cut free gems).
+`fusionValueForTier`). **Roster-bound (RB)** gems process free — rerolls
+(incl. the paid final one) and resets still cost gold (fixed 2026-07-21, baked into
+the 2026-07-23 tables) — so the RB section shows the per-bucket cut value + % only
+(no pipeline lane, no purple).
 
 ---
 

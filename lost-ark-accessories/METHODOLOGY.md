@@ -149,6 +149,9 @@ stat→the support's base atk.
 Rough high-tier party-damage contributions (Bard, spec 1100, uptimes above):
 brand-neck ≈ +0.70%, ally-atk ring ≈ +0.75%, ally-dmg ring ≈ +1.01%. Per point:
 ally-atk ≈ 0.150, ally-dmg ≈ 0.136, brand ≈ 0.087 — all comparable to DPS lines.
+Independent cross-check (2026-08-06): lostark.bible's combat-power itemization,
+built on the game's own algorithm, prices ally-dmg at 0.95× and brand at 0.55× of
+ally-atk per stat-% — within 10% of this model's 0.90× / 0.58×.
 Spec and class scale these: at higher spec every identity-bracket line (ally-dmg,
 serenade, chord, t-skill) is worth more; non-Bard classes swap the coefficient and
 identity base.
