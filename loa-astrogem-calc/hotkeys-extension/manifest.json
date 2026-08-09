@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Astrogem Advisor Hotkeys",
+  "version": "1.0",
+  "description": "Global hotkeys that drive the Astrogem Advisor while Lost Ark keeps focus: Ctrl+Shift+1 = Read screen now, Ctrl+Shift+2 = Get advice.",
+  "background": { "service_worker": "sw.js" },
+  "permissions": ["scripting"],
+  "host_permissions": [
+    "https://www.loseii.com/*",
+    "http://localhost:8732/*"
+  ],
+  "action": { "default_title": "Astrogem Advisor Hotkeys — Ctrl+Shift+1 read, Ctrl+Shift+2 advice" },
+  "commands": {
+    "read-screen": {
+      "suggested_key": { "default": "Ctrl+Shift+1" },
+      "description": "Read screen now (grab a frame from the shared game screen and parse it)",
+      "global": true
+    },
+    "get-advice": {
+      "suggested_key": { "default": "Ctrl+Shift+2" },
+      "description": "Get advice (solve the current window and save the reading)",
+      "global": true
+    }
+  }
+}
