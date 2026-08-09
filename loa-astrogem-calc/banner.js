@@ -14,21 +14,26 @@
     el.id = "astro-banner";
     el.innerHTML =
       '<style>' +
-      '#astro-banner{margin:10px 0;padding:10px 14px;border:1px solid #7e5cc0;border-radius:10px;' +
+      '#astro-banner{margin:10px 0;padding:9px 30px 9px 14px;border:1px solid #7e5cc0;border-radius:10px;' +
       'background:linear-gradient(90deg,rgba(126,92,192,.16),rgba(59,127,208,.12));font-size:13px;line-height:1.5;position:relative}' +
       '#astro-banner b{color:var(--text,#fff)}' +
       '#astro-banner .ab-x{position:absolute;top:6px;right:10px;cursor:pointer;border:0;background:none;' +
       'color:inherit;font-size:15px;opacity:.7}#astro-banner .ab-x:hover{opacity:1}' +
+      '#astro-banner details{display:inline}' +
+      '#astro-banner summary{display:inline;cursor:pointer;color:#a98ae0;text-decoration:underline;font-size:12px}' +
+      '#astro-banner .ab-body{margin-top:6px;opacity:.9}' +
       '</style>' +
       '<button class="ab-x" title="Dismiss" aria-label="Dismiss">&times;</button>' +
-      '<b>Grading reweighted (Aug 9).</b> Willpower cost now carries a per-cost percentage toll fitted on ' +
-      '15,000 simulated accounts packed into optimal grids (costs 3&ndash;6 all viable, 7 taxed, 8 heavy, 9 worthless); ' +
-      'order value is unchanged. Perfect gems no longer tie at 100: the perfect Ark Grid layout <i>averages</i> 100, ' +
-      'so a perfect 8/9/10-cost grades 93 / 97.8 / 104.6, and every perfect gem keeps the rainbow badge. Letter cuts ' +
-      'are the familiar 5-point steps with S+ at 93, so all perfects stay S+ (still the top ~0.3% of gems). ' +
-      'Support gems currently use the same toll curve carried over from the DPS fit (a support-native study is ' +
-      'in progress and will replace it). ' +
-      'Baselines, EV tables and the leaderboard are re-baked on the new scale, so numbers have shifted from last week.';
+      '<b>Gem grading was reweighted on Aug 9</b> &mdash; grades and letter cuts have changed. ' +
+      '<details><summary>What changed?</summary><div class="ab-body">' +
+      'Willpower cost is now priced by a per-cost curve fitted on 15,000 simulated accounts packed into optimal ' +
+      'grids: costs 3&ndash;6 are all viable, 7 is taxed, 8 heavy, 9 worthless. Order value is unchanged. ' +
+      'Perfect gems no longer tie at 100 &mdash; the perfect Ark Grid layout <i>averages</i> 100, so a perfect ' +
+      '8/9/10-cost grades 93 / 97.8 / 104.6, and every perfect gem keeps the rainbow badge. Letter cuts are the ' +
+      'familiar 5-point steps with S+ at 93, so all perfects stay S+ (still the top ~0.3% of gems). ' +
+      'Support gems currently use the toll curve carried over from the DPS fit (a support-native study is in ' +
+      'progress). Baselines, EV tables and the leaderboard are re-baked, so numbers have shifted from last week.' +
+      '</div></details>';
     tabs.parentNode.insertBefore(el, tabs.nextSibling);
     el.querySelector(".ab-x").addEventListener("click", function () {
       try { localStorage.setItem(KEY, "1"); } catch (e) {}
