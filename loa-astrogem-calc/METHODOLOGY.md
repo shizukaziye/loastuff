@@ -37,7 +37,11 @@ gemValue(config)  = gemDamage × M(effectiveCost)      ← THE value / EV quanti
 
 **Willpower is not a damage line** — it is efficiency (`effectiveCost = baseCost −
 willpowerLevel`), folded in as a quality multiplier `M(effectiveCost)` calibrated so
-a perfect gem of every base cost ties exactly (`gemValue ≈ 1.5021` = grade 100).
+a perfect gem of every base cost tied exactly (`gemValue ≈ 1.5021` = grade 100).
+**Superseded 2026-08-09 (willpower reweight):** `gemValue` is now
+`(effects + 0.048·order) × M'` with `M'(c) = 1 + 0.078·(5−c)`, graded against the
+perfect-grid anchor (100 = the 3/3/6 perfect-layout average; open top, perfect c10
+= 106). See docs/willpower-reweight-plan.md and docs/how-a-gem-is-graded.md §5–6.
 Since the 2026-06-26 scoring rework this multiplicative `gemValue` is what the
 grade, the DP terminal value, and every EV layer in this bake use; the support axis
 has a parallel `supportValue`. Full derivation + the `M` table:
@@ -379,7 +383,8 @@ The exact DP is **~3 s per epic cell** (turn-1, 9 turns / 3 rerolls), far too sl
 to recompute on every input change. So the tab renders **only baked values**: one
 clickable gpd tier at a time (the 8 baked tiers, `meta.anchorGpd`) and one row per
 baked grade baseline (the 12 rank rows C-…S+, `meta.bakedBaselines` =
-`gradeToScore(40…95)`). Every number is a **direct key lookup** into
+`gradeToScore` of the rank ladder — since 2026-08-09 the anchors are
+`[30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82.5, 90]`). Every number is a **direct key lookup** into
 `data/pipeline.json` / `data/pipeline-support.json` — exact and instant. The old
 arbitrary-baseline "live" mode (a bilinear interpolation of baked anchors) is
 **gone**; nothing is interpolated anywhere.

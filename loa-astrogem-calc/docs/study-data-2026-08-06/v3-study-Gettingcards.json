@@ -1,0 +1,490 @@
+{
+  "generatedAt": "2026-08-06T21:40:29.465Z",
+  "trials": 10000,
+  "results": [
+    {
+      "cell": "Gettingcards:order:c8",
+      "character": "Gettingcards",
+      "gemType": "order",
+      "baseCost": 8,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 85,
+      "baseline": 1.291362848262097,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 2598219137,
+      "batchGems": 7041,
+      "pUpgradePerGem": 0.0284050560999858,
+      "pUpgradeAnySlot": 0.07158074137196421,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 38.0348,
+        "sd": 37.31854574264164,
+        "p10": 5,
+        "p50": 27,
+        "p90": 87
+      },
+      "gold": {
+        "mean": 130729.69,
+        "sd": 124154.709514766,
+        "p10": 19800,
+        "p50": 93100,
+        "p90": 294800
+      },
+      "goldSplit": {
+        "process": 120153.15,
+        "reroll": 10576.54,
+        "reset": 0
+      },
+      "batchWinners": 200,
+      "resetsPerTrial": 0,
+      "rerollsPerTrial": 69.9637,
+      "processesPerGem": 3.8538732949824897,
+      "fodderCreditPerTrial": 38269.01558348311,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.14495166628856856,
+        "meanDRawGrid": 0.11917529668799025,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 87.22738999999567,
+        "meanWinnerM": 1.1878003664066357,
+        "meanReplacedM": 1.1878003664066357,
+        "meanReplacedGrade": 76.95479999999189,
+        "replacedCostHist": {
+          "8": 9320,
+          "9": 680
+        },
+        "replacedWpCostHist": {
+          "3": 9320,
+          "4": 680
+        },
+        "wpLevelHist": {
+          "4": 680,
+          "5": 9320
+        },
+        "wpCostHist": {
+          "3": 9320,
+          "4": 680
+        },
+        "tierHist": {
+          "relic": 6682,
+          "ancient": 2628,
+          "legendary": 690
+        },
+        "bucketHist": {
+          "2D": 7045,
+          "Op": 2955
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 26.907
+    },
+    {
+      "cell": "Gettingcards:order:c9",
+      "character": "Gettingcards",
+      "gemType": "order",
+      "baseCost": 9,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 85,
+      "baseline": 1.291362848262097,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 2581441518,
+      "batchGems": 17297,
+      "pUpgradePerGem": 0.01156269873388449,
+      "pUpgradeAnySlot": 0.10348615366826618,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 84.1989,
+        "sd": 84.14251562131662,
+        "p10": 9,
+        "p50": 59,
+        "p90": 190
+      },
+      "gold": {
+        "mean": 307811.25,
+        "sd": 302706.6031840023,
+        "p10": 38000,
+        "p50": 217500,
+        "p90": 694900
+      },
+      "goldSplit": {
+        "process": 282041.55,
+        "reroll": 25769.7,
+        "reset": 0
+      },
+      "batchWinners": 200,
+      "resetsPerTrial": 0,
+      "rerollsPerTrial": 158.4793,
+      "processesPerGem": 4.086311103826772,
+      "fodderCreditPerTrial": 201528.92025989524,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.076085367335076,
+        "meanDRawGrid": 0.07045199147281508,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 91.53987000000137,
+        "meanWinnerM": 1.0732717508070506,
+        "meanReplacedM": 1.0732717508070506,
+        "meanReplacedGrade": 86.10150000000618,
+        "replacedCostHist": {
+          "8": 2550,
+          "9": 7450
+        },
+        "replacedWpCostHist": {
+          "4": 7450,
+          "5": 2550
+        },
+        "wpLevelHist": {
+          "4": 2550,
+          "5": 7450
+        },
+        "wpCostHist": {
+          "4": 7450,
+          "5": 2550
+        },
+        "tierHist": {
+          "relic": 6201,
+          "ancient": 3799
+        },
+        "bucketHist": {
+          "2D": 10000
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 54.895
+    },
+    {
+      "cell": "Gettingcards:order:c10",
+      "character": "Gettingcards",
+      "gemType": "order",
+      "baseCost": 10,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 85,
+      "baseline": 1.291362848262097,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 98692498,
+      "batchGems": 21590,
+      "pUpgradePerGem": 0.009263547938860583,
+      "pUpgradeAnySlot": 0.07999073645206115,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 118.4555,
+        "sd": 117.86556345623113,
+        "p10": 13,
+        "p50": 84,
+        "p90": 268
+      },
+      "gold": {
+        "mean": 237827.81,
+        "sd": 230649.98846156526,
+        "p10": 32400,
+        "p50": 170500,
+        "p90": 530700
+      },
+      "goldSplit": {
+        "process": 219386.79,
+        "reroll": 18441.02,
+        "reset": 0
+      },
+      "batchWinners": 200,
+      "resetsPerTrial": 0,
+      "rerollsPerTrial": 141.3647,
+      "processesPerGem": 2.2851881086146273,
+      "fodderCreditPerTrial": 101494.04994029582,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.11004228138620471,
+        "meanDRawGrid": 0.10890193951428462,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 90.43083999999965,
+        "meanWinnerM": 1,
+        "meanReplacedM": 1,
+        "meanReplacedGrade": 82.59999999998541,
+        "replacedCostHist": {
+          "8": 10000
+        },
+        "replacedWpCostHist": {
+          "5": 10000
+        },
+        "wpLevelHist": {
+          "5": 10000
+        },
+        "wpCostHist": {
+          "5": 10000
+        },
+        "tierHist": {
+          "relic": 5827,
+          "ancient": 4173
+        },
+        "bucketHist": {
+          "2D": 10000
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 49.447
+    },
+    {
+      "cell": "Gettingcards:chaos:c8",
+      "character": "Gettingcards",
+      "gemType": "chaos",
+      "baseCost": 8,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 80,
+      "baseline": 1.2211048912381652,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 2753038833,
+      "batchGems": 5000,
+      "pUpgradePerGem": 0.0424,
+      "pUpgradeAnySlot": 0.0734,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 25.6871,
+        "sd": 24.979571483297118,
+        "p10": 3,
+        "p50": 18,
+        "p90": 58
+      },
+      "gold": {
+        "mean": 263399.99,
+        "sd": 255281.22555215796,
+        "p10": 33700,
+        "p50": 185900,
+        "p90": 587400
+      },
+      "goldSplit": {
+        "process": 169179.03,
+        "reroll": 22948.96,
+        "reset": 71272
+      },
+      "batchWinners": 212,
+      "resetsPerTrial": 3.5636,
+      "rerollsPerTrial": 70.9692,
+      "processesPerGem": 7.749387825017227,
+      "fodderCreditPerTrial": 175006.95667263697,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.0697751067897548,
+        "meanDRawGrid": 0.053918949780145,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 88.35467999999676,
+        "meanWinnerM": 1.163172579961257,
+        "meanReplacedM": 1.1591991856893025,
+        "meanReplacedGrade": 83.37878000001079,
+        "replacedCostHist": {
+          "8": 9292,
+          "9": 708
+        },
+        "replacedWpCostHist": {
+          "3": 7791,
+          "4": 1501,
+          "6": 708
+        },
+        "wpLevelHist": {
+          "2": 304,
+          "3": 404,
+          "4": 1501,
+          "5": 7791
+        },
+        "wpCostHist": {
+          "3": 7791,
+          "4": 1501,
+          "5": 404,
+          "6": 304
+        },
+        "tierHist": {
+          "relic": 7508,
+          "ancient": 2492
+        },
+        "bucketHist": {
+          "Op": 2852,
+          "2D": 7148
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 28.563
+    },
+    {
+      "cell": "Gettingcards:chaos:c9",
+      "character": "Gettingcards",
+      "gemType": "chaos",
+      "baseCost": 9,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 80,
+      "baseline": 1.2211048912381652,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 2736261214,
+      "batchGems": 5000,
+      "pUpgradePerGem": 0.0512,
+      "pUpgradeAnySlot": 0.1052,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 18.6054,
+        "sd": 17.887512044684463,
+        "p10": 2,
+        "p50": 13,
+        "p90": 42
+      },
+      "gold": {
+        "mean": 190540.33,
+        "sd": 182249.73608519929,
+        "p10": 24300,
+        "p50": 136900,
+        "p90": 425200
+      },
+      "goldSplit": {
+        "process": 122111.91,
+        "reroll": 16324.42,
+        "reset": 52104
+      },
+      "batchWinners": 256,
+      "resetsPerTrial": 2.6052,
+      "rerollsPerTrial": 51.4462,
+      "processesPerGem": 7.730191234802799,
+      "fodderCreditPerTrial": 91335.63770150108,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.09424944523735033,
+        "meanDRawGrid": 0.06123214200377748,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 84.99378000000439,
+        "meanWinnerM": 1.0379832888076241,
+        "meanReplacedM": 1.0128741908465004,
+        "meanReplacedGrade": 78.25839000000023,
+        "replacedCostHist": {
+          "8": 5699,
+          "9": 4212,
+          "10": 89
+        },
+        "replacedWpCostHist": {
+          "4": 5699,
+          "6": 4212,
+          "7": 89
+        },
+        "wpLevelHist": {
+          "2": 89,
+          "3": 1659,
+          "4": 2553,
+          "5": 5699
+        },
+        "wpCostHist": {
+          "4": 5699,
+          "5": 2553,
+          "6": 1659,
+          "7": 89
+        },
+        "tierHist": {
+          "relic": 7210,
+          "legendary": 749,
+          "ancient": 2041
+        },
+        "bucketHist": {
+          "2D": 6165,
+          "Op": 3835
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 23.31
+    },
+    {
+      "cell": "Gettingcards:chaos:c10",
+      "character": "Gettingcards",
+      "gemType": "chaos",
+      "baseCost": 10,
+      "axis": "dps",
+      "gpd": 5000000,
+      "baselineGrade": 80,
+      "baseline": 1.2211048912381652,
+      "candidateCount": 12,
+      "gridBase": 12.043199696139189,
+      "mode": "literal",
+      "seed": 482452546,
+      "batchGems": 5000,
+      "pUpgradePerGem": 0.0402,
+      "pUpgradeAnySlot": 0.1112,
+      "trials": 10000,
+      "cappedTrials": 0,
+      "gems": {
+        "mean": 22.719,
+        "sd": 22.057975755482175,
+        "p10": 3,
+        "p50": 16,
+        "p90": 52
+      },
+      "gold": {
+        "mean": 195157.62,
+        "sd": 185824.1791761515,
+        "p10": 26300,
+        "p50": 138000,
+        "p90": 446000
+      },
+      "goldSplit": {
+        "process": 122255.64,
+        "reroll": 13345.98,
+        "reset": 59556
+      },
+      "batchWinners": 201,
+      "resetsPerTrial": 2.9778,
+      "rerollsPerTrial": 58.5768,
+      "processesPerGem": 6.439117038602051,
+      "fodderCreditPerTrial": 74305.08647139429,
+      "winners": {
+        "count": 10000,
+        "meanDValue": 0.17482171856062811,
+        "meanDRawGrid": 0.10557093436131879,
+        "shareValueNegative": 0,
+        "meanWinnerGrade": 82.81537000000104,
+        "meanWinnerM": 0.9534109686479475,
+        "meanReplacedM": 0.8944591734349442,
+        "meanReplacedGrade": 70.3488300000118,
+        "replacedCostHist": {
+          "9": 9269,
+          "10": 731
+        },
+        "replacedWpCostHist": {
+          "6": 9269,
+          "7": 731
+        },
+        "wpLevelHist": {
+          "3": 731,
+          "4": 3275,
+          "5": 5994
+        },
+        "wpCostHist": {
+          "5": 5994,
+          "6": 3275,
+          "7": 731
+        },
+        "tierHist": {
+          "relic": 7200,
+          "ancient": 2544,
+          "legendary": 256
+        },
+        "bucketHist": {
+          "2D": 8042,
+          "Op": 1958
+        }
+      },
+      "solverNodes": 287688,
+      "elapsedSec": 23.953
+    }
+  ]
+}

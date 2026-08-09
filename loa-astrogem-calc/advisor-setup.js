@@ -34,7 +34,7 @@
   // Defaults (Shizu 2026-07-21): 1.5M gpd (= Econ.GPD_DEFAULT) and baseline A.
   // Combat-power auto-set on character pick still overrides; every choice now
   // PERSISTS (localStorage, see saveState/loadState) so it survives revisits.
-  var DEFAULT_BASE_IDX = 7;        // GRADE_ROWS index 7 = grade 75 = "A"
+  var DEFAULT_BASE_IDX = 7;        // GRADE_ROWS index 7 = rank "A" (grade 65 on the 2026-08 ladder)
   var gpd = Econ ? Econ.GPD_DEFAULT : 1500000;
   var gpdAuto = false;             // true while the chip was set from combat power
   var baseIdx = DEFAULT_BASE_IDX;  // GRADE_ROWS index

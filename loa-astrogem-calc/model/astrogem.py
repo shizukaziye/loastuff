@@ -156,49 +156,61 @@ def order_score(order_level):
 
 
 # ---- Willpower as a MULTIPLIER on damage (the grading model) ----
-# Mirrors astrogem.js: M(cost) calibrated so the 3 perfect gems (wp5, order5, top-2
-# effects @5) tie exactly; cost 6+ linear at the cost4->5 slope.
-def _perfect_damage(base_cost):
-    pool = EFFECT_POOLS[base_cost]
-    v = sorted((effect_score(e, 5) for e in pool), reverse=True)
-    return v[0] + v[1] + order_score(5)
-
-
-def _build_wp_mult():
-    m = {3: _perfect_damage(10) / _perfect_damage(8),
-         4: _perfect_damage(10) / _perfect_damage(9),
-         5: 1.0}
-    slope = m[4] - m[5]
-    for c in range(6, 10):
-        m[c] = 1 - slope * (c - 5)
-    return m
-
-
-_WP_MULT = _build_wp_mult()
+# 2026-08 REWEIGHT — mirrors astrogem.js exactly (see the JS comment and
+# docs/willpower-reweight-plan.md): value-layer constants fitted to
+# packed-roster membership; the perfect-gem tie is gone.
+VALUE_M_SLOPE = 0.078
+VALUE_ORDER_PER_POINT = 0.048
 
 
 def willpower_multiplier(cost):
-    if cost <= 3:
-        return _WP_MULT[3]
-    if cost >= 9:
-        return _WP_MULT[9]
-    if cost in _WP_MULT:
-        return _WP_MULT[cost]
-    lo = int(math.floor(cost))
-    return _WP_MULT[lo] + (_WP_MULT[lo + 1] - _WP_MULT[lo]) * (cost - lo)
+    c = max(3.0, min(9.0, cost))   # linear in cost, exact for non-integers
+    return 1 + VALUE_M_SLOPE * (5 - c)
 
 
 def gem_damage(config):
-    # Damage only (effects + order), NO willpower.
+    # Damage only (effects + order), NO willpower. Display layer: original order constant.
     return (effect_score(config["effect1"], config["effect1Level"])
             + effect_score(config["effect2"], config["effect2Level"])
             + order_score(config["orderLevel"]))
 
 
 def gem_value(config):
-    # Grading value = damage x willpower multiplier.
-    return gem_damage(config) * willpower_multiplier(
+    # Grading value = (effect damage + order VALUE) x willpower multiplier.
+    vd = (effect_score(config["effect1"], config["effect1Level"])
+          + effect_score(config["effect2"], config["effect2Level"])
+          + VALUE_ORDER_PER_POINT * config["orderLevel"])
+    return vd * willpower_multiplier(
         willpower_cost(config["baseCost"], config["willpowerLevel"]))
+
+
+def _perfect_config(base_cost, axis="dps"):
+    es_fn = support_effect_score if axis == "support" else effect_score
+    pool = sorted(EFFECT_POOLS[base_cost], key=lambda e: -es_fn(e, 5))
+    return {"baseCost": base_cost, "gemType": "order", "willpowerLevel": 5, "orderLevel": 5,
+            "effect1": pool[0], "effect1Level": 5, "effect2": pool[1], "effect2Level": 5}
+
+
+def is_perfect_config(config, axis="dps"):
+    if (config["willpowerLevel"] != 5 or config["orderLevel"] != 5
+            or config["effect1Level"] != 5 or config["effect2Level"] != 5):
+        return False
+    p = _perfect_config(config["baseCost"], axis)
+    return ({config["effect1"], config["effect2"]} == {p["effect1"], p["effect2"]})
+
+
+_VALUE_ANCHOR = None
+
+
+def value_anchor():
+    # 100 = the average gem of the perfect Ark Grid (3 c8 + 3 c9 + 6 c10 at wp5 —
+    # the exact 17-willpower packing). Open scale above: perfect c10 reads 106.0.
+    global _VALUE_ANCHOR
+    if _VALUE_ANCHOR is None:
+        _VALUE_ANCHOR = (3 * gem_value(_perfect_config(8))
+                         + 3 * gem_value(_perfect_config(9))
+                         + 6 * gem_value(_perfect_config(10))) / 12
+    return _VALUE_ANCHOR
 
 
 def score(config):
@@ -250,28 +262,34 @@ def value_bounds():
 
 
 def grade(config):
-    # GLOBAL value-normalization: every perfect gem ties at 100.
+    # Anchor normalization (2026-08): bottom clamps at 0, TOP IS OPEN.
     b = value_bounds()
-    g = 100 * (gem_value(config) - b["min"]) / (b["max"] - b["min"])
-    return round(max(0.0, min(100.0, g)) * 10) / 10
+    g = 100 * (gem_value(config) - b["min"]) / (value_anchor() - b["min"])
+    return round(max(0.0, g) * 10) / 10
 
 
 def grade_to_score(g, base_cost=None):
-    # Inverts the global value-grade -> the gemValue threshold (base_cost kept for sig).
+    # Anchor-based inverse; accepts grades past 100 (clamped 0..110).
     b = value_bounds()
-    return b["min"] + (max(0.0, min(100.0, g)) / 100) * (b["max"] - b["min"])
+    return b["min"] + (max(0.0, min(110.0, g)) / 100) * (value_anchor() - b["min"])
 
 
-# user-set rank cutoffs on the 0-100 grade; +/ /- thirds within each band.
-RANK_CUTS = [("S", 85), ("A", 70), ("B", 55), ("C", 40), ("D", 20), ("F", 0)]
+# 2026-08 ladder: explicit thresholds — 5s through S- = 75, then 82.5 and 90.
+RANK_LADDER = [
+    ("S+", 90), ("S", 82.5), ("S-", 75),
+    ("A+", 70), ("A", 65), ("A-", 60),
+    ("B+", 55), ("B", 50), ("B-", 45),
+    ("C+", 40), ("C", 35), ("C-", 30),
+    ("D+", 25), ("D", 20), ("D-", 15),
+    ("F+", 10), ("F", 5), ("F-", 0),
+]
+RANK_CUTS = [("S", 75), ("A", 60), ("B", 45), ("C", 30), ("D", 15), ("F", 0)]
 
 
 def rank_from_grade(g):
-    for i, (letter, lo) in enumerate(RANK_CUTS):
+    for letter, lo in RANK_LADDER:
         if g >= lo:
-            hi = 100 if i == 0 else RANK_CUTS[i - 1][1]
-            t = (g - lo) / (hi - lo) if hi > lo else 0
-            return letter + ("+" if t >= 2 / 3 else ("-" if t < 1 / 3 else ""))
+            return letter
     return "F-"
 
 
@@ -375,39 +393,36 @@ def support_damage(config, order_val=None):
             + config["orderLevel"] * ov)
 
 
-def _sup_perfect_damage(base_cost):
-    pool = EFFECT_POOLS[base_cost]
-    v = sorted((support_effect_score(e, 5) for e in pool), reverse=True)
-    return v[0] + v[1] + 5 * SUPPORT_SCORING["orderPerPoint"]
-
-
-def _build_sup_wp_mult():
-    m = {3: _sup_perfect_damage(10) / _sup_perfect_damage(8),
-         4: _sup_perfect_damage(10) / _sup_perfect_damage(9),
-         5: 1.0}
-    slope = m[4] - m[5]
-    for c in range(6, 10):
-        m[c] = 1 - slope * (c - 5)
-    return m
-
-
-_SUP_WP_MULT = _build_sup_wp_mult()
+# 2026-08 reweight, proportional convention (plan Step 6b): the DPS shrink
+# factors applied to the old support constants (slope 0.1310 x 0.793 -> 0.1038;
+# order value 0.02563 x 0.300 -> 0.00770). Support damage displays unchanged.
+SUP_VALUE_M_SLOPE = 0.1038
+SUP_VALUE_ORDER_PER_POINT = 0.00770
 
 
 def support_willpower_multiplier(cost):
-    if cost <= 3:
-        return _SUP_WP_MULT[3]
-    if cost >= 9:
-        return _SUP_WP_MULT[9]
-    if cost in _SUP_WP_MULT:
-        return _SUP_WP_MULT[cost]
-    lo = int(math.floor(cost))
-    return _SUP_WP_MULT[lo] + (_SUP_WP_MULT[lo + 1] - _SUP_WP_MULT[lo]) * (cost - lo)
+    c = max(3.0, min(9.0, cost))
+    return 1 + SUP_VALUE_M_SLOPE * (5 - c)
 
 
 def support_value(config):
-    return support_damage(config) * support_willpower_multiplier(
+    vd = (support_effect_score(config["effect1"], config["effect1Level"])
+          + support_effect_score(config["effect2"], config["effect2Level"])
+          + SUP_VALUE_ORDER_PER_POINT * config["orderLevel"])
+    return vd * support_willpower_multiplier(
         willpower_cost(config["baseCost"], config["willpowerLevel"]))
+
+
+_SUPPORT_VALUE_ANCHOR = None
+
+
+def support_value_anchor():
+    global _SUPPORT_VALUE_ANCHOR
+    if _SUPPORT_VALUE_ANCHOR is None:
+        _SUPPORT_VALUE_ANCHOR = (3 * support_value(_perfect_config(8, "support"))
+                                 + 3 * support_value(_perfect_config(9, "support"))
+                                 + 6 * support_value(_perfect_config(10, "support"))) / 12
+    return _SUPPORT_VALUE_ANCHOR
 
 
 _SUPPORT_VALUE_BOUNDS = None
@@ -471,10 +486,10 @@ def support_grade_bounds():
 
 
 def support_grade(config):
-    # GLOBAL value-normalization over support_value (perfect support gems read 100).
+    # Anchor normalization, open top (perfect support c8/c9/c10 = 90.2/96.5/106.6).
     b = support_value_bounds()
-    g = 100 * (support_value(config) - b["min"]) / (b["max"] - b["min"])
-    return round(max(0.0, min(100.0, g)) * 10) / 10
+    g = 100 * (support_value(config) - b["min"]) / (support_value_anchor() - b["min"])
+    return round(max(0.0, g) * 10) / 10
 
 
 def support_rank(config):
@@ -483,9 +498,9 @@ def support_rank(config):
 
 
 def support_grade_to_score(g):
-    # Value-based inverse, parallel to grade_to_score (support_value distribution).
+    # Anchor-based inverse, parallel to grade_to_score (clamped 0..110).
     b = support_value_bounds()
-    return b["min"] + (max(0.0, min(100.0, g)) / 100) * (b["max"] - b["min"])
+    return b["min"] + (max(0.0, min(110.0, g)) / 100) * (support_value_anchor() - b["min"])
 
 
 def score_breakdown(config):
@@ -672,7 +687,10 @@ _SCORE_DIST_CACHE = {}
 
 
 def _round_key(x):
-    return round(x * 1e6) / 1e6
+    # Half-UP like JS Math.round (Python's round() is half-even; under the 2026-08
+    # constants some keys land on exact 1e-6 halves and the engines would split
+    # distribution atoms differently). Values here are always >= 0.
+    return math.floor(x * 1e6 + 0.5) / 1e6
 
 
 def score_distribution_for_tier(base_cost, tier, axis="dps"):
@@ -698,9 +716,10 @@ def score_distribution_for_tier(base_cost, tier, axis="dps"):
         parts = _partitions_of_sum(s)
         part_w = 1.0 / len(parts)
         for (wp, ordv, lv_a, lv_b) in parts:
-            # NEW multiplicative model: value = (order damage + effects) x M(cost).
+            # Value model: (order VALUE + effects) x M(cost) — mirrors gem_value /
+            # support_value under the 2026-08 reweight (fitted order constant).
             cost = willpower_cost(base_cost, wp)
-            ord_d = support_order_score(ordv) if support else order_score(ordv)
+            ord_d = (SUP_VALUE_ORDER_PER_POINT if support else VALUE_ORDER_PER_POINT) * ordv
             mw = support_willpower_multiplier(cost) if support else willpower_multiplier(cost)
             for (e_a, e_b) in pairs:
                 sc1 = (ord_d + es_fn(e_a, lv_a) + es_fn(e_b, lv_b)) * mw
@@ -808,7 +827,7 @@ def _solve_joint_ev(baseline, gold_per_damage, axis="dps"):
             e[c]["relic"] = new_r
             e[c]["ancient"] = new_a
         iters += 1
-        if max_delta < 1e-9:
+        if max_delta < 1e-12:  # tightened 2026-08 in lockstep with astrogem.js
             break
 
     # Recompute maxG / maxH from the CONVERGED E so callers see the final values.

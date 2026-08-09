@@ -183,11 +183,12 @@
     for (var i = 0; i < gems.length; i++) if (validateConfig(gems[i]).valid) out.push(gems[i]);
     return out;
   }
-  // Map a (geometric-mean) gem value to a 0-100 grade via global value bounds.
-  function valueToGrade(v, bounds) {
-    if (!bounds) return null;
-    var g = 100 * (v - bounds.min) / (bounds.max - bounds.min);
-    return Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
+  // Map a (geometric-mean) gem value to the anchor-based grade (2026-08: 100 =
+  // the perfect-grid average; open top, so no 100 cap).
+  function valueToGrade(v, bounds, anchor) {
+    if (!bounds || !anchor) return null;
+    var g = 100 * (v - bounds.min) / (anchor - bounds.min);
+    return Math.round(Math.max(0, g) * 10) / 10;
   }
 
   // Total damage ABOVE the neutral baseline (order 4.25, no effects) over a character's
@@ -213,14 +214,16 @@
   function avgGradeOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
     if (A && A.gridQuality && A.valueBounds)
-      return valueToGrade(Math.exp(A.gridQuality(g, "dps") / g.length), A.valueBounds());
+      return valueToGrade(Math.exp(A.gridQuality(g, "dps") / g.length), A.valueBounds(),
+        A.valueAnchor ? A.valueAnchor() : null);
     var sum = 0; for (var i = 0; i < g.length; i++) sum += grade(g[i]); return sum / g.length;
   }
   // SUPPORT quality grade (parallel to avgGradeOf, support axis + bounds).
   function avgSupportGradeOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
     if (A && A.gridQuality && A.supportValueBounds)
-      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportValueBounds());
+      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportValueBounds(),
+        A.supportValueAnchor ? A.supportValueAnchor() : null);
     var sum = 0; for (var i = 0; i < g.length; i++) sum += supportGrade(g[i]); return sum / g.length;
   }
 

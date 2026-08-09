@@ -318,10 +318,16 @@
     return (A && A.rankColor) ? A.rankColor(rank)
       : (typeof window.rankColor === "function" ? window.rankColor(rank) : { bg: "#6f747a", fg: "#fff" });
   }
-  function rankBadge(rank, extra, grade) {
-    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade) : rankColorOf(rank);
+  function rankBadge(rank, extra, grade, perfect) {
+    // `perfect` gates the rainbow (2026-08): the badge follows the CONFIG, not a
+    // grade threshold — grades can exceed 100 and perfect c8/c9 sit below it.
+    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade, perfect) : rankColorOf(rank);
     return '<span class="rank-badge' + (extra ? " " + extra : "") + (c.cls ? " " + c.cls : "") +
       '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
+  }
+  // Perfect on the ACTIVE axis (all stats maxed + the cost's top-2 effects).
+  function isPerfect(cfg) {
+    return !!(A && A.isPerfectConfig && A.isPerfectConfig(cfg, isSupport() ? "support" : "dps"));
   }
 
   // Compact relative age, e.g. "just now" / "2d ago" / "3h ago". (Shared format used
@@ -709,7 +715,7 @@
 '    <li><b>Additional Damage &asymp; 0.059</b> /level &middot; <b>Attack Power &asymp; 0.032</b> /level.</li>' +
 '  </ul>' +
 '  <p><b>Willpower is efficiency, not damage.</b> It <i>reduces</i> the gem’s cost (<code>effective cost = base cost &minus; willpower level</code>), and a cheaper gem of the same damage is strictly better. It enters as a multiplier on the damage, calibrated so a <b>perfect gem of every base cost ties at grade 100</b> (a perfect 8 / 9 / 10 with willpower 5 sits at effective cost 3 / 4 / 5, and the multiplier makes those three equal). The multiplier punishes low willpower hard.</p>' +
-'  <p><b>Grade &amp; rank.</b> The grade is that willpower-adjusted value, normalized 0&ndash;100 over <i>every</i> possible gem: <b>100</b> = a perfect gem (any cost), <b>0</b> = the worst legal gem. The rank bands it &mdash; <b>S&nbsp;85 / A&nbsp;70 / B&nbsp;55 / C&nbsp;40 / D&nbsp;20 / F&nbsp;0</b> &mdash; each split into &minus;/&nbsp;/+ thirds (55&ndash;60 = B&minus;, 60&ndash;65 = B, 65&ndash;70 = B+).</p>' +
+'  <p><b>Grade &amp; rank.</b> The grade is that willpower-adjusted value on the Aug-2026 scale: <b>100</b> = the average gem of a perfect Ark Grid (3 perfect 8-costs, 3 perfect 9-costs, 6 perfect 10-costs &mdash; exactly what the willpower budget allows), and the scale is open above it &mdash; a perfect 10-cost reads <b>106</b>, a perfect 9-cost 97.7, a perfect 8-cost 90.2. Every perfect gem carries the rainbow badge whatever its number. Ranks step every 5 points up to <b>S&minus;&nbsp;75</b>, then <b>S&nbsp;82.5</b> and <b>S+&nbsp;90</b>.</p>' +
 '  <p><b>The loadout total (“% total dmg”)</b> answers a different question: the real damage your <i>whole 6-core grid</i> adds over having no grid. Effect levels pool into stat buckets that multiply over your gear (so two of the same stat give <b>diminishing returns</b>), and order/chaos is counted <i>per core</i> above a ~17-point floor, the six cores multiplying. Because of that, the per-gem numbers <b>don’t sum to the total &mdash; by design</b>: a gem is rated standalone, the total accounts for the whole grid.</p>' +
 '  <p><b>Support.</b> Flip <b>Grade as &rarr; Support</b> for support classes &mdash; a parallel axis where Ally Attack / Brand / Ally Damage are the &ldquo;damage&rdquo; lines and order points are worth different amounts per core (Brand on Chaos Moon is the strongest). The total is the per-ally party %, the same figure the leaderboard shows.</p>' +
 '  <p class="note">Pulling a character fetches the loadout from lostark.bible (cached 7 days; &ldquo;Re-pull&rdquo; forces fresh). Effect ids and each gem’s cost/type are decoded from the page’s grid data &mdash; check a gem or two against the in-game display.</p>' +
@@ -754,8 +760,8 @@
 '<div class="panel">' +
 '  <h2>Grade</h2>' +
 '  <div class="gr-headline">' +
-'    <div class="gr-badge ' + cls + '">' + rankBadge(rank, null, g) +
-'      <span class="gd">grade <b>' + g.toFixed(1) + '</b> / 100</span></div>' +
+'    <div class="gr-badge ' + cls + '">' + rankBadge(rank, null, g, isPerfect(cfg)) +
+'      <span class="gd">grade <b>' + g.toFixed(1) + '</b></span></div>' +
 '    <div class="gr-dmg">% damage<br><b>' + dmg.toFixed(3) + '%</b></div>' +
 '  </div>' +
 '  <div class="gr-bar"><i class="' + cls + '" style="width:' + Math.max(2, g).toFixed(1) + '%"></i></div>' +
@@ -861,7 +867,7 @@
     var g, rank, dmg, cls;
     if (v.valid) { g = gGrade(cfg); rank = gRank(cfg); dmg = gRel(cfg); cls = rankClass(rank); }
     var rkHtml = v.valid
-      ? rankBadge(rank, null, g) + '<div class="gd">' + g.toFixed(0) + '</div>'
+      ? rankBadge(rank, null, g, isPerfect(cfg)) + '<div class="gd">' + g.toFixed(0) + '</div>'
       : '<div class="rk">?</div>';
     var idAttr = (cfg._gidx != null) ? ' id="gr-gem-' + cfg._gidx + '"' : '';
     var topRight = v.valid
@@ -897,7 +903,7 @@
         var slot = e.gem.slot || ("Core " + (e.gem.coreBase || "?"));
         var tgt = (e.gem._gidx != null) ? ' data-target="gr-gem-' + e.gem._gidx + '"' : '';
         return '<div class="wk-row"' + tgt + ' title="Jump to this gem">' +
-          rankBadge(rankFromGrade(e.g), null, e.g) +
+          rankBadge(rankFromGrade(e.g), null, e.g, isPerfect(e.gem)) +
           '<span class="wk-slot">' + esc(slot) + '</span>' +
           '<span class="wk-dmg">' + e.dmg.toFixed(3) + '%</span>' +
           '</div>';

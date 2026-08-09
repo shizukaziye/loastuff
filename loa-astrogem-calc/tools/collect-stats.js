@@ -143,7 +143,10 @@ var EFFECT_BUCKETS = AXIS === "support" ? EFFECT_BUCKETS_SUPPORT : EFFECT_BUCKET
 // cell is an exact DP value at that baseline grade — no interpolation noise. Each grade
 // -> its score threshold via (support)gradeToScore (the SAME fn the UI uses), axis-aware
 // so support baselines sit on the support score scale.
-var BAKED_GRADES = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95]; // one row per rank C-…S+ (each rank's lower/mid/upper third)
+// 2026-08 reweight ladder: one row per rank C-…S+ on the NEW cuts (5s through
+// S- = 75, then the S band's even 82.5 / 90 split) — must match
+// loadout-econ.js GRADE_ROWS. See docs/willpower-reweight-plan.md.
+var BAKED_GRADES = [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82.5, 90];
 var BAKED_BASELINES = BAKED_GRADES.map(function (g) {
   return AXIS === "support" ? A.supportGradeToScore(g) : A.gradeToScore(g);
 });
