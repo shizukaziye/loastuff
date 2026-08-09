@@ -94,25 +94,36 @@ var EMPTY = { cfg: null, cost: 0, order: 0, atk: 0, add: 0, boss: 0, rawLin: 0, 
 
 // ---------------- banded grid damage ----------------
 function bandPenalty(pts) {
+  // 2026-08-09 (Shizu): doubled from -5/-10/-15 — under the soft bands the
+  // packer parked one core at 14-16 in most accounts, while every real
+  // endgame grid holds 17+ on all cores. These rates make sub-17 cores
+  // essentially never optimal.
   if (pts >= 17) return 0;
-  if (pts >= 14) return 0.05;
-  if (pts >= 10) return 0.10;
-  return 0.15;
+  if (pts >= 14) return 0.10;
+  if (pts >= 10) return 0.20;
+  return 0.30;
 }
 // groups: array of 3 arrays of metas (each length <= 4)
+// 2026-08-09 CORRECTED ATTACHMENT (Shizu): a sub-17 core's penalty hits the
+// WHOLE character's damage (a core option is a global multiplier), not just
+// that core's own gems — the old per-core-gems attachment made -5% worth
+// ~0.03% total (a fifth of one order point) and the packer rightly ignored
+// it. Now each sub-17 core multiplies TOTAL damage by (1 - band), so a
+// 14-16 core costs 10% of everything — ~60 order points — and the packer
+// forces 17 wherever the collection allows.
 function damageOfGroups(groups) {
-  var atk = 0, add = 0, boss = 0, d = 0;
+  var atk = 0, add = 0, boss = 0, d = 0, mult = 1;
   for (var g = 0; g < groups.length; g++) {
     var grp = groups[g], pts = 0, i;
     for (i = 0; i < grp.length; i++) pts += grp[i].order;
-    var scale = 1 - bandPenalty(pts);
+    mult *= (1 - bandPenalty(pts));
     for (i = 0; i < grp.length; i++) {
-      atk += scale * grp[i].atk; add += scale * grp[i].add; boss += scale * grp[i].boss;
+      atk += grp[i].atk; add += grp[i].add; boss += grp[i].boss;
     }
     d += Math.log(1 + B.order.perPoint * Math.max(0, pts - 17));
   }
   d += bukTerm("Attack Power", atk) + bukTerm("Additional Damage", add) + bukTerm("Boss Damage", boss);
-  return 100 * d;
+  return 100 * d * mult;
 }
 
 // ---------------- exact grouping of a fixed 12 ----------------
@@ -220,23 +231,21 @@ function seedSelection(pool, keyFn) {
 }
 
 // Damage if groups[gi][slot] were replaced by gem g (no mutation). O(12).
+// Mirrors damageOfGroups' whole-damage multiplicative band penalty.
 function damageWithSwap(groups, gi, slot, g) {
-  var atk = 0, add = 0, boss = 0, d = 0;
+  var atk = 0, add = 0, boss = 0, d = 0, mult = 1;
   for (var q = 0; q < groups.length; q++) {
     var grp = groups[q], pts = 0, i, x;
     for (i = 0; i < grp.length; i++) {
       x = (q === gi && i === slot) ? g : grp[i];
       pts += x.order;
+      atk += x.atk; add += x.add; boss += x.boss;
     }
-    var scale = 1 - bandPenalty(pts);
-    for (i = 0; i < grp.length; i++) {
-      x = (q === gi && i === slot) ? g : grp[i];
-      atk += scale * x.atk; add += scale * x.add; boss += scale * x.boss;
-    }
+    mult *= (1 - bandPenalty(pts));
     d += Math.log(1 + B.order.perPoint * Math.max(0, pts - 17));
   }
   d += bukTerm("Attack Power", atk) + bukTerm("Additional Damage", add) + bukTerm("Boss Damage", boss);
-  return 100 * d;
+  return 100 * d * mult;
 }
 
 // Local search from a starting grouping: in-place swap evaluation (O(12) per
@@ -522,6 +531,9 @@ if (ARGS["dump-labels"]) {
   var dTier = TIERS[ARGS.tier];
   if (!dTier) { console.error("--dump-labels needs --tier"); process.exit(1); }
   var dSolvers = makeSolvers(dTier);
+  var dKeepAll = !!ARGS["keep-all"];   // Shizu 2026-08-09: pack over EVERY finished
+                                       // gem, no grade filter — the filter is
+                                       // grade-based and grading is being refit
   var dFrom = parseInt(ARGS.from, 10) || 0;
   var dTo = ARGS.to != null ? parseInt(ARGS.to, 10) : dFrom + 10000;
   var dRows = [];
@@ -536,7 +548,7 @@ if (ARGS["dump-labels"]) {
         var dpr = dPairs[Math.floor(dRand() * dPairs.length)];
         var dres = cutOneGem(dSolvers[cost], { baseCost: cost, gemType: "order", effect1: dpr[0], effect2: dpr[1] }, dRand, true);
         var dm = gemMeta(dres.cfg);
-        if (dres.processes > 0 && dm.grade >= KEEP_GRADE) dKept.push(dm);
+        if (dres.processes > 0 && (dKeepAll || dm.grade >= KEEP_GRADE)) dKept.push(dm);
       }
     });
     var dPack = packCollection(dKept);

@@ -1,8 +1,14 @@
 # Account study — what should you cut, when you own everything?
 
-> **ADOPTED 2026-08-09.** Phase 4's Option A shipped to the live model with the
-> perfect-grid anchor, the 75/82.5/90 ladder, and the proportional support
-> constants — see docs/willpower-reweight-plan.md for the execution record.
+> **STATUS 2026-08-09: shipped, then ROLLED BACK the same day.** Phase 4's
+> Option A went live briefly (perfect-grid anchor, 75/82.5/90 ladder), but the
+> banded grid model this study fitted against attached core-band penalties to
+> the core's own gems (~100× weaker than the intended whole-damage effect), so
+> the packer under-valued order thresholds and the fitted constants inherited
+> the bias. The site runs the original grading again while the fit is
+> re-derived under the corrected band model (whole-damage multiplicative,
+> −10/−20/−30) with keep-all pools and a cutting↔packing fixed-point iteration.
+> See docs/willpower-reweight-plan.md for the full record.
 
 *2026-08-08 · `tools/account-study.js` · 3 economy tiers × 10,000 synthetic accounts,
 fully seeded and reproducible. The character study's blind spot — "we don't know what

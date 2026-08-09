@@ -508,10 +508,7 @@
     var c = JSON.parse(JSON.stringify(win.config));
     applyOutcomeToConfig(c, o);
     if (!window.validateConfig(c).valid) return null;
-    var sup = !!(window.AdvisorSetup && window.AdvisorSetup.getMarket &&
-      window.AdvisorSetup.getMarket().axis === "support");
-    var perf = !!(window.isPerfectConfig && window.isPerfectConfig(c, sup ? "support" : "dps"));
-    return { grade: f(c), perfect: perf };
+    return { grade: f(c) };
   }
   function oscoreHtml(o, curG) {
     if (!o || o.type === "do_nothing") return "";
@@ -521,7 +518,7 @@
     // Letter + colors from the grading system, same ladder both axes use.
     var A2 = window.Astrogem, badge = "";
     if (A2 && A2.rankFromGrade && A2.gradeColor) {
-      var col = A2.gradeColor(pv.grade, pv.perfect);
+      var col = A2.gradeColor(pv.grade);
       badge = '<b class="rk' + (col.cls ? " " + col.cls : "") + '" style="background:' + col.bg + ';color:' + col.fg + '">' + A2.rankFromGrade(pv.grade) + '</b> ';
     }
     return '<span class="pw-oscore" title="Gem score if this outcome lands (now ' + (curG != null ? curG.toFixed(1) : "?") + ')">→ ' + badge + pv.grade.toFixed(1) + '</span>';

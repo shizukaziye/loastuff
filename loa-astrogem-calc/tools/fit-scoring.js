@@ -26,9 +26,9 @@ var A = require("../model/astrogem.js");
 var M = require("./account-study.js");
 
 var dir = process.argv[2];
-if (!dir) { console.error("usage: node tools/fit-scoring.js <dir>"); process.exit(1); }
+if (!dir) { console.error("usage: node tools/fit-scoring.js <dir> [trainMax]"); process.exit(1); }
 
-var TRAIN_MAX = 7500;
+var TRAIN_MAX = parseInt(process.argv[3], 10) || 7500;
 
 // ---------------- load labels ----------------
 var accounts = [];
@@ -106,10 +106,10 @@ var test = accounts.filter(function (a) { return !a.train; });
 
 console.log("=== fits (pooled train, " + train.length + " accounts) ===");
 var t0 = Date.now();
-var fitA = fitTwoStage(train, makeA, 0.14, 0.20);
+var fitA = fitTwoStage(train, makeA, 0.14, 0.30);
 console.log("A: M-slope s=" + fitA.s.toFixed(4) + "/cost-level (was 0.0984), order w=" + fitA.w.toFixed(4) +
   " (was 0.1599) -> train disp " + fitA.d.toFixed(3));
-var fitB = fitTwoStage(train, makeB, 0.14, 0.20);
+var fitB = fitTwoStage(train, makeB, 0.14, 0.30);
 console.log("B: lambda=" + fitB.s.toFixed(4) + "/willpower point, order w=" + fitB.w.toFixed(4) +
   " -> train disp " + fitB.d.toFixed(3) + "   (" + ((Date.now() - t0) / 1000).toFixed(0) + "s)");
 

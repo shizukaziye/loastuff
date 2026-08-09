@@ -46,9 +46,7 @@
   // ---- the rank ladder + gpd tiers (must match the pipeline bake's anchors) ----
   // The Pipeline tab bakes one DP solve per these 12 anchor grades; each maps 1:1 to a
   // distinct rank (C- … S+), so the array IS a clean rank ladder.
-  // 2026-08 reweight: anchors follow the new rank cuts (5s through S- = 75, then
-  // the S band's even 82.5 / 90 split) — see docs/willpower-reweight-plan.md.
-  var GRADE_ROWS = [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82.5, 90];
+  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
   var GPD_TIERS = [500000, 1000000, 1500000, 2500000, 3500000, 5000000, 7500000, 10000000];
   var GPD_DEFAULT = 1500000;
 

@@ -81,34 +81,31 @@ function dpSelfCheck() {
   function Wax(cfg, t, r, cm, bl, gpd, rb, dm, axis) { return new DP.Solver(bl, gpd, rb, { drawModel: dm, axis: axis }).W(cfg, t, r, cm); }
   function gv(cfg, bl, gpd) { return new DP.Solver(bl, gpd, false).gemValue(cfg); }
   var TOL = 1e-3;
-  // Re-frozen 2026-08-09: the WILLPOWER REWEIGHT (docs/willpower-reweight-plan.md)
-  // changed the whole value scale — gemValue/supportValue constants, the
-  // perfect-grid grade anchor, gradeToScore. The old raw baselines (0.5..2.0)
-  // now sit ABOVE the value ceiling (max gemValue 0.9428), so the pins moved to
-  // grade-derived baselines that track the model. Also re-frozen for the joint-EV
-  // convergence tightening (1e-9 -> 1e-12) and the distribution order-value fix.
-  var b40 = A.gradeToScore(40), b65 = A.gradeToScore(65);
   var cases = [
     // t==0 base case MUST equal the terminal gem value.
-    ["t0 base-case == gemValue", W(c10perfect, 0, 3, 0, b65, 1500000, false, "wor"), gv(c10perfect, b65, 1500000)],
-    ["perfect t0 b65", W(c10perfect, 0, 3, 0, b65, 1500000, false, "wor"), 528058.5161],
-    ["start10 t5 r3 b65 wor", W(start10, 5, 3, 0, b65, 1500000, false, "wor"), 2473.1305],
-    ["start10 t5 r3 b65 iid", W(start10, 5, 3, 0, b65, 1500000, false, "iid"), 1592.0658],
-    ["mid t3 r2 b65 wor", W(mid, 3, 2, 0, b65, 1500000, false, "wor"), 35937.4342],
-    ["start10 t6 r3 b40 RB wor", W(start10, 6, 3, 0, b40, 1500000, true, "wor"), 124913.2011],
-    // SUPPORT axis: supportGradeToScore is anchor-based now (65 -> 0.12917,
-    // 80 -> 0.15794 at freeze time); the literals bake the RESULTING W so a
-    // baseline-scale drift also trips.
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 14219.7138],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 184.6208],
-    // ---- 2026-08 reweight grade fixtures (the adopted scale, frozen) ----
-    ["grade perfect c8 = 90.2", A.grade({ baseCost: 8, gemType: "order", willpowerLevel: 5, orderLevel: 5, effect1: "Additional Damage", effect1Level: 5, effect2: "Attack Power", effect2Level: 5 }), 90.2],
-    ["grade perfect c9 = 97.7", A.grade({ baseCost: 9, gemType: "order", willpowerLevel: 5, orderLevel: 5, effect1: "Boss Damage", effect1Level: 5, effect2: "Attack Power", effect2Level: 5 }), 97.7],
-    ["grade perfect c10 = 106", A.grade(c10perfect), 106],
-    ["supportGrade perfect sup-c8 = 90.2", A.supportGrade({ baseCost: 8, gemType: "order", willpowerLevel: 5, orderLevel: 5, effect1: "Brand Power", effect1Level: 5, effect2: "Ally Damage Enh.", effect2Level: 5 }), 90.2],
-    ["ladder: 90.2 is S+", A.rankFromGrade(90.2) === "S+" ? 1 : 0, 1],
-    ["ladder: 82.5 is S, 82.4 is S-", (A.rankFromGrade(82.5) === "S" && A.rankFromGrade(82.4) === "S-") ? 1 : 0, 1],
-    ["perfect badge gates on config", (A.isPerfectConfig(c10perfect, "dps") && !A.isPerfectConfig(mid, "dps")) ? 1 : 0, 1]
+    ["t0 base-case == gemValue", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), gv(c10perfect, 1.0, 1500000)],
+    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 753205.0790],
+    // Re-frozen 2026-07-19: deliberate model change — the phantom Math.max(100,·)
+    // floor on process cost at cm=-100 was removed (the game shows a literal
+    // "Processing Cost 0" after the -100% outcome), so every cost-bearing W rose
+    // ~0.1-0.2%. The rosterBound pin (costs don't count) was correctly unmoved.
+    // Validated against the full MC battery after re-freezing.
+    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 3032.8512],
+    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 2028.9206],
+    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 35237.9149],
+    // Re-frozen 2026-08-06: deliberate model change (c415187, 2026-07-23) — the
+    // support-buff overhaul re-derived support coefficients and trimmed the
+    // willpower-per-cost-level constant ~0.5%; tools/ was restored two days later
+    // carrying pre-overhaul pins, so these three (the value-scale-sensitive ones)
+    // were stale. DPS-at-base1 pins and the t0 identity were unmoved.
+    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 290798.1751],
+    // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
+    // (A.supportGradeToScore(65)=0.19581, (80)=0.23882 at freeze time; the literals below
+    // bake the RESULTING W so a baseline-scale drift also trips). Frozen 2026-07-16 when
+    // the axis was threaded through topLevelAdvice; the MC battery stays DPS-only
+    // (nested.js has no support axis).
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 28912.5707],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 15960.7897]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {
@@ -180,7 +177,7 @@ function simulateOnce(solver, startCfg, maxTurns, maxRerolls, baseline, rb) {
     // PROCESS: apply a uniform-random one of the 4 drawn outcomes.
     var pick = outcomes[Math.floor(Math.random() * outcomes.length)];
     // max(0,·): the 100g floor was removed from the model 2026-07-19; this
-    // harness copy was stale until 2026-08-09.
+    // harness copy was stale until 2026-08-09. Pins are DP values — unaffected.
     spent += rb ? 0 : Math.max(0, Math.round(A.COSTS.processBase * (1 + cm / 100)));
     cfg = N.applyOutcome(cfg, pick);
     if (pick.type === "change_gold_cost") {
@@ -218,9 +215,7 @@ function mcEstimate(startCfg, maxTurns, maxRerolls, baseline, runs, rb) {
 // ---- battery ----
 var COSTS = [8, 9, 10];
 var RARITIES = ["uncommon", "rare", "epic"];
-// 2026-08 reweight: baselines are GRADE-derived so the battery tracks the value
-// scale (the old raw 0.5..2.0 grid sits above the new ceiling and degenerates).
-var BASELINES = (QUICK ? [40, 80] : [40, 65, 80, 90]).map(function (g) { return A.gradeToScore(g); });
+var BASELINES = QUICK ? [0.5, 1.5] : [0.5, 1.0, 1.5, 2.0];
 if (QUICK) { COSTS = [10]; RARITIES = ["uncommon", "epic"]; RUNS = Math.min(RUNS, 12000); }
 
 console.log("=== verify-dp.js : DP vs independent Monte-Carlo (Plan C gate) ===");

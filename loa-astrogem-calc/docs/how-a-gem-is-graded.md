@@ -119,88 +119,83 @@ multiplier next.
 
 ---
 
-## 5. Willpower → a fitted multiplier (the Aug-2026 reweight)
+## 5. Willpower → a multiplier that makes "perfect" gems tie
 
 Willpower reduces effective cost (`effectiveCost = baseCost − willpowerLevel`), and a
 cheaper gem is better. We model that as a **quality multiplier `M(effectiveCost)`**
 on the gem's damage.
 
-**History.** The original `M` was calibrated so a perfect gem of every base cost tied
-at grade 100 (`M(3) ≈ 1.194`, slope ~0.098/level). A 30,000-account roster study
-(docs/account-study-2026-08-08.md) showed that axiom systematically overrated
-willpower — and, via the flat order weight, order — versus what an optimally packed
-Ark Grid actually sockets: grade-built rosters lost 7–9% of grid damage. The value
-layer now uses **constants fitted to packed-roster membership** (they halve the
-roster disagreement, and the empirical ceiling for any per-gem score is only ~6%
-better):
+The calibration target: **a perfect gem of every base cost should grade 100.** A
+perfect gem is willpower 5, order 5, top-two effects at level 5. Its effective cost
+is `baseCost − 5`, i.e. **3 (from base 8), 4 (base 9), or 5 (base 10)**. Their raw
+damages differ (different pools), so `M` is chosen to make their *values* identical:
 
 ```
-M(c) = 1 + 0.078 × (5 − c),   c clamped to [3, 9]
+M(5) = 1
+M(4) = Dperfect(base10) / Dperfect(base9)   ≈ 1.09835
+M(3) = Dperfect(base10) / Dperfect(base8)   ≈ 1.19433
 ```
+
+For effective cost **6+** (a high-base-cost gem with poor willpower) `M` continues
+**linearly** at the cost-4→5 slope, punishing low willpower hard:
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **M** | 1.156 | 1.078 | 1.000 | 0.922 | 0.844 | 0.766 | 0.688 |
+| **M** | 1.194 | 1.098 | 1.000 | 0.902 | 0.803 | 0.705 | 0.607 |
+
+`M` is **computed from the perfect-gem damages**, so if you ever change the effect
+weights, the willpower curve re-derives itself and the "perfect gems tie" property
+holds automatically. (The 4.25 figure used as a neutral baseline elsewhere is just a
+non-integer cost; `M` interpolates linearly between integer costs.)
 
 ### The grading value
 
 ```
-gemValue = (effect damage + 0.048 × orderLevel) × M(effectiveCost)
+gemValue = gemDamage × M(effectiveCost)
 ```
 
-Two things changed against the old formula: the slope of `M` (0.098 → 0.078/level),
-and **order enters the value at 0.048/point** — the fitted weight — while the
-*damage* readouts (`relDamage`, `% damage`, the grid total) keep the physical
-0.15987/point. Order's real conversion runs through per-core thresholds (§7/§9); the
-flat 0.16 valuation was the single biggest source of roster mistakes.
-
-**Perfect gems no longer tie.** A perfect c10 is genuinely worth more than a perfect
-c8, and the scale now says so.
+This is the single quantity a gem is graded on. By construction, **every perfect
+gem — cost 3, 4, or 5 — has the exact same `gemValue ≈ 1.50214`.**
 
 ---
 
-## 6. From value to a grade and a letter rank
+## 6. From value to a 0–100 grade and a letter rank
 
-The grade anchors at the **perfect Ark Grid**: 100.0 = the *average* gem of the best
-loadout the game physically allows — 3 perfect 8-costs, 3 perfect 9-costs, 6 perfect
-10-costs, which is exactly the wp5 packing three 17-willpower cores admit
-(5+5+4+3 each):
+The grade is a **global** linear normalization of `gemValue` (the same scale for all
+base costs, since perfect gems already tie):
 
 ```
-grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
-anchorValue = (3·p8 + 3·p9 + 6·p10) / 12 ≈ 0.89105
+grade = 100 × (gemValue − minValue) / (maxValue − minValue)
 ```
 
-The bottom clamps at 0; **the top is open**: a perfect 10-cost reads **106.0**, a
-perfect 9-cost **97.7**, a perfect 8-cost **90.2** (their 3/3/6 average is 100.0).
-The **rainbow badge marks perfection** (all stats maxed with the cost's top-two
-effects) at any of those numbers — it gates on the config, not on "grade = 100".
+where `minValue ≈ 0.09698` and `maxValue ≈ 1.50214` are the worst and best possible
+gems over *every* (cost, willpower, order, effect-pair, levels) combination. So:
 
-The letter rank is an explicit threshold table (`RANK_LADDER`) — 5-point steps up
-through S− at 75, then the S band splits evenly:
+- **grade 100** = a perfect gem of its type;
+- **grade 0** = the worst legal gem;
+- two builds with the same `gemValue` always read the same grade, regardless of base cost.
 
-| Rank | ≥ | Rank | ≥ | Rank | ≥ |
-|---|---:|---|---:|---|---:|
-| **S+** | 90 | **A+** | 70 | **C+** | 40 |
-| **S** | 82.5 | **A** | 65 | **C** | 35 |
-| **S−** | 75 | **A−** | 60 | **C−** | 30 |
-| | | **B+** | 55 | **D+/D/D−** | 25/20/15 |
-| | | **B** | 50 | **F+/F/F−** | 10/5/0 |
-| | | **B−** | 45 | | |
+The letter rank splits the 0–100 line at user-chosen cutoffs (`RANK_CUTS`), and each
+band is split into `−` / plain / `+` thirds:
 
-Every cut sits ~5 below its old value, so gems keep their old letters as much as the
-reordering allows (a perfect 8-cost is still S+). The cuts were fitted on ~150k
-policy-cut gems to minimize rank flips, then rounded (the rounding cost was noise).
+| Rank | grade ≥ |
+|---|---:|
+| **S** | 85 |
+| **A** | 70 |
+| **B** | 55 |
+| **C** | 40 |
+| **D** | 20 |
+| **F** | 0 |
+
+e.g. grade 55–60 = `B−`, 60–65 = `B`, 65–70 = `B+`. (These thirds are what the
+leaderboard's "support main" rule counts — see *how-the-leaderboard-ranks.md*.)
 
 ---
 
 ## 7. Order / Chaos in detail
 
-Order/Chaos is the one line every gem rolls. Its **physical damage rate** is 0.15987
-D per point (that is what `relDamage` / `% damage` and the grid total use), but for
-**per-gem grading** it enters the value at the fitted **0.048/point** (§5): across
-real rosters only part of each order point converts through the per-core thresholds,
-and the flat 0.16 valuation was over-buying order gems.
+Order/Chaos is the one line every gem rolls, and it's the strongest (0.15987 D per
+point). For **per-gem grading** it's flat: `orderScore = orderLevel × 0.15987`.
 
 In the **whole-grid total** (§9) it behaves differently: it's evaluated **per core**
 with a **17-point floor**. A core needs ~17 order points before it starts paying
@@ -269,13 +264,8 @@ which the sheet models as bar-count steps (5/10/15% base), not a smooth per-poin
 
 So a support point in Chaos Moon (Brand) is worth ~2.2× one in Order Star.
 
-Everything else works identically — just with `supportValue` instead of `gemValue`.
-The Aug-2026 reweight carries over by the axis's usual **proportional convention**
-(support constants have always been derived by documented scaling, not independent
-fits): the DPS fit's shrink factors applied to the old support constants give a
-support `M` slope of **0.1038**/cost-level and a support order *value* of
-**0.0077**/point, with the same 3/3/6 perfect-grid anchor — perfect support
-c8/c9/c10 read **90.2 / 96.5 / 106.6**, and the rank ladder is shared with DPS. The
+Everything else (the willpower multiplier, the global grade normalization, the
+ranks) works identically — just with `supportValue` instead of `gemValue`. The
 Grader's **DPS / Support toggle** picks which axis a loadout is judged on; it
 auto-defaults to Support for support classes.
 

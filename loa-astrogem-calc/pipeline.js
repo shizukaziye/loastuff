@@ -109,9 +109,7 @@
   // Baseline grades (rank C- … S+), each -> a %-damage threshold via gradeToScore. The
   // bake stores one exact DP solve per grade at baseline = gradeToScore(grade), read by
   // direct key lookup (no interpolation).
-  // 2026-08 reweight ladder — must match loadout-econ.js GRADE_ROWS and the
-  // bake's BAKED_GRADES (docs/willpower-reweight-plan.md).
-  var GRADE_ROWS = [30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 82.5, 90];
+  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
 
   // Verdict gold-EV bands.
   var V = { green: CONST.RESET_THRESHOLD, yellowHi: 10000, yellowMid: 5000, yellowLo: 1000 };
