@@ -41,7 +41,7 @@
       // ?v= for the SAME staleness-avoidance reason as the LAZY_TABS list in
       // index.html — bump whenever model/dp-worker.js changes (it also has its
       // own ?v= pins for astrogem.js/nested.js/dp.js; keep both in sync on edit).
-      try { dpWorker = new Worker("model/dp-worker.js?v=3"); }
+      try { dpWorker = new Worker("model/dp-worker.js?v=4"); }
       catch (e) { dpWorkerDead = true; return null; }
     }
     return dpWorker;
@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 79;
+  var CLIENT_V = 80;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
