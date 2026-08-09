@@ -7,6 +7,7 @@
   "permissions": ["scripting"],
   "host_permissions": [
     "https://www.loseii.com/*",
+    "https://loseii.com/*",
     "http://localhost:8732/*"
   ],
   "action": { "default_title": "Astrogem Advisor Hotkeys — Ctrl+Shift+1 read, Ctrl+Shift+2 advice" },
