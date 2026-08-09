@@ -216,12 +216,16 @@
       '#av-window .pw-dial{position:absolute;inset:0;pointer-events:none;opacity:.10}' +
       '#av-window .pw-divider{border:0;border-top:1px solid #39414f;margin:8px 0 6px}' +
       '#av-window .pw-hint{text-align:center;color:#d7dbe4;font-size:13px;margin:2px 0 8px}' +
-      '#av-window .pw-outcomes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 56px;gap:6px;align-items:start}' +
-      '#av-window .pw-orow{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;color:#e7e9ee;text-align:center;font-size:11.5px;line-height:1.25;padding:4px 2px}' +
+      '#av-window .pw-outcomes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 56px;gap:6px;align-items:stretch}' +
+      '#av-window .pw-rerollpill{align-self:start}' +
+      '#av-window .pw-orow{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;color:#e7e9ee;text-align:center;font-size:11.5px;line-height:1.25;padding:4px 2px;display:flex;flex-direction:column;align-items:center}' +
+      '#av-window .pw-orow .cap{display:block}' +
       '#av-window .pw-orow:hover{border-color:#39414f;background:rgba(102,199,255,.05)}' +
       '#av-window .pw-orow .ic{display:block;margin:0 auto 2px;width:22px;height:22px}' +
-      '#av-window .pw-orow .pw-oscore{display:block;margin-top:2px;font-size:10.5px;font-variant-numeric:tabular-nums;color:#8b93a7}' +
-      '#av-window .pw-orow .pw-oscore.pw-up{color:#5fc94f}#av-window .pw-orow .pw-oscore.pw-dn{color:#e0533f}' +
+      // Score preview: pinned to a shared bottom row (flex column + margin-top:auto,
+      // stretched grid items) so the four previews align whatever the caption height.
+      '#av-window .pw-orow .pw-oscore{display:block;margin-top:auto;padding-top:3px;font-size:10.5px;font-variant-numeric:tabular-nums;color:#8b93a7}' +
+      '#av-window .pw-orow .pw-oscore .rk{display:inline-block;min-width:15px;padding:0 4px;border-radius:99px;font-weight:800;font-size:10px;line-height:1.5;font-style:normal}' +
       '#av-window .pw-up{color:#5fc94f}#av-window .pw-dn{color:#e0533f}' +
       '#av-window .pw-sub2{color:#c8cdd8;font-size:10.5px}' +
       '#av-window .pw-dim{color:#8a93a5;font-style:italic}' +
@@ -329,7 +333,7 @@
         var curG = gradeNow();   // one grade of the current gem, shared by all 4 row previews
         return win.outcomes.map(function (o, i) {
           return '<button type="button" class="pw-orow' + conf("outcomes." + i) + '" data-act="outcome" data-i="' + i + '">' +
-            '<span class="ic">' + makeDiamond(outcomeStatKey(o), 22) + '</span>' + captionFor(o) + oscoreHtml(o, curG) + '</button>';
+            '<span class="ic">' + makeDiamond(outcomeStatKey(o), 22) + '</span><span class="cap">' + captionFor(o) + '</span>' + oscoreHtml(o, curG) + '</button>';
         }).join("");
       })() +
       '    <button type="button" class="pw-rerollpill' + conf("state.rerollsRemaining") + (win.currentTurn === 1 ? " pw-pill-off" : "") + '" data-act="rerolls" title="Rerolls — the game counts only the FREE ones here; the paid one is handled in the editor' + (win.currentTurn === 1 ? ". Greyed out on turn 1, like the game (process once first)" : "") + '">' +
@@ -511,9 +515,13 @@
     var pv = previewGrade(o);
     if (!pv) return "";
     if (pv.unknown) return '<span class="pw-oscore" title="The replacement effect is random — the score depends on what lands">→ ?</span>';
-    var cls = (curG != null && pv.grade > curG + 0.05) ? " pw-up"
-            : (curG != null && pv.grade < curG - 0.05) ? " pw-dn" : "";
-    return '<span class="pw-oscore' + cls + '" title="Gem score if this outcome lands (now ' + (curG != null ? curG.toFixed(1) : "?") + ')">→ ' + pv.grade.toFixed(1) + '</span>';
+    // Letter + colors from the grading system, same ladder both axes use.
+    var A2 = window.Astrogem, badge = "";
+    if (A2 && A2.rankFromGrade && A2.gradeColor) {
+      var col = A2.gradeColor(pv.grade);
+      badge = '<b class="rk' + (col.cls ? " " + col.cls : "") + '" style="background:' + col.bg + ';color:' + col.fg + '">' + A2.rankFromGrade(pv.grade) + '</b> ';
+    }
+    return '<span class="pw-oscore" title="Gem score if this outcome lands (now ' + (curG != null ? curG.toFixed(1) : "?") + ')">→ ' + badge + pv.grade.toFixed(1) + '</span>';
   }
 
   function applyChosenOutcome(i) {
