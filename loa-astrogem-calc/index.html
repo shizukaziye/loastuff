@@ -85,10 +85,10 @@ var LAZY_TABS = {
     "model/nested.js?v=54", "model/dp.js?v=58",
     "ocr/engine.js?v=55", "ocr/layout.js?v=55", "ocr/glyphs.js?v=55", "ocr/level-refs.js?v=4", "ocr/level-model.js?v=2", "ocr/name-model.js?v=2", "ocr/tile-model.js?v=1", "ocr/tesseract-engine.js?v=44",
     "ocr/structural-engine.js?v=104",
-    "advisor-setup.js?v=48", "advisor-window.js?v=61",
-    "advisor.js?v=87"
+    "advisor-setup.js?v=49", "advisor-window.js?v=62",
+    "advisor.js?v=88"
   ],
-  leaderboard: ["leaderboard.js?v=47"],
+  leaderboard: ["leaderboard.js?v=48"],
   feedback: ["feedback.js?v=1"]
 };
 var lazyLoaded = {};
@@ -127,15 +127,16 @@ function selectTab(name){
      grader's plan section via pipelineReady). The Advisor stack and Leaderboard are in
      LAZY_TABS above and load on first tab activation. -->
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
-<script src="model/astrogem.js?v=55"></script>
+<script src="model/astrogem.js?v=56"></script>
+<script src="banner.js?v=1"></script>
 <script src="gate.js?v=39"></script>
 <script src="favorites.js?v=40"></script>
 <script src="tip.js?v=2"></script>
-<script src="loadout-econ.js?v=4"></script>
+<script src="loadout-econ.js?v=5"></script>
 <script src="bible-import.js?v=3"></script>
 <script src="bible-oauth.js?v=8"></script>
-<script src="grader.js?v=74"></script>
-<script src="pipeline.js?v=46"></script>
+<script src="grader.js?v=75"></script>
+<script src="pipeline.js?v=47"></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

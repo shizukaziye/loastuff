@@ -119,76 +119,75 @@ multiplier next.
 
 ---
 
-## 5. Willpower → a multiplier that makes "perfect" gems tie
+## 5. Willpower → a FITTED per-cost toll (the 2026-08-09 reweight)
 
 Willpower reduces effective cost (`effectiveCost = baseCost − willpowerLevel`), and a
-cheaper gem is better. We model that as a **quality multiplier `M(effectiveCost)`**
-on the gem's damage.
+cheaper gem is better — because the willpower it frees lets a *bigger* gem slot
+elsewhere in the 17-per-core budget. We model that as a **percentage multiplier
+`M[effectiveCost]`** on the gem's value.
 
-The calibration target: **a perfect gem of every base cost should grade 100.** A
-perfect gem is willpower 5, order 5, top-two effects at level 5. Its effective cost
-is `baseCost − 5`, i.e. **3 (from base 8), 4 (base 9), or 5 (base 10)**. Their raw
-damages differ (different pools), so `M` is chosen to make their *values* identical:
-
-```
-M(5) = 1
-M(4) = Dperfect(base10) / Dperfect(base9)   ≈ 1.09835
-M(3) = Dperfect(base10) / Dperfect(base8)   ≈ 1.19433
-```
-
-For effective cost **6+** (a high-base-cost gem with poor willpower) `M` continues
-**linearly** at the cost-4→5 slope, punishing low willpower hard:
+The old model calibrated `M` so a perfect gem of every base cost tied at 100.
+That over-rewarded cheapness ~2.5×: simulated optimal grids kept benching the
+high-grade cheap gems the scale loved. The current `M` is **fitted to data**:
+15,000 accounts were simulated (gems cut by this site's own advisor at three
+economy tiers, every finished gem kept), each account's optimal 3×17-core Ark
+Grid was found by an exact-verified packer, and `M[cost]` plus the order value
+weight were tuned to minimize disagreements between "top 12 by score" and the
+packer's real best 12 (held-out: 1.62 vs 2.95 wrong gems per account).
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **M** | 1.194 | 1.098 | 1.000 | 0.902 | 0.803 | 0.705 | 0.607 |
+| **M (fitted)** | 1.074 | 1.034 | 1.000 | 0.963 | 0.914 | 0.844 | 0.735 |
 
-`M` is **computed from the perfect-gem damages**, so if you ever change the effect
-weights, the willpower curve re-derives itself and the "perfect gems tie" property
-holds automatically. (The 4.25 figure used as a neutral baseline elsewhere is just a
-non-integer cost; `M` interpolates linearly between integer costs.)
+Read it as the packer's revealed price of budget: **costs 3–6 are all viable,
+7 is taxed, 8 is heavy, and 9 is a cliff** — the optimal grid never sockets a
+cost-9 gem, even with perfect lines (cost 10 cannot exist; willpower minimum is
+1). The curve was cross-checked by direct experiments: probe gems of every cost
+dropped into real simulated accounts, and a "monster ladder" (a cost-8 c10 with
+perfect lines vs progressively weaker perfect-willpower c8s) whose empirical
+crossover the fitted table reproduces.
 
 ### The grading value
 
 ```
-gemValue = gemDamage × M(effectiveCost)
+gemValue = (D(effect1) + D(effect2) + 0.1571 × orderLevel) × M[effectiveCost]
 ```
 
-This is the single quantity a gem is graded on. By construction, **every perfect
-gem — cost 3, 4, or 5 — has the exact same `gemValue ≈ 1.50214`.**
+Note order enters at its **fitted value weight** (0.1571, nearly identical to
+its damage weight 0.15987 — the old model had order right all along).
 
 ---
 
-## 6. From value to a 0–100 grade and a letter rank
+## 6. From value to a grade and a letter rank
 
-The grade is a **global** linear normalization of `gemValue` (the same scale for all
-base costs, since perfect gems already tie):
+Perfect gems no longer tie — a perfect 10-cost genuinely carries more damage
+than a perfect 8-cost, and the grade now says so. The scale is anchored by two
+fixed points:
 
 ```
-grade = 100 × (gemValue − minValue) / (maxValue − minValue)
+grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
 ```
 
-where `minValue ≈ 0.09698` and `maxValue ≈ 1.50214` are the worst and best possible
-gems over *every* (cost, willpower, order, effect-pair, levels) combination. So:
+- **`anchorValue`** = the mean value of the **perfect Ark Grid layout** — 3
+  perfect 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5
+  packing 5+5+4+3 = 17 budget per core). **Grade 100 = this average**, so the
+  scale is open above: perfect c8/c9/c10 grade **93 / 97.8 / 104.6**.
+- **`minValue`** = the worst legal gem (grade 0).
+- A TRUE perfect roll of any cost keeps the animated **rainbow badge** — the
+  badge is config-gated, not grade-gated, so it marks perfects at 93 and 104.6
+  alike.
 
-- **grade 100** = a perfect gem of its type;
-- **grade 0** = the worst legal gem;
-- two builds with the same `gemValue` always read the same grade, regardless of base cost.
+The letter rank is an explicit threshold table (`RANK_LADDER`) — the familiar
+5-point cuts, with one change: **the S+ cut sits at 93, the perfect 8-cost's
+grade**, so every perfect gem is S+ (S+ still holds roughly the top 0.3% of
+cut gems):
 
-The letter rank splits the 0–100 line at user-chosen cutoffs (`RANK_CUTS`), and each
-band is split into `−` / plain / `+` thirds:
+| S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 93 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
 
-| Rank | grade ≥ |
-|---|---:|
-| **S** | 85 |
-| **A** | 70 |
-| **B** | 55 |
-| **C** | 40 |
-| **D** | 20 |
-| **F** | 0 |
-
-e.g. grade 55–60 = `B−`, 60–65 = `B`, 65–70 = `B+`. (These thirds are what the
-leaderboard's "support main" rule counts — see *how-the-leaderboard-ranks.md*.)
+(The leaderboard's "support main" rule counts these same bands — see
+*how-the-leaderboard-ranks.md*.)
 
 ---
 

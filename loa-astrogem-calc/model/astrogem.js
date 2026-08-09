@@ -233,13 +233,9 @@
     return orderLevel * SCORING.orderPerPoint;
   }
 
-  // ---- Willpower as a MULTIPLIER on damage (the grading model) ----
-  // Damage is multiplicative; willpower is a quality multiplier on it. Each baseCost's
-  // PERFECT gem (wp5, order5, top-2 effects @5) lands at cost 3/4/5; M(cost) is
-  // calibrated so those three tie EXACTLY (each -> grade 100):
-  //   M(3)=Dp5/Dp3, M(4)=Dp5/Dp4, M(5)=1.  Cost 6+ continues linearly at the cost4->5
-  //   slope (low willpower punished hard; lands on ~0.90/0.80/0.70/0.60).
-  // Computed from the perfect-gem damages so it tracks the effect weights.
+  // ---- Willpower as a MULTIPLIER on damage (LEGACY — no longer the grading model) ----
+  // Kept only because it is exported; the 2026-08-09 reweight replaced the multiplier
+  // with the additive budget credit in gemValue below. See docs/how-a-gem-is-graded.md.
   function _perfectDamage(baseCost) {
     var pool = EFFECT_POOLS[baseCost], v = [];
     for (var i = 0; i < pool.length; i++) v.push(effectScore(pool[i], 5));
@@ -268,9 +264,61 @@
       + effectScore(config.effect2, config.effect2Level)
       + orderScore(config.orderLevel);
   }
-  // Grading value = damage x willpower multiplier (every perfect gem ties at the top).
+
+  // ---- Grading value: FITTED PER-COST MULTIPLIER TABLE (2026-08-09 reweight) ----
+  // Fitted on 15k simulated accounts (5k per economy tier): gems cut by this
+  // site's own advisor, then packed into the optimal 3x17 Ark Grid by an exact-
+  // verified packer. The score that best predicts "does the optimal grid socket
+  // this gem" is:
+  //   value = (effects + 0.1571 x order) x M[willpowerCost]
+  // Order keeps its damage-fit weight (~ the old 0.15987 — the old model had
+  // order right). Willpower is a fitted percentage toll per effective cost —
+  // the old model's multiplicative STRUCTURE with honest per-cost numbers
+  // instead of the perfect-tie calibration (which overpaid cheapness ~2.5x).
+  // The curve: costs 3-6 all viable, 7 taxed, 8 heavy, 9 a cliff (the optimal
+  // packer never sockets a cost-9; a cost-10 config cannot exist, wp min 1).
+  // Beat the old model 1.62 vs 2.95 displaced gems/account on held-out data and
+  // called every rung of the monster-vs-perfect-c8 crossover ladder correctly
+  // except one (by <1 grade point). See docs/account-study-2026-08-08.md.
+  var VALUE_ORDER_PER_POINT = 0.1571;
+  var VALUE_WP_MULT = { 3: 1.074, 4: 1.034, 5: 1.000, 6: 0.963, 7: 0.914, 8: 0.844, 9: 0.735 };
+  function valueWpMult(cost) {
+    if (cost <= 3) return VALUE_WP_MULT[3];
+    if (cost >= 9) return VALUE_WP_MULT[9];
+    if (VALUE_WP_MULT[cost] != null) return VALUE_WP_MULT[cost];
+    var lo = Math.floor(cost);               // non-integer (baseline math): interpolate
+    return VALUE_WP_MULT[lo] + (VALUE_WP_MULT[lo + 1] - VALUE_WP_MULT[lo]) * (cost - lo);
+  }
   function gemValue(config) {
-    return gemDamage(config) * willpowerMultiplier(willpowerCost(config.baseCost, config.willpowerLevel));
+    return (effectScore(config.effect1, config.effect1Level)
+      + effectScore(config.effect2, config.effect2Level)
+      + VALUE_ORDER_PER_POINT * config.orderLevel)
+      * valueWpMult(willpowerCost(config.baseCost, config.willpowerLevel));
+  }
+
+  // The perfect config at a base cost: top-2 effects for the axis at level 5,
+  // order 5, willpower 5. Perfects no longer tie: c8/c9/c10 grade 93.9/98.1/104.0,
+  // and their 3/3/6 Ark-Grid-layout average defines grade 100 (see valueAnchor).
+  function _topPairFor(baseCost, esFn) {
+    var pool = EFFECT_POOLS[baseCost].slice().sort(function (a, b) { return esFn(b, 5) - esFn(a, 5); });
+    return [pool[0], pool[1]];
+  }
+  function _perfectConfig(baseCost, axis) {
+    var esFn = (axis === "support") ? supportEffectScore : effectScore;
+    var top = _topPairFor(baseCost, esFn);
+    return { baseCost: baseCost, gemType: "order", willpowerLevel: 5, orderLevel: 5,
+      effect1: top[0], effect1Level: 5, effect2: top[1], effect2Level: 5 };
+  }
+  // TRUE perfect roll (rainbow badge): wp5 + order5 + the axis's top-2 effects
+  // both at 5. Config-gated, NOT grade-gated — above-100 near-perfect c10s must
+  // not rainbow, and the perfect c8 (93.9) must.
+  function isPerfectConfig(config, axis) {
+    if (!config || config.willpowerLevel !== 5 || config.orderLevel !== 5) return false;
+    if (config.effect1Level !== 5 || config.effect2Level !== 5) return false;
+    var esFn = (axis === "support") ? supportEffectScore : effectScore;
+    var top = _topPairFor(config.baseCost, esFn);
+    return (config.effect1 === top[0] && config.effect2 === top[1])
+      || (config.effect1 === top[1] && config.effect2 === top[0]);
   }
 
   // Total score = approximate % damage of the gem (sum of per-line D, additive
@@ -348,36 +396,54 @@
     _valueBounds = { min: min, max: max };
     return _valueBounds;
   }
+  // Grade anchor: the value of the PERFECT Ark Grid layout, per gem — 3 perfect
+  // 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5 packing
+  // 5+5+4+3 = 17 budget per core), averaged over the 12. Grade 100 = this mean.
+  var _valueAnchor = null;
+  function valueAnchor() {
+    if (_valueAnchor != null) return _valueAnchor;
+    _valueAnchor = (3 * gemValue(_perfectConfig(8, "dps"))
+      + 3 * gemValue(_perfectConfig(9, "dps"))
+      + 6 * gemValue(_perfectConfig(10, "dps"))) / 12;
+    return _valueAnchor;
+  }
+
+  // ONE straight line: the worst legal gem (all levels have a floor of 1, so a
+  // trash c10 at wp1/order1) grades exactly 0 and the perfect-grid mean grades
+  // exactly 100. The scale is open above 100 — a perfect c10 reads 104.0.
   function grade(config) {
     var b = valueBounds();
-    var g = 100 * (gemValue(config) - b.min) / (b.max - b.min);
-    return Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
+    var g = 100 * (gemValue(config) - b.min) / (valueAnchor() - b.min);
+    return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
   }
 
-  // Inverse of grade(): the gemValue threshold at a given 0-100 grade. Used to turn
-  // a grade-based baseline into the value threshold the verdict logic compares against.
-  // Runs on the global multiplicative valueBounds() — the old per-type/`all` additive
-  // scale is gone (see the gradeBounds removal note above).
+  // Inverse of grade(): the gemValue threshold at a given grade. Used to turn
+  // a grade-based baseline into the value threshold the verdict logic compares
+  // against. Same single line as grade(); accepts 0..110.
   function gradeToScore(g, baseCost) {
-    // Inverts the NEW global value-grade -> the gemValue threshold for grade g, so the
-    // pipeline's grade baselines compare against the gemValue distribution. baseCost is
-    // kept for signature compatibility; grading is global now.
     var b = valueBounds();
-    return b.min + (Math.max(0, Math.min(100, g)) / 100) * (b.max - b.min);
+    return b.min + (Math.max(0, Math.min(110, g)) / 100) * (valueAnchor() - b.min);
   }
 
-  // Letter rank from a 0-100 grade (user-set cutoffs). Each band split into +/ /-
-  // thirds for finer granularity.
-  var RANK_CUTS = [["S", 85], ["A", 70], ["B", 55], ["C", 40], ["D", 20], ["F", 0]];
+  // Letter rank: explicit threshold table (2026-08-09 ladder). The pre-reweight
+  // cut positions (5-point steps) with ONE change: the S+ cut sits at the
+  // perfect 8-cost's grade — 93.0 under the fitted M-table value — so every
+  // perfect gem stays S+ (the support scale pins its perfect c8 to the same
+  // cut; see supportGrade). S+ holds the top ~0.3% of cut gems.
+  var S_PLUS_CUT = 93;
+  var RANK_LADDER = [
+    ["S+", S_PLUS_CUT], ["S", 90], ["S-", 85],
+    ["A+", 80], ["A", 75], ["A-", 70],
+    ["B+", 65], ["B", 60], ["B-", 55],
+    ["C+", 50], ["C", 45], ["C-", 40],
+    ["D+", 35], ["D", 30], ["D-", 25],
+    ["F+", 20], ["F", 15], ["F-", 0]
+  ];
+  // Coarse letter starts derived from the ladder (kept for export compatibility).
+  var RANK_CUTS = [["S", 85], ["A", 70], ["B", 55], ["C", 40], ["D", 25], ["F", 0]];
   function rankFromGrade(g) {
-    var i, lo, hi, t;
-    for (i = 0; i < RANK_CUTS.length; i++) {
-      lo = RANK_CUTS[i][1];
-      if (g >= lo) {
-        hi = (i === 0) ? 100 : RANK_CUTS[i - 1][1];
-        t = hi > lo ? (g - lo) / (hi - lo) : 0;
-        return RANK_CUTS[i][0] + (t >= 2 / 3 ? "+" : (t < 1 / 3 ? "-" : ""));
-      }
+    for (var i = 0; i < RANK_LADDER.length; i++) {
+      if (g >= RANK_LADDER[i][1]) return RANK_LADDER[i][0];
     }
     return "F-";
   }
@@ -442,10 +508,14 @@
   }
   // Cost-fair quality = Σ ln(value) = log of the product of gem values. Pairing-
   // invariant (equivalent builds tie); the per-gem grades roll up into this. axis-aware.
+  // Values are floored at a tiny positive epsilon before the log: the additive
+  // budget-credit forms can go NEGATIVE on trash gems (a DPS-built support grid
+  // is full of them), and ln(<=0) = NaN would poison the whole grid's quality.
   function gridQuality(gems, axis) {
     var s = 0;
     for (var i = 0; i < gems.length; i++) {
-      s += Math.log((axis === "support") ? supportValue(gems[i]) : gemValue(gems[i]));
+      var v = (axis === "support") ? supportValue(gems[i]) : gemValue(gems[i]);
+      s += Math.log(Math.max(1e-6, v));
     }
     return s;
   }
@@ -571,8 +641,9 @@
       + supportEffectScore(config.effect2, config.effect2Level)
       + config.orderLevel * ov;
   }
-  // Support willpower MULTIPLIER — its own curve, calibrated so the 3 perfect SUPPORT
-  // gems (top-2 support effects @5, order5 avg, wp5) tie exactly; cost 6+ linear like DPS.
+  // Support willpower MULTIPLIER (LEGACY — no longer the grading model; the
+  // perfect-tie calibration below survives only for tools/upgrade-cost-study).
+  // supportValue now uses the shared fitted VALUE_WP_MULT table instead.
   function _supPerfectDamage(baseCost) {
     var pool = EFFECT_POOLS[baseCost], v = [];
     for (var i = 0; i < pool.length; i++) v.push(supportEffectScore(pool[i], 5));
@@ -594,11 +665,20 @@
     var lo = Math.floor(cost);
     return _SUP_WP_MULT[lo] + (_SUP_WP_MULT[lo + 1] - _SUP_WP_MULT[lo]) * (cost - lo);
   }
-  // Support grading value = supportDamage (avg order) × support willpower multiplier.
+  // Support grading value: the SAME fitted per-cost multiplier table as DPS,
+  // by the proportional-transplant convention (2026-08-09; the support-native
+  // account study is queued and will replace these constants when it lands).
+  // Order carries the DPS fit's ratio; the M table transplants unchanged — the
+  // percentage toll is Ark-Grid cost structure, not axis-specific.
+  var SUP_VALUE_ORDER_PER_POINT = SUPPORT_SCORING.orderPerPoint * (VALUE_ORDER_PER_POINT / SCORING.orderPerPoint);
   function supportValue(config) {
-    return supportDamage(config) * supportWillpowerMultiplier(willpowerCost(config.baseCost, config.willpowerLevel));
+    return (supportEffectScore(config.effect1, config.effect1Level)
+      + supportEffectScore(config.effect2, config.effect2Level)
+      + SUP_VALUE_ORDER_PER_POINT * config.orderLevel)
+      * valueWpMult(willpowerCost(config.baseCost, config.willpowerLevel));
   }
-  // Global value bounds for the SUPPORT grade (perfect support gems tie at the top).
+  // Global value bounds for the SUPPORT grade (min = worst legal support gem,
+  // max = the perfect support c10; perfects do NOT tie under the fitted table).
   var _supportValueBounds = null;
   function supportValueBounds() {
     if (_supportValueBounds) return _supportValueBounds;
@@ -646,24 +726,46 @@
     return _supportGradeBounds;
   }
 
-  // 0-100 SUPPORT grade for a gem (rounded to 1 decimal). Mirrors grade(): GLOBAL
-  // value-normalization over supportValue (every perfect support gem reads 100).
-  function supportGrade(config) {
-    var b = supportValueBounds();
-    var g = 100 * (supportValue(config) - b.min) / (b.max - b.min);
-    return Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
+  // Support grade anchor: mean of the perfect 3/3/6 support grid layout, same
+  // convention as valueAnchor on the DPS axis.
+  var _supportValueAnchor = null;
+  function supportValueAnchor() {
+    if (_supportValueAnchor != null) return _supportValueAnchor;
+    _supportValueAnchor = (3 * supportValue(_perfectConfig(8, "support"))
+      + 3 * supportValue(_perfectConfig(9, "support"))
+      + 6 * supportValue(_perfectConfig(10, "support"))) / 12;
+    return _supportValueAnchor;
   }
 
-  // Letter rank from the SUPPORT grade — reuses the SAME RANK_CUTS as DPS.
+  // SUPPORT grade: one straight line pinned by TWO axis-contract points
+  // (Shizu 2026-08-09): the perfect-grid mean = 100 (automatic — the anchor
+  // maps to 100 for any zero point) and the perfect support c8 = the shared
+  // S+ cut, so support perfects are S+ exactly like DPS perfects. The cost:
+  // the support floor is NOT 0 (worst support gem ~31) — the support value
+  // range is narrow, and lifting p8 to the cut compresses the bottom. Interim
+  // until the support-native account study fits real constants.
+  var _supportZero = null;
+  function supportZero() {
+    if (_supportZero != null) return _supportZero;
+    var v8 = supportValue(_perfectConfig(8, "support"));
+    _supportZero = (100 * v8 - S_PLUS_CUT * supportValueAnchor()) / (100 - S_PLUS_CUT);
+    return _supportZero;
+  }
+  function supportGrade(config) {
+    var z = supportZero();
+    var g = 100 * (supportValue(config) - z) / (supportValueAnchor() - z);
+    return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
+  }
+
+  // Letter rank from the SUPPORT grade — reuses the SAME RANK_LADDER as DPS.
   function supportRank(config) { return rankFromGrade(supportGrade(config)); }
 
-  // Inverse of supportGrade(): the support score at a 0-100 support grade. Parallel
-  // to gradeToScore — turns a grade-based baseline into the support-score threshold
-  // the support value/verdict logic uses.
+  // Inverse of supportGrade(): the support value at a support grade. Parallel
+  // to gradeToScore — turns a grade-based baseline into the support-value
+  // threshold the support value/verdict logic uses. Accepts 0..110.
   function supportGradeToScore(g) {
-    // Value-based inverse, parallel to gradeToScore (supportValue distribution).
-    var b = supportValueBounds();
-    return b.min + (Math.max(0, Math.min(100, g)) / 100) * (b.max - b.min);
+    var z = supportZero();
+    return z + (Math.max(0, Math.min(110, g)) / 100) * (supportValueAnchor() - z);
   }
 
   // Grade-tier colors (owner's percentile palette): F/D gray, C green, B blue, A purple.
@@ -685,11 +787,11 @@
     "S":  { bg: "#cc5c81", fg: "#ffffff" },
     "S+": { bg: "#e6d5a6", fg: "#4a3a1e" }
   };
-  // A PERFECT gem (grade 100) transcends the spectrum with the animated pastel rainbow from
+  // A PERFECT gem transcends the spectrum with the animated pastel rainbow from
   // the old tier list — bg is a GRADIENT, not a hex, dropped straight into `background:`, and
   // the `rank-rainbow` class in styles.css adds the tiling + seamless slide. This is
-  // GRADE-gated (only a true 100), NOT rank-gated: the "S+" rank spans 95-100, so 95-99.99
-  // shows the solid red above and only 100 gets the rainbow (see gradeColor).
+  // CONFIG-gated (isPerfectConfig), NOT grade-gated: perfects no longer share one grade
+  // (93.9/98.1/104.0), and near-perfect c10s above 100 must not rainbow (see gradeColor).
   var RAINBOW = { bg: "linear-gradient(90deg,#FF8A80,#FFC46B,#F8E081,#8CE99A,#7FD0FF,#C9A2FF,#FF8A80)", fg: "#2b2440", cls: "rank-rainbow" };
   // Mix a hex toward white (amt > 0) or black (amt < 0). amt is 0..1.
   function shade(hex, amt) {
@@ -734,8 +836,10 @@
     if (mod !== "+" && mod !== "-") return base;
     return { bg: shade(base.bg, mod === "+" ? RANK_TILT : -RANK_TILT), fg: base.fg };
   }
-  // Grade -> color. A true 100 is the rainbow; everything else follows its rank band.
-  function gradeColor(g) { return (g != null && g >= 99.9995) ? RAINBOW : rankColor(rankFromGrade(g)); }
+  // Grade -> color. Pass perfect=true (from isPerfectConfig) for the rainbow;
+  // everything else follows its rank band. Grade alone can't gate the rainbow
+  // anymore: near-perfect c10s exceed 100 while the perfect c8 sits at 93.9.
+  function gradeColor(g, perfect) { return perfect ? RAINBOW : rankColor(rankFromGrade(g)); }
 
   function scoreBreakdown(config) {
     var wpc = willpowerCost(config.baseCost, config.willpowerLevel);
@@ -963,12 +1067,12 @@
       for (var pi = 0; pi < parts.length; pi++) {
         var part = parts[pi];
         var wp = part[0], ord = part[1], lvA = part[2], lvB = part[3];
-        // NEW multiplicative model: per-gem value = (order damage + effects) ×
-        // willpower multiplier M(cost). Mirrors gemValue / supportValue exactly
-        // (willpower is no longer an additive term — it scales the damage).
+        // FITTED-MULTIPLIER model: per-gem value = (effects + order VALUE) x
+        // M[cost]. Mirrors gemValue / supportValue exactly (order uses the
+        // fitted VALUE weight here, not the damage weight).
         var _cost = willpowerCost(baseCost, wp);
-        var ordD = support ? supportOrderScore(ord) : orderScore(ord);
-        var Mw = support ? supportWillpowerMultiplier(_cost) : willpowerMultiplier(_cost);
+        var ordD = (support ? SUP_VALUE_ORDER_PER_POINT : VALUE_ORDER_PER_POINT) * ord;
+        var Mw = valueWpMult(_cost);
         for (var ci = 0; ci < pairs.length; ci++) {
           var eA = pairs[ci][0], eB = pairs[ci][1];
           // Average over the two assignments of (lvA, lvB) to the unordered pair.
@@ -1019,7 +1123,8 @@
   // It's a contraction (the only coupling is the per-iterate scalars maxG/maxH),
   // so plain iteration converges fast. PARITY: the loop below is implemented
   // IDENTICALLY in astrogem.py (same cost order, same operation order, same
-  // 1e-9 convergence test) so JS and Python converge bit-identically.
+  // 1e-12 convergence test) so JS and Python converge bit-identically. (1e-9
+  // knife-edged: one extra/missing iteration flipped last-digit refs.)
   var JOINT_COSTS = [8, 9, 10];
   var _jointEVCache = {};
 
@@ -1088,7 +1193,7 @@
         E[c].ancient = newA;
       }
       iters++;
-      if (maxDelta < 1e-9) break;
+      if (maxDelta < 1e-12) break;
     }
 
     // Recompute maxG / maxH from the CONVERGED E so callers see the final values.
@@ -1175,6 +1280,12 @@
     gemDamage: gemDamage,
     gemValue: gemValue,
     valueBounds: valueBounds,
+    valueAnchor: valueAnchor,
+    valueWpMult: valueWpMult,
+    supportValueAnchor: supportValueAnchor,
+    supportZero: supportZero,
+    isPerfectConfig: isPerfectConfig,
+    RANK_LADDER: RANK_LADDER,
     gridDamage: gridDamage,
     gridQuality: gridQuality,
     coreKeyOf: coreKeyOf,

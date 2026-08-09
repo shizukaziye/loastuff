@@ -318,8 +318,8 @@
     return (A && A.rankColor) ? A.rankColor(rank)
       : (typeof window.rankColor === "function" ? window.rankColor(rank) : { bg: "#6f747a", fg: "#fff" });
   }
-  function rankBadge(rank, extra, grade) {
-    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade) : rankColorOf(rank);
+  function rankBadge(rank, extra, grade, perfect) {
+    var c = (grade != null && A && A.gradeColor) ? A.gradeColor(grade, perfect) : rankColorOf(rank);
     return '<span class="rank-badge' + (extra ? " " + extra : "") + (c.cls ? " " + c.cls : "") +
       '" style="background:' + c.bg + ';color:' + c.fg + '">' + esc(rank) + '</span>';
   }
@@ -750,15 +750,16 @@
   function gemHeadlineHtml(cfg) {
     var g = grade(cfg), rank = gemRank(cfg), dmg = damagePercent(cfg);
     var cls = rankClass(rank);
+    var pf = !!(A && A.isPerfectConfig && A.isPerfectConfig(cfg, isSupport() ? "support" : "dps"));
     return '' +
 '<div class="panel">' +
 '  <h2>Grade</h2>' +
 '  <div class="gr-headline">' +
-'    <div class="gr-badge ' + cls + '">' + rankBadge(rank, null, g) +
-'      <span class="gd">grade <b>' + g.toFixed(1) + '</b> / 100</span></div>' +
+'    <div class="gr-badge ' + cls + '">' + rankBadge(rank, null, g, pf) +
+'      <span class="gd">grade <b>' + g.toFixed(1) + '</b></span></div>' +
 '    <div class="gr-dmg">% damage<br><b>' + dmg.toFixed(3) + '%</b></div>' +
 '  </div>' +
-'  <div class="gr-bar"><i class="' + cls + '" style="width:' + Math.max(2, g).toFixed(1) + '%"></i></div>' +
+'  <div class="gr-bar"><i class="' + cls + '" style="width:' + Math.max(2, Math.min(100, g)).toFixed(1) + '%"></i></div>' +
 '  <div class="note" style="margin-top:10px">' + cfg.baseCost + '-cost ' + esc(cfg.gemType) +
      ' &middot; willpower ' + cfg.willpowerLevel + ' (cost ' + (cfg.baseCost - cfg.willpowerLevel) + ')' +
      ' &middot; order ' + cfg.orderLevel +
@@ -860,8 +861,9 @@
     var v = validateConfig(cfg);
     var g, rank, dmg, cls;
     if (v.valid) { g = gGrade(cfg); rank = gRank(cfg); dmg = gRel(cfg); cls = rankClass(rank); }
+    var pf = v.valid && !!(A && A.isPerfectConfig && A.isPerfectConfig(cfg, isSupport() ? "support" : "dps"));
     var rkHtml = v.valid
-      ? rankBadge(rank, null, g) + '<div class="gd">' + g.toFixed(0) + '</div>'
+      ? rankBadge(rank, null, g, pf) + '<div class="gd">' + g.toFixed(0) + '</div>'
       : '<div class="rk">?</div>';
     var idAttr = (cfg._gidx != null) ? ' id="gr-gem-' + cfg._gidx + '"' : '';
     var topRight = v.valid
@@ -897,7 +899,8 @@
         var slot = e.gem.slot || ("Core " + (e.gem.coreBase || "?"));
         var tgt = (e.gem._gidx != null) ? ' data-target="gr-gem-' + e.gem._gidx + '"' : '';
         return '<div class="wk-row"' + tgt + ' title="Jump to this gem">' +
-          rankBadge(rankFromGrade(e.g), null, e.g) +
+          rankBadge(rankFromGrade(e.g), null, e.g,
+            !!(A && A.isPerfectConfig && A.isPerfectConfig(e.gem, isSupport() ? "support" : "dps"))) +
           '<span class="wk-slot">' + esc(slot) + '</span>' +
           '<span class="wk-dmg">' + e.dmg.toFixed(3) + '%</span>' +
           '</div>';

@@ -41,7 +41,7 @@
       // ?v= for the SAME staleness-avoidance reason as the LAZY_TABS list in
       // index.html — bump whenever model/dp-worker.js changes (it also has its
       // own ?v= pins for astrogem.js/nested.js/dp.js; keep both in sync on edit).
-      try { dpWorker = new Worker("model/dp-worker.js?v=6"); }
+      try { dpWorker = new Worker("model/dp-worker.js?v=7"); }
       catch (e) { dpWorkerDead = true; return null; }
     }
     return dpWorker;
@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 85;
+  var CLIENT_V = 88;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -382,8 +382,10 @@
       var rFnF = supF ? (window.supportRank || window.gemRank) : window.gemRank;
       var gF = (vF.valid && typeof gFnF === "function") ? gFnF(stF.config) : null;
       var rkF = (vF.valid && typeof rFnF === "function") ? rFnF(stF.config) : null;
+      var pfF = !!(window.Astrogem && window.Astrogem.isPerfectConfig && vF.valid &&
+        window.Astrogem.isPerfectConfig(stF.config, supF ? "support" : "dps"));
       s.innerHTML = "Final turn processed — the cut is finished. Final gem: " +
-        (gF != null ? (rkF ? rankBadge(rkF, gF) + " " : "") + gF.toFixed(1) + "/100" +
+        (gF != null ? (rkF ? rankBadge(rkF, gF, pfF) + " " : "") + gF.toFixed(1) +
           (supF ? " <span class='note'>(support axis)</span>" : "") : "(fill the stat fields to grade it)") + " ";
     } else {
       s.textContent = "Processed: " + info.description + " — now turn " + info.turn + "/" + info.maxTurns +
@@ -1056,9 +1058,9 @@
     var sign = v >= 0 ? "+" : "−";
     return sign + Math.abs(Math.round(v)).toLocaleString() + "g";
   }
-  function rankBadge(rank, grade) {
+  function rankBadge(rank, grade, perfect) {
     var A2 = window.Astrogem;
-    var c = (grade != null && A2 && A2.gradeColor) ? A2.gradeColor(grade)
+    var c = (grade != null && A2 && A2.gradeColor) ? A2.gradeColor(grade, perfect)
       : (A2 && A2.rankColor) ? A2.rankColor(rank) : { bg: "#6f747a", fg: "#fff" };
     return '<span class="rank-badge' + (c.cls ? " " + c.cls : "") + '" style="background:' + c.bg + ';color:' + c.fg + '">' + rank + '</span>';
   }
@@ -1073,9 +1075,11 @@
     var gRankFn = sup ? (window.supportRank || window.gemRank) : window.gemRank;
     var gemGrade = (typeof gGradeFn === "function") ? gGradeFn(state.config) : null;
     var gemRk = (typeof gRankFn === "function") ? gRankFn(state.config) : null;
+    var gemPf = !!(window.Astrogem && window.Astrogem.isPerfectConfig &&
+      window.Astrogem.isPerfectConfig(state.config, sup ? "support" : "dps"));
     $("av-best-line").innerHTML = "Best: <b>" + best.name + "</b> &nbsp;·&nbsp; "
       + "net " + fmtGold(best.value) + " EV"
-      + (gemGrade != null ? ' &nbsp;·&nbsp; gem ' + (gemRk ? rankBadge(gemRk, gemGrade) + ' · ' : "") + gemGrade.toFixed(1) + '/100' : "");
+      + (gemGrade != null ? ' &nbsp;·&nbsp; gem ' + (gemRk ? rankBadge(gemRk, gemGrade, gemPf) + ' · ' : "") + gemGrade.toFixed(1) : "");
 
     // Heuristic one-liner (a plain-English SUMMARY of this query's DP numbers, NOT
     // the decision source). It states the margin by which the best beats the runner-up.

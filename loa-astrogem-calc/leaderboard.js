@@ -183,11 +183,15 @@
     for (var i = 0; i < gems.length; i++) if (validateConfig(gems[i]).valid) out.push(gems[i]);
     return out;
   }
-  // Map a (geometric-mean) gem value to a 0-100 grade via global value bounds.
-  function valueToGrade(v, bounds) {
-    if (!bounds) return null;
-    var g = 100 * (v - bounds.min) / (bounds.max - bounds.min);
-    return Math.round(Math.max(0, Math.min(100, g)) * 10) / 10;
+  // Map a (geometric-mean) gem value to a grade on the SAME scale the per-gem
+  // grades use (2026-08-09: anchor-based, open above 100 — a perfect all-c10
+  // grid reads above 100 like its gems do). zero/anchor per axis:
+  //   dps     : zero = valueBounds().min, anchor = valueAnchor()
+  //   support : zero = supportZero(),     anchor = supportValueAnchor()
+  function valueToGrade(v, zero, anchor) {
+    if (zero == null || anchor == null) return null;
+    var g = 100 * (v - zero) / (anchor - zero);
+    return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
   }
 
   // Total damage ABOVE the neutral baseline (order 4.25, no effects) over a character's
@@ -212,15 +216,15 @@
   // grades, equivalent builds tie. Falls back to a plain grade mean on an old model.
   function avgGradeOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
-    if (A && A.gridQuality && A.valueBounds)
-      return valueToGrade(Math.exp(A.gridQuality(g, "dps") / g.length), A.valueBounds());
+    if (A && A.gridQuality && A.valueBounds && A.valueAnchor)
+      return valueToGrade(Math.exp(A.gridQuality(g, "dps") / g.length), A.valueBounds().min, A.valueAnchor());
     var sum = 0; for (var i = 0; i < g.length; i++) sum += grade(g[i]); return sum / g.length;
   }
-  // SUPPORT quality grade (parallel to avgGradeOf, support axis + bounds).
+  // SUPPORT quality grade (parallel to avgGradeOf, support axis + pinned zero).
   function avgSupportGradeOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
-    if (A && A.gridQuality && A.supportValueBounds)
-      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportValueBounds());
+    if (A && A.gridQuality && A.supportZero && A.supportValueAnchor)
+      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportZero(), A.supportValueAnchor());
     var sum = 0; for (var i = 0; i < g.length; i++) sum += supportGrade(g[i]); return sum / g.length;
   }
 
@@ -328,7 +332,7 @@
 '  <p>Every character pulled in the Grader is cached and listed here. Each contributes two numbers, both rolled up from its gems (see the Grader’s “How a gem is graded”). Click a row to open that loadout in the Grader.</p>' +
 '  <ul>' +
 '    <li><b>Total dmg %</b> — <i>the ranking key.</i> The real damage the whole 6-core grid adds over no grid: effect levels pool into stat buckets that multiply over your gear (diminishing returns), and order/chaos counts per core above a ~17-point floor, the six cores multiplying. The best grids land ~13–14%.</li>' +
-'    <li><b>Avg grade</b> — a quality score that’s <i>pairing-invariant</i> (it doesn’t matter which gem sits in which core): the geometric mean of the gems’ values mapped to 0–100. It’s separate from total damage — “how clean is the build,” not “how much it does.”</li>' +
+'    <li><b>Avg grade</b> — a quality score that’s <i>pairing-invariant</i> (it doesn’t matter which gem sits in which core): the geometric mean of the gems’ values on the grade scale (the perfect Ark Grid layout averages 100; single gems can exceed it). It’s separate from total damage — “how clean is the build,” not “how much it does.”</li>' +
 '  </ul>' +
 '  <p>The board <b>sorts by Total dmg %</b> (descending) and is <b>floorless</b> — every graded character shows, at any rank. The name search finds anyone by name, at any grade, with their true overall rank.</p>' +
 '  <p><b>DPS / Support toggle.</b> DPS ranks everyone by Total dmg%. Support keeps only the four support classes — Bard, Paladin, Artist, Valkyrie (every one of them, even DPS-built) — ranked by Party dmg%, the party-damage buff their grid provides. It is already per-ally (the support coefficients are stored per-DPS), so no ÷3 is applied to the shown value.</p>' +

@@ -84,28 +84,21 @@ function dpSelfCheck() {
   var cases = [
     // t==0 base case MUST equal the terminal gem value.
     ["t0 base-case == gemValue", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), gv(c10perfect, 1.0, 1500000)],
-    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 753205.0790],
-    // Re-frozen 2026-07-19: deliberate model change — the phantom Math.max(100,·)
-    // floor on process cost at cm=-100 was removed (the game shows a literal
-    // "Processing Cost 0" after the -100% outcome), so every cost-bearing W rose
-    // ~0.1-0.2%. The rosterBound pin (costs don't count) was correctly unmoved.
+    // Re-frozen 2026-08-09 (second pass): deliberate model change — the fitted
+    // per-cost MULTIPLIER table ((effects + 0.1571·order) × M[cost]) replaced
+    // the interim additive credit, so every value-scale-sensitive W moved.
     // Validated against the full MC battery after re-freezing.
-    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 3032.8512],
-    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 2028.9206],
-    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 35237.9149],
-    // Re-frozen 2026-08-06: deliberate model change (c415187, 2026-07-23) — the
-    // support-buff overhaul re-derived support coefficients and trimmed the
-    // willpower-per-cost-level constant ~0.5%; tools/ was restored two days later
-    // carrying pre-overhaul pins, so these three (the value-scale-sensitive ones)
-    // were stale. DPS-at-base1 pins and the t0 identity were unmoved.
-    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 290798.1751],
+    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 732414.0562],
+    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 6977.1728],
+    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 5098.7687],
+    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 68118.7749],
+    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 380986.0931],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
-    // (A.supportGradeToScore(65)=0.19581, (80)=0.23882 at freeze time; the literals below
-    // bake the RESULTING W so a baseline-scale drift also trips). Frozen 2026-07-16 when
-    // the axis was threaded through topLevelAdvice; the MC battery stays DPS-only
-    // (nested.js has no support axis).
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 28912.5707],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 15960.7897]
+    // (A.supportGradeToScore(65)=0.14619, (80)=0.20276 at freeze time; the literals below
+    // bake the RESULTING W so a baseline-scale drift also trips). The MC battery
+    // stays DPS-only (nested.js has no support axis).
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 125561.5085],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 24701.3949]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {
@@ -215,7 +208,12 @@ function mcEstimate(startCfg, maxTurns, maxRerolls, baseline, runs, rb) {
 // ---- battery ----
 var COSTS = [8, 9, 10];
 var RARITIES = ["uncommon", "rare", "epic"];
-var BASELINES = QUICK ? [0.5, 1.5] : [0.5, 1.0, 1.5, 2.0];
+// GRADE-derived baselines (2026-08-09): the reweighted value scale tops out at
+// 1.447, so the old raw {0.5,1.0,1.5,2.0} put half the battery above the value
+// ceiling (every gem worthless, W=0 — a degenerate test). Deriving from grades
+// keeps the battery spanning junk -> S on any future scale.
+var BASELINES = QUICK ? [A.gradeToScore(40), A.gradeToScore(80)]
+  : [A.gradeToScore(40), A.gradeToScore(65), A.gradeToScore(80), A.gradeToScore(90)];
 if (QUICK) { COSTS = [10]; RARITIES = ["uncommon", "epic"]; RUNS = Math.min(RUNS, 12000); }
 
 console.log("=== verify-dp.js : DP vs independent Monte-Carlo (Plan C gate) ===");

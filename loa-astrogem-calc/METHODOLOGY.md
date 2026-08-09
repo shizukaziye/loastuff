@@ -20,7 +20,7 @@ It reproduces the layout and verdict colors of the deployed reference page
 
 ---
 
-## 1. Scoring — real % damage (log-space `D`) × a multiplicative willpower
+## 1. Scoring — real % damage (log-space `D`) × a FITTED willpower toll
 
 A gem has four levelled stats, each `1–5`: **Willpower efficiency**, **Order/Chaos**,
 and **two side effects** (effects depend on base cost; no duplicate effect).
@@ -32,16 +32,26 @@ as the accessory calculator, `~/lost-ark-accessory` §2):
 ```
 D = 100 · ln(multiplier)                              (≈ % damage for small values)
 gemDamage(config) = D(effect1) + D(effect2) + D(order)
-gemValue(config)  = gemDamage × M(effectiveCost)      ← THE value / EV quantity
+gemValue(config)  = (D(effect1) + D(effect2) + 0.1571·orderLevel) × M[effCost]
+                                                       ← THE value / EV quantity
+M[3..9] = 1.074, 1.034, 1.000, 0.963, 0.914, 0.844, 0.735
 ```
 
-**Willpower is not a damage line** — it is efficiency (`effectiveCost = baseCost −
-willpowerLevel`), folded in as a quality multiplier `M(effectiveCost)` calibrated so
-a perfect gem of every base cost ties exactly (`gemValue ≈ 1.5021` = grade 100).
-Since the 2026-06-26 scoring rework this multiplicative `gemValue` is what the
-grade, the DP terminal value, and every EV layer in this bake use; the support axis
-has a parallel `supportValue`. Full derivation + the `M` table:
-`docs/how-a-gem-is-graded.md`.
+**Willpower is not a damage line** — it is budget (`effectiveCost = baseCost −
+willpowerLevel`; a cheap gem frees willpower that lets a bigger gem slot
+elsewhere). The 2026-08-09 reweight replaced the old perfect-tie calibration of
+`M` with a **fitted per-cost table**: 15,000 simulated accounts were cut by this
+site's own advisor and packed into optimal 3×17 Ark Grids by an exact-verified
+packer, and `M[cost]` (plus the order value-weight 0.1571) was fitted to
+minimize disagreements with the packer's socketed-vs-benched choices (held-out:
+1.62 vs 2.95 wrong gems/account for the old model). The curve says costs 3–6
+are all viable, 7 is taxed, 8 is heavy, and 9 is a cliff the optimal grid never
+sockets. Perfect gems no longer tie: the perfect Ark-Grid layout (3 c8 + 3 c9 +
+6 c10) *averages* grade 100, with perfects at 93 / 97.8 / 104.6. This
+`gemValue` is what the grade, the DP terminal value, and every EV layer in this
+bake use; the support axis shares the same `M` table by the proportional
+transplant (its own study is queued). Full derivation:
+`docs/how-a-gem-is-graded.md`; study: `docs/account-study-2026-08-08.md`.
 
 The older **additive** `score(config) = Σ line D` (willpower as an additive `±D`
 line, a perfect gem ≈ 1.34–1.44%) survives only as a legacy layer — the grader's
@@ -67,7 +77,7 @@ per-level D = 100 · ln( (base + gridAdd/levels) / base )
 | Additional Damage | other 33.6% (100-quality weapon 30% + high necklace 2.6% + pet 1%); +2.42% over 30 | `100·ln((1.3602+0.0242/30)/1.3602)` = **0.059287** |
 | Boss Damage | no other sources; +2.5% over 30 | `100·ln((1.025+0.025/30)/1.025)` = **0.081268** |
 | Order/Chaos | flat ×1.0016 per point | `100·ln(1.0016)` = **0.159872** per point — `orderScore = orderLevel × 0.159872` (NOT relative to level 4) |
-| Willpower | efficiency vs cost 4; keeps the old willpower:attack ratio (2.4 : 1.0) | `2.4 × 0.032386` = **±0.077726** per cost-level. `willpowerCost = baseCost − willpowerLevel`; cost `<4` → `(4−cost)×D`, cost `>4` → `(cost−4)×(−D)`, cost `4` → 0. In the value model this additive form feeds only the legacy `score`; `gemValue` folds willpower in as the multiplier `M` instead (§1, grading doc §5) |
+| Willpower | efficiency vs cost 4; keeps the old willpower:attack ratio (2.4 : 1.0) | `2.4 × 0.032386` = **±0.077726** per cost-level. `willpowerCost = baseCost − willpowerLevel`; cost `<4` → `(4−cost)×D`, cost `>4` → `(cost−4)×(−D)`, cost `4` → 0. In the value model this additive form feeds only the legacy `score`; `gemValue` folds willpower in as the FITTED per-cost multiplier table `M[3..9]` instead (§1) |
 | Brand Power / Ally Damage Enh. / Ally Attack Enh. (support) | — | `0` on the DPS axis (they carry the parallel support axis — grading doc §8) |
 
 The bucket baselines live in `SCORING.baselines` (JS and Python) so the assumptions

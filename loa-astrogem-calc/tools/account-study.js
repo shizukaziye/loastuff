@@ -61,6 +61,42 @@ var TIERS = {
   T2: { name: "T2", gpd: 3000000, bl: 75, counts: { 8: 138, 9: 69, 10: 23 } },
   T3: { name: "T3", gpd: 5000000, bl: 80, counts: { 8: 252, 9: 126, 10: 42 } }
 };
+
+// ---------------- axis strategy (2026-08-09: support gets the DPS treatment) ----------------
+// --axis=support --side=order|chaos runs the SUPPORT twin of the study: gems cut
+// by support DP solvers against support-grade baselines, packed by party-damage
+// value with PER-CORE order rates (each support core converts order points at
+// its own rate, so which group lands on which core matters — solved exactly by
+// sorting group order-totals onto sorted rates; see supDamageOfGroups).
+var AXIS = ARGS.axis === "support" ? "support" : "dps";
+var SIDE = ARGS.side === "chaos" ? "chaos" : "order";   // selftest/sizing only; dumps run BOTH sides jointly
+var SUP_SIDE_CORES = { order: [10001, 10002, 10003], chaos: [10004, 10005, 10006] };
+function sideRates(side) {
+  return SUP_SIDE_CORES[side].map(function (id) {
+    return Math.exp(A.supportOrderValueForCore(id) / 100) - 1;
+  }).sort(function (a, b) { return b - a; });
+}
+var SUP_RATES_BY_SIDE = { order: sideRates("order"), chaos: sideRates("chaos") };
+// The rate set the support objective currently prices against. A JOINT support
+// account packs twice (order gems -> order cores, chaos gems -> chaos cores);
+// the packer switches this before each side's pack, same pattern as ORACLE_MODE.
+var SUP_RATES = SUP_RATES_BY_SIDE[SIDE];
+function setSupSide(side) { SUP_RATES = SUP_RATES_BY_SIDE[side]; }
+// support PER-SIDE collection sizes (the 6/pAbove rule on support solvers;
+// --size-support measured pAbove ~6x DPS because the x3 party gpd makes the DP
+// play much harder for keeps). An account cuts BOTH sides: totals are 2x these.
+var SUPPORT_COUNTS = {
+  T1: { 8: 11, 9: 6, 10: 2 },
+  T2: { 8: 17, 9: 8, 10: 3 },
+  T3: { 8: 32, 9: 16, 10: 5 }
+};
+// fixed-N variant (--fixed-n): DPS-sized collections PER SIDE for fit signal —
+// realistic-N selectivity is ~1.6:1, which barely exercises the ranking.
+function tierCounts(tier) {
+  if (AXIS !== "support") return tier.counts;
+  if (ARGS["fixed-n"]) return tier.counts;
+  return SUPPORT_COUNTS[tier.name] || tier.counts;
+}
 var KEEP_GRADE = 55;      // B- floor: anything below is discarded on the spot
 var SINGLES = parseInt(ARGS.singles, 10) || 1000;   // single-gem experiments per cost
 var CORE_SUPPLY = 17, CORES = 3, SLOTS = 4;
@@ -74,6 +110,19 @@ function bukTerm(name, lvl) {
   return Math.log((1 + s.other + lvl * (s.gridAdd / s.levels)) / (1 + s.other));
 }
 function gemMeta(cfg) {
+  if (AXIS === "support") {
+    // support meta: rawLin holds the SUPPORT lines (linear party-% per ally);
+    // the bucket fields stay zero (the support objective has no buckets).
+    return {
+      cfg: cfg,
+      cost: A.willpowerCost(cfg.baseCost, cfg.willpowerLevel),
+      order: cfg.orderLevel,
+      atk: 0, add: 0, boss: 0,
+      rawLin: A.supportEffectScore(cfg.effect1, cfg.effect1Level) + A.supportEffectScore(cfg.effect2, cfg.effect2Level),
+      grade: A.supportGrade(cfg),
+      empty: false
+    };
+  }
   var atk = 0, add = 0, boss = 0;
   [[cfg.effect1, cfg.effect1Level], [cfg.effect2, cfg.effect2Level]].forEach(function (p) {
     if (p[0] === "Attack Power") atk += p[1];
@@ -93,37 +142,64 @@ function gemMeta(cfg) {
 var EMPTY = { cfg: null, cost: 0, order: 0, atk: 0, add: 0, boss: 0, rawLin: 0, grade: -1, empty: true };
 
 // ---------------- banded grid damage ----------------
+var ORACLE_MODE = false;   // 17-forcing pass inside packCollection17
 function bandPenalty(pts) {
-  // 2026-08-09 (Shizu): doubled from -5/-10/-15 — under the soft bands the
-  // packer parked one core at 14-16 in most accounts, while every real
-  // endgame grid holds 17+ on all cores. These rates make sub-17 cores
-  // essentially never optimal.
+  // 2026-08-09 (Shizu): -3/-6/-9. With the log-additive attachment even -3%
+  // (~19 order points) dwarfs any side-node trade, so the packer forces 17+
+  // wherever the collection allows; larger rates only distort the sub-17
+  // fallback cases.
   if (pts >= 17) return 0;
-  if (pts >= 14) return 0.10;
-  if (pts >= 10) return 0.20;
-  return 0.30;
+  if (ORACLE_MODE) return pts >= 14 ? 0.50 : (pts >= 10 ? 0.75 : 0.99);
+  if (pts >= 14) return 0.03;
+  if (pts >= 10) return 0.06;
+  return 0.09;
 }
 // groups: array of 3 arrays of metas (each length <= 4)
-// 2026-08-09 CORRECTED ATTACHMENT (Shizu): a sub-17 core's penalty hits the
-// WHOLE character's damage (a core option is a global multiplier), not just
-// that core's own gems — the old per-core-gems attachment made -5% worth
-// ~0.03% total (a fifth of one order point) and the packer rightly ignored
-// it. Now each sub-17 core multiplies TOTAL damage by (1 - band), so a
-// 14-16 core costs 10% of everything — ~60 order points — and the packer
-// forces 17 wherever the collection allows.
+// 2026-08-09 THIRD attachment (Shizu -3/-6/-9 "done properly"): a core option
+// multiplies the CHARACTER's whole damage, but d here is only the grid's
+// log-damage (~0.065), so `d * (1-pen)` priced -3% at ~1.2 order points and
+// the packer skipped feasible 17s (pilot oracle caught it). The penalty must
+// join the character-damage exponent: d += log(1-pen). That prices -3% at
+// ~19 order points independent of grid size, so 17+ wins wherever feasible.
 function damageOfGroups(groups) {
-  var atk = 0, add = 0, boss = 0, d = 0, mult = 1;
+  if (AXIS === "support") return supDamageOfGroups(groups);
+  var atk = 0, add = 0, boss = 0, d = 0;
   for (var g = 0; g < groups.length; g++) {
     var grp = groups[g], pts = 0, i;
     for (i = 0; i < grp.length; i++) pts += grp[i].order;
-    mult *= (1 - bandPenalty(pts));
+    d += Math.log(1 - bandPenalty(pts));
     for (i = 0; i < grp.length; i++) {
       atk += grp[i].atk; add += grp[i].add; boss += grp[i].boss;
     }
     d += Math.log(1 + B.order.perPoint * Math.max(0, pts - 17));
   }
   d += bukTerm("Attack Power", atk) + bukTerm("Additional Damage", add) + bukTerm("Boss Damage", boss);
-  return 100 * d * mult;
+  return 100 * d;
+}
+
+// SUPPORT grid value (party damage per ally): effects are LINEAR (no buckets),
+// order converts PER CORE at that core's own rate. For a fixed 3-way split the
+// optimal core assignment is sorted: highest order total -> highest-rate core
+// (the pairwise difference ln((1+r1·x)/(1+r2·x)) is increasing in x, so the
+// assignment is a rearrangement argument — exact, not a heuristic). Band
+// penalties are core-uniform and attach to the party-damage exponent, exactly
+// like the DPS attachment.
+function supDamageOfGroups(groups) {
+  var eff = 0, d = 0;
+  var pts = [0, 0, 0];
+  for (var g = 0; g < groups.length; g++) {
+    var grp = groups[g];
+    for (var i = 0; i < grp.length; i++) {
+      eff += grp[i].rawLin;
+      pts[g] += grp[i].order;
+    }
+  }
+  pts.sort(function (a, b) { return b - a; });          // pair with SUP_RATES (desc)
+  for (var k = 0; k < 3; k++) {
+    d += Math.log(1 + SUP_RATES[k] * Math.max(0, pts[k] - 17));
+    d += Math.log(1 - bandPenalty(pts[k]));
+  }
+  return eff + 100 * d;
 }
 
 // ---------------- exact grouping of a fixed 12 ----------------
@@ -192,6 +268,8 @@ function prunePool(kept) {
   var byRaw = kept.slice().sort(function (a, b) { return b.rawLin - a.rawLin; });
   var byEff = kept.slice().sort(function (a, b) { return (b.rawLin / (b.cost + 1)) - (a.rawLin / (a.cost + 1)); });
   var byOrder = kept.slice().sort(function (a, b) { return (b.order - a.order) || (b.rawLin - a.rawLin); });
+  // order desc then cost asc: cheap order carriers keep 17x3 inside the budget
+  var byOrderCheap = kept.slice().sort(function (a, b) { return (b.order - a.order) || (a.cost - b.cost); });
   var byCheap = kept.slice().sort(function (a, b) { return (a.cost - b.cost) || (b.rawLin - a.rawLin); });
   var set = new Set();
   var pool = [];
@@ -200,7 +278,11 @@ function prunePool(kept) {
       if (!set.has(arr[i])) { set.add(arr[i]); pool.push(arr[i]); k--; }
     }
   }
-  take(byRaw, 24); take(byEff, 10); take(byOrder, 8); take(byCheap, 8);
+  // 2026-08-09: order slices widened (8 -> 16+8). Under keep-all pools the old
+  // 8-gem order slice starved the packer of order carriers — the feasibility
+  // certifier found 17x3 packings (e.g. 12x cost3/order5) that never entered
+  // the pruned pool. A 17x3 grid can need 12+ order-heavy gems, some cheap.
+  take(byRaw, 24); take(byEff, 10); take(byOrder, 16); take(byOrderCheap, 12); take(byCheap, 8);
   return pool;
 }
 
@@ -231,9 +313,11 @@ function seedSelection(pool, keyFn) {
 }
 
 // Damage if groups[gi][slot] were replaced by gem g (no mutation). O(12).
-// Mirrors damageOfGroups' whole-damage multiplicative band penalty.
+// Mirrors damageOfGroups' log-additive band penalty (and the support twin's
+// sorted core assignment).
 function damageWithSwap(groups, gi, slot, g) {
-  var atk = 0, add = 0, boss = 0, d = 0, mult = 1;
+  if (AXIS === "support") return supDamageWithSwap(groups, gi, slot, g);
+  var atk = 0, add = 0, boss = 0, d = 0;
   for (var q = 0; q < groups.length; q++) {
     var grp = groups[q], pts = 0, i, x;
     for (i = 0; i < grp.length; i++) {
@@ -241,11 +325,29 @@ function damageWithSwap(groups, gi, slot, g) {
       pts += x.order;
       atk += x.atk; add += x.add; boss += x.boss;
     }
-    mult *= (1 - bandPenalty(pts));
+    d += Math.log(1 - bandPenalty(pts));
     d += Math.log(1 + B.order.perPoint * Math.max(0, pts - 17));
   }
   d += bukTerm("Attack Power", atk) + bukTerm("Additional Damage", add) + bukTerm("Boss Damage", boss);
-  return 100 * d * mult;
+  return 100 * d;
+}
+function supDamageWithSwap(groups, gi, slot, g) {
+  var eff = 0, d = 0;
+  var pts = [0, 0, 0];
+  for (var q = 0; q < groups.length; q++) {
+    var grp = groups[q];
+    for (var i = 0; i < grp.length; i++) {
+      var x = (q === gi && i === slot) ? g : grp[i];
+      eff += x.rawLin;
+      pts[q] += x.order;
+    }
+  }
+  pts.sort(function (a, b) { return b - a; });
+  for (var k = 0; k < 3; k++) {
+    d += Math.log(1 + SUP_RATES[k] * Math.max(0, pts[k] - 17));
+    d += Math.log(1 - bandPenalty(pts[k]));
+  }
+  return eff + 100 * d;
 }
 
 // Local search from a starting grouping: in-place swap evaluation (O(12) per
@@ -295,7 +397,10 @@ function packCollection(kept, seedSolution) {
   var seeds = [];
   if (seedSolution) seeds.push(seedSolution.slice());
   seeds.push(seedSelection(pool, function (g) { return g.rawLin; }));
-  if (!seedSolution) seeds.push(seedSelection(pool, function (g) { return g.rawLin / (g.cost + 1); }));
+  seeds.push(seedSelection(pool, function (g) { return g.rawLin / (g.cost + 1); }));
+  seeds.push(seedSelection(pool, function (g) { return g.order * 1000 + g.rawLin; }));
+  // cheap order carriers: the witness shape for tight 17x3 packings
+  seeds.push(seedSelection(pool, function (g) { return g.order * 1000 - g.cost; }));
 
   var best = null;
   seeds.forEach(function (sel) {
@@ -308,6 +413,116 @@ function packCollection(kept, seedSolution) {
     var empt = [];
     for (var e = 0; e < 12; e++) empt.push(EMPTY);
     return { sel: empt, dmg: 0, groups: [[], [], []] };
+  }
+  return best;
+}
+
+// Pack with 17-cores as a hard preference. In-game, core order 17 is a
+// discrete breakpoint (top core-option rank) — real endgame grids always run
+// 17+ — so the packer maximizes the number of 17-point cores FIRST and only
+// then damage; the -3/-6/-9 band prices the genuinely infeasible residue.
+// (At an honest -3% about 2-9% of keep-all accounts would optimally park a
+// core at 14-16 because their only 17x3 needs many weak-line order carriers;
+// the smooth penalty is a stand-in for the breakpoint, so the breakpoint
+// wins.) The oracle pass crosses damage valleys single-swap search cannot;
+// its selection then seeds the real objective, which polishes damage without
+// breaking 17s (a single swap never gains the ~19 points a 17-core is worth).
+function count17(p) {
+  var n = 0;
+  for (var g = 0; g < p.groups.length; g++) {
+    var pts = 0;
+    for (var i = 0; i < p.groups[g].length; i++) pts += p.groups[g][i].order;
+    if (pts >= 17) n++;
+  }
+  return n;
+}
+function pick17(a, b) {
+  var ca = count17(a), cb = count17(b);
+  if (ca !== cb) return ca > cb ? a : b;
+  return a.dmg > b.dmg ? a : b;
+}
+
+// Exact 17x3 feasibility on (cost, order) classes; returns a concrete 12-gem
+// witness seed (best rawLin per class) or null. Only order >= 2 / cost <= 8
+// gems can sit in a 17-core (5+5+5+2 floor; companions cost >= 3 each).
+function certWitnessSeed(kept) {
+  var cls = new Map();
+  kept.forEach(function (g) {
+    if (g.order < 2 || g.cost > 8) return;
+    var k = g.cost + ":" + g.order;
+    if (!cls.has(k)) cls.set(k, []);
+    cls.get(k).push(g);
+  });
+  var list = [];
+  cls.forEach(function (gems, k) {
+    gems.sort(function (a, b) { return b.rawLin - a.rawLin; });
+    var p = k.split(":");
+    list.push({ c: +p[0], o: +p[1], gems: gems });
+  });
+  list.sort(function (a, b) { return (b.o - a.o) || (a.c - b.c); });
+  var L = list.length;
+  var cands = [];
+  (function rec(start, picked, sc, so) {
+    if (picked.length === 4) { if (so >= 17) cands.push(picked.slice()); return; }
+    var need = 4 - picked.length;
+    if (start >= L || so + need * list[start].o < 17) return;
+    for (var i = start; i < L; i++) {
+      if (so + need * list[i].o < 17) break;
+      var used = 0;
+      for (var p = 0; p < picked.length; p++) if (picked[p] === i) used++;
+      if (used >= list[i].gems.length) continue;
+      if (sc + list[i].c > 17 - 3 * (need - 1)) continue;
+      picked.push(i); rec(i, picked, sc + list[i].c, so + list[i].o); picked.pop();
+    }
+  })(0, [], 0, 0);
+  var counts = list.map(function (x) { return x.gems.length; });
+  var memo = new Map();
+  function solve(k, minCore) {
+    if (k === 0) return [];
+    var key = counts.join(",") + "|" + k + "|" + minCore;
+    if (memo.has(key)) return memo.get(key);
+    var res = null;
+    for (var ci = minCore; ci < cands.length && !res; ci++) {
+      var core = cands[ci], ok = true, i;
+      var use = new Map();
+      for (i = 0; i < core.length; i++) use.set(core[i], (use.get(core[i]) || 0) + 1);
+      use.forEach(function (u, idx) { if (counts[idx] < u) ok = false; });
+      if (!ok) continue;
+      use.forEach(function (u, idx) { counts[idx] -= u; });
+      var rest = solve(k - 1, ci);
+      use.forEach(function (u, idx) { counts[idx] += u; });
+      if (rest) res = core.concat(rest);
+    }
+    memo.set(key, res);
+    return res;
+  }
+  var flat = solve(3, 0);
+  if (!flat) return null;
+  var cursor = new Map();
+  return flat.map(function (idx) {
+    var at = cursor.get(idx) || 0;
+    cursor.set(idx, at + 1);
+    return list[idx].gems[at];
+  });
+}
+
+function packCollection17(kept) {
+  var plain = packCollection(kept);
+  ORACLE_MODE = true;
+  var oracle = packCollection(kept);
+  ORACLE_MODE = false;
+  var assisted = packCollection(kept, oracle.sel);
+  var best = pick17(assisted, plain);
+  if (count17(best) < 3) {
+    // heuristic search ended sub-17: ask the exact certifier for a witness
+    // and re-pack from it (~1 in 15k accounts; all-17 results never get here)
+    var w = certWitnessSeed(kept);
+    if (w) {
+      ORACLE_MODE = true;
+      var o2 = packCollection(kept, w);
+      ORACLE_MODE = false;
+      best = pick17(packCollection(kept, o2.sel), best);
+    }
   }
   return best;
 }
@@ -331,7 +546,7 @@ function singleGemDelta(base, kept, basePool, g) {
     }
   }
   if (!seedGroups) {
-    var proxy = function (x) { return x.rawLin + 0.08 * x.order; };
+    var proxy = function (x) { return x.rawLin + (AXIS === "support" ? 0.02 : 0.08) * x.order; };
     var flat = base.sel, minI = -1, minP = Infinity;
     for (var i = 0; i < flat.length; i++) { var p = proxy(flat[i]); if (p < minP) { minP = p; minI = i; } }
     if (minI >= 0 && proxy(g) > minP - 0.02) {
@@ -356,7 +571,8 @@ function gradeGreedyRoster(kept) {
 
 // ---------------- self-test: brute force small pools ----------------
 function selfTest() {
-  console.log("=== packer self-test: brute force vs packCollection ===");
+  console.log("=== packer self-test: brute force vs packCollection (axis=" + AXIS +
+    (AXIS === "support" ? " side=" + SIDE : "") + ") ===");
   var rand = mulberry32(fnv1a("packer-selftest"));
   var worst = 0, trials = 30;
   for (var t = 0; t < trials; t++) {
@@ -492,10 +708,10 @@ function runAccount(tier, accountIdx, solvers) {
 
 // ---------------- bank helpers ----------------
 function makeSolvers(tier) {
-  var baseline = A.gradeToScore(tier.bl);
+  var baseline = AXIS === "support" ? A.supportGradeToScore(tier.bl) : A.gradeToScore(tier.bl);
   var solvers = {};
   [8, 9, 10].forEach(function (cost) {
-    solvers[cost] = new DP.Solver(baseline, tier.gpd, false, { axis: "dps", maxTurns: Engine.EPIC.maxTurns });
+    solvers[cost] = new DP.Solver(baseline, tier.gpd, false, { axis: AXIS, maxTurns: Engine.EPIC.maxTurns });
   });
   return solvers;
 }
@@ -518,6 +734,7 @@ if (require.main !== module) {
     gemMeta: gemMeta, bandPenalty: bandPenalty, damageOfGroups: damageOfGroups,
     bestGrouping: bestGrouping, prunePool: prunePool, seedSelection: seedSelection,
     localSearch: localSearch, packCollection: packCollection,
+    packCollection17: packCollection17,
     gradeGreedyRoster: gradeGreedyRoster, singleGemDelta: singleGemDelta,
     makeSolvers: makeSolvers
   };
@@ -538,42 +755,123 @@ if (ARGS["dump-labels"]) {
   var dTo = ARGS.to != null ? parseInt(ARGS.to, 10) : dFrom + 10000;
   var dRows = [];
   var dT0 = Date.now();
+  function tupleOf(g) {
+    var c = g.cfg;
+    var t = [c.baseCost, c.willpowerLevel, c.orderLevel,
+      A.EFFECT_POOLS[c.baseCost].indexOf(c.effect1), c.effect1Level,
+      A.EFFECT_POOLS[c.baseCost].indexOf(c.effect2), c.effect2Level];
+    if (AXIS === "support") t.push(g.side === "chaos" ? 1 : 0);
+    return t;
+  }
   for (var da = dFrom; da < dTo; da++) {
+    var dCounts = tierCounts(dTier);
+    if (AXIS === "support") {
+      // JOINT support account (Shizu 2026-08-09: "study order and chaos at the
+      // same time"): one account cuts BOTH gem types — same cut mechanics, but
+      // each side packs into its own 3 cores at its own per-core rates. One
+      // score must serve both sides; the fit measures unified vs split weights
+      // on these joint labels.
+      var dAll = [], dSide = {};
+      ["order", "chaos"].forEach(function (side) {
+        var sRand = mulberry32(fnv1a("sup-" + side + ":" + dTier.name + "#" + da));
+        var sKept = [];
+        [8, 9, 10].forEach(function (cost) {
+          var dp = A.EFFECT_POOLS[cost], dPairs = [];
+          for (var x = 0; x < dp.length; x++) for (var y = x + 1; y < dp.length; y++) dPairs.push([dp[x], dp[y]]);
+          for (var di = 0; di < dCounts[cost]; di++) {
+            var dpr = dPairs[Math.floor(sRand() * dPairs.length)];
+            var dres = cutOneGem(dSolvers[cost], { baseCost: cost, gemType: "order", effect1: dpr[0], effect2: dpr[1] }, sRand, true);
+            var dm = gemMeta(dres.cfg);
+            dm.side = side;
+            if (dres.processes > 0 && (dKeepAll || dm.grade >= KEEP_GRADE)) sKept.push(dm);
+          }
+        });
+        setSupSide(side);
+        var sPack = packCollection17(sKept);
+        dSide[side] = {
+          kept: sKept,
+          set: new Set(sPack.sel.filter(function (g) { return !g.empty; })),
+          dmg: sPack.dmg,
+          cores: sPack.groups.map(function (grp) {
+            var p = 0; grp.forEach(function (x) { p += x.order; }); return p;
+          })
+        };
+        dAll = dAll.concat(sKept);
+      });
+      dRows.push({
+        a: da,
+        kept: dAll.map(tupleOf),
+        sockO: dAll.map(function (g, i) { return dSide.order.set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
+        sockC: dAll.map(function (g, i) { return dSide.chaos.set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
+        dmgO: dSide.order.dmg, dmgC: dSide.chaos.dmg,
+        coresO: dSide.order.cores, coresC: dSide.chaos.cores
+      });
+    } else {
     var dRand = mulberry32(fnv1a(dTier.name + "#" + da));
     var dKept = [];
     [8, 9, 10].forEach(function (cost) {
       var dp = A.EFFECT_POOLS[cost], dPairs = [];
       for (var x = 0; x < dp.length; x++) for (var y = x + 1; y < dp.length; y++) dPairs.push([dp[x], dp[y]]);
-      for (var di = 0; di < dTier.counts[cost]; di++) {
+      for (var di = 0; di < dCounts[cost]; di++) {
         var dpr = dPairs[Math.floor(dRand() * dPairs.length)];
         var dres = cutOneGem(dSolvers[cost], { baseCost: cost, gemType: "order", effect1: dpr[0], effect2: dpr[1] }, dRand, true);
         var dm = gemMeta(dres.cfg);
         if (dres.processes > 0 && (dKeepAll || dm.grade >= KEEP_GRADE)) dKept.push(dm);
       }
     });
-    var dPack = packCollection(dKept);
+    var dPack = packCollection17(dKept);
     var dSet = new Set(dPack.sel.filter(function (g) { return !g.empty; }));
     dRows.push({
       a: da,
-      kept: dKept.map(function (g) {
-        var c = g.cfg;
-        return [c.baseCost, c.willpowerLevel, c.orderLevel,
-          A.EFFECT_POOLS[c.baseCost].indexOf(c.effect1), c.effect1Level,
-          A.EFFECT_POOLS[c.baseCost].indexOf(c.effect2), c.effect2Level];
-      }),
+      kept: dKept.map(tupleOf),
       sock: dKept.map(function (g, i) { return dSet.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
-      dmg: dPack.dmg
+      dmg: dPack.dmg,
+      cores: dPack.groups.map(function (grp) {
+        var p = 0; grp.forEach(function (x) { p += x.order; }); return p;
+      })
     });
+    }
     if (ARGS.progress && (da - dFrom + 1) % 250 === 0) {
       console.log("[labels " + dTier.name + "] " + (da - dFrom + 1) + "/" + (dTo - dFrom) +
         " (" + ((Date.now() - dT0) / 1000).toFixed(0) + "s)");
     }
   }
   fs.writeFileSync(ARGS.out || ("labels-" + dTier.name + "-" + dFrom + "-" + dTo + ".json"),
-    JSON.stringify({ tier: dTier.name, from: dFrom, to: dTo, rows: dRows }));
+    JSON.stringify({ tier: dTier.name, axis: AXIS, side: AXIS === "support" ? SIDE : null, from: dFrom, to: dTo, rows: dRows }));
   console.log("wrote " + (ARGS.out || "labels") + " (" + dRows.length + " accounts, " + ((Date.now() - dT0) / 1000).toFixed(0) + "s)");
 }
 else if (ARGS.selftest) { selfTest(); }
+else if (ARGS["size-support"]) {
+  // Empirical above-baseline rates for the SUPPORT solvers -> collection sizes
+  // by the same 6/pAbove rule the DPS study used (at the 60/30/10 cost mix).
+  // Usage: node tools/account-study.js --size-support --axis=support
+  if (AXIS !== "support") { console.error("--size-support needs --axis=support"); process.exit(1); }
+  var SZ_CUTS = parseInt(ARGS.cuts, 10) || 400;
+  Object.keys(TIERS).forEach(function (tn) {
+    var szTier = TIERS[tn];
+    var szSolvers = makeSolvers(szTier);
+    var szBaseline = A.supportGradeToScore(szTier.bl);
+    var pAbove = {};
+    [8, 9, 10].forEach(function (cost) {
+      var pool = A.EFFECT_POOLS[cost], pairs = [];
+      for (var x = 0; x < pool.length; x++) for (var y = x + 1; y < pool.length; y++) pairs.push([pool[x], pool[y]]);
+      var rand = mulberry32(fnv1a("size:sup:" + tn + ":c" + cost));
+      var above = 0;
+      for (var n = 0; n < SZ_CUTS; n++) {
+        var pr = pairs[Math.floor(rand() * pairs.length)];
+        var res = cutOneGem(szSolvers[cost], { baseCost: cost, gemType: "order", effect1: pr[0], effect2: pr[1] }, rand, true);
+        if (res.processes > 0 && A.supportValue(res.cfg) >= szBaseline) above++;
+      }
+      pAbove[cost] = above / SZ_CUTS;
+    });
+    var mixP = 0.6 * pAbove[8] + 0.3 * pAbove[9] + 0.1 * pAbove[10];
+    var N = mixP > 0 ? Math.ceil(6 / mixP) : Infinity;
+    console.log(tn + ": pAbove c8=" + pAbove[8].toFixed(3) + " c9=" + pAbove[9].toFixed(3) +
+      " c10=" + pAbove[10].toFixed(3) + "  mix p=" + mixP.toFixed(4) +
+      "  -> N=" + N + "  counts {8:" + Math.round(0.6 * N) + ", 9:" + Math.round(0.3 * N) + ", 10:" + Math.round(0.1 * N) + "}");
+  });
+  process.exit(0);
+}
 else if (ARGS["make-bank"]) {
   var bTier = TIERS[ARGS.tier];
   var bCost = parseInt(ARGS.cost, 10);
