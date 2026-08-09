@@ -29,8 +29,10 @@ The site serves this folder as `../hotkeys-extension.zip` (linked from the
 advisor's hotkeys section). After editing any file here, rebuild it:
 
 ```powershell
-Compress-Archive -Path manifest.json,sw.js,README.md -DestinationPath ..\hotkeys-extension.zip -Force
+Compress-Archive -Path manifest.json,sw.js,announce.js,README.md,icons -DestinationPath ..\hotkeys-extension.zip -Force
 ```
+
+For the one-click Chrome Web Store path, see `store/LISTING.md`.
 
 ## Notes
 

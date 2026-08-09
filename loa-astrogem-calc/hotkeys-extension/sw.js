@@ -50,6 +50,21 @@ function trigger(action) {
   return r;
 }
 
+// The content script (announce.js) asks for the CURRENT bindings so the page
+// can label its buttons with the real keys, rebinds included.
+chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+  if (!msg || msg.t !== "keys") return;
+  chrome.commands.getAll(function (cmds) {
+    var out = {};
+    (cmds || []).forEach(function (c) {
+      if (c.name === "read-screen") out.read = c.shortcut || "";
+      if (c.name === "get-advice") out.advice = c.shortcut || "";
+    });
+    sendResponse(out);
+  });
+  return true;   // sendResponse is async
+});
+
 var BADGE = { ok: "✓", busy: "⏳", loading: "…", "not-sharing": "✗", "no-tab": "✗" };
 
 function badge(text, color) {

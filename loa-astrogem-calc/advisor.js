@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 82;
+  var CLIENT_V = 83;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -214,6 +214,7 @@
 '  #tab-advisor .av-best{font-size:13px;margin:2px 0 0;color:var(--dim)}' +
 '  #tab-advisor .av-best b{color:var(--accent);font-size:18px}' +
 '  #tab-advisor .rank-badge{display:inline-block;padding:1px 9px;border-radius:99px;font-size:15px;font-weight:800;line-height:1.5;vertical-align:middle;font-variant-numeric:tabular-nums}' +
+'  #tab-advisor .hk-hint{opacity:.65;font-size:.85em;font-weight:600;margin-left:6px;white-space:nowrap}' +
 '  #tab-advisor .av-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:8px;display:none}' +
 '  #tab-advisor .av-bar > i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s}' +
 // The DP worker doesn't report per-node progress (see model/dp-worker.js) — a
@@ -1148,11 +1149,31 @@
     if (empty) empty.style.display = "none";
   }
 
+  // Hotkey hints on the two buttons the companion extension presses. The
+  // extension's content script announces itself — and the LIVE key bindings,
+  // rebinds included — via a data attribute + event on <html>; a plain page
+  // has no other way to know an extension is installed. No extension, no hints.
+  function applyHotkeyHints() {
+    var raw = document.documentElement.dataset.astrogemHotkeys;
+    if (!raw) return;
+    var keys = {};
+    try { keys = JSON.parse(raw) || {}; } catch (e) {}
+    [["av-read", keys.read], ["av-go", keys.advice]].forEach(function (p) {
+      var b = $(p[0]);
+      if (!b || !p[1]) return;
+      var hk = b.querySelector(".hk-hint");
+      if (!hk) { hk = document.createElement("span"); hk.className = "hk-hint"; b.appendChild(hk); }
+      hk.textContent = p[1];
+    });
+  }
+
   // ---------------- init ----------------
   function init() {
     var elTab = $("tab-advisor");
     if (!elTab) return;
     elTab.innerHTML = tabMarkup();
+    applyHotkeyHints();   // extension announced before we loaded (the usual order)
+    document.documentElement.addEventListener("astrogem-hotkeys", applyHotkeyHints); // or after
     checkStale();   // announce an outdated tab the moment the advisor opens
 
     // Any manual edit (market assumptions or a window field) makes a rendered
