@@ -220,6 +220,8 @@
       '#av-window .pw-orow{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;color:#e7e9ee;text-align:center;font-size:11.5px;line-height:1.25;padding:4px 2px}' +
       '#av-window .pw-orow:hover{border-color:#39414f;background:rgba(102,199,255,.05)}' +
       '#av-window .pw-orow .ic{display:block;margin:0 auto 2px;width:22px;height:22px}' +
+      '#av-window .pw-orow .pw-oscore{display:block;margin-top:2px;font-size:10.5px;font-variant-numeric:tabular-nums;color:#8b93a7}' +
+      '#av-window .pw-orow .pw-oscore.pw-up{color:#5fc94f}#av-window .pw-orow .pw-oscore.pw-dn{color:#e0533f}' +
       '#av-window .pw-up{color:#5fc94f}#av-window .pw-dn{color:#e0533f}' +
       '#av-window .pw-sub2{color:#c8cdd8;font-size:10.5px}' +
       '#av-window .pw-dim{color:#8a93a5;font-style:italic}' +
@@ -323,10 +325,13 @@
       '  <hr class="pw-divider">' +
       '  <div class="pw-hint">One of the following is randomly applied.</div>' +
       '  <div class="pw-outcomes">' +
-      win.outcomes.map(function (o, i) {
-        return '<button type="button" class="pw-orow' + conf("outcomes." + i) + '" data-act="outcome" data-i="' + i + '">' +
-          '<span class="ic">' + makeDiamond(outcomeStatKey(o), 22) + '</span>' + captionFor(o) + '</button>';
-      }).join("") +
+      (function () {
+        var curG = gradeNow();   // one grade of the current gem, shared by all 4 row previews
+        return win.outcomes.map(function (o, i) {
+          return '<button type="button" class="pw-orow' + conf("outcomes." + i) + '" data-act="outcome" data-i="' + i + '">' +
+            '<span class="ic">' + makeDiamond(outcomeStatKey(o), 22) + '</span>' + captionFor(o) + oscoreHtml(o, curG) + '</button>';
+        }).join("");
+      })() +
       '    <button type="button" class="pw-rerollpill' + conf("state.rerollsRemaining") + (win.currentTurn === 1 ? " pw-pill-off" : "") + '" data-act="rerolls" title="Rerolls — the game counts only the FREE ones here; the paid one is handled in the editor' + (win.currentTurn === 1 ? ". Greyed out on turn 1, like the game (process once first)" : "") + '">' +
              refreshSvg() + ' ' + freeShown + ' / ' + freeDenom + '</button>' +
       '  </div>' +
@@ -463,11 +468,10 @@
     if (o.type === "reroll_increase") return "View Other Items +" + (o.change || 1);
     return "nothing";
   }
-  function applyChosenOutcome(i) {
-    var o = win.outcomes[i] || { type: "do_nothing" };
-    lastApply = JSON.parse(JSON.stringify(win));
-    var c = win.config, amt = o.amount || 1;
-    var pickEffect = null;
+  // The CONFIG effect of an outcome, applied to config c in place. Shared by the
+  // real apply and the per-row score previews; cost/reroll/nothing touch no stats.
+  function applyOutcomeToConfig(c, o) {
+    var amt = (o && o.amount) || 1;
     if (o.type === "raise_effect") {
       if (o.target === "willpower") c.willpowerLevel = Math.min(5, c.willpowerLevel + amt);
       else if (o.target === "order") c.orderLevel = Math.min(5, c.orderLevel + amt);
@@ -478,6 +482,47 @@
       else if (o.target === "order") c.orderLevel = Math.max(1, c.orderLevel - amt);
       else if (o.target === "effect1") c.effect1Level = Math.max(1, c.effect1Level - amt);
       else if (o.target === "effect2") c.effect2Level = Math.max(1, c.effect2Level - amt);
+    }
+  }
+
+  // ---- per-outcome score previews ("what would the gem grade if THIS landed") ----
+  // Graded on the axis the advisor is currently valuing, same as the result panel.
+  function axisGradeFn() {
+    var sup = !!(window.AdvisorSetup && window.AdvisorSetup.getMarket &&
+      window.AdvisorSetup.getMarket().axis === "support");
+    return sup ? (window.supportGrade || window.grade) : window.grade;
+  }
+  function gradeNow() {
+    var f = axisGradeFn();
+    if (typeof f !== "function" || typeof window.validateConfig !== "function") return null;
+    return window.validateConfig(win.config).valid ? f(win.config) : null;
+  }
+  function previewGrade(o) {
+    if (o.type === "change_side_option") return { unknown: true }; // the game rolls a random new effect
+    var f = axisGradeFn();
+    if (typeof f !== "function" || typeof window.validateConfig !== "function") return null;
+    var c = JSON.parse(JSON.stringify(win.config));
+    applyOutcomeToConfig(c, o);
+    if (!window.validateConfig(c).valid) return null;
+    return { grade: f(c) };
+  }
+  function oscoreHtml(o, curG) {
+    if (!o || o.type === "do_nothing") return "";
+    var pv = previewGrade(o);
+    if (!pv) return "";
+    if (pv.unknown) return '<span class="pw-oscore" title="The replacement effect is random — the score depends on what lands">→ ?</span>';
+    var cls = (curG != null && pv.grade > curG + 0.05) ? " pw-up"
+            : (curG != null && pv.grade < curG - 0.05) ? " pw-dn" : "";
+    return '<span class="pw-oscore' + cls + '" title="Gem score if this outcome lands (now ' + (curG != null ? curG.toFixed(1) : "?") + ')">→ ' + pv.grade.toFixed(1) + '</span>';
+  }
+
+  function applyChosenOutcome(i) {
+    var o = win.outcomes[i] || { type: "do_nothing" };
+    lastApply = JSON.parse(JSON.stringify(win));
+    var c = win.config;
+    var pickEffect = null;
+    if (o.type === "raise_effect" || o.type === "lower_effect") {
+      applyOutcomeToConfig(c, o);
     } else if (o.type === "change_side_option") {
       pickEffect = o.target;   // level stays; the game rolled a new name — ask below
     } else if (o.type === "change_gold_cost") {
@@ -586,6 +631,9 @@
       onAppliedCb = (opts && opts.onApplied) || null;
       render();
     },
+    // re-render without a state change (e.g. the advisor's axis flipped, which
+    // re-grades the per-outcome score previews)
+    refresh: function () { if (host) render(); },
     // revert the last Process (one level deep)
     undoApply: function () {
       if (!lastApply) return false;

@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 80;
+  var CLIENT_V = 81;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -1147,9 +1147,13 @@
     // Any manual edit (market assumptions or a window field) makes a rendered
     // verdict stale — blank it, same as a new parse does. Cheap no-op when no
     // result is showing.
-    var onAnyEdit = function () {
+    var onAnyEdit = function (info) {
       var res = $("av-result");
       if (res && res.style.display !== "none") clearResult();
+      // Setup-side changes carry the market snapshot; an axis flip must re-grade
+      // the window's per-outcome score previews. (Window-side payloads have no
+      // .axis, so this can't re-enter the window from its own event.)
+      if (info && info.axis && window.AdvisorWindow && window.AdvisorWindow.refresh) window.AdvisorWindow.refresh();
     };
     window.AdvisorSetup.init($("av-setup"), { onChange: onAnyEdit });
     window.AdvisorWindow.init($("av-window"), { onChange: onAnyEdit, onApplied: onOutcomeApplied });
