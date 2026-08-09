@@ -93,14 +93,19 @@ function dpSelfCheck() {
     ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 3032.8512],
     ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 2028.9206],
     ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 35237.9149],
-    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 293507.4734],
+    // Re-frozen 2026-08-06: deliberate model change (c415187, 2026-07-23) — the
+    // support-buff overhaul re-derived support coefficients and trimmed the
+    // willpower-per-cost-level constant ~0.5%; tools/ was restored two days later
+    // carrying pre-overhaul pins, so these three (the value-scale-sensitive ones)
+    // were stale. DPS-at-base1 pins and the t0 identity were unmoved.
+    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 290798.1751],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
     // (A.supportGradeToScore(65)=0.19581, (80)=0.23882 at freeze time; the literals below
     // bake the RESULTING W so a baseline-scale drift also trips). Frozen 2026-07-16 when
     // the axis was threaded through topLevelAdvice; the MC battery stays DPS-only
     // (nested.js has no support axis).
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 28735.2358],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 15984.4463]
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 28912.5707],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 15960.7897]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {

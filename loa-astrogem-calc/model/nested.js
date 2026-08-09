@@ -34,6 +34,20 @@
     ? require("./astrogem.js")
     : (root.Astrogem || root);
 
+  // Seeded PRNG (mulberry32), reset at every evaluateActions entry. The MC used
+  // to draw from Math.random, so two solves of the SAME board could rank actions
+  // differently when EVs sat inside the noise — users read the flip as the
+  // advisor changing its mind about their edits (feedback 7/27). Same state in,
+  // same advice out, every time.
+  var _randState = 0;
+  function _rand() {
+    _randState = (_randState + 0x6D2B79F5) | 0;
+    var t = _randState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
   // Tunable run counts (env-overridable in Node, like the old code).
   function _innerRuns() {
     if (typeof global !== "undefined" && global.NESTED_INNER_RUNS != null) {
@@ -65,7 +79,7 @@
     while (selected.length < 4 && pool.length > 0) {
       var total = 0, i;
       for (i = 0; i < pool.length; i++) total += pool[i].prob;
-      var r = Math.random() * total;
+      var r = _rand() * total;
       var idx = -1, cum = 0;
       for (i = 0; i < pool.length; i++) {
         cum += pool[i].prob;
@@ -136,7 +150,7 @@
       if (candidates.length > 0) {
         var ne = outcome.newEffect && candidates.indexOf(outcome.newEffect) !== -1
           ? outcome.newEffect
-          : candidates[Math.floor(Math.random() * candidates.length)];
+          : candidates[Math.floor(_rand() * candidates.length)];
         // The swapped-in effect KEEPS the level of the effect it replaced (confirmed
         // in-game) — so you can level any line and then change it into a damage line.
         if (outcome.target === "effect1") { c.effect1 = ne; }
@@ -235,7 +249,7 @@
         cur.totalGoldSpent += rc;
         continue;
       }
-      var pick = outcomes[Math.floor(Math.random() * outcomes.length)];
+      var pick = outcomes[Math.floor(_rand() * outcomes.length)];
       _applyProcessStep(cur, pick);
     }
     var finalScore = A.gemValue(cur.config);
@@ -260,7 +274,7 @@
     for (var run = 0; run < numRuns; run++) {
       var st = _cloneState(state);
       if (action === "process" && outcomes) {
-        var pick = outcomes[Math.floor(Math.random() * outcomes.length)];
+        var pick = outcomes[Math.floor(_rand() * outcomes.length)];
         _applyProcessStep(st, pick);
       } else if (action === "reroll") {
         var rc = st.rerollsRemaining === 1 ? A.COSTS.finalReroll : 0;
@@ -285,7 +299,7 @@
         return { finalScore: sc0, finalValue: calculateGemValue(sc0, baseline, goldPerDamage, cur.config), totalCost: cur.totalGoldSpent - initialGoldSpent, finalConfig: cur.config };
       }
       var outs = (currentOutcomes && currentOutcomes.length > 0) ? currentOutcomes : generateOutcomes(_cfgWithState(cur));
-      var pick = outs[Math.floor(Math.random() * outs.length)];
+      var pick = outs[Math.floor(_rand() * outs.length)];
       _applyProcessStep(cur, pick);
     } else if (firstAction === "reroll") {
       if (cur.rerollsRemaining <= 0) {
@@ -322,7 +336,7 @@
         cur.totalGoldSpent += rc2;
         continue;
       }
-      var sel = outcomes[Math.floor(Math.random() * outcomes.length)];
+      var sel = outcomes[Math.floor(_rand() * outcomes.length)];
       _applyProcessStep(cur, sel);
     }
 
@@ -396,6 +410,7 @@
   // Complete is RANKED like any action; false ⇒ shown but excluded from the ranking.
   // (The old `!== false` read was inverted and Complete could never win.)
   function evaluateActions(state, baseline, goldPerDamage, numRuns, onProgress, options) {
+    _randState = 0;   // fixed seed per solve: same board in, same ranking out
     numRuns = numRuns || 200;
     options = options || {};
     var currentOutcomes = state.outcomes || null;

@@ -77,6 +77,7 @@
       var it = parsed[i];
       if (!it || it.name == null) continue;
       var region = String(it.region == null ? "" : it.region).toUpperCase();
+      if (region === "CE") region = "EU"; // heal stores written before the roster import mapped bible's CE code
       var name = String(it.name);
       // skip dupes that may have crept into a hand-edited store
       if (indexOf(out, region, name) === -1) out.push({ region: region, name: name });

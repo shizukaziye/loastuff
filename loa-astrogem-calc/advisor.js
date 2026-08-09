@@ -41,7 +41,7 @@
       // ?v= for the SAME staleness-avoidance reason as the LAZY_TABS list in
       // index.html — bump whenever model/dp-worker.js changes (it also has its
       // own ?v= pins for astrogem.js/nested.js/dp.js; keep both in sync on edit).
-      try { dpWorker = new Worker("model/dp-worker.js?v=2"); }
+      try { dpWorker = new Worker("model/dp-worker.js?v=3"); }
       catch (e) { dpWorkerDead = true; return null; }
     }
     return dpWorker;
@@ -114,7 +114,19 @@
   // version, asks the server (a no-store fetch of the tiny index.html) what is
   // current, and puts up a loud banner when it is outdated. Checked at tab init
   // and at every parse start, throttled to one probe per 10 minutes.
-  var CLIENT_V = 77;   // MUST match this file's ?v= in index.html on every deploy
+  // The running version is the ?v= pin that loaded THIS file, read off our own
+  // script tag at runtime. The literal below is only the fallback for the rare
+  // case the tag isn't readable — but keep it matching index.html anyway:
+  // tools/lint-pins.js validates it, and 7/30 showed what a desync does (a
+  // deploy bumped the pin but not the constant, so the DEPLOYED file told every
+  // fresh load it was outdated and no reload could clear it; the runtime
+  // derivation is what makes that class impossible now).
+  var CLIENT_V = 79;
+  try {
+    var _pinM = ((document.currentScript && document.currentScript.src) || "")
+      .match(/advisor\.js\?v=(\d+)/);
+    if (_pinM) CLIENT_V = parseInt(_pinM[1], 10);
+  } catch (e) {}
   var _staleAt = 0;
   function checkStale() {
     var now = Date.now();
@@ -347,10 +359,24 @@
     clearResult();
     var s = $("av-status");
     s.className = "av-status";
-    s.textContent = info.finished
-      ? "Final turn processed — the cut is finished. "
-      : "Processed: " + info.description + " — now turn " + info.turn + "/" + info.maxTurns +
+    if (info.finished) {
+      // The payoff line: what the cut ended as, graded on the axis the advisor
+      // is currently valuing (support chars grade on the support scale).
+      var stF = window.AdvisorWindow.getState();
+      var supF = !!(window.AdvisorSetup && window.AdvisorSetup.getMarket &&
+        window.AdvisorSetup.getMarket().axis === "support");
+      var vF = (typeof window.validateConfig === "function") ? window.validateConfig(stF.config) : { valid: true };
+      var gFnF = supF ? (window.supportGrade || window.grade) : window.grade;
+      var rFnF = supF ? (window.supportRank || window.gemRank) : window.gemRank;
+      var gF = (vF.valid && typeof gFnF === "function") ? gFnF(stF.config) : null;
+      var rkF = (vF.valid && typeof rFnF === "function") ? rFnF(stF.config) : null;
+      s.innerHTML = "Final turn processed — the cut is finished. Final gem: " +
+        (gF != null ? (rkF ? rankBadge(rkF, gF) + " " : "") + gF.toFixed(1) + "/100" +
+          (supF ? " <span class='note'>(support axis)</span>" : "") : "(fill the stat fields to grade it)") + " ";
+    } else {
+      s.textContent = "Processed: " + info.description + " — now turn " + info.turn + "/" + info.maxTurns +
         ". Read the next screen or press Get advice. ";
+    }
     var u = el("button", { class: "linklike", type: "button" }, "Undo");
     u.addEventListener("click", function () {
       if (window.AdvisorWindow.undoApply && window.AdvisorWindow.undoApply()) {
@@ -861,6 +887,10 @@
 
     var m = window.AdvisorSetup.getMarket();
     var state = window.AdvisorWindow.getState();
+    if (state.completed) {
+      setStatus("The cut is finished — no turns left to advise. The final grade is above; parse the next gem, or tap the Process pill to correct the turn.", "");
+      return;
+    }
     state.rosterBound = $("av-bound").dataset.on === "1";
     // ship the staged collection record: parse + the state the user actually ran.
     // The outcome lands in av-warns (rebuilt only at the START of a run, so a late

@@ -82,11 +82,11 @@ var LAZY_TABS = {
     // NOTE: the Tesseract CDN bundle is NOT loaded on the main page anymore —
     // the background parse worker imports its own copy, and the inline fallback
     // lazy-injects it only if the offload is unavailable (structural-engine.js)
-    "model/nested.js?v=52", "model/dp.js?v=57",
+    "model/nested.js?v=53", "model/dp.js?v=57",
     "ocr/engine.js?v=55", "ocr/layout.js?v=55", "ocr/glyphs.js?v=55", "ocr/level-refs.js?v=4", "ocr/level-model.js?v=2", "ocr/name-model.js?v=2", "ocr/tile-model.js?v=1", "ocr/tesseract-engine.js?v=44",
     "ocr/structural-engine.js?v=103",
-    "advisor-setup.js?v=46", "advisor-window.js?v=55",
-    "advisor.js?v=77"
+    "advisor-setup.js?v=46", "advisor-window.js?v=56",
+    "advisor.js?v=79"
   ],
   leaderboard: ["leaderboard.js?v=45"],
   feedback: ["feedback.js?v=1"]
@@ -129,12 +129,12 @@ function selectTab(name){
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
 <script src="model/astrogem.js?v=53"></script>
 <script src="gate.js?v=39"></script>
-<script src="favorites.js?v=39"></script>
+<script src="favorites.js?v=40"></script>
 <script src="tip.js?v=2"></script>
 <script src="loadout-econ.js?v=2"></script>
 <script src="bible-import.js?v=3"></script>
-<script src="bible-oauth.js?v=7"></script>
-<script src="grader.js?v=71"></script>
+<script src="bible-oauth.js?v=8"></script>
+<script src="grader.js?v=72"></script>
 <script src="pipeline.js?v=44"></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>

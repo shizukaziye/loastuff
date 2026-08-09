@@ -268,7 +268,7 @@
     normalize();
     var c = win.config;
     var N = maxTurns();
-    var x = N - win.currentTurn + 1;                      // attempts remaining (game display)
+    var x = win.completed ? 0 : N - win.currentTurn + 1;  // attempts remaining (game display; 0 = cut finished)
     var freeShown = Math.max(0, win.rerollsRemaining - 1); // model - the paid one
     var freeDenom = Math.max(1, maxRerolls() - 1);
     var unconfN = Object.keys(win.unconfirmed).length;
@@ -337,7 +337,7 @@
       (win.currentTurn === 1 ? '<div class="pw-turnnote">Available after <b>processing 1 time</b></div>' : "") +
       '    <div class="pw-buttons">' +
       '      <span class="bc">Processing Complete</span>' +
-      '      <button type="button" class="bp' + conf("state.currentTurn") + '" data-act="turn">Process (' + x + '/' + N + ')</button>' +
+      '      <button type="button" class="bp' + conf("state.currentTurn") + (win.completed ? " pw-pill-off" : "") + '" data-act="turn"' + (win.completed ? ' title="Cut finished — tap to correct the turn"' : '') + '>Process (' + x + '/' + N + ')</button>' +
       '    </div>' +
       '  </div>' +
       '</div>';
@@ -409,7 +409,7 @@
       return optBtn(t, "Turn " + t + " <span style='opacity:.6'>(" + (N - t + 1) + "/" + N + ")</span>", t === win.currentTurn);
     }).join("") + '</div>';
     openPop(anchor, "Current turn — Process (x/" + N + ") shows attempts remaining", body,
-      function (b) { win.currentTurn = parseInt(b.getAttribute("data-v"), 10); markConfirmed("state.currentTurn"); closePop(); render(); emit(); });
+      function (b) { win.currentTurn = parseInt(b.getAttribute("data-v"), 10); win.completed = false; markConfirmed("state.currentTurn"); closePop(); render(); emit(); });
   }
   function editCost(anchor) {
     openPop(anchor, "Processing cost", '<div class="opts">' +
@@ -486,6 +486,9 @@
       win.rerollsRemaining = Math.min(9, win.rerollsRemaining + (o.change || 1));
     }
     var finished = win.currentTurn >= maxTurns();
+    // Completion is a real state, not a clamp: the display shows Process (0/N)
+    // and the final grade, instead of sitting on (1/N) looking one-turn-short.
+    win.completed = finished;
     win.currentTurn = Math.min(maxTurns(), win.currentTurn + 1);
     win.outcomes = [{ type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }];
     win.unconfirmed = {};
@@ -542,6 +545,7 @@
     if (!RARITY[r]) return;
     var wasFull = win.rerollsRemaining >= maxRerolls();
     win.rarity = r;
+    win.completed = false;   // correcting the frame un-finishes the cut
     win.currentTurn = Math.min(win.currentTurn, maxTurns());
     if (wasFull || win.rerollsRemaining > 9) win.rerollsRemaining = maxRerolls();
   }
@@ -598,6 +602,7 @@
           effect1: c.effect1, effect1Level: c.effect1Level, effect2: c.effect2, effect2Level: c.effect2Level },
         currentTurn: win.currentTurn,
         maxTurns: maxTurns(),
+        completed: !!win.completed,   // final turn processed — nothing left to advise
         rerollsRemaining: win.rerollsRemaining,
         // Reset (x/1) counter, parsed 2026-07-20 (crafted's PR): 0 = spent (dp
         // must not rank Reset), 1 = available, undefined = unread (dp assumes
@@ -624,6 +629,7 @@
         effect2: cfg.effect2, effect2Level: cfg.effect2Level
       };
       win.currentTurn = st.currentTurn || 1;
+      win.completed = false;   // a fresh parse is a live decision point
       win.rerollsRemaining = st.rerollsRemaining != null ? st.rerollsRemaining : maxRerolls();
       win.resetsRemaining = (st.resetsRemaining === 0 || st.resetsRemaining === 1) ? st.resetsRemaining : undefined;
       win.costMult = st.processCostMultiplier || 0;

@@ -192,7 +192,8 @@
   // is never an error worth surfacing.
   const cpCache = {};
   function combatPower(region, name) {
-    const reg = String(region || "").toUpperCase();
+    let reg = String(region || "").toUpperCase();
+    if (reg === "EU") reg = "CE"; // the site says EU; this API's code for EU Central is CE
     if (!read() || (reg !== "NA" && reg !== "CE")) return Promise.resolve(null);
     const key = reg + "|" + String(name).toLowerCase();
     if (key in cpCache) return Promise.resolve(cpCache[key]);
@@ -258,7 +259,8 @@
   function rundown(region, name) {
     const tok = read();
     if (!tok) return Promise.resolve(null);
-    const reg = String(region || "").toUpperCase();
+    let reg = String(region || "").toUpperCase();
+    if (reg === "EU") reg = "CE"; // the site says EU; this API's code for EU Central is CE
     const canLog = (reg === "NA" || reg === "CE");
     const out = {
       scope: tok.scope,

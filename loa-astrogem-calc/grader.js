@@ -519,6 +519,7 @@
 '  #tab-grader .gr-gem .meta .sub{color:var(--dim);font-variant-numeric:tabular-nums}' +
 '  #tab-grader .gr-gem .meta .eff{color:var(--dim);overflow:hidden;text-overflow:ellipsis}' +
 '  #tab-grader .gr-gem .meta .eff b{color:var(--text);font-weight:600}' +
+'  #tab-grader .gr-gem .meta .eff .offrole, #tab-grader .gr-gem .meta .eff .offrole b{color:#5e6a83}' +
 '  #tab-grader .gr-gem .meta .bad{color:var(--bad)}' +
 '  #tab-grader .gr-sum{display:flex;gap:20px;flex-wrap:wrap;align-items:center}' +
 '  #tab-grader h2 .bible-link{color:inherit;text-decoration:none;border-bottom:1px dotted var(--dim)}' +
@@ -838,6 +839,23 @@
   // Compact single-row gem card: rank/grade badge + cost + order/willpower + the two
   // abbreviated effects. %dmg shown is damage ABOVE the cp baseline (relDamage);
   // grade/rank are unchanged. Keeps id="gr-gem-N" so Weakest-3 can jump to + flash it.
+  // A line is off-role when the CURRENT grading axis scores it zero but the other
+  // axis doesn't (derived from the model's own scoring fns so the effect sets can't
+  // drift): support lines on a DPS grade, DPS lines on a support grade (Aefonix, 7/29).
+  function offRole(effectName) {
+    var supFn = (A && A.supportEffectScore) || window.supportEffectScore;
+    var dpsFn = (A && A.effectScore) || window.effectScore;
+    if (!supFn || !dpsFn) return false;
+    return isSupport() ? (dpsFn(effectName, 1) > 0 && supFn(effectName, 1) <= 0)
+                       : supFn(effectName, 1) > 0;
+  }
+  function effLineHtml(name, lv) {
+    var t = '<b>' + esc(abbrEffect(name)) + '</b> ' + (lv != null ? lv : "?");
+    return offRole(name)
+      ? '<span class="offrole" title="Does nothing on the ' + (isSupport() ? "Support" : "DPS") + ' axis">' + t + '</span>'
+      : t;
+  }
+
   function gemCardHtml(cfg) {
     var v = validateConfig(cfg);
     var g, rank, dmg, cls;
@@ -856,8 +874,8 @@
 '    <div class="top">' + cfg.baseCost + '-cost' +
        ' <span class="sub">WP ' + (cfg.willpowerLevel != null ? cfg.willpowerLevel : "?") +
        ' &middot; Ord ' + (cfg.orderLevel != null ? cfg.orderLevel : "?") + '</span>' + topRight + '</div>' +
-'    <div class="eff"><b>' + esc(abbrEffect(cfg.effect1)) + '</b> ' + (cfg.effect1Level != null ? cfg.effect1Level : "?") +
-       ' &middot; <b>' + esc(abbrEffect(cfg.effect2)) + '</b> ' + (cfg.effect2Level != null ? cfg.effect2Level : "?") + '</div>' +
+'    <div class="eff">' + effLineHtml(cfg.effect1, cfg.effect1Level) +
+       ' &middot; ' + effLineHtml(cfg.effect2, cfg.effect2Level) + '</div>' +
 '  </div>' +
 '</div>';
   }
@@ -1985,8 +2003,13 @@ presetToggleHtml(data) +
       var chars = (ros && (ros.characters || ros.chars)) || [];
       (Array.isArray(chars) ? chars : []).forEach(function (c) {
         if (!c) return;
+        // lostark.bible says CE for EU Central; the site says EU everywhere. Un-mapped,
+        // an imported EU roster saved CE favorites the region <select> refused, so the
+        // pull ran with the NA default and found nothing (feedback 8/3).
+        var reg = String(c.region || ros.region || "").toUpperCase();
+        if (reg === "CE") reg = "EU";
         out.push({
-          region: String(c.region || ros.region || "").toUpperCase(),
+          region: reg,
           name: c.name || c.characterName || "",
           cls: c.class || c.className || "",
           itemLevel: c.itemLevel || c.ilvl || null,
