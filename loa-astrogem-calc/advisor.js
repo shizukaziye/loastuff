@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 83;
+  var CLIENT_V = 84;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -293,7 +293,7 @@
 '<details class="method">' +
 '  <summary>Global hotkeys &mdash; use the advisor without alt-tabbing (optional Chrome extension)</summary>' +
 '  <p>A small Chrome extension adds two system-wide hotkeys that work <b>while the game keeps focus</b>: <b>Ctrl+Shift+1</b> presses 📷&nbsp;Read screen now and <b>Ctrl+Shift+2</b> presses Get advice. The game never sees the keys. Each press flashes its result at the top of this page. You still click 🖥&nbsp;Share game screen once per session &mdash; browsers require a real click to start a share.</p>' +
-'  <p><a class="linklike" href="hotkeys-extension.zip" download>⬇ Download the extension (.zip, ~4&nbsp;KB)</a> &nbsp;·&nbsp; <a class="linklike" href="https://github.com/shizukaziye/loastuff/tree/main/loa-astrogem-calc/hotkeys-extension" target="_blank" rel="noopener">read the source first</a></p>' +
+'  <p><a class="linklike" href="hotkeys-extension.zip?v=2" download>⬇ Download the extension (.zip, ~4&nbsp;KB)</a> &nbsp;·&nbsp; <a class="linklike" href="https://github.com/shizukaziye/loastuff/tree/main/loa-astrogem-calc/hotkeys-extension" target="_blank" rel="noopener">read the source first</a></p>' +
 '  <ul>' +
 '    <li>Unzip it to a folder you keep (Chrome loads it from there &mdash; deleting the folder kills the extension).</li>' +
 '    <li>Open <b>chrome://extensions</b>, turn on <b>Developer mode</b> (top right), click <b>Load unpacked</b>, pick the folder.</li>' +
