@@ -280,8 +280,12 @@
   // Beat the old model 1.62 vs 2.95 displaced gems/account on held-out data and
   // called every rung of the monster-vs-perfect-c8 crossover ladder correctly
   // except one (by <1 grade point). See docs/account-study-2026-08-08.md.
-  var VALUE_ORDER_PER_POINT = 0.1571;
-  var VALUE_WP_MULT = { 3: 1.074, 4: 1.034, 5: 1.000, 6: 0.963, 7: 0.914, 8: 0.844, 9: 0.735 };
+  // 2026-08-10: constants moved to the FIXED POINT of the cutting<->packing
+  // feedback loop (three overnight cut->pack->refit iterations converged here;
+  // the 08-09 fit was made on old-advisor collections and sat ~10% stale
+  // against the population this model itself creates).
+  var VALUE_ORDER_PER_POINT = 0.161;
+  var VALUE_WP_MULT = { 3: 1.110, 4: 1.053, 5: 1.000, 6: 0.955, 7: 0.898, 8: 0.825, 9: 0.735 };
   function valueWpMult(cost) {
     if (cost <= 3) return VALUE_WP_MULT[3];
     if (cost >= 9) return VALUE_WP_MULT[9];
@@ -425,12 +429,11 @@
     return b.min + (Math.max(0, Math.min(110, g)) / 100) * (valueAnchor() - b.min);
   }
 
-  // Letter rank: explicit threshold table (2026-08-09 ladder). The pre-reweight
-  // cut positions (5-point steps) with ONE change: the S+ cut sits at the
-  // perfect 8-cost's grade — 93.0 under the fitted M-table value — so every
-  // perfect gem stays S+ (the support scale pins its perfect c8 to the same
-  // cut; see supportGrade). S+ holds the top ~0.3% of cut gems.
-  var S_PLUS_CUT = 93;
+  // Letter rank: explicit threshold table. The pre-reweight cut positions
+  // (5-point steps) with ONE change: the S+ cut sits at the perfect 8-cost's
+  // grade — 95.3 under the fixed-point constants — so every perfect gem stays
+  // S+ (support perfects clear it naturally at 96.9+). Top ~0.3% of cut gems.
+  var S_PLUS_CUT = 95.3;
   var RANK_LADDER = [
     ["S+", S_PLUS_CUT], ["S", 90], ["S-", 85],
     ["A+", 80], ["A", 75], ["A-", 70],
@@ -665,17 +668,26 @@
     var lo = Math.floor(cost);
     return _SUP_WP_MULT[lo] + (_SUP_WP_MULT[lo + 1] - _SUP_WP_MULT[lo]) * (cost - lo);
   }
-  // Support grading value: the SAME fitted per-cost multiplier table as DPS,
-  // by the proportional-transplant convention (2026-08-09; the support-native
-  // account study is queued and will replace these constants when it lands).
-  // Order carries the DPS fit's ratio; the M table transplants unchanged — the
-  // percentage toll is Ark-Grid cost structure, not axis-specific.
-  var SUP_VALUE_ORDER_PER_POINT = SUPPORT_SCORING.orderPerPoint * (VALUE_ORDER_PER_POINT / SCORING.orderPerPoint);
+  // Support grading value: SUPPORT-NATIVE fitted constants (2026-08-10) — the
+  // support account study (30k joint order+chaos accounts, both grid sides
+  // packed at true per-core order rates) replaced the transplant. Support's
+  // own toll is steeper than DPS's (bigger cheap-gem premium, harsher cliff)
+  // and order carries more of the value; a single unified order weight serves
+  // both grid sides (the fitted side-split was unstable across populations).
+  var SUP_VALUE_ORDER_PER_POINT = 0.043;
+  var SUP_WP_MULT = { 3: 1.146, 4: 1.106, 5: 1.000, 6: 0.891, 7: 0.842, 8: 0.772, 9: 0.660 };
+  function supWpMult(cost) {
+    if (cost <= 3) return SUP_WP_MULT[3];
+    if (cost >= 9) return SUP_WP_MULT[9];
+    if (SUP_WP_MULT[cost] != null) return SUP_WP_MULT[cost];
+    var lo = Math.floor(cost);
+    return SUP_WP_MULT[lo] + (SUP_WP_MULT[lo + 1] - SUP_WP_MULT[lo]) * (cost - lo);
+  }
   function supportValue(config) {
     return (supportEffectScore(config.effect1, config.effect1Level)
       + supportEffectScore(config.effect2, config.effect2Level)
       + SUP_VALUE_ORDER_PER_POINT * config.orderLevel)
-      * valueWpMult(willpowerCost(config.baseCost, config.willpowerLevel));
+      * supWpMult(willpowerCost(config.baseCost, config.willpowerLevel));
   }
   // Global value bounds for the SUPPORT grade (min = worst legal support gem,
   // max = the perfect support c10; perfects do NOT tie under the fitted table).
@@ -737,23 +749,14 @@
     return _supportValueAnchor;
   }
 
-  // SUPPORT grade: one straight line pinned by TWO axis-contract points
-  // (Shizu 2026-08-09): the perfect-grid mean = 100 (automatic — the anchor
-  // maps to 100 for any zero point) and the perfect support c8 = the shared
-  // S+ cut, so support perfects are S+ exactly like DPS perfects. The cost:
-  // the support floor is NOT 0 (worst support gem ~31) — the support value
-  // range is narrow, and lifting p8 to the cut compresses the bottom. Interim
-  // until the support-native account study fits real constants.
-  var _supportZero = null;
-  function supportZero() {
-    if (_supportZero != null) return _supportZero;
-    var v8 = supportValue(_perfectConfig(8, "support"));
-    _supportZero = (100 * v8 - S_PLUS_CUT * supportValueAnchor()) / (100 - S_PLUS_CUT);
-    return _supportZero;
-  }
+  // SUPPORT grade: the same single line as the DPS grade — worst legal support
+  // gem = 0, perfect-grid mean = 100, open above. Under the support-native
+  // constants the perfects land 96.9 / 101.0 / 101.1, all above the S+ cut
+  // naturally, so the 08-09 pinned-zero workaround (which cost a ~31 floor) is
+  // gone. (p9 vs p10 is a near-tie by value — ordering holds by a hair.)
   function supportGrade(config) {
-    var z = supportZero();
-    var g = 100 * (supportValue(config) - z) / (supportValueAnchor() - z);
+    var b = supportValueBounds();
+    var g = 100 * (supportValue(config) - b.min) / (supportValueAnchor() - b.min);
     return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
   }
 
@@ -764,8 +767,8 @@
   // to gradeToScore — turns a grade-based baseline into the support-value
   // threshold the support value/verdict logic uses. Accepts 0..110.
   function supportGradeToScore(g) {
-    var z = supportZero();
-    return z + (Math.max(0, Math.min(110, g)) / 100) * (supportValueAnchor() - z);
+    var b = supportValueBounds();
+    return b.min + (Math.max(0, Math.min(110, g)) / 100) * (supportValueAnchor() - b.min);
   }
 
   // Grade-tier colors (owner's percentile palette): F/D gray, C green, B blue, A purple.
@@ -1072,7 +1075,7 @@
         // fitted VALUE weight here, not the damage weight).
         var _cost = willpowerCost(baseCost, wp);
         var ordD = (support ? SUP_VALUE_ORDER_PER_POINT : VALUE_ORDER_PER_POINT) * ord;
-        var Mw = valueWpMult(_cost);
+        var Mw = support ? supWpMult(_cost) : valueWpMult(_cost);
         for (var ci = 0; ci < pairs.length; ci++) {
           var eA = pairs[ci][0], eB = pairs[ci][1];
           // Average over the two assignments of (lvA, lvB) to the unordered pair.
@@ -1282,8 +1285,8 @@
     valueBounds: valueBounds,
     valueAnchor: valueAnchor,
     valueWpMult: valueWpMult,
+    supWpMult: supWpMult,
     supportValueAnchor: supportValueAnchor,
-    supportZero: supportZero,
     isPerfectConfig: isPerfectConfig,
     RANK_LADDER: RANK_LADDER,
     gridDamage: gridDamage,

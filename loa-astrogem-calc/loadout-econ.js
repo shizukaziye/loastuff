@@ -46,10 +46,10 @@
   // ---- the rank ladder + gpd tiers (must match the pipeline bake's anchors) ----
   // The Pipeline tab bakes one DP solve per these 12 anchor grades; each maps 1:1 to a
   // distinct rank (C- … S+), so the array IS a clean rank ladder.
-  // One row per rank C- .. S+ — the 2026-08-09 ladder's band cuts, so a
-  // baseline choice is exactly "keep <rank> or better" (S+ row = 93, the
-  // perfect 8-cost's grade under the fitted M-table value).
-  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 93];
+  // One row per rank C- .. S+ — the ladder's band cuts, so a baseline choice
+  // is exactly "keep <rank> or better" (S+ row = 95.3, the perfect 8-cost's
+  // grade at the fixed-point constants).
+  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95.3];
   var GPD_TIERS = [500000, 1000000, 1500000, 2500000, 3500000, 5000000, 7500000, 10000000];
   var GPD_DEFAULT = 1500000;
 

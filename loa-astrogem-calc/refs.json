@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated": "2026-08-09T10:19:04.919Z",
+    "generated": "2026-08-09T19:54:29.768Z",
     "note": "Captured references for the deterministic core. Regenerate with `node tools/gen-refs.js`. Scoring is REAL % damage (D = 100*ln(multiplier)); supersedes the abstract-weight model and the removed SCORE_PER_PERCENT_DAMAGE=30.96.",
     "SCORING": {
       "willpowerPerLevel": 0.07772592845902067,
@@ -64,7 +64,7 @@
       },
       "score": 1.335453,
       "damagePercent": 1.265669,
-      "grade": 93,
+      "grade": 95.3,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 3,
@@ -88,7 +88,7 @@
       },
       "score": 1.367629,
       "damagePercent": 1.377023,
-      "grade": 97.8,
+      "grade": 98.5,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 4,
@@ -112,7 +112,7 @@
       },
       "score": 1.424411,
       "damagePercent": 1.513475,
-      "grade": 104.6,
+      "grade": 103.1,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 5,
@@ -136,7 +136,7 @@
       },
       "score": 0.561763,
       "damagePercent": 0.641538,
-      "grade": 39.1,
+      "grade": 39,
       "rank": "D+",
       "breakdown": {
         "willpowerCost": 5,
@@ -160,7 +160,7 @@
       },
       "score": 0.483158,
       "damagePercent": 0.56246,
-      "grade": 33.3,
+      "grade": 33.1,
       "rank": "D",
       "breakdown": {
         "willpowerCost": 5,
@@ -184,7 +184,7 @@
       },
       "score": -0.151032,
       "damagePercent": 0.16,
-      "grade": 1.3,
+      "grade": 1.1,
       "rank": "F-",
       "breakdown": {
         "willpowerCost": 8,
@@ -208,7 +208,7 @@
       },
       "score": 0.018368,
       "damagePercent": 0.251862,
-      "grade": 8.5,
+      "grade": 8.1,
       "rank": "F-",
       "breakdown": {
         "willpowerCost": 7,
@@ -232,7 +232,7 @@
       },
       "score": -0.088202,
       "damagePercent": 0.300879,
-      "grade": 7.9,
+      "grade": 7.7,
       "rank": "F-",
       "breakdown": {
         "willpowerCost": 9,
@@ -256,7 +256,7 @@
       },
       "score": 0.736646,
       "damagePercent": 0.739366,
-      "grade": 48.4,
+      "grade": 49.1,
       "rank": "C",
       "breakdown": {
         "willpowerCost": 4,
@@ -282,7 +282,7 @@
       },
       "supportScore": 0.246849,
       "supportRelValue": 0.150862,
-      "supportGrade": 104.8,
+      "supportGrade": 101.1,
       "supportRank": "S+"
     },
     {
@@ -298,8 +298,8 @@
       },
       "supportScore": -0.233453,
       "supportRelValue": -0.32944,
-      "supportGrade": 31.1,
-      "supportRank": "D"
+      "supportGrade": 0,
+      "supportRank": "F-"
     },
     {
       "config": {
@@ -314,7 +314,7 @@
       },
       "supportScore": 0.288484,
       "supportRelValue": 0.192497,
-      "supportGrade": 93,
+      "supportGrade": 96.9,
       "supportRank": "S+"
     },
     {
@@ -330,7 +330,7 @@
       },
       "supportScore": 0.2615,
       "supportRelValue": 0.165513,
-      "supportGrade": 97.3,
+      "supportGrade": 101,
       "supportRank": "S+"
     },
     {
@@ -346,8 +346,8 @@
       },
       "supportScore": 0.103216,
       "supportRelValue": 0.007229,
-      "supportGrade": 67,
-      "supportRank": "B+"
+      "supportGrade": 50.6,
+      "supportRank": "C+"
     },
     {
       "config": {
@@ -362,8 +362,8 @@
       },
       "supportScore": -0.040269,
       "supportRelValue": -0.136256,
-      "supportGrade": 63.5,
-      "supportRank": "B"
+      "supportGrade": 32.2,
+      "supportRank": "D"
     },
     {
       "config": {
@@ -378,8 +378,8 @@
       },
       "supportScore": 0.137816,
       "supportRelValue": 0.041829,
-      "supportGrade": 76,
-      "supportRank": "A"
+      "supportGrade": 65.3,
+      "supportRank": "B+"
     },
     {
       "config": {
@@ -394,7 +394,7 @@
       },
       "supportScore": 0.179984,
       "supportRelValue": 0.083997,
-      "supportGrade": 62.1,
+      "supportGrade": 61.7,
       "supportRank": "B"
     }
   ],
@@ -911,9 +911,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 79403.424794,
-        "relic": 194770.761093,
-        "ancient": 269030.683333
+        "legendary": 84768.886277,
+        "relic": 209339.938522,
+        "ancient": 295117.816667
       }
     },
     {
@@ -921,9 +921,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 238367.961334,
-        "relic": 584361.529065,
-        "ancient": 807092.05
+        "legendary": 254457.519792,
+        "relic": 628042.704813,
+        "ancient": 885353.45
       }
     },
     {
@@ -931,9 +931,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 794743.839226,
-        "relic": 1947929.216969,
-        "ancient": 2690306.833333
+        "legendary": 848367.737096,
+        "relic": 2093502.386833,
+        "ancient": 2951178.166667
       }
     },
     {
@@ -941,9 +941,9 @@
       "baseline": 0.75,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 21006.947458,
-        "relic": 88611.601746,
-        "ancient": 148172.167022
+        "legendary": 24546.759328,
+        "relic": 103767.499442,
+        "ancient": 173836.727639
       }
     },
     {
@@ -951,9 +951,9 @@
       "baseline": 0.75,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 63351.423215,
-        "relic": 266111.837059,
-        "ancient": 444557.83248
+        "legendary": 73958.733173,
+        "relic": 311563.642791,
+        "ancient": 521551.301878
       }
     },
     {
@@ -961,9 +961,9 @@
       "baseline": 0.75,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 211557.088366,
-        "relic": 887362.660658,
-        "ancient": 1481907.661581
+        "legendary": 246900.641631,
+        "relic": 1038850.14451,
+        "ancient": 1738552.311716
       }
     },
     {
@@ -971,9 +971,9 @@
       "baseline": 1,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 916.208911,
-        "relic": 19267.486003,
-        "ancient": 53389.924413
+        "legendary": 1599.970664,
+        "relic": 26041.55419,
+        "ancient": 68444.136149
       }
     },
     {
@@ -981,9 +981,9 @@
       "baseline": 1,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 3233.96161,
-        "relic": 59030.641931,
-        "ancient": 160929.330711
+        "legendary": 5276.566781,
+        "relic": 79185.568773,
+        "ancient": 205734.005537
       }
     },
     {
@@ -991,9 +991,9 @@
       "baseline": 1,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 11346.096057,
-        "relic": 198201.687678,
-        "ancient": 537317.252752
+        "legendary": 18144.653191,
+        "relic": 265189.619817,
+        "ancient": 686248.548394
       }
     },
     {
@@ -1002,8 +1002,8 @@
       "goldPerDamage": 500000,
       "ev": {
         "legendary": 0,
-        "relic": 76.578212,
-        "ancient": 6224.662109
+        "relic": 609.980796,
+        "ancient": 10994.128789
       }
     },
     {
@@ -1012,8 +1012,8 @@
       "goldPerDamage": 1500000,
       "ev": {
         "legendary": 0,
-        "relic": 1581.689989,
-        "ancient": 20344.191357
+        "relic": 3151.532231,
+        "ancient": 34648.809344
       }
     },
     {
@@ -1022,8 +1022,8 @@
       "goldPerDamage": 5000000,
       "ev": {
         "legendary": 0,
-        "relic": 6849.581212,
-        "ancient": 69762.543726
+        "relic": 12046.962255,
+        "ancient": 117440.191288
       }
     },
     {
@@ -1031,9 +1031,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 80446.767617,
-        "relic": 203977.778525,
-        "ancient": 277244
+        "legendary": 82819.157488,
+        "relic": 211538.095561,
+        "ancient": 294719.45
       }
     },
     {
@@ -1041,9 +1041,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 241494.822329,
-        "relic": 612005.830638,
-        "ancient": 831732
+        "legendary": 248605.724063,
+        "relic": 634657.243921,
+        "ancient": 884158.35
       }
     },
     {
@@ -1051,9 +1051,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 805163.01382,
-        "relic": 2040104.013035,
-        "ancient": 2772440
+        "legendary": 828858.707073,
+        "relic": 2115574.263182,
+        "ancient": 2947194.5
       }
     },
     {
@@ -1061,9 +1061,9 @@
       "baseline": 0.75,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 22184.451588,
-        "relic": 96692.736341,
-        "ancient": 156869.070424
+        "legendary": 23930.694563,
+        "relic": 105728.492581,
+        "ancient": 174057.092815
       }
     },
     {
@@ -1071,9 +1071,9 @@
       "baseline": 0.75,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 66888.434769,
-        "relic": 290376.151864,
-        "ancient": 470648.653426
+        "legendary": 72120.367065,
+        "relic": 317460.765008,
+        "ancient": 522212.498767
       }
     },
     {
@@ -1081,9 +1081,9 @@
       "baseline": 0.75,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 223352.375904,
-        "relic": 968268.106194,
-        "ancient": 1568877.193936
+        "legendary": 240784.220823,
+        "relic": 1058523.718502,
+        "ancient": 1740756.419597
       }
     },
     {
@@ -1091,9 +1091,9 @@
       "baseline": 1,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 1762.49795,
-        "relic": 26587.602216,
-        "ancient": 71579.595482
+        "legendary": 2145.805738,
+        "relic": 30862.619598,
+        "ancient": 79538.747828
       }
     },
     {
@@ -1101,9 +1101,9 @@
       "baseline": 1,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 5763.421227,
-        "relic": 80900.268243,
-        "ancient": 215613.395816
+        "legendary": 6907.858883,
+        "relic": 93618.162183,
+        "ancient": 239252.740195
       }
     },
     {
@@ -1111,9 +1111,9 @@
       "baseline": 1,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 19766.652698,
-        "relic": 270994.599336,
-        "ancient": 719731.696984
+        "legendary": 23575.04489,
+        "relic": 313262.561229,
+        "ancient": 798251.713476
       }
     },
     {
@@ -1122,8 +1122,8 @@
       "goldPerDamage": 500000,
       "ev": {
         "legendary": 0,
-        "relic": 632.341203,
-        "ancient": 10608.852949
+        "relic": 1463.952943,
+        "ancient": 15357.624846
       }
     },
     {
@@ -1132,8 +1132,8 @@
       "goldPerDamage": 1500000,
       "ev": {
         "legendary": 0,
-        "relic": 3218.613454,
-        "ancient": 33492.981825
+        "relic": 5673.319818,
+        "ancient": 47395.002312
       }
     },
     {
@@ -1142,8 +1142,8 @@
       "goldPerDamage": 5000000,
       "ev": {
         "legendary": 0,
-        "relic": 12270.566331,
-        "ancient": 113587.43289
+        "relic": 20406.103882,
+        "ancient": 159525.823442
       }
     },
     {
@@ -1151,9 +1151,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 76589.230568,
-        "relic": 209798.446564,
-        "ancient": 291499.766667
+        "legendary": 78202.598343,
+        "relic": 214507.174648,
+        "ancient": 299862.5
       }
     },
     {
@@ -1161,9 +1161,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 229921.377116,
-        "relic": 629444.54288,
-        "ancient": 874499.3
+        "legendary": 234761.479767,
+        "relic": 643570.287533,
+        "ancient": 899587.5
       }
     },
     {
@@ -1171,9 +1171,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 766583.890033,
-        "relic": 2098205.879988,
-        "ancient": 2914997.666667
+        "legendary": 782717.564748,
+        "relic": 2145291.182633,
+        "ancient": 2998625
       }
     },
     {
@@ -1181,9 +1181,9 @@
       "baseline": 0.75,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 20248.263927,
-        "relic": 102253.995484,
-        "ancient": 171538.873633
+        "legendary": 21111.577121,
+        "relic": 106546.936302,
+        "ancient": 179777.574
       }
     },
     {
@@ -1191,9 +1191,9 @@
       "baseline": 0.75,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 61087.850934,
-        "relic": 307039.668155,
-        "ancient": 514658.003869
+        "legendary": 63675.606125,
+        "relic": 319909.90453,
+        "ancient": 539373.96383
       }
     },
     {
@@ -1201,9 +1201,9 @@
       "baseline": 0.75,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 204026.405456,
-        "relic": 1023789.522502,
-        "ancient": 1715574.959694
+        "legendary": 212649.707636,
+        "relic": 1066680.293327,
+        "ancient": 1797961.328235
       }
     },
     {
@@ -1211,9 +1211,9 @@
       "baseline": 1,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 1469.904739,
-        "relic": 28290.173462,
-        "ancient": 71815.973533
+        "legendary": 1598.531364,
+        "relic": 30573.745667,
+        "ancient": 78928.103399
       }
     },
     {
@@ -1221,9 +1221,9 @@
       "baseline": 1,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 4889.130265,
-        "relic": 85961.877656,
-        "ancient": 215845.455808
+        "legendary": 5273.536456,
+        "relic": 92777.97644,
+        "ancient": 237185.81083
       }
     },
     {
@@ -1231,9 +1231,9 @@
       "baseline": 1,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 16856.419608,
-        "relic": 287812.842335,
-        "ancient": 719948.643773
+        "legendary": 18136.054277,
+        "relic": 310492.784148,
+        "ancient": 791087.78684
       }
     },
     {
@@ -1242,8 +1242,8 @@
       "goldPerDamage": 500000,
       "ev": {
         "legendary": 0,
-        "relic": 1603.134579,
-        "ancient": 17804.667191
+        "relic": 1998.131246,
+        "ancient": 19672.371051
       }
     },
     {
@@ -1252,8 +1252,8 @@
       "goldPerDamage": 1500000,
       "ev": {
         "legendary": 0,
-        "relic": 6092.724853,
-        "ancient": 55006.978885
+        "relic": 7277.714855,
+        "ancient": 60610.090465
       }
     },
     {
@@ -1262,8 +1262,8 @@
       "goldPerDamage": 5000000,
       "ev": {
         "legendary": 0,
-        "relic": 21806.290812,
-        "ancient": 185215.069816
+        "relic": 25756.257487,
+        "ancient": 203892.108415
       }
     }
   ],
@@ -1271,304 +1271,304 @@
     {
       "baseCost": 8,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 61611.233232,
-        "relic": 211787.400765,
-        "ancient": 315803.906366
+        "legendary": 20578.303398,
+        "relic": 150196.608002,
+        "ancient": 298811.51103
       },
       "fusion": {
-        "legendary": 20870.998302,
-        "relic": 119974.911456,
-        "ancient": 214853.203794
+        "legendary": 7124.828815,
+        "relic": 58047.543702,
+        "ancient": 141483.927148
       }
     },
     {
       "baseCost": 8,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 205679.203983,
-        "relic": 706182.043943,
-        "ancient": 1052724.973564
+        "legendary": 69075.959035,
+        "relic": 501249.823254,
+        "ancient": 996091.244621
       },
       "fusion": {
-        "legendary": 70061.410794,
-        "relic": 401348.767318,
-        "ancient": 717535.916293
+        "legendary": 24299.232559,
+        "relic": 195159.730802,
+        "ancient": 473199.326119
       }
     },
     {
       "baseCost": 8,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 15827.09929,
-        "relic": 106298.060295,
-        "ancient": 200543.138789
+        "legendary": 5079.993618,
+        "relic": 71526.469551,
+        "ancient": 191900.742827
       },
       "fusion": {
-        "legendary": 5410.602967,
-        "relic": 54338.084663,
-        "ancient": 124058.324081
+        "legendary": 1748.152793,
+        "relic": 24928.027586,
+        "ancient": 79912.980329
       }
     },
     {
       "baseCost": 8,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 53236.324006,
-        "relic": 355042.361884,
-        "ancient": 668861.480409
+        "legendary": 17483.764968,
+        "relic": 239535.265684,
+        "ancient": 640131.397984
       },
       "fusion": {
-        "legendary": 18584.794795,
-        "relic": 182787.917628,
-        "ancient": 415174.965986
+        "legendary": 6401.426658,
+        "relic": 84949.592807,
+        "ancient": 268357.694929
       }
     },
     {
       "baseCost": 8,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 534.401233,
-        "relic": 26540.760134,
-        "ancient": 81382.007481
+        "legendary": 237.570283,
+        "relic": 18376.614195,
+        "ancient": 84395.434899
       },
       "fusion": {
-        "legendary": 98.154941,
-        "relic": 14223.762854,
-        "ancient": 45383.800424
+        "legendary": 0,
+        "relic": 6516.212477,
+        "ancient": 31702.782837
       }
     },
     {
       "baseCost": 8,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 2360.858911,
-        "relic": 90079.770696,
-        "ancient": 272514.066212
+        "legendary": 1242.474239,
+        "relic": 62942.71685,
+        "ancient": 282648.530015
       },
       "fusion": {
-        "legendary": 912.682676,
-        "relic": 49381.578574,
-        "ancient": 153468.819348
+        "legendary": 453.158889,
+        "relic": 23685.069803,
+        "ancient": 108023.731645
       }
     },
     {
       "baseCost": 9,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 70888.060715,
-        "relic": 237161.808121,
-        "ancient": 341548.420601
+        "legendary": 15875.19627,
+        "relic": 144642.682094,
+        "ancient": 311841.600739
       },
       "fusion": {
-        "legendary": 24016.93273,
-        "relic": 124518.436852,
-        "ancient": 221464.130834
+        "legendary": 5554.290376,
+        "relic": 56527.161073,
+        "ancient": 141280.548671
       }
     },
     {
       "baseCost": 9,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 236592.779744,
-        "relic": 790789.09529,
-        "ancient": 1138540.099715
+        "legendary": 53424.129016,
+        "relic": 482895.548323,
+        "ancient": 1039688.534179
       },
       "fusion": {
-        "legendary": 80544.9143,
-        "relic": 416493.759207,
-        "ancient": 739574.700824
+        "legendary": 19072.947736,
+        "relic": 190112.244516,
+        "ancient": 472559.150089
       }
     },
     {
       "baseCost": 9,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 22850.425439,
-        "relic": 133082.050033,
-        "ancient": 232254.87613
+        "legendary": 3935.57781,
+        "relic": 70619.265469,
+        "ancient": 207249.705704
       },
       "fusion": {
-        "legendary": 7817.580562,
-        "relic": 58490.504752,
-        "ancient": 131091.555542
+        "legendary": 1367.471562,
+        "relic": 24676.279151,
+        "ancient": 80937.584847
       }
     },
     {
       "baseCost": 9,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 76627.276545,
-        "relic": 444324.542035,
-        "ancient": 774566.782824
+        "legendary": 13681.3407,
+        "relic": 236639.972742,
+        "ancient": 691435.789192
       },
       "fusion": {
-        "legendary": 26601.4164,
-        "relic": 196624.599775,
-        "ancient": 438616.976337
+        "legendary": 5136.975673,
+        "relic": 84125.091098,
+        "ancient": 271803.40564
       }
     },
     {
       "baseCost": 9,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 2142.557618,
-        "relic": 42092.003316,
-        "ancient": 116914.210301
+        "legendary": 237.889341,
+        "relic": 20213.524503,
+        "ancient": 103476.704736
       },
       "fusion": {
-        "legendary": 680.684025,
-        "relic": 16147.899191,
-        "ancient": 50605.934661
+        "legendary": 0,
+        "relic": 6796.57444,
+        "ancient": 33537.847255
       }
     },
     {
       "baseCost": 9,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 7707.013484,
-        "relic": 141730.874636,
-        "ancient": 390788.590709
+        "legendary": 1275.270464,
+        "relic": 69094.735998,
+        "ancient": 346257.263167
       },
       "fusion": {
-        "legendary": 2849.084032,
-        "relic": 55775.231679,
-        "ancient": 170835.561615
+        "legendary": 484.488373,
+        "relic": 24629.776701,
+        "ancient": 114148.554853
       }
     },
     {
       "baseCost": 10,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 74633.299037,
-        "relic": 264986.409438,
-        "ancient": 393194.611954
+        "legendary": 9341.68837,
+        "relic": 117650.605305,
+        "ancient": 276928.70809
       },
       "fusion": {
-        "legendary": 25345.610047,
-        "relic": 128092.802895,
-        "ancient": 229914.871427
+        "legendary": 3308.25918,
+        "relic": 52455.248467,
+        "ancient": 134009.95479
       }
     },
     {
       "baseCost": 10,
       "grade": 57,
-      "baseline": 0.116019,
+      "baseline": 0.229799,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 249069.221765,
-        "relic": 883463.320894,
-        "ancient": 1310693.709129
+        "legendary": 31666.932002,
+        "relic": 392992.421496,
+        "ancient": 923369.125889
       },
       "fusion": {
-        "legendary": 84971.054252,
-        "relic": 428400.236295,
-        "ancient": 767732.983258
+        "legendary": 11593.395632,
+        "relic": 176550.603286,
+        "ancient": 448340.442836
       }
     },
     {
       "baseCost": 10,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 24813.306542,
-        "relic": 150226.543526,
-        "ancient": 275859.858553
+        "legendary": 1549.923046,
+        "relic": 54011.449734,
+        "ancient": 164367.489759
       },
       "fusion": {
-        "legendary": 8522.479637,
-        "relic": 60687.546828,
-        "ancient": 137240.239338
+        "legendary": 524.846104,
+        "relic": 22425.903741,
+        "ancient": 74871.365031
       }
     },
     {
       "baseCost": 10,
       "grade": 66,
-      "baseline": 0.149963,
+      "baseline": 0.261602,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 83163.262202,
-        "relic": 501305.97838,
-        "ancient": 919801.606908
+        "legendary": 5739.641744,
+        "relic": 181425.710787,
+        "ancient": 548501.399508
       },
       "fusion": {
-        "legendary": 28948.229788,
-        "relic": 203931.708141,
-        "ancient": 459079.93485
+        "legendary": 2332.167478,
+        "relic": 76638.526592,
+        "ancient": 251603.773361
       }
     },
     {
       "baseCost": 10,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 2761.500369,
-        "relic": 53029.804053,
-        "ancient": 124291.322831
+        "legendary": 12.821552,
+        "relic": 13128.940539,
+        "ancient": 74315.080058
       },
       "fusion": {
-        "legendary": 921.394468,
-        "relic": 17259.172739,
-        "ancient": 52751.277458
+        "legendary": 0,
+        "relic": 5957.015116,
+        "ancient": 30136.842761
       }
     },
     {
       "baseCost": 10,
       "grade": 77,
-      "baseline": 0.191449,
+      "baseline": 0.300473,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 9766.507619,
-        "relic": 178177.361043,
-        "ancient": 415082.576851
+        "legendary": 42.738506,
+        "relic": 45463.728682,
+        "ancient": 249342.015225
       },
       "fusion": {
-        "legendary": 3650.205385,
-        "relic": 59475.54236,
-        "ancient": 177959.866297
+        "legendary": 0,
+        "relic": 21714.508329,
+        "ancient": 102777.687821
       }
     }
   ],
   "supportGradeToScore": [
     {
       "grade": 52,
-      "score": 0.097161
+      "score": 0.212131
     },
     {
       "grade": 66,
-      "score": 0.149963
+      "score": 0.261602
     },
     {
       "grade": 87,
-      "score": 0.229164
+      "score": 0.335809
     }
   ]
 }

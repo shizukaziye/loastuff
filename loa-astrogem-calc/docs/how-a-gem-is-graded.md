@@ -137,7 +137,14 @@ packer's real best 12 (held-out: 1.62 vs 2.95 wrong gems per account).
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **M (fitted)** | 1.074 | 1.034 | 1.000 | 0.963 | 0.914 | 0.844 | 0.735 |
+| **M (fitted, DPS)** | 1.110 | 1.053 | 1.000 | 0.955 | 0.898 | 0.825 | 0.735 |
+| **M (fitted, support)** | 1.146 | 1.106 | 1.000 | 0.891 | 0.842 | 0.772 | 0.660 |
+
+The constants are the **fixed point** of the cutting↔packing feedback loop:
+the score shapes the advisor's cutting play, which shapes what collections
+contain, which shapes what the optimal grid sockets. Three cut→pack→refit
+iterations converged here. (Cost 9's value is an upper bound — the optimal
+grid never sockets one, so the data cannot price it more precisely.)
 
 Read it as the packer's revealed price of budget: **costs 3–6 are all viable,
 7 is taxed, 8 is heavy, and 9 is a cliff** — the optimal grid never sockets a
@@ -150,11 +157,15 @@ crossover the fitted table reproduces.
 ### The grading value
 
 ```
-gemValue = (D(effect1) + D(effect2) + 0.1571 × orderLevel) × M[effectiveCost]
+gemValue      = (D(e1) + D(e2) + 0.161 × orderLevel) × M[effCost]        (DPS)
+supportValue  = (S(e1) + S(e2) + 0.043 × orderLevel) × M_sup[effCost]    (support)
 ```
 
-Note order enters at its **fitted value weight** (0.1571, nearly identical to
-its damage weight 0.15987 — the old model had order right all along).
+Note DPS order enters at its **fitted value weight** (0.161, close to its
+damage weight 0.15987 — the old model had order right all along). Support
+order carries proportionally more of the value (its effect lines are weaker),
+and support's toll is steeper — both measured by the support's own study, not
+carried over from DPS.
 
 ---
 
@@ -171,20 +182,23 @@ grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
 - **`anchorValue`** = the mean value of the **perfect Ark Grid layout** — 3
   perfect 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5
   packing 5+5+4+3 = 17 budget per core). **Grade 100 = this average**, so the
-  scale is open above: perfect c8/c9/c10 grade **93 / 97.8 / 104.6**.
-- **`minValue`** = the worst legal gem (grade 0).
+  scale is open above: perfect c8/c9/c10 grade **95.3 / 98.5 / 103.1** on the
+  DPS axis and **96.9 / 101.0 / 101.1** on the support axis (each axis
+  anchors on its own perfect grid; support's perfect 9- and 10-costs are a
+  near-tie by value).
+- **`minValue`** = the worst legal gem (grade 0, both axes).
 - A TRUE perfect roll of any cost keeps the animated **rainbow badge** — the
-  badge is config-gated, not grade-gated, so it marks perfects at 93 and 104.6
-  alike.
+  badge is config-gated, not grade-gated, so it marks perfects at 95.3 and
+  103.1 alike.
 
 The letter rank is an explicit threshold table (`RANK_LADDER`) — the familiar
-5-point cuts, with one change: **the S+ cut sits at 93, the perfect 8-cost's
-grade**, so every perfect gem is S+ (S+ still holds roughly the top 0.3% of
-cut gems):
+5-point cuts, with one change: **the S+ cut sits at 95.3, the DPS perfect
+8-cost's grade**, so every perfect gem on either axis is S+ (S+ still holds
+roughly the top 0.3% of cut gems):
 
 | S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 93 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
+| 95.3 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
 
 (The leaderboard's "support main" rule counts these same bands — see
 *how-the-leaderboard-ranks.md*.)

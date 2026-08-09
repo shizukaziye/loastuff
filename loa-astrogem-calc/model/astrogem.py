@@ -198,8 +198,8 @@ def gem_damage(config):
 # ---- Grading value: FITTED PER-COST MULTIPLIER TABLE (2026-08-09 reweight) ----
 # Mirrors astrogem.js exactly:
 #   value = (effects + 0.1571 x order) x M[willpowerCost]
-VALUE_ORDER_PER_POINT = 0.1571
-VALUE_WP_MULT = {3: 1.074, 4: 1.034, 5: 1.000, 6: 0.963, 7: 0.914, 8: 0.844, 9: 0.735}
+VALUE_ORDER_PER_POINT = 0.161
+VALUE_WP_MULT = {3: 1.110, 4: 1.053, 5: 1.000, 6: 0.955, 7: 0.898, 8: 0.825, 9: 0.735}
 
 
 def value_wp_mult(cost):
@@ -319,10 +319,9 @@ def grade_to_score(g, base_cost=None):
     return b["min"] + (max(0.0, min(110.0, g)) / 100) * (value_anchor() - b["min"])
 
 
-# Explicit rank threshold table (2026-08-09 ladder) — mirrors astrogem.js.
-# Pre-reweight 5-point cuts, except S+ = 93 (the perfect 8-cost's grade under
-# the fitted M-table value).
-S_PLUS_CUT = 93
+# Explicit rank threshold table — mirrors astrogem.js. Pre-reweight 5-point
+# cuts, except S+ = 95.3 (the perfect 8-cost's grade at the fixed point).
+S_PLUS_CUT = 95.3
 RANK_LADDER = [
     ("S+", S_PLUS_CUT), ("S", 90), ("S-", 85),
     ("A+", 80), ("A", 75), ("A-", 70),
@@ -472,16 +471,28 @@ def support_willpower_multiplier(cost):
     return _SUP_WP_MULT[lo] + (_SUP_WP_MULT[lo + 1] - _SUP_WP_MULT[lo]) * (cost - lo)
 
 
-# Support grading value: the SAME fitted per-cost multiplier table as DPS, by
-# the proportional-transplant convention (support-native study queued).
-SUP_VALUE_ORDER_PER_POINT = SUPPORT_SCORING["orderPerPoint"] * (VALUE_ORDER_PER_POINT / SCORING["orderPerPoint"])
+# Support grading value: SUPPORT-NATIVE fitted constants (2026-08-10 study) —
+# support's own toll (steeper than DPS) and a unified order weight.
+SUP_VALUE_ORDER_PER_POINT = 0.043
+SUP_WP_MULT = {3: 1.146, 4: 1.106, 5: 1.000, 6: 0.891, 7: 0.842, 8: 0.772, 9: 0.660}
+
+
+def sup_wp_mult(cost):
+    if cost <= 3:
+        return SUP_WP_MULT[3]
+    if cost >= 9:
+        return SUP_WP_MULT[9]
+    if cost in SUP_WP_MULT:
+        return SUP_WP_MULT[cost]
+    lo = int(math.floor(cost))
+    return SUP_WP_MULT[lo] + (SUP_WP_MULT[lo + 1] - SUP_WP_MULT[lo]) * (cost - lo)
 
 
 def support_value(config):
     return ((support_effect_score(config["effect1"], config["effect1Level"])
              + support_effect_score(config["effect2"], config["effect2Level"])
              + SUP_VALUE_ORDER_PER_POINT * config["orderLevel"])
-            * value_wp_mult(willpower_cost(config["baseCost"], config["willpowerLevel"])))
+            * sup_wp_mult(willpower_cost(config["baseCost"], config["willpowerLevel"])))
 
 
 _SUPPORT_VALUE_BOUNDS = None
@@ -557,24 +568,12 @@ def support_value_anchor():
     return _SUPPORT_VALUE_ANCHOR
 
 
-_SUPPORT_ZERO = None
-
-
-def support_zero():
-    # Zero point solved so the perfect support c8 grades exactly S_PLUS_CUT
-    # (the anchor maps to 100 for any zero, so grid-mean-100 is automatic).
-    # Cost: the support floor is ~31, not 0 — interim until the support study.
-    global _SUPPORT_ZERO
-    if _SUPPORT_ZERO is not None:
-        return _SUPPORT_ZERO
-    v8 = support_value(_perfect_config(8, "support"))
-    _SUPPORT_ZERO = (100 * v8 - S_PLUS_CUT * support_value_anchor()) / (100 - S_PLUS_CUT)
-    return _SUPPORT_ZERO
-
-
 def support_grade(config):
-    z = support_zero()
-    g = 100 * (support_value(config) - z) / (support_value_anchor() - z)
+    # Same single line as grade(): worst legal support gem = 0, grid mean =
+    # 100, open above (support-native perfects land 96.9/101.0/101.1 — the
+    # 08-09 pinned-zero workaround is gone).
+    b = support_value_bounds()
+    g = 100 * (support_value(config) - b["min"]) / (support_value_anchor() - b["min"])
     return round(max(0.0, min(110.0, g)) * 10) / 10
 
 
@@ -584,9 +583,9 @@ def support_rank(config):
 
 
 def support_grade_to_score(g):
-    # Pinned-zero inverse, parallel to grade_to_score. Accepts 0..110.
-    z = support_zero()
-    return z + (max(0.0, min(110.0, g)) / 100) * (support_value_anchor() - z)
+    # Floor/anchor inverse, parallel to grade_to_score. Accepts 0..110.
+    b = support_value_bounds()
+    return b["min"] + (max(0.0, min(110.0, g)) / 100) * (support_value_anchor() - b["min"])
 
 
 def score_breakdown(config):
@@ -804,7 +803,7 @@ def score_distribution_for_tier(base_cost, tier, axis="dps"):
             # FITTED-MULTIPLIER model: value = (effects + order VALUE) x M[cost].
             cost = willpower_cost(base_cost, wp)
             ord_d = (SUP_VALUE_ORDER_PER_POINT if support else VALUE_ORDER_PER_POINT) * ordv
-            mw = value_wp_mult(cost)
+            mw = sup_wp_mult(cost) if support else value_wp_mult(cost)
             for (e_a, e_b) in pairs:
                 sc1 = (ord_d + es_fn(e_a, lv_a) + es_fn(e_b, lv_b)) * mw
                 sc2 = (ord_d + es_fn(e_a, lv_b) + es_fn(e_b, lv_a)) * mw

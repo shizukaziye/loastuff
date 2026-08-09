@@ -84,21 +84,22 @@ function dpSelfCheck() {
   var cases = [
     // t==0 base case MUST equal the terminal gem value.
     ["t0 base-case == gemValue", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), gv(c10perfect, 1.0, 1500000)],
-    // Re-frozen 2026-08-09 (second pass): deliberate model change — the fitted
-    // per-cost MULTIPLIER table ((effects + 0.1571·order) × M[cost]) replaced
-    // the interim additive credit, so every value-scale-sensitive W moved.
-    // Validated against the full MC battery after re-freezing.
-    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 732414.0562],
-    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 6977.1728],
-    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 5098.7687],
-    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 68118.7749],
-    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 380986.0931],
+    // Re-frozen 2026-08-10: deliberate model change — DPS constants moved to
+    // the cutting<->packing FIXED POINT and the support axis adopted its own
+    // study-fitted constants (native toll + order weight, floor-0 scale), so
+    // every value-scale-sensitive W moved. Validated against the full MC
+    // battery after re-freezing.
+    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 761664.0562],
+    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 7636.4390],
+    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 5602.0815],
+    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 70214.5870],
+    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 385265.1221],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
-    // (A.supportGradeToScore(65)=0.14619, (80)=0.20276 at freeze time; the literals below
+    // (A.supportGradeToScore(65)=0.25807, (80)=0.31107 at freeze time; the literals below
     // bake the RESULTING W so a baseline-scale drift also trips). The MC battery
     // stays DPS-only (nested.js has no support axis).
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 125561.5085],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 24701.3949]
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 53240.5674],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 24627.5402]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {

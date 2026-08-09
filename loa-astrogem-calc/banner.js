@@ -26,13 +26,14 @@
       '<button class="ab-x" title="Dismiss" aria-label="Dismiss">&times;</button>' +
       '<b>Gem grading was reweighted on Aug 9</b> &mdash; grades and letter cuts have changed. ' +
       '<details><summary>What changed?</summary><div class="ab-body">' +
-      'Willpower cost is now priced by a per-cost curve fitted on 15,000 simulated accounts packed into optimal ' +
-      'grids: costs 3&ndash;6 are all viable, 7 is taxed, 8 heavy, 9 worthless. Order value is unchanged. ' +
-      'Perfect gems no longer tie at 100 &mdash; the perfect Ark Grid layout <i>averages</i> 100, so a perfect ' +
-      '8/9/10-cost grades 93 / 97.8 / 104.6, and every perfect gem keeps the rainbow badge. Letter cuts are the ' +
-      'familiar 5-point steps with S+ at 93, so all perfects stay S+ (still the top ~0.3% of gems). ' +
-      'Support gems currently use the toll curve carried over from the DPS fit (a support-native study is in ' +
-      'progress). Baselines, EV tables and the leaderboard are re-baked, so numbers have shifted from last week.' +
+      'Willpower cost is now priced by per-cost curves fitted on simulated accounts packed into optimal grids ' +
+      '(45,000+ DPS and 30,000 support accounts, iterated to a stable equilibrium): costs 3&ndash;6 are all ' +
+      'viable, 7 is taxed, 8 heavy, 9 worthless. Order value is roughly unchanged for DPS and higher for ' +
+      'supports. Perfect gems no longer tie at 100 &mdash; the perfect Ark Grid layout <i>averages</i> 100, so ' +
+      'perfect 8/9/10-costs grade 95.3 / 98.5 / 103.1 (support: 96.9 / 101.0 / 101.1), and every perfect gem ' +
+      'keeps the rainbow badge. Letter cuts are the familiar 5-point steps with S+ at 95.3, so all perfects ' +
+      'stay S+. Support gems now use their own fitted curve (steeper than the DPS one) from a dedicated ' +
+      'support study. Baselines, EV tables and the leaderboard are re-baked, so numbers have shifted.' +
       '</div></details>';
     tabs.parentNode.insertBefore(el, tabs.nextSibling);
     el.querySelector(".ab-x").addEventListener("click", function () {

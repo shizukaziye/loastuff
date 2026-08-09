@@ -220,11 +220,11 @@
       return valueToGrade(Math.exp(A.gridQuality(g, "dps") / g.length), A.valueBounds().min, A.valueAnchor());
     var sum = 0; for (var i = 0; i < g.length; i++) sum += grade(g[i]); return sum / g.length;
   }
-  // SUPPORT quality grade (parallel to avgGradeOf, support axis + pinned zero).
+  // SUPPORT quality grade (parallel to avgGradeOf, support axis).
   function avgSupportGradeOf(char) {
     var g = validGemsOf(char); if (!g.length) return null;
-    if (A && A.gridQuality && A.supportZero && A.supportValueAnchor)
-      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportZero(), A.supportValueAnchor());
+    if (A && A.gridQuality && A.supportValueBounds && A.supportValueAnchor)
+      return valueToGrade(Math.exp(A.gridQuality(g, "support") / g.length), A.supportValueBounds().min, A.supportValueAnchor());
     var sum = 0; for (var i = 0; i < g.length; i++) sum += supportGrade(g[i]); return sum / g.length;
   }
 

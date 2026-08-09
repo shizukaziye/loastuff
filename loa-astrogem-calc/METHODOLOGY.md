@@ -32,9 +32,9 @@ as the accessory calculator, `~/lost-ark-accessory` §2):
 ```
 D = 100 · ln(multiplier)                              (≈ % damage for small values)
 gemDamage(config) = D(effect1) + D(effect2) + D(order)
-gemValue(config)  = (D(effect1) + D(effect2) + 0.1571·orderLevel) × M[effCost]
+gemValue(config)  = (D(effect1) + D(effect2) + 0.161·orderLevel) × M[effCost]
                                                        ← THE value / EV quantity
-M[3..9] = 1.074, 1.034, 1.000, 0.963, 0.914, 0.844, 0.735
+M[3..9] = 1.110, 1.053, 1.000, 0.955, 0.898, 0.825, 0.735
 ```
 
 **Willpower is not a damage line** — it is budget (`effectiveCost = baseCost −
@@ -43,15 +43,19 @@ elsewhere). The 2026-08-09 reweight replaced the old perfect-tie calibration of
 `M` with a **fitted per-cost table**: 15,000 simulated accounts were cut by this
 site's own advisor and packed into optimal 3×17 Ark Grids by an exact-verified
 packer, and `M[cost]` (plus the order value-weight 0.1571) was fitted to
-minimize disagreements with the packer's socketed-vs-benched choices (held-out:
-1.62 vs 2.95 wrong gems/account for the old model). The curve says costs 3–6
-are all viable, 7 is taxed, 8 is heavy, and 9 is a cliff the optimal grid never
-sockets. Perfect gems no longer tie: the perfect Ark-Grid layout (3 c8 + 3 c9 +
-6 c10) *averages* grade 100, with perfects at 93 / 97.8 / 104.6. This
-`gemValue` is what the grade, the DP terminal value, and every EV layer in this
-bake use; the support axis shares the same `M` table by the proportional
-transplant (its own study is queued). Full derivation:
-`docs/how-a-gem-is-graded.md`; study: `docs/account-study-2026-08-08.md`.
+minimize disagreements with the packer's socketed-vs-benched choices, then
+ITERATED to the fixed point of the cutting↔packing feedback loop (constants
+shape the advisor's play, which shapes collections, which shape the fit; three
+cut→pack→refit rounds converged). The curve says costs 3–6 are all viable, 7
+is taxed, 8 is heavy, and 9 is a cliff the optimal grid never sockets. Perfect
+gems no longer tie: the perfect Ark-Grid layout (3 c8 + 3 c9 + 6 c10)
+*averages* grade 100, with perfects at 95.3 / 98.5 / 103.1. This `gemValue` is
+what the grade, the DP terminal value, and every EV layer in this bake use.
+The support axis has its OWN fitted constants from a dedicated 30k-account
+joint order+chaos study (order 0.043/level, steeper toll M_sup[3..9] = 1.146,
+1.106, 1.000, 0.891, 0.842, 0.772, 0.660; support perfects 96.9/101.0/101.1).
+Full derivation: `docs/how-a-gem-is-graded.md`; study:
+`docs/account-study-2026-08-08.md`.
 
 The older **additive** `score(config) = Σ line D` (willpower as an additive `±D`
 line, a perfect gem ≈ 1.34–1.44%) survives only as a legacy layer — the grader's
