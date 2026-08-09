@@ -4996,7 +4996,7 @@
     }
     if (_bg) return _bg.readyP.then(function (ok) { return ok ? _bg : null; });
     var w;
-    try { w = new Worker("ocr/parse-worker.js?v=1"); }
+    try { w = new Worker("ocr/parse-worker.js?v=3"); }
     catch (e) { _bgDisabled = true; return Promise.resolve(null); }
     var readyResolve;
     _bg = { w: w, readyP: new Promise(function (res) { readyResolve = res; }) };
@@ -5087,6 +5087,17 @@
       _workerP.then(function (w) { try { w.terminate(); } catch (e) {} }).catch(function () {});
       _workerP = null;
     }
+  };
+  // While a screen share is live the user is mid-session and the next parse is
+  // imminent: tell the background worker to hold its Tesseract pool warm (its
+  // 5-minute idle teardown otherwise costs the first press after a long gap a
+  // ~2s re-warm). getBgWorker() also re-creates the worker if a teardown or
+  // crash already claimed it, so share-start doubles as the re-warm trigger.
+  // An older cached parse-worker without the handler just ignores the message.
+  StructuralEngine.prototype.setKeepWarm = function (on) {
+    getBgWorker().then(function (bg) {
+      if (bg) bg.w.postMessage({ type: "keepwarm", on: !!on });
+    }).catch(function () {});
   };
   // Warm-up at engine load (tab activation) so the FIRST parse doesn't pay the
   // startup: when the background offload is available, warm THAT (its

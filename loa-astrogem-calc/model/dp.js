@@ -211,7 +211,8 @@
   // they are NOT part of the memo key. rosterBound makes PROCESSING free (only) —
   // rerolls (incl. the paid final one) and Reset still cost gold, matching the game
   // (Shizu, 2026-07-21) and nested.js. This changes the optimal policy, so the
-  // process cost used inside W must reflect it. Each advice query builds its own Solver.
+  // process cost used inside W must reflect it. Advice queries REUSE a solver via
+  // acquireSolver (below) whenever every one of these params matches exactly.
   function Solver(baseline, goldPerDamage, rosterBound, opts) {
     this.baseline = baseline;
     this.gpd = goldPerDamage;
@@ -613,6 +614,36 @@
     return 3;
   }
 
+  // ---- persistent solver reuse (2026-08-09) ----
+  // W(config,t,r,cm) is a pure function of the six Solver params, so the memo
+  // survives across advice queries unchanged. Rebuilding it each query made every
+  // late-turn solve re-price the whole fresh-gem tree (Reset + its C(4,2) combo
+  // table): measured 3.3s on a fresh cut and 6.3s on the last turn, per turn, on
+  // states whose answers were already in the previous turn's memo. Reuse makes
+  // those memo hits (~0ms) with bit-identical results. One cached solver per
+  // param tuple, two tuples kept (a session that alternates two rarities or
+  // axes shouldn't thrash); any other change starts fresh — exactly the old
+  // behavior. `nodes` counts memo inserts, so it doubles as the size cap: past
+  // SOLVER_MEMO_CAP (~3 cold trees' worth, tens of MB) the solver retires and
+  // the next acquisition rebuilds, bounding worker memory for long sessions.
+  var _solvers = [];   // [{ key, solver }], most-recently-used last
+  var SOLVER_MEMO_CAP = 600000;
+  function acquireSolver(baseline, goldPerDamage, rb, drawModel, maxTurns, axis) {
+    var key = baseline + "|" + goldPerDamage + "|" + (rb ? 1 : 0) + "|" +
+      (drawModel || "wor") + "|" + maxTurns + "|" + (axis === "support" ? "support" : "dps");
+    for (var i = 0; i < _solvers.length; i++) {
+      if (_solvers[i].key === key) {
+        var hit = _solvers.splice(i, 1)[0];
+        if (hit.solver.nodes < SOLVER_MEMO_CAP) { _solvers.push(hit); return hit.solver; }
+        break;   // over the cap — fall through to a fresh solver
+      }
+    }
+    var s = new Solver(baseline, goldPerDamage, rb, { drawModel: drawModel, maxTurns: maxTurns, axis: axis });
+    _solvers.push({ key: key, solver: s });
+    if (_solvers.length > 2) _solvers.shift();
+    return s;
+  }
+
   // Returns { bestAction, allActions:[{name,value,aboveBaselineOdds,expectedScore,
   // expectedCost,description}], currentValue, expectedValues, expectedScores } —
   // the SAME shape advisor.js consumes from evaluateActions.
@@ -621,7 +652,10 @@
     var rb = !!state.rosterBound;
     // options.axis "support" grades the cut by supportValue against a support-scale
     // baseline (supportGradeToScore) — the Solver already carries the axis internally.
-    var solver = new Solver(baseline, goldPerDamage, rb, { drawModel: options.drawModel, maxTurns: state.maxTurns, axis: options.axis });
+    // (includeSim2 shapes only the top-level action list, never W itself, so it is
+    // deliberately NOT part of the reuse key.)
+    var solver = acquireSolver(baseline, goldPerDamage, rb, options.drawModel, state.maxTurns, options.axis);
+    var nodes0 = solver.nodes;   // report this query's own work, not the cache's lifetime
     var config = cloneConfig(state.config);
     var t = Math.max(0, (state.maxTurns - state.currentTurn + 1)); // turns remaining incl. current
     var r = state.rerollsRemaining || 0;
@@ -773,7 +807,7 @@
       currentValue: solver.gemValue(config),
       resetCombos: resetCombos,
       resetCost: A.COSTS ? A.COSTS.reset : null,
-      _solverNodes: solver.nodes
+      _solverNodes: solver.nodes - nodes0
     };
   }
 

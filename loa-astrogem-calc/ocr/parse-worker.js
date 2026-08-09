@@ -30,6 +30,18 @@ self.onmessage = function (ev) {
     }
     return;
   }
+  // keepwarm (2026-08-09): a live screen share means the user is MID-SESSION and
+  // the next Read screen now is imminent — the idle teardown below exists for
+  // after sessions, not during them. A >5min gap inside a session (gem banking,
+  // a boss pull) used to cost the next press the ~2s re-warm. While on, teardown
+  // is skipped and the pool re-boots immediately (so a share started after a
+  // teardown pays the warm-up during the picker click, not on the first press).
+  if (msg.type === "keepwarm") {
+    _keepWarm = !!msg.on;
+    _lastUse = Date.now();
+    if (_keepWarm) _pool.forEach(function (slot) { slotWorker(slot); });
+    return;
+  }
   if (msg.type === "parse") {
     var raster = { width: msg.width, height: msg.height, data: new Uint8ClampedArray(msg.buf) };
     parseJob(msg.id, raster);
@@ -46,13 +58,45 @@ var POOL_N = 2;
 var _pool = [];   // [{p: workerPromise|null, q: tailPromise, params: lastParamsKey, busy: int}]
 for (var pi = 0; pi < POOL_N; pi++) _pool.push({ p: null, q: Promise.resolve(), params: "", busy: 0 });
 
+// CONTAINMENT (2026-08-09): Tesseract leaks recognize() failures as floating-
+// promise uncaught errors in this worker. Unhandled, they bubble to the page's
+// Worker.onerror, which reads "the offload is broken", disables it for the
+// session, and pins every later parse to the MAIN THREAD — the exact freeze
+// this worker exists to prevent. Every real failure is already handled per
+// call (the self-healing pool below); the noise must die here. Real init
+// failures still surface through the init-error message, not onerror.
+self.addEventListener("error", function (e) { e.preventDefault(); });
+self.addEventListener("unhandledrejection", function (e) { e.preventDefault(); });
+
+// INPUT ENCODING (2026-08-09, the "why is Read screen now suddenly slow" bug):
+// a Chrome update broke Tesseract 5's ImageData input path inside workers —
+// EVERY recognize(ImageData) rejects "Error attempting to read image" (repro:
+// plain 400x100 white ImageData fails on tesseract 5.0.5 AND 5.1.1, while the
+// same pixels as PNG bytes read fine). Each rejection also killed that pool
+// instance, so parses paid a fresh ~1-2s createWorker per OCR call, read the
+// whole board on templates/synthesis alone, and the leaked error then disabled
+// the offload (see above) — compounding into 10-25s main-thread parses.
+// Encoding each micro-crop to PNG bytes (~1-3ms on an OffscreenCanvas, which
+// is exactly what the Node eval harness feeds Tesseract) restores the input
+// path Tesseract decodes everywhere.
+function rasterPng(raster) {
+  var idata = new ImageData(new Uint8ClampedArray(raster.data), raster.width, raster.height);
+  if (typeof OffscreenCanvas === "undefined") return Promise.resolve(idata);   // old-browser fallback: previous behavior
+  var oc = new OffscreenCanvas(raster.width, raster.height);
+  oc.getContext("2d").putImageData(idata, 0, 0);
+  return oc.convertToBlob({ type: "image/png" }).then(function (b) { return b.arrayBuffer(); })
+    .then(function (ab) { return new Uint8Array(ab); });
+}
+
 // IDLE TEARDOWN: two live Tesseract instances hold ~160MB of wasm heap — real
 // money on a gaming machine. After 5 minutes without a parse the instances are
 // terminated and rebuilt lazily on the next call (a ~2s re-warm, paid only by
 // the first parse after a long break).
 var IDLE_MS = 5 * 60 * 1000;
 var _lastUse = Date.now();
+var _keepWarm = false;   // held true while a screen share is live (keepwarm msg)
 setInterval(function () {
+  if (_keepWarm) return;
   if (Date.now() - _lastUse < IDLE_MS) return;
   _pool.forEach(function (slot) {
     if (slot.p && !slot.busy) {
@@ -86,7 +130,9 @@ function wOcr(raster, opts) {
         tessedit_pageseg_mode: psm, user_defined_dpi: "150", tessedit_char_whitelist: wl
       }).then(function () { slot.params = key; }).catch(function () { slot.params = ""; });
       return setP.then(function () {
-        return w.recognize(new ImageData(new Uint8ClampedArray(raster.data), raster.width, raster.height));
+        return rasterPng(raster);
+      }).then(function (png) {
+        return w.recognize(png);
       }).then(function (res) {
         return { text: (res && res.data && res.data.text) || "", conf: ((res && res.data && res.data.confidence) || 40) / 100 };
       });

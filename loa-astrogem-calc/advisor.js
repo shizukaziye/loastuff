@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 84;
+  var CLIENT_V = 85;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -736,14 +736,24 @@
           : n
             ? "Parsed — " + n + " field" + (n > 1 ? "s" : "") + " highlighted below need a look." + (window.astrogemGate && window.astrogemGate.isUnlocked() ? " Asking the AI checker…" : "")
             : "Parsed. Double-check the window, then Get advice.", tooSmall ? "err" : (n ? "working" : ""));
+        // Advice no longer WAITS for the AI checker (2026-08-09). The verifier is
+        // a network round-trip that can take up to its 8s abort on a cold Workers-
+        // AI cache, and it used to gate the solve — the biggest single reason a
+        // Read screen now press sat there for seconds. Now the solve runs at once
+        // on the parser's values, the verifier runs alongside, and when it answers
+        // at all the advice re-runs with its summary note (the persistent DP memo
+        // makes that re-solve a warm no-op, and solveToken already discards a
+        // stale in-flight render). A verify that corrects a value replaces the
+        // interim advice exactly the way a manual correction would.
+        runAdvice({ auto: true });
         verifyFlagged(parsed, input).then(function (vr) {
-          if (vr) window.AdvisorWindow.setParsed(parsed);   // re-render with lifted/corrected fields
+          if (!vr) return;   // gate locked, nothing flagged, or checker down/slow
+          window.AdvisorWindow.setParsed(parsed);   // re-render lifted/corrected fields
           // the verify summary rides on runAdvice's own final status — runAdvice
           // solves inside a setTimeout, so a status set here would be clobbered
-          runAdvice({ auto: true, note: vr
-            ? "AI checked " + vr.checked + " flagged field" + (vr.checked > 1 ? "s" : "") + " (" +
-              vr.confirmed + " confirmed" + (vr.corrected ? ", " + vr.corrected + " corrected" : "") + ") · "
-            : "" });
+          runAdvice({ auto: true, note:
+            "AI checked " + vr.checked + " flagged field" + (vr.checked > 1 ? "s" : "") + " (" +
+              vr.confirmed + " confirmed" + (vr.corrected ? ", " + vr.corrected + " corrected" : "") + ") · " });
         });
       }
     }).catch(function (err) {
@@ -831,6 +841,7 @@
       audio: false
     }).then(function (stream) {
       shareStream = stream;
+      setParserKeepWarm(true);   // mid-session: hold the OCR pool warm (see stopShare)
       shareVideo = document.createElement("video");
       shareVideo.muted = true;
       shareVideo.srcObject = stream;
@@ -852,7 +863,17 @@
   function stopShare() {
     if (shareStream) shareStream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
     shareStream = null; shareVideo = null;
+    setParserKeepWarm(false);   // session over — the idle teardown may reclaim the pool
     renderShareBar();
+  }
+  // A live share = a cutting session in progress: the parse worker's Tesseract
+  // pool stays warm for the whole share instead of idling out after 5 minutes
+  // (the teardown then charged the NEXT Read screen now a ~2s re-warm).
+  function setParserKeepWarm(on) {
+    try {
+      var eng = window.ocrGetEngine && window.ocrGetEngine("structural");
+      if (eng && typeof eng.setKeepWarm === "function") eng.setKeepWarm(on);
+    } catch (e) {}
   }
   function grabAndParse() {
     if (!shareVideo || !shareVideo.videoWidth) { setStatus("No frame from the shared screen yet — try again.", "err"); return; }
