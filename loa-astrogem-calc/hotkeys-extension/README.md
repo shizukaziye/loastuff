@@ -23,6 +23,15 @@ Press hotkeys **while Lost Ark has focus** — no alt-tab:
 The extension's toolbar badge flashes feedback: **✓** fired · **⏳** busy
 (solve already running) · **✗** no advisor tab open, or not sharing yet.
 
+## Maintainer note
+
+The site serves this folder as `../hotkeys-extension.zip` (linked from the
+advisor's hotkeys section). After editing any file here, rebuild it:
+
+```powershell
+Compress-Archive -Path manifest.json,sw.js,README.md -DestinationPath ..\hotkeys-extension.zip -Force
+```
+
 ## Notes
 
 - Rebind the keys at `chrome://extensions/shortcuts` — Chrome only allows

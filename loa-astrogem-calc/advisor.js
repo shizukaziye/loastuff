@@ -121,7 +121,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 81;
+  var CLIENT_V = 82;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -288,6 +288,17 @@
 '    <li><b>Success</b> is the probability the final gem clears your baseline under optimal play. A below-baseline gem is valued as fusion fodder, not zero.</li>' +
 '  </ul>' +
 '  <p class="note">The baseline is the S/A/B/C/D rank ladder the Grader uses (12 anchor grades); picking a character sets it one rank above your stronger 3rd-lowest gem, and sets the gold-per-1%-damage tier from combat power. On the Support axis gems are valued by party contribution (supportValue) against support-scale baselines; support advice has no Monte-Carlo fallback &mdash; if the exact model fails you get an error, never a silently mis-ranked answer.</p>' +
+'</details>' +
+'<details class="method">' +
+'  <summary>Global hotkeys &mdash; use the advisor without alt-tabbing (optional Chrome extension)</summary>' +
+'  <p>A small Chrome extension adds two system-wide hotkeys that work <b>while the game keeps focus</b>: <b>Ctrl+Shift+1</b> presses 📷&nbsp;Read screen now and <b>Ctrl+Shift+2</b> presses Get advice. The game never sees the keys. Each press flashes its result at the top of this page. You still click 🖥&nbsp;Share game screen once per session &mdash; browsers require a real click to start a share.</p>' +
+'  <p><a class="linklike" href="hotkeys-extension.zip" download>⬇ Download the extension (.zip, ~4&nbsp;KB)</a> &nbsp;·&nbsp; <a class="linklike" href="https://github.com/shizukaziye/loastuff/tree/main/loa-astrogem-calc/hotkeys-extension" target="_blank" rel="noopener">read the source first</a></p>' +
+'  <ul>' +
+'    <li>Unzip it to a folder you keep (Chrome loads it from there &mdash; deleting the folder kills the extension).</li>' +
+'    <li>Open <b>chrome://extensions</b>, turn on <b>Developer mode</b> (top right), click <b>Load unpacked</b>, pick the folder.</li>' +
+'    <li>Rebind the keys at <b>chrome://extensions/shortcuts</b> if they clash &mdash; Chrome only allows Ctrl+Shift+&lt;digit&gt; for global shortcuts, and make sure both are set to <b>Global</b>, not &ldquo;In Chrome&rdquo;.</li>' +
+'  </ul>' +
+'  <p class="note"><b>Honesty corner:</b> I&rsquo;m not a professional developer, and this is a stranger on the internet offering you a browser extension &mdash; the correct default is suspicion. It&rsquo;s three tiny files you can read in full before loading (the &ldquo;read the source&rdquo; link above is the exact code), it only touches this site&rsquo;s pages, and it phones nothing anywhere. But only install it if you&rsquo;ve decided you trust me. Provided as-is, no warranty of any kind; if it breaks something, that&rsquo;s on the gods of hobby software, not a support contract.</p>' +
 '</details>';
   }
 
