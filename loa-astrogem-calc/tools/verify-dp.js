@@ -93,10 +93,10 @@ function dpSelfCheck() {
     // literals sat above the recentered value ceiling — degenerate W=0 pins).
     // Validated against the full MC battery after re-freezing.
     ["perfect t0 g64", W(c10perfect, 0, 3, 0, A.gradeToScore(64), 1500000, false, "wor"), gv(c10perfect, A.gradeToScore(64), 1500000)],
-    ["start10 t5 r3 g64 wor", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "wor"), 25797.9133],
-    ["start10 t5 r3 g64 iid", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "iid"), 21040.0673],
-    ["mid t3 r2 g64 wor", W(mid, 3, 2, 0, A.gradeToScore(64), 1500000, false, "wor"), 148880.4079],
-    ["start10 t6 r3 g43 RB wor", W(start10, 6, 3, 0, A.gradeToScore(43), 1500000, true, "wor"), 321291.7553],
+    ["start10 t5 r3 g64 wor", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "wor"), 31505.0512],
+    ["start10 t5 r3 g64 iid", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "iid"), 26033.8100],
+    ["mid t3 r2 g64 wor", W(mid, 3, 2, 0, A.gradeToScore(64), 1500000, false, "wor"), 175731.1582],
+    ["start10 t6 r3 g43 RB wor", W(start10, 6, 3, 0, A.gradeToScore(43), 1500000, true, "wor"), 345004.6631],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
     // (A.supportGradeToScore(65)=0.15956, (80)=0.22119 at freeze time; the literals below
     // bake the RESULTING W so a baseline-scale drift also trips). The MC battery

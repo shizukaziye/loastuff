@@ -33,10 +33,10 @@
       'per cost: 3 and 4 get a bonus, 5 is neutral, 6&ndash;9 are taxed harder and harder. On both axes this ' +
       'scheme called the correct winner in every head-to-head ladder test we ran. DPS Order/Chaos is priced ' +
       'at its exact in-game damage (never fitted) and centered at level 4 &mdash; order 4 adds nothing, 5 adds, ' +
-      '1&ndash;3 subtract. Perfect DPS 8/9/10-costs grade 96.7 / 100.1 / 101.6; perfect support gems grade ' +
+      '1&ndash;3 subtract. Perfect DPS 8/9/10-costs grade 96.1 / 99.7 / 102.1; perfect support gems grade ' +
       '96.3 / 98.8 / 102.5 on their own fitted scale (support order weight comes from its own study). ' +
       'Letter bands were re-tuned to the new scale&apos;s percentiles: <b>S+ starts at the perfect 8-cost&apos;s ' +
-      'grade</b> (96.7 DPS / 96.3 support), and below it each letter is an even third of its 10-point band ' +
+      'grade</b> (96.1 DPS / 96.3 support), and below it each letter is an even third of its 10-point band ' +
       '&mdash; S 93.3, S&minus; 90, A+ 86.7, A 83.3, A&minus; 80, Bs 70&ndash;80, Cs 60&ndash;70, Ds 50&ndash;60, ' +
       'Fs below 50. Every perfect gem is S+ on its axis. Baselines, EV tables and the leaderboard are ' +
       're-baked, so numbers have shifted.' +

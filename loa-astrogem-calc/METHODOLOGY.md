@@ -34,7 +34,7 @@ D = 100 · ln(multiplier)                              (≈ % damage for small v
 gemDamage(config) = D(effect1) + D(effect2) + D(order)
 gemValue(config)  = D(effect1) + D(effect2) + 0.159872·(orderLevel − 4) + K[effCost]
                                                        ← THE value / EV quantity
-K[3..9] = +0.1528, +0.1077, 0, −0.1560, −0.2877, −0.4083, −0.5686
+K[3..9] = +0.1327, +0.0896, 0, −0.1203, −0.2504, −0.3970, −0.5686
 ```
 
 **Willpower is not a damage line** — it is budget (`effectiveCost = baseCost −
@@ -53,7 +53,7 @@ costs 3 and 4 earn a bonus, 5 is neutral, and 6–9 are taxed increasingly
 hard — but the tax is FLAT damage, not a percent, so it no longer inflates
 with gem quality. Perfect gems do not tie: the perfect Ark-Grid layout
 (3 c8 + 3 c9 + 6 c10) *averages* grade 100, with DPS perfects at
-96.7 / 100.1 / 101.6. Order is PINNED at its exact in-game damage weight
+96.1 / 99.7 / 102.1. Order is PINNED at its exact in-game damage weight
 (0.159872/point — order damage is deterministic, so it is never fitted) and
 centered at level 4: an order-4 gem gains nothing, 5 gains, 1–3 lose. Only
 willpower is fitted. The support axis uses the SAME additive form with its
@@ -65,7 +65,7 @@ on every held-out tier (3.68 wrong gems vs 4.40 for the prior constants) and
 9/9 on the packer-margin monster ladder; support perfects grade
 96.3 / 98.8 / 102.5. The letter ladder (re-tuned 2026-08-10) uses even thirds
 of each 10-point band (A− 80 / A 83.3 / A+ 86.7, F = thirds of 0–50) with S+
-pinned at each axis's perfect 8-cost grade (96.7 DPS / 96.3 support, derived
+pinned at each axis's perfect 8-cost grade (96.1 DPS / 96.3 support, derived
 from the model at load). This
 `gemValue` is what the grade, the DP terminal value, and every EV layer in
 this bake use.

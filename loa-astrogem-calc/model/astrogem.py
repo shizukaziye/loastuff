@@ -201,9 +201,11 @@ def gem_damage(config):
 # Mirrors astrogem.js exactly:
 #   value = (effects + 0.1571 x order) x M[willpowerCost]
 # Order PINNED at the exact damage weight (never fitted), centered at level 4;
-# only the willpower credit K is fitted (re-fitted 2026-08-09 with the pin).
+# only the willpower credit K is fitted — re-fitted 2026-08-10 on the
+# ADAPTIVE-FUSION corpus (117k accounts, per-account c9/c10 fusion targeting;
+# held-out 1.546 misses vs 1.698 prior, 11/11 monster ladder).
 VALUE_ORDER_PER_POINT = SCORING["orderPerPoint"]
-VALUE_WP_CREDIT = {3: 0.1528, 4: 0.1077, 5: 0, 6: -0.1560, 7: -0.2877, 8: -0.4083, 9: -0.5686}
+VALUE_WP_CREDIT = {3: 0.1327, 4: 0.0896, 5: 0, 6: -0.1203, 7: -0.2504, 8: -0.3970, 9: -0.5686}
 # legacy sell-economy multiplier table — mirror surface only, no grading path
 VALUE_WP_MULT = {3: 1.110, 4: 1.053, 5: 1.000, 6: 0.955, 7: 0.898, 8: 0.825, 9: 0.735}
 

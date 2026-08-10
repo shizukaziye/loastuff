@@ -147,7 +147,7 @@ gems vs 4.40 for the prior constants, and best in every spending tier).
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **K (fitted, DPS)** | +0.1528 | +0.1077 | 0 | −0.1560 | −0.2877 | −0.4083 | −0.5686 |
+| **K (fitted, DPS)** | +0.1327 | +0.0896 | 0 | −0.1203 | −0.2504 | −0.3970 | −0.5686 |
 | **K_sup (fitted, support)** | +0.0364 | +0.0218 | 0 | −0.0230 | −0.0450 | −0.0781 | −0.1361 |
 
 Why additive? A multiplier taxes a good gem more gold-for-gold than a bad one
@@ -200,7 +200,7 @@ grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
 - **`anchorValue`** = the mean value of the **perfect Ark Grid layout** — 3
   perfect 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5
   packing 5+5+4+3 = 17 budget per core). **Grade 100 = this average**, so the
-  scale is open above: perfect c8/c9/c10 grade **96.7 / 100.1 / 101.6** on the
+  scale is open above: perfect c8/c9/c10 grade **96.1 / 99.7 / 102.1** on the
   DPS axis and **96.3 / 98.8 / 102.5** on the support axis (each axis anchors
   on its own perfect grid).
 - **`minValue`** = the worst legal gem (grade 0, both axes).
@@ -213,12 +213,12 @@ scale's measured percentiles: **each letter is an even third of its 10-point
 band** (A− at 80, A at 83.3, A+ at 86.7, and so on), F takes thirds of 0–50,
 and **S+ starts at the axis's perfect 8-cost grade** — derived from the model
 at load, so a refit moves the cut automatically. On DPS that lands exactly on
-the even grid (96.7); on support it sits at 96.3, because "every perfect gem
+the even grid within a step (96.1); on support it sits at 96.3, because "every perfect gem
 is S+ on its axis" outranks grid evenness.
 
 | axis | S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| DPS | 96.7 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
+| DPS | 96.1 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
 | support | 96.3 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
 
 Measured meaning under the roster advisor (share of finished cuts reaching
@@ -391,12 +391,12 @@ Damage 5 — the perfect 10-cost:
 - effects: `5·0.08127 (boss) + 5·0.05929 (add) = 0.70278`
 - order, centered at 4: `(5 − 4) × 0.159872 = 0.15987`
 - `effectiveCost = 10 − 5 = 5` → `K(5) = 0`
-- `gemValue = 0.70278 + 0.15987 + 0 = 0.86265` → **grade 101.6, rank S+** (above
+- `gemValue = 0.70278 + 0.15987 + 0 = 0.86265` → **grade 102.1, rank S+** (above
   100 because grade 100 is the perfect grid's *average*, and the 10-cost is its
   best gem)
 
 Drop willpower to 1 (effective cost 9): `K(9) = −0.5686`, so
-`gemValue = 0.86265 − 0.5686 ≈ 0.294` → **grade 71.3 → A−**. Same damage lines,
+`gemValue = 0.86265 − 0.5686 ≈ 0.294` → **grade 71.7 → B−**. Same damage lines,
 much worse gem, because the cost is far higher — but note the penalty is a flat
 damage toll, so it no longer scales up with how good the lines are.
 

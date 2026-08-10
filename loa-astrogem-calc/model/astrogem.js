@@ -297,10 +297,15 @@
   // retained below as valueWpMult (legacy consumers only).
   // Order is PINNED at its exact damage weight (never fitted — its damage is
   // known deterministically) and centered at level 4 like orderScore. Only the
-  // willpower credit K is fitted; re-fitted 2026-08-09 with the pin in place
-  // (held-out 1.678 misses vs 1.687 for the earlier fitted-weight version).
+  // willpower credit K is fitted; re-fitted 2026-08-10 on the ADAPTIVE-FUSION
+  // corpus (117k accounts, tiers 6M/90 · 2.5M/85 · 1M/80, 60/30/10 cut mix,
+  // each account choosing its own c9/c10 fusion target by exact packer
+  // marginals — mostly 9s; strong grids flip to 10s). Held-out 1.546 misses
+  // vs 1.698 for the prior table on this world; 11/11 monster ladder; costs
+  // +0.044 on the old target-10 corpus — a favorable trade since the site's
+  // own fodder advice now steers this world.
   var VALUE_ORDER_PER_POINT = SCORING.orderPerPoint;
-  var VALUE_WP_CREDIT = { 3: 0.1528, 4: 0.1077, 5: 0, 6: -0.1560, 7: -0.2877, 8: -0.4083, 9: -0.5686 };
+  var VALUE_WP_CREDIT = { 3: 0.1327, 4: 0.0896, 5: 0, 6: -0.1203, 7: -0.2504, 8: -0.3970, 9: -0.5686 };
   function valueWpCredit(cost) {
     if (cost <= 3) return VALUE_WP_CREDIT[3];
     if (cost >= 9) return VALUE_WP_CREDIT[9];

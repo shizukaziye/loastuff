@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated": "2026-08-10T05:01:29.555Z",
+    "generated": "2026-08-10T08:19:26.073Z",
     "note": "Captured references for the deterministic core. Regenerate with `node tools/gen-refs.js`. Scoring is REAL % damage (D = 100*ln(multiplier)); supersedes the abstract-weight model and the removed SCORE_PER_PERCENT_DAMAGE=30.96.",
     "SCORING": {
       "willpowerPerLevel": 0.07772592845902067,
@@ -64,7 +64,7 @@
       },
       "score": 0.695964,
       "damagePercent": 0.620153,
-      "grade": 96.7,
+      "grade": 96.1,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 3,
@@ -88,7 +88,7 @@
       },
       "score": 0.72814,
       "damagePercent": 0.730797,
-      "grade": 100.1,
+      "grade": 99.7,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 4,
@@ -112,7 +112,7 @@
       },
       "score": 0.784922,
       "damagePercent": 0.86638,
-      "grade": 101.6,
+      "grade": 102.1,
       "rank": "S+",
       "breakdown": {
         "willpowerCost": 5,
@@ -136,7 +136,7 @@
       },
       "score": -0.077726,
       "damagePercent": 0,
-      "grade": 55.7,
+      "grade": 56,
       "rank": "D",
       "breakdown": {
         "willpowerCost": 5,
@@ -160,7 +160,7 @@
       },
       "score": -0.15633,
       "damagePercent": -0.078573,
-      "grade": 51.5,
+      "grade": 51.8,
       "rank": "D-",
       "breakdown": {
         "willpowerCost": 5,
@@ -184,7 +184,7 @@
       },
       "score": -0.79052,
       "damagePercent": -0.478468,
-      "grade": 8.5,
+      "grade": 9.2,
       "rank": "F-",
       "breakdown": {
         "willpowerCost": 8,
@@ -208,7 +208,7 @@
       },
       "score": -0.621121,
       "damagePercent": -0.387192,
-      "grade": 19.8,
+      "grade": 21.9,
       "rank": "F",
       "breakdown": {
         "willpowerCost": 7,
@@ -256,7 +256,7 @@
       },
       "score": 0.097157,
       "damagePercent": 0.097205,
-      "grade": 66.6,
+      "grade": 66,
       "rank": "C",
       "breakdown": {
         "willpowerCost": 4,
@@ -911,9 +911,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 109.527928,
-        "relic": 8336.575728,
-        "ancient": 36698.601729
+        "legendary": 68.163514,
+        "relic": 6903.959011,
+        "ancient": 31656.869109
       }
     },
     {
@@ -921,9 +921,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 371.4659,
-        "relic": 26167.242661,
-        "ancient": 111065.865052
+        "legendary": 204.490541,
+        "relic": 21876.959089,
+        "ancient": 95946.453882
       }
     },
     {
@@ -931,9 +931,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 1822.029049,
-        "relic": 88961.426258,
-        "ancient": 371560.006214
+        "legendary": 1137.619581,
+        "relic": 74707.124046,
+        "ancient": 321193.631029
       }
     },
     {
@@ -943,7 +943,7 @@
       "ev": {
         "legendary": 0,
         "relic": 0,
-        "ancient": 497.752916
+        "ancient": 133.402462
       }
     },
     {
@@ -953,7 +953,7 @@
       "ev": {
         "legendary": 0,
         "relic": 0,
-        "ancient": 2748.107202
+        "ancient": 1655.055843
       }
     },
     {
@@ -962,8 +962,8 @@
       "goldPerDamage": 5000000,
       "ev": {
         "legendary": 0,
-        "relic": 228.132607,
-        "ancient": 10821.097582
+        "relic": 201.607349,
+        "ancient": 7173.874706
       }
     },
     {
@@ -1031,9 +1031,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 131.58964,
-        "relic": 9842.366526,
-        "ancient": 46550.36361
+        "legendary": 103.121922,
+        "relic": 8929.094168,
+        "ancient": 43417.258865
       }
     },
     {
@@ -1041,9 +1041,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 492.238493,
-        "relic": 30677.058707,
-        "ancient": 140504.861117
+        "legendary": 351.812829,
+        "relic": 27958.411706,
+        "ancient": 131231.047997
       }
     },
     {
@@ -1051,9 +1051,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 2224.722933,
-        "relic": 103964.966669,
-        "ancient": 469523.413159
+        "legendary": 1758.444841,
+        "relic": 95002.741165,
+        "ancient": 438819.859679
       }
     },
     {
@@ -1062,8 +1062,8 @@
       "goldPerDamage": 500000,
       "ev": {
         "legendary": 0,
-        "relic": 27.010256,
-        "ancient": 2703.405225
+        "relic": 3.805128,
+        "ancient": 1975.705198
       }
     },
     {
@@ -1072,8 +1072,8 @@
       "goldPerDamage": 1500000,
       "ev": {
         "legendary": 0,
-        "relic": 81.030769,
-        "ancient": 9271.505997
+        "relic": 11.415385,
+        "ancient": 7135.044081
       }
     },
     {
@@ -1082,8 +1082,8 @@
       "goldPerDamage": 5000000,
       "ev": {
         "legendary": 0,
-        "relic": 679.056175,
-        "ancient": 32465.397757
+        "relic": 374.703862,
+        "ancient": 25396.767529
       }
     },
     {
@@ -1151,9 +1151,9 @@
       "baseline": 0.5,
       "goldPerDamage": 500000,
       "ev": {
-        "legendary": 10.022673,
-        "relic": 6535.537394,
-        "ancient": 36720.030962
+        "legendary": 10.803153,
+        "relic": 6910.022257,
+        "ancient": 36814.926047
       }
     },
     {
@@ -1161,9 +1161,9 @@
       "baseline": 0.5,
       "goldPerDamage": 1500000,
       "ev": {
-        "legendary": 30.068018,
-        "relic": 20842.507822,
-        "ancient": 111376.591145
+        "legendary": 32.409459,
+        "relic": 21929.983443,
+        "ancient": 111667.911973
       }
     },
     {
@@ -1171,9 +1171,9 @@
       "baseline": 0.5,
       "goldPerDamage": 5000000,
       "ev": {
-        "legendary": 255.067194,
-        "relic": 71242.374434,
-        "ancient": 372896.476631
+        "legendary": 284.659752,
+        "relic": 74870.877051,
+        "ancient": 373915.826947
       }
     },
     {
