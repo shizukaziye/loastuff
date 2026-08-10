@@ -148,7 +148,7 @@ gems vs 4.40 for the prior constants, and best in every spending tier).
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | **K (fitted, DPS)** | +0.1327 | +0.0896 | 0 | −0.1203 | −0.2504 | −0.3970 | −0.5686 |
-| **K_sup (fitted, support)** | +0.0364 | +0.0218 | 0 | −0.0230 | −0.0450 | −0.0781 | −0.1361 |
+| **K_sup (fitted, support)** | +0.0252 | +0.0150 | 0 | −0.0235 | −0.0593 | −0.0986 | −0.1346 |
 
 Why additive? A multiplier taxes a good gem more gold-for-gold than a bad one
 at the same cost; the packer's revealed price of budget is closer to a FLAT
@@ -171,7 +171,7 @@ almost never sockets one, so it cannot price the cliff more precisely.
 
 ```
 gemValue      = D(e1) + D(e2) + 0.159872 × (orderLevel − 4) + K[effCost]  (DPS)
-supportValue  = S(e1) + S(e2) + 0.02862 × orderLevel + K_sup[effCost]    (support)
+supportValue  = S(e1) + S(e2) + 0.02879 × orderLevel + K_sup[effCost]    (support)
 ```
 
 DPS order is **pinned at its exact damage weight** — order damage is
@@ -201,7 +201,7 @@ grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
   perfect 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5
   packing 5+5+4+3 = 17 budget per core). **Grade 100 = this average**, so the
   scale is open above: perfect c8/c9/c10 grade **96.1 / 99.7 / 102.1** on the
-  DPS axis and **96.3 / 98.8 / 102.5** on the support axis (each axis anchors
+  DPS axis and **94.6 / 98.2 / 103.6** on the support axis (each axis anchors
   on its own perfect grid).
 - **`minValue`** = the worst legal gem (grade 0, both axes).
 - A TRUE perfect roll of any cost keeps the animated **rainbow badge** — the
@@ -213,13 +213,13 @@ scale's measured percentiles: **each letter is an even third of its 10-point
 band** (A− at 80, A at 83.3, A+ at 86.7, and so on), F takes thirds of 0–50,
 and **S+ starts at the axis's perfect 8-cost grade** — derived from the model
 at load, so a refit moves the cut automatically. On DPS that lands exactly on
-the even grid within a step (96.1); on support it sits at 96.3, because "every perfect gem
+the even grid within a step (96.1); on support it sits at 94.6, because "every perfect gem
 is S+ on its axis" outranks grid evenness.
 
 | axis | S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | DPS | 96.1 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
-| support | 96.3 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
+| support | 94.6 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
 
 Measured meaning under the roster advisor (share of finished cuts reaching
 the band, cross-tier): S ~1%, S− ~2%, A− ~14%, B− ~34%, C− ~55%. (The
@@ -305,7 +305,7 @@ So a support point in Chaos Moon (Brand) is worth ~2.2× one in Order Star.
 Everything else works the same way structurally, but with support's OWN fitted
 pieces: its willpower credit `K_sup` (additive, same form as DPS), its own
 order value weight, and its own grade anchor (its own perfect grid). The rank
-ladder shares every cut with DPS except its own S+ pin (96.3, §6). The
+ladder shares every cut with DPS except its own S+ pin (94.6, §6). The
 Grader's **DPS / Support toggle**
 picks which axis a loadout is judged on; it auto-defaults to Support for
 support classes.

@@ -881,7 +881,8 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
   })();
   var FUSE_AUTO = String(ARGS["fuse-target"] || "") === "auto";
   var FUSE_TARGET = parseInt(ARGS["fuse-target"], 10) || 10;
-  if (FUSE_AUTO && AXIS === "support") { console.error("--fuse-target=auto is DPS-only for now"); process.exit(1); }
+  // --fuse-target=auto now works on BOTH axes (support marginals are side-gated
+  // via setSupSide; each side of a joint account chooses its own target).
   var SEED_TAG = ARGS["seed-tag"] ? String(ARGS["seed-tag"]) : "";
   function makeRosterSolvers(tier) {
     // axis-aware: support roster accounts cut under the LIVE support model
@@ -1072,6 +1073,46 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
     }
     return 100 * best;
   }
+  // SUPPORT marginal context: effects are LINEAR (no buckets); the order term
+  // is the sorted 3-core totals paired with SUP_RATES (desc) + band penalties
+  // — exactly supDamageOfGroups, decomposed. setSupSide(side) MUST be called
+  // before building the table so SUP_RATES carries the right side.
+  function supSlotTableOf(pack) {
+    var pts = pack.groups.map(function (grp) {
+      var p = 0; grp.forEach(function (x) { p += x.order; }); return p;
+    });
+    function orderTerm(p3) {
+      var s = p3.slice().sort(function (a, b) { return b - a; });
+      var d = 0;
+      for (var k = 0; k < 3; k++) {
+        d += Math.log(1 + SUP_RATES[k] * Math.max(0, s[k] - 17));
+        d += Math.log(1 - bandPenalty(s[k]));
+      }
+      return d;
+    }
+    var slots = [];
+    pack.groups.forEach(function (grp, gi) {
+      var cost = 0; grp.forEach(function (x) { cost += x.cost; });
+      grp.forEach(function (x) {
+        slots.push({ old: x, gi: gi, headroom: CORE_SUPPLY - (cost - x.cost) });
+      });
+    });
+    return { slots: slots, pts: pts, orderTerm: orderTerm, base: orderTerm(pts) };
+  }
+  function supSwapMarginal(tab, g) {
+    var best = 0;
+    for (var i = 0; i < tab.slots.length; i++) {
+      var s = tab.slots[i];
+      if (g.cost > s.headroom) continue;
+      var np = tab.pts.slice();
+      np[s.gi] += g.order - s.old.order;
+      var d = (g.rawLin - s.old.rawLin) + 100 * (tab.orderTerm(np) - tab.base);
+      if (d > best) best = d;
+    }
+    return best;
+  }
+  function marginalTableOf(pack) { return AXIS === "support" ? supSlotTableOf(pack) : slotTableOf(pack); }
+  function marginalOf(tab, g) { return AXIS === "support" ? supSwapMarginal(tab, g) : swapMarginal(tab, g); }
   // E[swap-marginal of ONE fusion output] at target cost T for an input tier.
   // Only the 2/3 selector branch differs between targets, so the c9-vs-c10
   // decision compares these directly.
@@ -1092,7 +1133,7 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
             if (j === i) continue;
             var m = gemMeta({ baseCost: T, gemType: "order", willpowerLevel: p[0], orderLevel: p[1],
               effect1: pool[i], effect1Level: p[2], effect2: pool[j], effect2Level: p[3] });
-            ev += per * swapMarginal(tab, m);
+            ev += per * marginalOf(tab, m);
           }
         }
       });
@@ -1100,7 +1141,7 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
     return ev;
   }
   function chooseTarget(pack, queue) {
-    var tab = slotTableOf(pack);
+    var tab = marginalTableOf(pack);
     var nRel = 0, nAnc = 0;
     queue.forEach(function (g) { if (A.classifyTier(A.levelSum(g.cfg)) === "ancient") nAnc++; else nRel++; });
     var tot = nRel + nAnc || 1;
@@ -1136,7 +1177,7 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
       if (om.grade >= thr) {
         keepPool.push(om);
         stats.keptFromFusion++;
-        if (swapMarginal(slotTableOf(pack), om) > 1e-9) {
+        if (marginalOf(marginalTableOf(pack), om) > 1e-9) {
           pack = packCollection17(keepPool);
           hist.upgrades++;
           var nc = chooseTarget(pack, queue);
@@ -1163,8 +1204,9 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
       var sides = {}, all = [];
       ["order", "chaos"].forEach(function (side) {
         var cp = rosterCutPool("sup-roster-" + side, ra, side);
-        setSupSide(side);
-        var sr = rosterEquipFuse(cp.cut, cp.fuseRand, side);
+        setSupSide(side);   // BEFORE pack/marginals: side rates gate both
+        var sr = FUSE_AUTO ? rosterEquipFuseAuto(cp.cut, cp.fuseRand, side)
+                           : rosterEquipFuse(cp.cut, cp.fuseRand, side);
         sr.keepPool.forEach(function (g) { g.side = side; });
         sides[side] = sr;
         all = all.concat(sr.keepPool);
@@ -1185,6 +1227,10 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
         floor2: [sides.order.floor2, sides.chaos.floor2],
         thr: [sides.order.thr, sides.chaos.thr],
         fus: [sides.order.fus, sides.chaos.fus],
+        ftO: sides.order.hist ? [sides.order.hist.t0, sides.order.hist.tF, sides.order.hist.switches, sides.order.hist.upgrades,
+          +sides.order.hist.e9_0.toFixed(6), +sides.order.hist.e10_0.toFixed(6)] : undefined,
+        ftC: sides.chaos.hist ? [sides.chaos.hist.t0, sides.chaos.hist.tF, sides.chaos.hist.switches, sides.chaos.hist.upgrades,
+          +sides.chaos.hist.e9_0.toFixed(6), +sides.chaos.hist.e10_0.toFixed(6)] : undefined,
         coresO: coresOf(sides.order.pack2), coresC: coresOf(sides.chaos.pack2),
         dmgO: sides.order.pack2.dmg, dmgC: sides.chaos.pack2.dmg
       });

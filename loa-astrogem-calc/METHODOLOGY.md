@@ -59,13 +59,13 @@ centered at level 4: an order-4 gem gains nothing, 5 gains, 1–3 lose. Only
 willpower is fitted. The support axis uses the SAME additive form with its
 own constants from its own roster-bound study — 62,400 joint Order+Chaos
 accounts (~10.6M gems) cut under the live advisor with per-side keep and
-fusion rules: `supportValue = effects + 0.02862·order + K_sup[effCost]`,
-K_sup = +0.0364, +0.0218, 0, −0.0230, −0.0450, −0.0781, −0.1361. It was best
+fusion rules: `supportValue = effects + 0.02879·order + K_sup[effCost]`,
+K_sup = +0.0252, +0.0150, 0, −0.0235, −0.0593, −0.0986, −0.1346. It was best
 on every held-out tier (3.68 wrong gems vs 4.40 for the prior constants) and
 9/9 on the packer-margin monster ladder; support perfects grade
-96.3 / 98.8 / 102.5. The letter ladder (re-tuned 2026-08-10) uses even thirds
+94.6 / 98.2 / 103.6. The letter ladder (re-tuned 2026-08-10) uses even thirds
 of each 10-point band (A− 80 / A 83.3 / A+ 86.7, F = thirds of 0–50) with S+
-pinned at each axis's perfect 8-cost grade (96.1 DPS / 96.3 support, derived
+pinned at each axis's perfect 8-cost grade (96.1 DPS / 94.6 support, derived
 from the model at load). This
 `gemValue` is what the grade, the DP terminal value, and every EV layer in
 this bake use.

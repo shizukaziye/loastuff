@@ -727,8 +727,12 @@
   // worth two scales). The earlier sell-world fits (native + low-regime) are
   // superseded: their fixed-point loop oscillated because the sell world's
   // cut policy feeds back into the fit; the roster corpus doesn't.
-  var SUP_VALUE_ORDER_PER_POINT = 0.02862;
-  var SUP_WP_CREDIT = { 3: 0.0364, 4: 0.0218, 5: 0, 6: -0.0230, 7: -0.0450, 8: -0.0781, 9: -0.1361 };
+  // Re-fitted 2026-08-10 on the support ADAPTIVE-FUSION corpus (107k joint
+  // accounts, tiers 6M/85 · 2.5M/80 · 1M/75 on the support scale, per-side
+  // c9/c10 fusion targeting): held-out 3.333 misses vs 3.421 prior (Shizu
+  // adopted with the disclosed floor-inversion trade, 10.79 vs 10.00).
+  var SUP_VALUE_ORDER_PER_POINT = 0.02879;
+  var SUP_WP_CREDIT = { 3: 0.0252, 4: 0.0150, 5: 0, 6: -0.0235, 7: -0.0593, 8: -0.0986, 9: -0.1346 };
   function supValueWpCredit(cost) {
     if (cost <= 3) return SUP_WP_CREDIT[3];
     if (cost >= 9) return SUP_WP_CREDIT[9];

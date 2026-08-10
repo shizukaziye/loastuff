@@ -98,11 +98,11 @@ function dpSelfCheck() {
     ["mid t3 r2 g64 wor", W(mid, 3, 2, 0, A.gradeToScore(64), 1500000, false, "wor"), 175731.1582],
     ["start10 t6 r3 g43 RB wor", W(start10, 6, 3, 0, A.gradeToScore(43), 1500000, true, "wor"), 345004.6631],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
-    // (A.supportGradeToScore(65)=0.15956, (80)=0.22119 at freeze time; the literals below
+    // (A.supportGradeToScore(65)=0.15778, (80)=0.21860 at freeze time; the literals below
     // bake the RESULTING W so a baseline-scale drift also trips). The MC battery
     // stays DPS-only (nested.js has no support axis).
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 117964.9382],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 47725.9822]
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 113179.3852],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 38800.5699]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {

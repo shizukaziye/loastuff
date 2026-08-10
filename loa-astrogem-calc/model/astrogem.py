@@ -511,8 +511,8 @@ def support_willpower_multiplier(cost):
 # form and protocol that won DPS. 62,400 joint roster-bound accounts cut under
 # the live advisor; this credit was best on every held-out tier and 9/9 on the
 # packer-margin monster ladder. Unified order weight for both grid sides.
-SUP_VALUE_ORDER_PER_POINT = 0.02862
-SUP_WP_CREDIT = {3: 0.0364, 4: 0.0218, 5: 0.0, 6: -0.0230, 7: -0.0450, 8: -0.0781, 9: -0.1361}
+SUP_VALUE_ORDER_PER_POINT = 0.02879
+SUP_WP_CREDIT = {3: 0.0252, 4: 0.0150, 5: 0.0, 6: -0.0235, 7: -0.0593, 8: -0.0986, 9: -0.1346}
 
 # LEGACY export-only: the superseded low-regime multiplicative toll.
 SUP_WP_MULT = {3: 1.121, 4: 1.062, 5: 1.000, 6: 0.942, 7: 0.848, 8: 0.774, 9: 0.677}

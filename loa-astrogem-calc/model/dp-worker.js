@@ -36,16 +36,16 @@
  * model/astrogem.js (eager <script>) and model/nested.js / model/dp.js (the
  * advisor's LAZY_TABS) — every time one of those files changes; and advisor.js's
  * own `new Worker("model/dp-worker.js?v=N")` pin must bump every time THIS file
- * changes (advisor.js pins this worker itself at dp-worker.js?v=11).
- * As of 2026-08-10 the set is: astrogem.js?v=60, nested.js?v=54,
- * dp.js?v=58, and this file at dp-worker.js?v=11. Same convention index.html
+ * changes (advisor.js pins this worker itself at dp-worker.js?v=12).
+ * As of 2026-08-10 the set is: astrogem.js?v=61, nested.js?v=54,
+ * dp.js?v=58, and this file at dp-worker.js?v=12. Same convention index.html
  * already documents; a worker with a stale cached copy of the model would
  * silently diverge from the main thread's freshly-versioned one, which is exactly
  * the class of bug the staleness beacon in advisor.js (CLIENT_V) exists to catch
  * on the main thread — this worker has no such beacon of its own, so the version
  * bump is the only guard.
  */
-importScripts("astrogem.js?v=60", "nested.js?v=54", "dp.js?v=58");
+importScripts("astrogem.js?v=61", "nested.js?v=54", "dp.js?v=58");
 
 self.onmessage = function (e) {
   var m = e.data || {};
