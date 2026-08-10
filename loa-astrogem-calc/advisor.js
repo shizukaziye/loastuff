@@ -41,7 +41,7 @@
       // ?v= for the SAME staleness-avoidance reason as the LAZY_TABS list in
       // index.html — bump whenever model/dp-worker.js changes (it also has its
       // own ?v= pins for astrogem.js/nested.js/dp.js; keep both in sync on edit).
-      try { dpWorker = new Worker("model/dp-worker.js?v=12"); }
+      try { dpWorker = new Worker("model/dp-worker.js?v=13"); }
       catch (e) { dpWorkerDead = true; return null; }
     }
     return dpWorker;
@@ -73,6 +73,19 @@
         w.removeEventListener("message", onMsg);
         w.removeEventListener("error", onErr);
         if (e.data.ok) resolve(e.data.result);
+        else if (e.data.error === "model-skew") {
+          // The worker's model disagrees with the page's (stale cache, deploy
+          // race). NEVER mix physics: retire the worker, answer inline with the
+          // page's own model, and tell the user to hard-refresh.
+          dpWorkerDead = true; dpWorker = null;
+          try { console.warn("dp-worker model skew: worker", e.data.workerSig, "vs page", e.data.expectSig); } catch (_) {}
+          try {
+            var wbox = document.getElementById("av-warns");
+            if (wbox) wbox.innerHTML += '<div class="warn">⚠ Advisor engine version skew detected — advice computed in-page with the current model. Hard-refresh (Ctrl+Shift+R) to clear.</div>';
+          } catch (_) {}
+          try { resolve(window.evaluateActionsDP(state, baseline, goldPerDamage, numRuns, null, options)); }
+          catch (e2) { reject(e2); }
+        }
         else reject(new Error(e.data.error || "DP worker failed"));
       }
       function onErr(err) {
@@ -87,7 +100,8 @@
       }
       w.addEventListener("message", onMsg);
       w.addEventListener("error", onErr);
-      w.postMessage({ id: id, state: state, baseline: baseline, goldPerDamage: goldPerDamage, numRuns: numRuns, options: options });
+      w.postMessage({ id: id, state: state, baseline: baseline, goldPerDamage: goldPerDamage, numRuns: numRuns, options: options,
+        expectSig: (window.Astrogem && window.Astrogem.MODEL_SIG) || null });
     });
   }
 
@@ -121,7 +135,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 93;
+  var CLIENT_V = 94;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -1154,7 +1168,7 @@
       rcBox.innerHTML =
         "⚠ <b>Before pressing Reset in game:</b> the ranked Reset assumes the side effects come back unchanged, " +
         "but a reset may re-roll them — check the pair you'd accept. Net value of a fresh cut per pair " +
-        "(" + Math.round(result.resetCost || 20000).toLocaleString() + "g fee included):" +
+        "(" + Math.round(result.resetCost || 20000).toLocaleString() + "g fee included, engine " + (result.modelSig || "?") + "):" +
         '<table style="width:100%;margin-top:4px;border-collapse:collapse;font-size:12px">' + rcRows + "</table>";
       cards.parentNode.insertBefore(rcBox, cards.nextSibling);
     }

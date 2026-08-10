@@ -630,7 +630,8 @@
   var SOLVER_MEMO_CAP = 600000;
   function acquireSolver(baseline, goldPerDamage, rb, drawModel, maxTurns, axis) {
     var key = baseline + "|" + goldPerDamage + "|" + (rb ? 1 : 0) + "|" +
-      (drawModel || "wor") + "|" + maxTurns + "|" + (axis === "support" ? "support" : "dps");
+      (drawModel || "wor") + "|" + maxTurns + "|" + (axis === "support" ? "support" : "dps") +
+      "|" + (A.MODEL_SIG || "0");   // solvers can never outlive the model they were built on
     for (var i = 0; i < _solvers.length; i++) {
       if (_solvers[i].key === key) {
         var hit = _solvers.splice(i, 1)[0];
@@ -855,6 +856,7 @@
   // identical shape advisor.js consumes.
   function evaluateActionsDP(state, baseline, goldPerDamage, numRuns, onProgress, options) {
     var res = topLevelAdvice(state, baseline, goldPerDamage, options || {});
+    res.modelSig = A.MODEL_SIG;   // callers compare vs their own model (skew guard)
     if (typeof onProgress === "function") onProgress(numRuns || 1, numRuns || 1);
     return res;
   }

@@ -82,11 +82,11 @@ var LAZY_TABS = {
     // NOTE: the Tesseract CDN bundle is NOT loaded on the main page anymore —
     // the background parse worker imports its own copy, and the inline fallback
     // lazy-injects it only if the offload is unavailable (structural-engine.js)
-    "model/nested.js?v=54", "model/dp.js?v=58",
+    "model/nested.js?v=54", "model/dp.js?v=59",
     "ocr/engine.js?v=55", "ocr/layout.js?v=55", "ocr/glyphs.js?v=55", "ocr/level-refs.js?v=4", "ocr/level-model.js?v=2", "ocr/name-model.js?v=2", "ocr/tile-model.js?v=1", "ocr/tesseract-engine.js?v=44",
     "ocr/structural-engine.js?v=104",
     "advisor-setup.js?v=50", "advisor-window.js?v=63",
-    "advisor.js?v=93"
+    "advisor.js?v=94"
   ],
   leaderboard: ["leaderboard.js?v=50"],
   feedback: ["feedback.js?v=1"]
@@ -127,7 +127,7 @@ function selectTab(name){
      grader's plan section via pipelineReady). The Advisor stack and Leaderboard are in
      LAZY_TABS above and load on first tab activation. -->
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
-<script src="model/astrogem.js?v=61"></script>
+<script src="model/astrogem.js?v=62"></script>
 <script src="banner.js?v=7"></script>
 <script src="gate.js?v=39"></script>
 <script src="favorites.js?v=40"></script>

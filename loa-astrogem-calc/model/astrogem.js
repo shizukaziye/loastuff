@@ -1337,6 +1337,19 @@
   RANK_LADDER = _ladder(S_PLUS_CUT);
   SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT);
 
+  // MODEL SIGNATURE (2026-08-10): a short fingerprint of every fitted constant
+  // this model grades with. The dp-worker echoes it and advisor.js compares —
+  // a tab whose main thread and worker disagree on physics (stale cache, edge
+  // poisoning, deploy race) fails LOUDLY instead of mixing worlds; the
+  // persistent-solver cache also keys on it. Derived, never hand-edited.
+  var MODEL_SIG = (function () {
+    var s = JSON.stringify([VALUE_ORDER_PER_POINT, VALUE_WP_CREDIT,
+      SUP_VALUE_ORDER_PER_POINT, SUP_WP_CREDIT, S_PLUS_CUT, SUP_S_PLUS_CUT]);
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36);
+  })();
+
   // -------------------- exports (dual: browser global + CommonJS) --------------------
 
   var API = {
@@ -1379,6 +1392,7 @@
     SUPPORT_RANK_LADDER: SUPPORT_RANK_LADDER,
     valueWpCredit: valueWpCredit,
     supValueWpCredit: supValueWpCredit,
+    MODEL_SIG: MODEL_SIG,
     // ---- SUPPORT scoring axis (parallel to the DPS scoring above) ----
     SUPPORT_SCORING: SUPPORT_SCORING,
     supportWillpowerScore: supportWillpowerScore,

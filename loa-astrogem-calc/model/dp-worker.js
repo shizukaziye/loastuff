@@ -36,20 +36,28 @@
  * model/astrogem.js (eager <script>) and model/nested.js / model/dp.js (the
  * advisor's LAZY_TABS) — every time one of those files changes; and advisor.js's
  * own `new Worker("model/dp-worker.js?v=N")` pin must bump every time THIS file
- * changes (advisor.js pins this worker itself at dp-worker.js?v=12).
- * As of 2026-08-10 the set is: astrogem.js?v=61, nested.js?v=54,
- * dp.js?v=58, and this file at dp-worker.js?v=12. Same convention index.html
+ * changes (advisor.js pins this worker itself at dp-worker.js?v=13).
+ * As of 2026-08-10 the set is: astrogem.js?v=62, nested.js?v=54,
+ * dp.js?v=59, and this file at dp-worker.js?v=13. Same convention index.html
  * already documents; a worker with a stale cached copy of the model would
- * silently diverge from the main thread's freshly-versioned one, which is exactly
- * the class of bug the staleness beacon in advisor.js (CLIENT_V) exists to catch
- * on the main thread — this worker has no such beacon of its own, so the version
- * bump is the only guard.
+ * silently diverge from the main thread's freshly-versioned one. Since
+ * 2026-08-10 that divergence also fails LOUDLY at runtime: the main thread
+ * sends its MODEL_SIG with every request and this worker refuses on mismatch
+ * (the guard below) — the version bumps remain the first line of defense.
  */
-importScripts("astrogem.js?v=61", "nested.js?v=54", "dp.js?v=58");
+importScripts("astrogem.js?v=62", "nested.js?v=54", "dp.js?v=59");
 
 self.onmessage = function (e) {
   var m = e.data || {};
   try {
+    // MODEL-SKEW GUARD (2026-08-10): the main thread sends its model signature;
+    // if this worker's model disagrees (stale cache, edge poisoning, deploy
+    // race), refuse to answer rather than compute with different physics.
+    var mySig = (typeof Astrogem !== "undefined" && Astrogem.MODEL_SIG) || null;
+    if (m.expectSig && mySig && m.expectSig !== mySig) {
+      self.postMessage({ ok: false, error: "model-skew", workerSig: mySig, expectSig: m.expectSig, id: m.id });
+      return;
+    }
     var result = evaluateActionsDP(m.state, m.baseline, m.goldPerDamage, m.numRuns, null, m.options);
     self.postMessage({ ok: true, result: result, id: m.id });
   } catch (err) {
