@@ -171,7 +171,15 @@ at 0.78, always flagged, never authoritative.**
   Because a reset MAY re-roll the side effects, whenever Reset is live the DP
   also values a fresh cut for **every** effect pair the gem could land
   (`resetCombos`, C(4,2)=6 — same-class pairs are free via the class-keyed
-  memo) and the UI renders the pair table with a disclaimer.
+  memo) and the UI renders the pair table with a disclaimer, stamped with the
+  engine's `MODEL_SIG` (the constants fingerprint that also guards the
+  main-thread↔worker handshake against version skew).
+
+**Roster bound (default ON since 2026-08-10, persisted per browser):** the
+solve treats processing gold as committed — optimize the gem, not the gold —
+because astrogems can't be sold and the grading model itself is fitted on the
+roster-bound world. Rerolls and Reset still price their real gold. Toggling
+it off gives classic gold-EV advice; both toggles remember their state.
 
 Advice runs **automatically after every successful parse** — except an
 OCR-degraded one (the text engine never loaded; every field is a colour-only

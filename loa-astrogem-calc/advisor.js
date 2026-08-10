@@ -135,7 +135,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 94;
+  var CLIENT_V = 95;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -275,7 +275,7 @@
 '      <div id="av-setup"></div>' +
 '      <div class="barrow av-ctrlrow">' +
 '        <button class="mbtn" id="av-sim2" data-on="1" title="Rank Complete (stop and keep the gem) against Process and Reroll. On by default.">Consider Complete: on</button>' +
-'        <button class="mbtn" id="av-bound" data-on="0" title="Roster-bound gem — processing costs no gold; rerolls and Reset still cost normal gold.">Roster bound: off</button>' +
+'        <button class="mbtn" id="av-bound" data-on="1" title="Roster-bound gem — optimize the gem itself; processing gold is treated as committed (rerolls and Reset still cost normal gold). ON by default: astrogems can&#39;t be sold, and the grading model is fitted on this world. Turn off for pure gold-EV advice.">Roster bound: on</button>' +
 '        <button class="primary" id="av-go">Get advice</button>' +
 '        <button class="primary" id="av-read" type="button" style="display:none" title="Grabs the current frame, reads it, and shows advice">📷 Read screen now</button>' +
 '      </div>' +
@@ -1235,12 +1235,21 @@
     // Constant-width labels (2026-07-21): "yes (free)"/"no" jumped the button
     // width on every toggle and pushed Get advice onto its own line. on/off keeps
     // width stable; the "free" detail lives in the button's title tooltip.
+    // Both toggles PERSIST per browser (2026-08-10). Roster bound defaults ON:
+    // astrogems can't be sold and the grading model is fitted on the roster
+    // world — gold-EV mode stays one click away for players who want it.
     [["av-sim2", "Consider Complete: ", ["off", "on"]], ["av-bound", "Roster bound: ", ["off", "on"]]].forEach(function (t) {
-      var b = $(t[0]);
+      var b = $(t[0]), storeKey = "astrogem_toggle_" + t[0];
+      try {
+        var saved = localStorage.getItem(storeKey);
+        if (saved === "0" || saved === "1") b.dataset.on = saved;
+      } catch (e) {}
+      b.textContent = t[1] + t[2][+b.dataset.on];
       b.addEventListener("click", function () {
         b.dataset.on = b.dataset.on === "1" ? "0" : "1";
         b.textContent = t[1] + t[2][+b.dataset.on];
         b.classList.toggle("active", b.dataset.on === "1");
+        try { localStorage.setItem(storeKey, b.dataset.on); } catch (e) {}
       });
       b.classList.toggle("active", b.dataset.on === "1");
     });
