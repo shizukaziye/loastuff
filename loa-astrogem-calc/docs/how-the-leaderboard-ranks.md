@@ -96,6 +96,8 @@ So **B− (9) → B+ (11) is a gap of 2.** A character whose support grade is �
 above its DPS grade (e.g. *B− DPS but B+ support*) is treated as a genuine support main
 and **moved to the Support board instead**. A support within 1 sub-rank, or whose DPS
 is as good or better, **stays on both boards** (`isSupportMain` in `leaderboard.js`).
+Both sides convert on the same ladder (S+ 95, then 5-point steps); the code
+routes each side through its own axis ladder, but the two are identical today.
 
 This is build-and-class based: a DPS class never gets dropped (its support build is
 always far below its DPS build), and a support player who actually built DPS stays on

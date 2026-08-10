@@ -84,22 +84,25 @@ function dpSelfCheck() {
   var cases = [
     // t==0 base case MUST equal the terminal gem value.
     ["t0 base-case == gemValue", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), gv(c10perfect, 1.0, 1500000)],
-    // Re-frozen 2026-08-10: deliberate model change — DPS constants moved to
-    // the cutting<->packing FIXED POINT and the support axis adopted its own
-    // study-fitted constants (native toll + order weight, floor-0 scale), so
-    // every value-scale-sensitive W moved. Validated against the full MC
-    // battery after re-freezing.
-    ["perfect t0 base1", W(c10perfect, 0, 3, 0, 1.0, 1500000, false, "wor"), 761664.0562],
-    ["start10 t5 r3 base1 wor", W(start10, 5, 3, 0, 1.0, 1500000, false, "wor"), 7636.4390],
-    ["start10 t5 r3 base1 iid", W(start10, 5, 3, 0, 1.0, 1500000, false, "iid"), 5602.0815],
-    ["mid t3 r2 base1 wor", W(mid, 3, 2, 0, 1.0, 1500000, false, "wor"), 70214.5870],
-    ["start10 t6 r3 base0.5 RB wor", W(start10, 6, 3, 0, 0.5, 1500000, true, "wor"), 385265.1221],
+    // Re-frozen 2026-08-09: deliberate model change — BOTH axes moved to the
+    // K-steep ADDITIVE willpower credit fitted on roster-bound corpora (DPS:
+    // effects + EXACT order damage weight centered at level 4 + K[cost];
+    // support: effects + 0.02862*order + SUP_WP_CREDIT[cost]) with ONE unified
+    // S+ 95 ladder, so every value-scale-sensitive W moved. DPS pin baselines
+    // are now GRADE-derived like the battery grid (the old raw 1.0/0.5
+    // literals sat above the recentered value ceiling — degenerate W=0 pins).
+    // Validated against the full MC battery after re-freezing.
+    ["perfect t0 g64", W(c10perfect, 0, 3, 0, A.gradeToScore(64), 1500000, false, "wor"), gv(c10perfect, A.gradeToScore(64), 1500000)],
+    ["start10 t5 r3 g64 wor", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "wor"), 25797.9133],
+    ["start10 t5 r3 g64 iid", W(start10, 5, 3, 0, A.gradeToScore(64), 1500000, false, "iid"), 21040.0673],
+    ["mid t3 r2 g64 wor", W(mid, 3, 2, 0, A.gradeToScore(64), 1500000, false, "wor"), 148880.4079],
+    ["start10 t6 r3 g43 RB wor", W(start10, 6, 3, 0, A.gradeToScore(43), 1500000, true, "wor"), 321291.7553],
     // SUPPORT axis (opts.axis): supportValue terminals against support-scale baselines
-    // (A.supportGradeToScore(65)=0.25807, (80)=0.31107 at freeze time; the literals below
+    // (A.supportGradeToScore(65)=0.15956, (80)=0.22119 at freeze time; the literals below
     // bake the RESULTING W so a baseline-scale drift also trips). The MC battery
     // stays DPS-only (nested.js has no support axis).
-    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 53240.5674],
-    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 24627.5402]
+    ["supStart c9 t9 r3 sup65 wor", Wax(supStart, 9, 3, 0, A.supportGradeToScore ? A.supportGradeToScore(65) : NaN, 1500000, false, "wor", "support"), 117964.9382],
+    ["supMid c8 t5 r2 sup80 wor", Wax(supMid, 5, 2, 0, A.supportGradeToScore ? A.supportGradeToScore(80) : NaN, 1500000, false, "wor", "support"), 47725.9822]
   ];
   var ok = 0, bad = [];
   cases.forEach(function (c) {

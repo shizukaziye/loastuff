@@ -1,10 +1,10 @@
-/* banner.js — temporary site-wide notice for the 2026-08-09 grading reweight.
+/* banner.js — temporary site-wide notice for the 2026-08-09 roster-bound regrade.
  * Injected above the tab panes so every tab (Grader, Pipeline, Advisor,
  * Leaderboard) shows it. Dismiss sticks per browser via localStorage.
  * Remove this file (and its index.html tag) once the notice has run its course. */
 (function () {
   "use strict";
-  var KEY = "astrogem-banner-reweight-2026-08-09";
+  var KEY = "astrogem-banner-ksteep-2026-08-09";
   try { if (localStorage.getItem(KEY)) return; } catch (e) {}
 
   function inject() {
@@ -24,16 +24,20 @@
       '#astro-banner .ab-body{margin-top:6px;opacity:.9}' +
       '</style>' +
       '<button class="ab-x" title="Dismiss" aria-label="Dismiss">&times;</button>' +
-      '<b>Gem grading was reweighted on Aug 9</b> &mdash; grades and letter cuts have changed. ' +
+      '<b>Grading was refit on Aug 9 for roster-bound gems</b> &mdash; grades and letter cuts have changed. ' +
       '<details><summary>What changed?</summary><div class="ab-body">' +
-      'Willpower cost is now priced by per-cost curves fitted on simulated accounts packed into optimal grids ' +
-      '(45,000+ DPS and 30,000 support accounts, iterated to a stable equilibrium): costs 3&ndash;6 are all ' +
-      'viable, 7 is taxed, 8 heavy, 9 worthless. Order value is roughly unchanged for DPS and higher for ' +
-      'supports. Perfect gems no longer tie at 100 &mdash; the perfect Ark Grid layout <i>averages</i> 100, so ' +
-      'perfect 8/9/10-costs grade 95.3 / 98.5 / 103.1 (support: 96.9 / 101.0 / 101.1), and every perfect gem ' +
-      'keeps the rainbow badge. Letter cuts are the familiar 5-point steps with S+ at 95.3, so all perfects ' +
-      'stay S+. Support gems now use their own fitted curve (steeper than the DPS one) from a dedicated ' +
-      'support study. Baselines, EV tables and the leaderboard are re-baked, so numbers have shifted.' +
+      'Astrogems are roster-bound, so the model now assumes you keep and fuse everything instead of selling. ' +
+      'We simulated 174,000 accounts (~21M gems) cutting, equipping, and fusing spares the way the game ' +
+      'actually plays &mdash; 112k DPS accounts and 62k joint Order+Chaos support accounts &mdash; then fit ' +
+      'grades to match which gems win a grid slot. On both axes, willpower cost is now a flat credit or tax ' +
+      'per cost: 3 and 4 get a bonus, 5 is neutral, 6&ndash;9 are taxed harder and harder. On both axes this ' +
+      'scheme called the correct winner in every head-to-head ladder test we ran. DPS Order/Chaos is priced ' +
+      'at its exact in-game damage (never fitted) and centered at level 4 &mdash; order 4 adds nothing, 5 adds, ' +
+      '1&ndash;3 subtract. Perfect DPS 8/9/10-costs grade 96.7 / 100.1 / 101.6; perfect support gems grade ' +
+      '96.3 / 98.8 / 102.5 on their own fitted scale (support order weight comes from its own study). One ' +
+      'ladder serves both axes: <b>S+ at 95</b>, then ' +
+      'the familiar 5-point steps (90, 85, 80, &hellip;) &mdash; every perfect gem on either axis is S+. ' +
+      'Baselines, EV tables and the leaderboard are re-baked, so numbers have shifted.' +
       '</div></details>';
     tabs.parentNode.insertBefore(el, tabs.nextSibling);
     el.querySelector(".ab-x").addEventListener("click", function () {

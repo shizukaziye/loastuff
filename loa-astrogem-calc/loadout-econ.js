@@ -38,18 +38,21 @@
   // ---- model handles (same fallback semantics grader.js used) ----
   function grade(cfg) { return A.grade(cfg); }
   function supportGrade(cfg) { return A.supportGrade ? A.supportGrade(cfg) : A.grade(cfg); }
-  function rankFromGrade(g) { return A.rankFromGrade(g); }
+  function rankFromGrade(g, axis) {
+    if (axis === "support" && A.supportRankFromGrade) return A.supportRankFromGrade(g);
+    return A.rankFromGrade(g);
+  }
   function validateConfig(cfg) { return A.validateConfig ? A.validateConfig(cfg) : { valid: true }; }
   // Axis-aware gem grade (the grader's gGrade, parameterized).
   function gradeOf(cfg, axis) { return axis === "support" ? supportGrade(cfg) : grade(cfg); }
 
-  // ---- the rank ladder + gpd tiers (must match the pipeline bake's anchors) ----
-  // The Pipeline tab bakes one DP solve per these 12 anchor grades; each maps 1:1 to a
-  // distinct rank (C- … S+), so the array IS a clean rank ladder.
-  // One row per rank C- .. S+ — the ladder's band cuts, so a baseline choice
-  // is exactly "keep <rank> or better" (S+ row = 95.3, the perfect 8-cost's
-  // grade at the fixed-point constants).
-  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95.3];
+  // ---- the rank ladders + gpd tiers (must match the pipeline bakes' anchors) ----
+  // One row per rank C- .. S+; each AXIS has its own S+ row (that axis's
+  // perfect 8-cost grade), so a baseline choice is exactly "keep <rank> or
+  // better" on that axis's ladder. Rows 0..10 are shared; row 11 differs.
+  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  var GRADE_ROWS_SUPPORT = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  function gradeRows(axis) { return axis === "support" ? GRADE_ROWS_SUPPORT : GRADE_ROWS; }
   var GPD_TIERS = [500000, 1000000, 1500000, 2500000, 3500000, 5000000, 7500000, 10000000];
   var GPD_DEFAULT = 1500000;
 
@@ -169,43 +172,46 @@
     return "dps";
   }
 
-  // ---- the rank ladder mechanics ----
-  // rank string -> index in GRADE_ROWS (cached). Built by ranking each anchor grade.
-  var RANK_TO_IDX = null;
-  function rankToIdx() {
-    if (RANK_TO_IDX) return RANK_TO_IDX;
-    RANK_TO_IDX = {};
-    for (var i = 0; i < GRADE_ROWS.length; i++) RANK_TO_IDX[rankFromGrade(GRADE_ROWS[i])] = i;
-    return RANK_TO_IDX;
+  // ---- the rank ladder mechanics (axis-aware) ----
+  // rank string -> index in that axis's rows (cached per axis).
+  var RANK_TO_IDX = { dps: null, support: null };
+  function rankToIdx(axis) {
+    var key = axis === "support" ? "support" : "dps";
+    if (RANK_TO_IDX[key]) return RANK_TO_IDX[key];
+    var rows = gradeRows(key), map = {};
+    for (var i = 0; i < rows.length; i++) map[rankFromGrade(rows[i], key)] = i;
+    RANK_TO_IDX[key] = map;
+    return map;
   }
 
-  // The baseline GRADE_ROWS grade for a gem grade, bumped ONE rank up: find the
-  // anchor index for the gem's rank, step +1 (clamped to the top), return that
-  // anchor grade. Falls back to the gem's own anchor if its rank isn't on the ladder.
-  function bumpedBaselineGrade(gemGrade) {
-    var map = rankToIdx();
-    var rank = rankFromGrade(gemGrade);
+  // The baseline anchor grade for a gem grade, bumped ONE rank up on that
+  // axis's ladder (clamped to the top). Off-ladder ranks snap to the nearest
+  // anchor by value, then bump.
+  function bumpedBaselineGrade(gemGrade, axis) {
+    var rows = gradeRows(axis);
+    var map = rankToIdx(axis);
+    var rank = rankFromGrade(gemGrade, axis);
     var idx = map[rank];
     if (idx == null) {
-      // off-ladder: snap to the nearest anchor grade by value, then bump.
       var best = 0, bd = Infinity;
-      for (var i = 0; i < GRADE_ROWS.length; i++) {
-        var d = Math.abs(GRADE_ROWS[i] - gemGrade);
+      for (var i = 0; i < rows.length; i++) {
+        var d = Math.abs(rows[i] - gemGrade);
         if (d < bd) { bd = d; best = i; }
       }
       idx = best;
     }
-    var up = Math.min(idx + 1, GRADE_ROWS.length - 1);
-    return GRADE_ROWS[up];
+    var up = Math.min(idx + 1, rows.length - 1);
+    return rows[up];
   }
 
-  // GRADE_ROWS index of an anchor grade (exact match, else nearest by value).
-  function gradeRowIdx(g) {
-    var i = GRADE_ROWS.indexOf(g);
+  // Row index of an anchor grade on that axis (exact match, else nearest).
+  function gradeRowIdx(g, axis) {
+    var rows = gradeRows(axis);
+    var i = rows.indexOf(g);
     if (i !== -1) return i;
     var best = 0, bd = Infinity;
-    for (var k = 0; k < GRADE_ROWS.length; k++) {
-      var d = Math.abs(GRADE_ROWS[k] - g);
+    for (var k = 0; k < rows.length; k++) {
+      var d = Math.abs(rows[k] - g);
       if (d < bd) { bd = d; best = k; }
     }
     return best;
@@ -221,10 +227,10 @@
     }).map(function (x) { return gradeOf(x, axis); }).sort(function (a, b) { return a - b; });
     if (!graded.length) return null;
     var src = graded.length >= 3 ? graded[2] : graded[0];
-    var baseGrade = bumpedBaselineGrade(src);
+    var baseGrade = bumpedBaselineGrade(src, axis);
     return {
-      srcGrade: src, srcRank: rankFromGrade(src),
-      baseGrade: baseGrade, baseRank: rankFromGrade(baseGrade),
+      srcGrade: src, srcRank: rankFromGrade(src, axis),
+      baseGrade: baseGrade, baseRank: rankFromGrade(baseGrade, axis),
       count: graded.length
     };
   }
@@ -246,14 +252,15 @@
     var src, srcType;
     if (bo && (!bc || bo.srcGrade >= bc.srcGrade)) { src = bo.srcGrade; srcType = "order"; }
     else { src = bc.srcGrade; srcType = "chaos"; }
-    var bumped = bumpedBaselineGrade(src);               // one rank above the stronger source
-    var idx = gradeRowIdx(bumped);
-    var shifted = Math.max(0, Math.min(GRADE_ROWS.length - 1, idx + shift));
-    var baseGrade = GRADE_ROWS[shifted];
+    var rows = gradeRows(axis);
+    var bumped = bumpedBaselineGrade(src, axis);         // one rank above the stronger source
+    var idx = gradeRowIdx(bumped, axis);
+    var shifted = Math.max(0, Math.min(rows.length - 1, idx + shift));
+    var baseGrade = rows[shifted];
     return {
-      srcGrade: src, srcRank: rankFromGrade(src), srcType: srcType,
-      baseIdx: shifted, baseGrade: baseGrade, baseRank: rankFromGrade(baseGrade),
-      shift: shift, atMin: shifted <= 0, atMax: shifted >= GRADE_ROWS.length - 1,
+      srcGrade: src, srcRank: rankFromGrade(src, axis), srcType: srcType,
+      baseIdx: shifted, baseGrade: baseGrade, baseRank: rankFromGrade(baseGrade, axis),
+      shift: shift, atMin: shifted <= 0, atMax: shifted >= rows.length - 1,
       order: bo, chaos: bc
     };
   }
@@ -320,6 +327,8 @@
   var API = {
     WORKER_URL: WORKER_URL,
     GRADE_ROWS: GRADE_ROWS,
+    GRADE_ROWS_SUPPORT: GRADE_ROWS_SUPPORT,
+    gradeRows: gradeRows,
     GPD_TIERS: GPD_TIERS,
     GPD_DEFAULT: GPD_DEFAULT,
     gpdLabel: gpdLabel,

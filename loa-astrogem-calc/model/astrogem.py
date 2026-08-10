@@ -27,7 +27,7 @@ import math
 #   attackPower      other 12.1%, +1.1% over 30 grid levels
 #   additionalDamage other 33.6%, +2.42% over 30 levels
 #   bossDamage       other 0%,    +2.5% over 30 levels
-#   order            flat x1.0016 per point (orderScore = orderLevel * D, NOT vs lvl 4)
+#   order            x1.0016 per point; orderScore = (orderLevel - 4) * D (4 = neutral)
 #   willpower        2.4 * attack-per-level (old willpower:attack ratio), per cost-level
 # Numeric values (~): atk 0.032386, addDmg 0.059287, boss 0.081268, order 0.159872,
 # willpower 0.077726 per cost-level from 4.
@@ -60,7 +60,7 @@ SCORING = {
     "attackPower": D_ATTACK_PER_LEVEL,
     "additionalDamage": D_ADDDMG_PER_LEVEL,
     "bossDamage": D_BOSS_PER_LEVEL,
-    "orderPerPoint": D_ORDER_PER_POINT,  # orderLevel * D (flat per point, NOT vs level 4)
+    "orderPerPoint": D_ORDER_PER_POINT,  # (orderLevel - 4) * D (level 4 = neutral)
     "brandPower": 0,
     "allyDamageEnh": 0,
     "allyAttackEnh": 0,
@@ -151,8 +151,9 @@ def effect_score(effect_type, level):
 
 
 def order_score(order_level):
-    # Flat per point (NOT relative to level 4).
-    return order_level * SCORING["orderPerPoint"]
+    # Centered at level 4 (2026-08-09): order 4 adds nothing, 5 adds damage,
+    # 1-3 subtract. Per-point D is the EXACT in-game damage value, never fitted.
+    return (order_level - 4) * SCORING["orderPerPoint"]
 
 
 # ---- Willpower as a MULTIPLIER on damage (LEGACY — no longer the grading model) ----
@@ -161,7 +162,8 @@ def order_score(order_level):
 def _perfect_damage(base_cost):
     pool = EFFECT_POOLS[base_cost]
     v = sorted((effect_score(e, 5) for e in pool), reverse=True)
-    return v[0] + v[1] + order_score(5)
+    # FLAT order on purpose: legacy table predates the level-4 recentering.
+    return v[0] + v[1] + 5 * SCORING["orderPerPoint"]
 
 
 def _build_wp_mult():
@@ -198,8 +200,23 @@ def gem_damage(config):
 # ---- Grading value: FITTED PER-COST MULTIPLIER TABLE (2026-08-09 reweight) ----
 # Mirrors astrogem.js exactly:
 #   value = (effects + 0.1571 x order) x M[willpowerCost]
-VALUE_ORDER_PER_POINT = 0.161
+# Order PINNED at the exact damage weight (never fitted), centered at level 4;
+# only the willpower credit K is fitted (re-fitted 2026-08-09 with the pin).
+VALUE_ORDER_PER_POINT = SCORING["orderPerPoint"]
+VALUE_WP_CREDIT = {3: 0.1528, 4: 0.1077, 5: 0, 6: -0.1560, 7: -0.2877, 8: -0.4083, 9: -0.5686}
+# legacy sell-economy multiplier table — mirror surface only, no grading path
 VALUE_WP_MULT = {3: 1.110, 4: 1.053, 5: 1.000, 6: 0.955, 7: 0.898, 8: 0.825, 9: 0.735}
+
+
+def value_wp_credit(cost):
+    if cost <= 3:
+        return VALUE_WP_CREDIT[3]
+    if cost >= 9:
+        return VALUE_WP_CREDIT[9]
+    if cost in VALUE_WP_CREDIT:
+        return VALUE_WP_CREDIT[cost]
+    lo = int(math.floor(cost))
+    return VALUE_WP_CREDIT[lo] + (VALUE_WP_CREDIT[lo + 1] - VALUE_WP_CREDIT[lo]) * (cost - lo)
 
 
 def value_wp_mult(cost):
@@ -214,10 +231,10 @@ def value_wp_mult(cost):
 
 
 def gem_value(config):
-    return ((effect_score(config["effect1"], config["effect1Level"])
-             + effect_score(config["effect2"], config["effect2Level"])
-             + VALUE_ORDER_PER_POINT * config["orderLevel"])
-            * value_wp_mult(willpower_cost(config["baseCost"], config["willpowerLevel"])))
+    return (effect_score(config["effect1"], config["effect1Level"])
+            + effect_score(config["effect2"], config["effect2Level"])
+            + VALUE_ORDER_PER_POINT * (config["orderLevel"] - 4)
+            + value_wp_credit(willpower_cost(config["baseCost"], config["willpowerLevel"])))
 
 
 def _top_pair_for(base_cost, es_fn):
@@ -319,26 +336,42 @@ def grade_to_score(g, base_cost=None):
     return b["min"] + (max(0.0, min(110.0, g)) / 100) * (value_anchor() - b["min"])
 
 
-# Explicit rank threshold table — mirrors astrogem.js. Pre-reweight 5-point
-# cuts, except S+ = 95.3 (the perfect 8-cost's grade at the fixed point).
-S_PLUS_CUT = 95.3
-RANK_LADDER = [
-    ("S+", S_PLUS_CUT), ("S", 90), ("S-", 85),
-    ("A+", 80), ("A", 75), ("A-", 70),
-    ("B+", 65), ("B", 60), ("B-", 55),
-    ("C+", 50), ("C", 45), ("C-", 40),
-    ("D+", 35), ("D", 30), ("D-", 25),
-    ("F+", 20), ("F", 15), ("F-", 0),
-]
+# Explicit rank threshold tables, ONE PER AXIS — mirrors astrogem.js. Each
+# axis's S+ cut sits at its own perfect 8-cost's grade.
+S_PLUS_CUT = 95
+SUP_S_PLUS_CUT = 95
+
+
+def _ladder(s_plus):
+    return [
+        ("S+", s_plus), ("S", 90), ("S-", 85),
+        ("A+", 80), ("A", 75), ("A-", 70),
+        ("B+", 65), ("B", 60), ("B-", 55),
+        ("C+", 50), ("C", 45), ("C-", 40),
+        ("D+", 35), ("D", 30), ("D-", 25),
+        ("F+", 20), ("F", 15), ("F-", 0),
+    ]
+
+
+RANK_LADDER = _ladder(S_PLUS_CUT)
+SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT)
 # Coarse letter starts derived from the ladder (kept for mirror compatibility).
 RANK_CUTS = [("S", 85), ("A", 70), ("B", 55), ("C", 40), ("D", 25), ("F", 0)]
 
 
-def rank_from_grade(g):
-    for letter, lo in RANK_LADDER:
+def _rank_from(ladder, g):
+    for letter, lo in ladder:
         if g >= lo:
             return letter
     return "F-"
+
+
+def rank_from_grade(g):
+    return _rank_from(RANK_LADDER, g)
+
+
+def support_rank_from_grade(g):
+    return _rank_from(SUPPORT_RANK_LADDER, g)
 
 
 def gem_rank(config):
@@ -471,10 +504,26 @@ def support_willpower_multiplier(cost):
     return _SUP_WP_MULT[lo] + (_SUP_WP_MULT[lo + 1] - _SUP_WP_MULT[lo]) * (cost - lo)
 
 
-# Support grading value: SUPPORT-NATIVE fitted constants (2026-08-10 study) —
-# support's own toll (steeper than DPS) and a unified order weight.
-SUP_VALUE_ORDER_PER_POINT = 0.043
-SUP_WP_MULT = {3: 1.146, 4: 1.106, 5: 1.000, 6: 0.891, 7: 0.842, 8: 0.772, 9: 0.660}
+# Support grading value: ROSTER-BOUND additive refit (2026-08-09) — the same
+# form and protocol that won DPS. 62,400 joint roster-bound accounts cut under
+# the live advisor; this credit was best on every held-out tier and 9/9 on the
+# packer-margin monster ladder. Unified order weight for both grid sides.
+SUP_VALUE_ORDER_PER_POINT = 0.02862
+SUP_WP_CREDIT = {3: 0.0364, 4: 0.0218, 5: 0.0, 6: -0.0230, 7: -0.0450, 8: -0.0781, 9: -0.1361}
+
+# LEGACY export-only: the superseded low-regime multiplicative toll.
+SUP_WP_MULT = {3: 1.121, 4: 1.062, 5: 1.000, 6: 0.942, 7: 0.848, 8: 0.774, 9: 0.677}
+
+
+def sup_value_wp_credit(cost):
+    if cost <= 3:
+        return SUP_WP_CREDIT[3]
+    if cost >= 9:
+        return SUP_WP_CREDIT[9]
+    if cost in SUP_WP_CREDIT:
+        return SUP_WP_CREDIT[cost]
+    lo = int(math.floor(cost))
+    return SUP_WP_CREDIT[lo] + (SUP_WP_CREDIT[lo + 1] - SUP_WP_CREDIT[lo]) * (cost - lo)
 
 
 def sup_wp_mult(cost):
@@ -489,10 +538,10 @@ def sup_wp_mult(cost):
 
 
 def support_value(config):
-    return ((support_effect_score(config["effect1"], config["effect1Level"])
-             + support_effect_score(config["effect2"], config["effect2Level"])
-             + SUP_VALUE_ORDER_PER_POINT * config["orderLevel"])
-            * sup_wp_mult(willpower_cost(config["baseCost"], config["willpowerLevel"])))
+    return (support_effect_score(config["effect1"], config["effect1Level"])
+            + support_effect_score(config["effect2"], config["effect2Level"])
+            + SUP_VALUE_ORDER_PER_POINT * config["orderLevel"]
+            + sup_value_wp_credit(willpower_cost(config["baseCost"], config["willpowerLevel"])))
 
 
 _SUPPORT_VALUE_BOUNDS = None
@@ -570,16 +619,16 @@ def support_value_anchor():
 
 def support_grade(config):
     # Same single line as grade(): worst legal support gem = 0, grid mean =
-    # 100, open above (support-native perfects land 96.9/101.0/101.1 — the
-    # 08-09 pinned-zero workaround is gone).
+    # 100, open above (roster-fit perfects land 96.3/98.8/102.5, all S+ on
+    # the shared S+ 95 ladder).
     b = support_value_bounds()
     g = 100 * (support_value(config) - b["min"]) / (support_value_anchor() - b["min"])
     return round(max(0.0, min(110.0, g)) * 10) / 10
 
 
 def support_rank(config):
-    # Reuses the SAME RANK_LADDER as DPS.
-    return rank_from_grade(support_grade(config))
+    # The SUPPORT ladder (own S+ cut at the support perfect c8).
+    return support_rank_from_grade(support_grade(config))
 
 
 def support_grade_to_score(g):
@@ -800,13 +849,15 @@ def score_distribution_for_tier(base_cost, tier, axis="dps"):
         parts = _partitions_of_sum(s)
         part_w = 1.0 / len(parts)
         for (wp, ordv, lv_a, lv_b) in parts:
-            # FITTED-MULTIPLIER model: value = (effects + order VALUE) x M[cost].
+            # DPS is ADDITIVE (flat willpower credit); support stays multiplicative.
             cost = willpower_cost(base_cost, wp)
-            ord_d = (SUP_VALUE_ORDER_PER_POINT if support else VALUE_ORDER_PER_POINT) * ordv
-            mw = sup_wp_mult(cost) if support else value_wp_mult(cost)
+            ord_d = (SUP_VALUE_ORDER_PER_POINT * ordv if support
+                     else VALUE_ORDER_PER_POINT * (ordv - 4))
+            mw = 1.0
+            add_cr = sup_value_wp_credit(cost) if support else value_wp_credit(cost)
             for (e_a, e_b) in pairs:
-                sc1 = (ord_d + es_fn(e_a, lv_a) + es_fn(e_b, lv_b)) * mw
-                sc2 = (ord_d + es_fn(e_a, lv_b) + es_fn(e_b, lv_a)) * mw
+                sc1 = (ord_d + es_fn(e_a, lv_a) + es_fn(e_b, lv_b)) * mw + add_cr
+                sc2 = (ord_d + es_fn(e_a, lv_b) + es_fn(e_b, lv_a)) * mw + add_cr
                 w = p_sum * part_w * pair_w * 0.5
                 k1 = _round_key(sc1)
                 k2 = _round_key(sc2)

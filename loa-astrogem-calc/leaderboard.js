@@ -29,6 +29,8 @@
   var A = (typeof window !== "undefined" && window.Astrogem) || null;
   function grade(cfg) { return A ? A.grade(cfg) : window.grade(cfg); }
   function rankFromGrade(g) { return A ? A.rankFromGrade(g) : window.rankFromGrade(g); }
+  function supRankFromGrade(g) { return (A && A.supportRankFromGrade) ? A.supportRankFromGrade(g) : rankFromGrade(g); }
+  function modeRankFromGrade(g, support) { return support ? supRankFromGrade(g) : rankFromGrade(g); }
   function rankColorOf(rank) {
     return (A && A.rankColor) ? A.rankColor(rank)
       : (typeof window.rankColor === "function" ? window.rankColor(rank) : { bg: "#6f747a", fg: "#fff" });
@@ -104,7 +106,7 @@
   var SUBRANK_ORDINAL = { "F-": 0, "F": 1, "F+": 2, "D-": 3, "D": 4, "D+": 5, "C-": 6, "C": 7, "C+": 8, "B-": 9, "B": 10, "B+": 11, "A-": 12, "A": 13, "A+": 14, "S-": 15, "S": 16, "S+": 17 };
   function isSupportMain(c) {
     if (c._avg == null || c._savg == null) return false;
-    return SUBRANK_ORDINAL[rankFromGrade(c._savg)] - SUBRANK_ORDINAL[rankFromGrade(c._avg)] >= 2;
+    return SUBRANK_ORDINAL[supRankFromGrade(c._savg)] - SUBRANK_ORDINAL[rankFromGrade(c._avg)] >= 2;
   }
 
   function $(id) { return document.getElementById(id); }
@@ -382,7 +384,7 @@
     var avg = support ? c._savg : c._avg;
     var dmg = support ? c._pdmg : c._dmg;
     var gradeTxt = avg == null ? "—" : avg.toFixed(1);
-    var badge = avg == null ? "" : rankBadge(rankFromGrade(avg), avg);
+    var badge = avg == null ? "" : rankBadge(modeRankFromGrade(avg, support), avg);
     var dmgTxt = dmg == null ? "—" : dmg.toFixed(2) + "%";
     return '<tr data-i="' + i + '">' +
       starCell(c, i) +

@@ -44,6 +44,11 @@
   function grade(cfg) { return A ? A.grade(cfg) : window.grade(cfg); }
   function gemRank(cfg) { return A ? A.gemRank(cfg) : window.gemRank(cfg); }
   function rankFromGrade(g) { return A ? A.rankFromGrade(g) : window.rankFromGrade(g); }
+  // rank on the ACTIVE axis ladder (support has its own S+ cut)
+  function gRankFromGrade(g) {
+    if (isSupport() && A && A.supportRankFromGrade) return A.supportRankFromGrade(g);
+    return rankFromGrade(g);
+  }
   function damagePercent(cfg) { return A ? A.damagePercent(cfg) : window.damagePercent(cfg); }
   // Damage ABOVE the 4.25/4.25 cp baseline (the loadout figure; may be negative).
   // Falls back to raw damagePercent only if the model is too old to expose relDamage.
@@ -126,6 +131,7 @@
     return;
   }
   var GRADE_ROWS = Econ.GRADE_ROWS;
+  function axisRows() { return Econ.gradeRows ? Econ.gradeRows(isSupport() ? "support" : "dps") : GRADE_ROWS; }
   var GPD_TIERS = Econ.GPD_TIERS;
   var GPD_DEFAULT = Econ.GPD_DEFAULT;
   var gpdLabel = Econ.gpdLabel;
@@ -899,7 +905,7 @@
         var slot = e.gem.slot || ("Core " + (e.gem.coreBase || "?"));
         var tgt = (e.gem._gidx != null) ? ' data-target="gr-gem-' + e.gem._gidx + '"' : '';
         return '<div class="wk-row"' + tgt + ' title="Jump to this gem">' +
-          rankBadge(rankFromGrade(e.g), null, e.g,
+          rankBadge(gRankFromGrade(e.g), null, e.g,
             !!(A && A.isPerfectConfig && A.isPerfectConfig(e.gem, isSupport() ? "support" : "dps"))) +
           '<span class="wk-slot">' + esc(slot) + '</span>' +
           '<span class="wk-dmg">' + e.dmg.toFixed(3) + '%</span>' +
@@ -1227,7 +1233,7 @@
     if (!base) return;
     // clamp the *resulting* index, then store the shift that produced it
     var want = base.baseIdx + delta;
-    var clamped = Math.max(0, Math.min(GRADE_ROWS.length - 1, want));
+    var clamped = Math.max(0, Math.min(axisRows().length - 1, want));
     grBaseShift += (clamped - base.baseIdx);
     refreshPlanCards();
   };
@@ -1311,7 +1317,7 @@
       : valid.reduce(function (s, x) { return s + gRel(x); }, 0); // legacy-model fallback: a per-gem SUM, not the true grid total — flagged in the UI below
     var rankDmg = gridOk ? sumDmg : null;    // rank-vs-field: sumDmg is already the raw gridDamage the comparison loop uses
     var avgGrade = valid.length ? sumGrade / valid.length : 0;
-    var avgRank = rankFromGrade(avgGrade);
+    var avgRank = gRankFromGrade(avgGrade);
     var totalLabel = sup ? "Total % party dmg" : "Total % dmg";
 
     // Big lostark.bible-style profile header: class icon + large bold name, with region

@@ -72,8 +72,12 @@ var AXIS = ARGS.axis === "support" ? "support" : "dps";
 var SIDE = ARGS.side === "chaos" ? "chaos" : "order";   // selftest/sizing only; dumps run BOTH sides jointly
 var SUP_SIDE_CORES = { order: [10001, 10002, 10003], chaos: [10004, 10005, 10006] };
 function sideRates(side) {
+  // --star-mult=X perturbs the provisional Order Star (serenade, core 10003)
+  // rate for sensitivity runs; 1 (default) = the model's value.
+  var starMult = parseFloat(ARGS["star-mult"]) || 1;
   return SUP_SIDE_CORES[side].map(function (id) {
-    return Math.exp(A.supportOrderValueForCore(id) / 100) - 1;
+    var v = A.supportOrderValueForCore(id) * (id === 10003 ? starMult : 1);
+    return Math.exp(v / 100) - 1;
   }).sort(function (a, b) { return b - a; });
 }
 var SUP_RATES_BY_SIDE = { order: sideRates("order"), chaos: sideRates("chaos") };
@@ -736,7 +740,10 @@ if (require.main !== module) {
     localSearch: localSearch, packCollection: packCollection,
     packCollection17: packCollection17,
     gradeGreedyRoster: gradeGreedyRoster, singleGemDelta: singleGemDelta,
-    makeSolvers: makeSolvers
+    makeSolvers: makeSolvers,
+    // support-side packing (fit-support-roster.js packer adjudication; pass
+    // --axis=support in the REQUIRING script's argv — AXIS reads process.argv)
+    setSupSide: setSupSide, supDamageOfGroups: supDamageOfGroups
   };
   return;
 }
@@ -841,6 +848,366 @@ if (ARGS["dump-labels"]) {
   console.log("wrote " + (ARGS.out || "labels") + " (" + dRows.length + " accounts, " + ((Date.now() - dT0) / 1000).toFixed(0) + "s)");
 }
 else if (ARGS.selftest) { selfTest(); }
+else if (ARGS["size-roster"] || ARGS["roster-study"]) {
+  // ---- ROSTER-BOUND distribution study (Shizu 2026-08-10) ----
+  // Cut epics as ROSTER-BOUND gems (processing is FREE in the DP — nothing is
+  // abandoned for gold reasons; the true stat distribution emerges), cost mix
+  // 57/28/15 (fusing toward 10s + selector 10s), four descending tiers. Per
+  // account: cut -> equip best 12 -> keep everything grading >= (lowest
+  // equipped - 5) -> every discarded RELIC-or-better (level sum 16+) fuses
+  // with 2 legendary c10s (infinite supply assumed): legendary outputs are
+  // DISMANTLED (no infinite-supply abuse), sub-threshold relic+ outputs
+  // re-fuse until none remain, keepers join the pool -> final re-equip.
+  var ROSTER_TIERS = {
+    R1: { name: "R1", gpd: 5000000, bl: 85 },
+    R2: { name: "R2", gpd: 2500000, bl: 80 },
+    R3: { name: "R3", gpd: 1000000, bl: 75 },
+    R4: { name: "R4", gpd: 500000, bl: 70 }
+  };
+  // --mix=60,30,10 overrides the default cut mix; --fuse-target=9|10 sets the
+  // fusion selector cost (2/3 you get the target, 1/3 the input cost);
+  // --seed-tag=X namespaces the RNG streams so variant corpora are disjoint
+  // from the originals while PAIRED variants (same tag+counts, different
+  // fuse-target) share identical cut pools.
+  var ROSTER_MIX = (function () {
+    if (!ARGS.mix) return { 8: 0.57, 9: 0.28, 10: 0.15 };
+    var p = String(ARGS.mix).split(/[:,/]/).map(Number);
+    return { 8: p[0] / 100, 9: p[1] / 100, 10: p[2] / 100 };
+  })();
+  var FUSE_TARGET = parseInt(ARGS["fuse-target"], 10) || 10;
+  var SEED_TAG = ARGS["seed-tag"] ? String(ARGS["seed-tag"]) : "";
+  function makeRosterSolvers(tier) {
+    // axis-aware: support roster accounts cut under the LIVE support model
+    // (run this from the pristine worktree so "live" means what players see).
+    var baseline = AXIS === "support" ? A.supportGradeToScore(tier.bl) : A.gradeToScore(tier.bl);
+    var s = {};
+    [8, 9, 10].forEach(function (cost) {
+      s[cost] = new DP.Solver(baseline, tier.gpd, true, { axis: AXIS, maxTurns: Engine.EPIC.maxTurns });
+    });
+    return s;
+  }
+  function rosterValue(cfg) { return AXIS === "support" ? A.supportValue(cfg) : A.gemValue(cfg); }
+  // Sizing rule both axes: expect HALF the sockets above the tier baseline.
+  // The 20-account R1 pilot showed a roster-scale support pool fills 12 sockets
+  // per side (the sell-study's ~9.3 was pool starvation, not budget), so the
+  // support mirror of DPS's 6-of-12 is ALSO 6 per side.
+  var ROSTER_EXPECT = 6;
+  // uniform random gem of (cost, tier): level sum ~ outputLevelSumDist, stat
+  // partition uniform among all 1-5 splits of that sum, effect pair uniform.
+  var _partCache = {};
+  function partsOfSum(s) {
+    if (_partCache[s]) return _partCache[s];
+    var out = [];
+    for (var w = 1; w <= 5; w++) for (var o = 1; o <= 5; o++)
+      for (var a = 1; a <= 5; a++) for (var b = 1; b <= 5; b++)
+        if (w + o + a + b === s) out.push([w, o, a, b]);
+    _partCache[s] = out;
+    return out;
+  }
+  function sampleTierGem(cost, tierName, rand, gemType) {
+    var sumDist = A.outputLevelSumDist(tierName);
+    var r = rand(), acc = 0, sum = null;
+    Object.keys(sumDist).forEach(function (k) {
+      if (sum !== null) return;
+      acc += sumDist[k];
+      if (r <= acc) sum = parseInt(k, 10);
+    });
+    if (sum === null) sum = parseInt(Object.keys(sumDist).pop(), 10);
+    var parts = partsOfSum(sum);
+    var p = parts[Math.floor(rand() * parts.length)];
+    var pool = A.EFFECT_POOLS[cost];
+    var i = Math.floor(rand() * pool.length), j = Math.floor(rand() * (pool.length - 1));
+    if (j >= i) j++;
+    return { baseCost: cost, gemType: gemType || "order", willpowerLevel: p[0], orderLevel: p[1],
+      effect1: pool[i], effect1Level: p[2], effect2: pool[j], effect2Level: p[3] };
+  }
+  function drawTier(dist, rand) {
+    var r = rand();
+    if (r <= dist.legendary) return "legendary";
+    if (r <= dist.legendary + dist.relic) return "relic";
+    return "ancient";
+  }
+
+  if (ARGS["size-roster"]) {
+    var SZ = parseInt(ARGS.cuts, 10) || 400;
+    var sizeBaselineOf = function (tier) {
+      return AXIS === "support" ? A.supportGradeToScore(tier.bl) : A.gradeToScore(tier.bl);
+    };
+    Object.keys(ROSTER_TIERS).forEach(function (tn) {
+      var tier = ROSTER_TIERS[tn];
+      var solvers = makeRosterSolvers(tier);
+      var baseline = sizeBaselineOf(tier);
+      var pAbove = {};
+      [8, 9, 10].forEach(function (cost) {
+        var pool = A.EFFECT_POOLS[cost], pairs = [];
+        for (var x = 0; x < pool.length; x++) for (var y = x + 1; y < pool.length; y++) pairs.push([pool[x], pool[y]]);
+        var rand = mulberry32(fnv1a("size-roster:" + AXIS + ":" + tn + ":c" + cost));
+        var above = 0;
+        for (var n = 0; n < SZ; n++) {
+          var pr = pairs[Math.floor(rand() * pairs.length)];
+          var res = cutOneGem(solvers[cost], { baseCost: cost, gemType: "order", effect1: pr[0], effect2: pr[1] }, rand, true);
+          if (res.processes > 0 && rosterValue(res.cfg) >= baseline) above++;
+        }
+        pAbove[cost] = above / SZ;
+      });
+      var mixP = ROSTER_MIX[8] * pAbove[8] + ROSTER_MIX[9] * pAbove[9] + ROSTER_MIX[10] * pAbove[10];
+      var N = mixP > 0 ? Math.ceil(ROSTER_EXPECT / mixP) : Infinity;
+      console.log(tn + " (" + (tier.gpd / 1e6) + "M/" + tier.bl + "): pAbove c8=" + pAbove[8].toFixed(3) +
+        " c9=" + pAbove[9].toFixed(3) + " c10=" + pAbove[10].toFixed(3) + "  mix p=" + mixP.toFixed(4) +
+        "  -> N=" + N + " per " + (AXIS === "support" ? "SIDE" : "account") +
+        "  counts {8:" + Math.round(ROSTER_MIX[8] * N) + ", 9:" + Math.round(ROSTER_MIX[9] * N) + ", 10:" + Math.round(ROSTER_MIX[10] * N) + "}");
+    });
+    process.exit(0);
+  }
+
+  // ---- the study proper ----
+  var rTier = ROSTER_TIERS[ARGS.tier];
+  if (!rTier) { console.error("--roster-study needs --tier=R1..R4"); process.exit(1); }
+  var rCounts = {
+    8: parseInt(ARGS.c8, 10), 9: parseInt(ARGS.c9, 10), 10: parseInt(ARGS.c10, 10)
+  };
+  if (!rCounts[8] || !rCounts[9] || !rCounts[10]) { console.error("--roster-study needs --c8/--c9/--c10 counts (from --size-roster)"); process.exit(1); }
+  var rSolvers = makeRosterSolvers(rTier);
+  var rFrom = parseInt(ARGS.from, 10) || 0;
+  var rTo = ARGS.to != null ? parseInt(ARGS.to, 10) : rFrom + 1000;
+  var rRows = [];
+  var rT0 = Date.now();
+  // Cut a pool with the roster-bound solvers. seedPrefix "roster" reproduces
+  // the DPS corpus byte-for-byte; support sides use their own prefixes.
+  function rosterCutPool(seedPrefix, ra, gemType) {
+    var sp = seedPrefix + SEED_TAG;
+    var cutRand = mulberry32(fnv1a(sp + ":" + rTier.name + "#" + ra));
+    var fuseRand = mulberry32(fnv1a(sp + "-fuse:" + rTier.name + "#" + ra));
+    var cut = [];
+    [8, 9, 10].forEach(function (cost) {
+      var pool = A.EFFECT_POOLS[cost], pairs = [];
+      for (var x = 0; x < pool.length; x++) for (var y = x + 1; y < pool.length; y++) pairs.push([pool[x], pool[y]]);
+      for (var ci = 0; ci < rCounts[cost]; ci++) {
+        var pr = pairs[Math.floor(cutRand() * pairs.length)];
+        var res = cutOneGem(rSolvers[cost], { baseCost: cost, gemType: gemType, effect1: pr[0], effect2: pr[1] }, cutRand, true);
+        if (res.processes > 0) { var m = gemMeta(res.cfg); m.fused = false; cut.push(m); }
+      }
+    });
+    return { cut: cut, fuseRand: fuseRand };
+  }
+  // equip -> keep >= floor-5 -> fuse discarded relic+ with 2 leg c10s
+  // (legendary outputs dismantled, sub-threshold relic+ re-queued) -> re-equip.
+  // For support, call setSupSide(side) FIRST so both packs use the side rates.
+  function rosterEquipFuse(cut, fuseRand, gemType) {
+    var pack1 = packCollection17(cut);
+    var sock1 = pack1.sel.filter(function (g) { return !g.empty; });
+    var floor1 = sock1.length ? Math.min.apply(null, sock1.map(function (g) { return g.grade; })) : 0;
+    var thr = floor1 - 5;
+    var sockSet1 = new Set(sock1);
+    var keepPool = cut.filter(function (g) { return sockSet1.has(g) || g.grade >= thr; });
+    var feed = cut.filter(function (g) { return !sockSet1.has(g) && g.grade < thr && A.levelSum(g.cfg) >= 16; });
+    var stats = { fusions: 0, keptFromFusion: 0, legDismantled: 0, refused: 0 };
+    var queue = feed.slice(), guard = 0;
+    while (queue.length && guard++ < 500) {
+      var fg = queue.pop();
+      stats.fusions++;
+      var inTier = A.classifyTier(A.levelSum(fg.cfg));
+      var outTier = drawTier(A.fusionOutputDist([inTier, "legendary", "legendary"]), fuseRand);
+      if (outTier === "legendary") { stats.legDismantled++; continue; }
+      var outCost = fuseRand() < (2 / 3) ? FUSE_TARGET : fg.cfg.baseCost;
+      var outCfg = sampleTierGem(outCost, outTier, fuseRand, gemType);
+      var om = gemMeta(outCfg); om.fused = true;
+      if (om.grade >= thr) { keepPool.push(om); stats.keptFromFusion++; }
+      else { stats.refused++; queue.push(om); }
+    }
+    var pack2 = packCollection17(keepPool);
+    var sock2 = pack2.sel.filter(function (g) { return !g.empty; });
+    var floor2 = sock2.length ? Math.min.apply(null, sock2.map(function (g) { return g.grade; })) : 0;
+    return { keepPool: keepPool, pack2: pack2, sock2Set: new Set(sock2),
+      cutN: cut.length, floor1: floor1, floor2: floor2, thr: thr,
+      fus: [stats.fusions, stats.keptFromFusion, stats.legDismantled, stats.refused] };
+  }
+  function coresOf(pack) {
+    return pack.groups.map(function (grp) {
+      var p = 0; grp.forEach(function (x) { p += x.order; }); return p;
+    });
+  }
+  // ---- adaptive fusion target (--fuse-target=auto, DPS axis only) ----
+  // Each account CALCULATES whether to steer fusion outputs to c9 or c10:
+  // enumerate the fusion-output distribution exactly (outTier x level-sum x
+  // partition x ordered effect pair, exact probabilities) and score every
+  // concrete output by its EXACT single-swap packer marginal against the
+  // current grid. The marginal is O(#slots) per candidate via a precomputed
+  // per-slot table (core order totals, eviction constants, budget headroom,
+  // global bucket sums) — the same math damageOfGroups uses, decomposed.
+  // K/grades never enter the decision, so the current model cannot bias it.
+  function slotTableOf(pack) {
+    var slots = [], sums = { atk: 0, add: 0, boss: 0 };
+    pack.groups.forEach(function (grp) {
+      grp.forEach(function (x) { sums.atk += x.atk; sums.add += x.add; sums.boss += x.boss; });
+    });
+    pack.groups.forEach(function (grp) {
+      var pts = 0, cost = 0;
+      grp.forEach(function (x) { pts += x.order; cost += x.cost; });
+      var coreBase = Math.log(1 - bandPenalty(pts)) + Math.log(1 + B.order.perPoint * Math.max(0, pts - 17));
+      grp.forEach(function (x) {
+        slots.push({ old: x, pts: pts, coreBase: coreBase, headroom: CORE_SUPPLY - (cost - x.cost) });
+      });
+    });
+    return { slots: slots, sums: sums };
+  }
+  function swapMarginal(tab, g) {
+    var best = 0;
+    for (var i = 0; i < tab.slots.length; i++) {
+      var s = tab.slots[i];
+      if (g.cost > s.headroom) continue;
+      var npts = s.pts - s.old.order + g.order;
+      var d = Math.log(1 - bandPenalty(npts)) + Math.log(1 + B.order.perPoint * Math.max(0, npts - 17)) - s.coreBase
+        + bukTerm("Attack Power", tab.sums.atk - s.old.atk + g.atk) - bukTerm("Attack Power", tab.sums.atk)
+        + bukTerm("Additional Damage", tab.sums.add - s.old.add + g.add) - bukTerm("Additional Damage", tab.sums.add)
+        + bukTerm("Boss Damage", tab.sums.boss - s.old.boss + g.boss) - bukTerm("Boss Damage", tab.sums.boss);
+      if (d > best) best = d;
+    }
+    return 100 * best;
+  }
+  // E[swap-marginal of ONE fusion output] at target cost T for an input tier.
+  // Only the 2/3 selector branch differs between targets, so the c9-vs-c10
+  // decision compares these directly.
+  function fusionTargetEV(T, inTier, tab) {
+    var outDist = A.fusionOutputDist([inTier, "legendary", "legendary"]);
+    var pool = A.EFFECT_POOLS[T];
+    var ev = 0;
+    Object.keys(outDist).forEach(function (ot) {
+      if (ot === "legendary" || !outDist[ot]) return;   // legendary outputs are dismantled
+      var sumDist = A.outputLevelSumDist(ot);
+      Object.keys(sumDist).forEach(function (sk) {
+        var sum = parseInt(sk, 10);
+        var parts = partsOfSum(sum);
+        var per = (outDist[ot] * sumDist[sk]) / (parts.length * pool.length * (pool.length - 1));
+        for (var pi = 0; pi < parts.length; pi++) {
+          var p = parts[pi];
+          for (var i = 0; i < pool.length; i++) for (var j = 0; j < pool.length; j++) {
+            if (j === i) continue;
+            var m = gemMeta({ baseCost: T, gemType: "order", willpowerLevel: p[0], orderLevel: p[1],
+              effect1: pool[i], effect1Level: p[2], effect2: pool[j], effect2Level: p[3] });
+            ev += per * swapMarginal(tab, m);
+          }
+        }
+      });
+    });
+    return ev;
+  }
+  function chooseTarget(pack, queue) {
+    var tab = slotTableOf(pack);
+    var nRel = 0, nAnc = 0;
+    queue.forEach(function (g) { if (A.classifyTier(A.levelSum(g.cfg)) === "ancient") nAnc++; else nRel++; });
+    var tot = nRel + nAnc || 1;
+    var e9 = (nRel * fusionTargetEV(9, "relic", tab) + nAnc * fusionTargetEV(9, "ancient", tab)) / tot;
+    var e10 = (nRel * fusionTargetEV(10, "relic", tab) + nAnc * fusionTargetEV(10, "ancient", tab)) / tot;
+    return { t: e10 >= e9 ? 10 : 9, e9: e9, e10: e10 };
+  }
+  // Adaptive variant of rosterEquipFuse: same cut/keep/fuse mechanics, but the
+  // selector target is chosen per account and RE-CHOSEN after every upgrade
+  // that changes the equipped grid.
+  function rosterEquipFuseAuto(cut, fuseRand, gemType) {
+    var pack1 = packCollection17(cut);
+    var sock1 = pack1.sel.filter(function (g) { return !g.empty; });
+    var floor1 = sock1.length ? Math.min.apply(null, sock1.map(function (g) { return g.grade; })) : 0;
+    var thr = floor1 - 5;
+    var sockSet1 = new Set(sock1);
+    var keepPool = cut.filter(function (g) { return sockSet1.has(g) || g.grade >= thr; });
+    var feed = cut.filter(function (g) { return !sockSet1.has(g) && g.grade < thr && A.levelSum(g.cfg) >= 16; });
+    var stats = { fusions: 0, keptFromFusion: 0, legDismantled: 0, refused: 0 };
+    var queue = feed.slice(), guard = 0;
+    var pack = pack1;
+    var choice = chooseTarget(pack, queue);
+    var hist = { t0: choice.t, e9_0: choice.e9, e10_0: choice.e10, switches: 0, upgrades: 0, tF: choice.t };
+    while (queue.length && guard++ < 500) {
+      var fg = queue.pop();
+      stats.fusions++;
+      var inTier = A.classifyTier(A.levelSum(fg.cfg));
+      var outTier = drawTier(A.fusionOutputDist([inTier, "legendary", "legendary"]), fuseRand);
+      if (outTier === "legendary") { stats.legDismantled++; continue; }
+      var outCost = fuseRand() < (2 / 3) ? choice.t : fg.cfg.baseCost;
+      var outCfg = sampleTierGem(outCost, outTier, fuseRand, gemType);
+      var om = gemMeta(outCfg); om.fused = true;
+      if (om.grade >= thr) {
+        keepPool.push(om);
+        stats.keptFromFusion++;
+        if (swapMarginal(slotTableOf(pack), om) > 1e-9) {
+          pack = packCollection17(keepPool);
+          hist.upgrades++;
+          var nc = chooseTarget(pack, queue);
+          if (nc.t !== choice.t) hist.switches++;
+          choice = nc;
+          hist.tF = choice.t;
+        }
+      }
+      else { stats.refused++; queue.push(om); }
+    }
+    var pack2 = packCollection17(keepPool);
+    var sock2 = pack2.sel.filter(function (g) { return !g.empty; });
+    var floor2 = sock2.length ? Math.min.apply(null, sock2.map(function (g) { return g.grade; })) : 0;
+    return { keepPool: keepPool, pack2: pack2, sock2Set: new Set(sock2),
+      cutN: cut.length, floor1: floor1, floor2: floor2, thr: thr,
+      fus: [stats.fusions, stats.keptFromFusion, stats.legDismantled, stats.refused],
+      hist: hist };
+  }
+  for (var ra = rFrom; ra < rTo; ra++) {
+    if (AXIS === "support") {
+      // JOINT roster support account: both sides cut/equip/keep/fuse
+      // independently (fusion feeds the side's own gem type); one row
+      // carries both so a single unified score can be fitted against it.
+      var sides = {}, all = [];
+      ["order", "chaos"].forEach(function (side) {
+        var cp = rosterCutPool("sup-roster-" + side, ra, side);
+        setSupSide(side);
+        var sr = rosterEquipFuse(cp.cut, cp.fuseRand, side);
+        sr.keepPool.forEach(function (g) { g.side = side; });
+        sides[side] = sr;
+        all = all.concat(sr.keepPool);
+      });
+      rRows.push({
+        a: ra,
+        kept: all.map(function (g) {
+          var c = g.cfg;
+          return [c.baseCost, c.willpowerLevel, c.orderLevel,
+            A.EFFECT_POOLS[c.baseCost].indexOf(c.effect1), c.effect1Level,
+            A.EFFECT_POOLS[c.baseCost].indexOf(c.effect2), c.effect2Level,
+            g.side === "chaos" ? 1 : 0, g.fused ? 1 : 0];
+        }),
+        sockO: all.map(function (g, i) { return sides.order.sock2Set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
+        sockC: all.map(function (g, i) { return sides.chaos.sock2Set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
+        cutN: sides.order.cutN + sides.chaos.cutN,
+        floor1: [sides.order.floor1, sides.chaos.floor1],
+        floor2: [sides.order.floor2, sides.chaos.floor2],
+        thr: [sides.order.thr, sides.chaos.thr],
+        fus: [sides.order.fus, sides.chaos.fus],
+        coresO: coresOf(sides.order.pack2), coresC: coresOf(sides.chaos.pack2),
+        dmgO: sides.order.pack2.dmg, dmgC: sides.chaos.pack2.dmg
+      });
+    } else {
+      var cp1 = rosterCutPool("roster", ra, "order");
+      var dres = rosterEquipFuse(cp1.cut, cp1.fuseRand, "order");
+      rRows.push({
+        a: ra,
+        kept: dres.keepPool.map(function (g) {
+          var c = g.cfg;
+          return [c.baseCost, c.willpowerLevel, c.orderLevel,
+            A.EFFECT_POOLS[c.baseCost].indexOf(c.effect1), c.effect1Level,
+            A.EFFECT_POOLS[c.baseCost].indexOf(c.effect2), c.effect2Level, g.fused ? 1 : 0];
+        }),
+        sock: dres.keepPool.map(function (g, i) { return dres.sock2Set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
+        cutN: dres.cutN, floor1: dres.floor1, floor2: dres.floor2, thr: dres.thr,
+        fus: dres.fus,
+        cores: coresOf(dres.pack2),
+        dmg: dres.pack2.dmg
+      });
+    }
+    if (ARGS.progress && (ra - rFrom + 1) % 100 === 0) {
+      console.log("[roster " + rTier.name + (AXIS === "support" ? "/sup" : "") + "] " + (ra - rFrom + 1) + "/" + (rTo - rFrom) + " (" + ((Date.now() - rT0) / 1000).toFixed(0) + "s)");
+    }
+  }
+  fs.writeFileSync(ARGS.out || ("roster-" + rTier.name + "-" + rFrom + "-" + rTo + ".json"),
+    JSON.stringify({ tier: rTier.name, axis: AXIS, gpd: rTier.gpd, bl: rTier.bl, mix: ROSTER_MIX, fuseTarget: FUSE_TARGET, seedTag: SEED_TAG, counts: rCounts, rosterBound: true, from: rFrom, to: rTo, rows: rRows }));
+  console.log("wrote " + (ARGS.out || "roster") + " (" + rRows.length + " accounts, " + ((Date.now() - rT0) / 1000).toFixed(0) + "s)");
+  process.exit(0);
+}
 else if (ARGS["size-support"]) {
   // Empirical above-baseline rates for the SUPPORT solvers -> collection sizes
   // by the same 6/pAbove rule the DPS study used (at the 60/30/10 cost mix).

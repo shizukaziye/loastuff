@@ -111,61 +111,79 @@ gemDamage = effectScore(effect1) + effectScore(effect2) + orderScore(order)
 ```
 
 where `effectScore(line, level) = level × D_line` (and = 0 for non-DPS lines), and
-`orderScore(level) = level × 0.15987`.
+`orderScore(level) = (level − 4) × 0.15987` (level 4 = neutral).
 
 Willpower is deliberately **not** in `gemDamage` — willpower isn't damage, it's
 *efficiency* (a cheaper gem of the same damage is strictly better). It enters as a
-multiplier next.
+fitted credit next.
 
 ---
 
-## 5. Willpower → a FITTED per-cost toll (the 2026-08-09 reweight)
+## 5. Willpower → a FITTED per-cost price (the 2026-08-09 roster-bound regrade)
 
 Willpower reduces effective cost (`effectiveCost = baseCost − willpowerLevel`), and a
 cheaper gem is better — because the willpower it frees lets a *bigger* gem slot
-elsewhere in the 17-per-core budget. We model that as a **percentage multiplier
-`M[effectiveCost]`** on the gem's value.
+elsewhere in the 17-per-core budget. Both axes price that as an **additive
+credit `K[effectiveCost]`** on the gem's value, each axis with its own fitted
+table.
 
-The old model calibrated `M` so a perfect gem of every base cost tied at 100.
-That over-rewarded cheapness ~2.5×: simulated optimal grids kept benching the
-high-grade cheap gems the scale loved. The current `M` is **fitted to data**:
-15,000 accounts were simulated (gems cut by this site's own advisor at three
-economy tiers, every finished gem kept), each account's optimal 3×17-core Ark
-Grid was found by an exact-verified packer, and `M[cost]` plus the order value
-weight were tuned to minimize disagreements between "top 12 by score" and the
-packer's real best 12 (held-out: 1.62 vs 2.95 wrong gems per account).
+Two model generations died on the way here. The original model calibrated a
+willpower multiplier so a perfect gem of every base cost tied at 100 — that
+over-rewarded cheapness ~2.5× and simulated optimal grids kept benching the
+high-grade cheap gems the scale loved. A first refit priced willpower from
+accounts cut by the gold-EV advisor — a world where bad gems are sold or
+abandoned. But astrogems are **roster-bound**: you can't sell them, so real
+collections keep everything and fuse the spares. The current constants are
+fitted to that world, one study per axis with the same protocol: cut gems with
+nothing abandoned, equip the best, keep everything within 5 grades of the
+equipped floor, fuse every spare relic/ancient with two legendary 10-costs,
+repeat until nothing fusable is left — then an exact-verified packer finds
+each roster's optimal 3×17-core Ark Grids, and the constants minimize
+disagreements between "top N by score" and the packer's real picks on held-out
+accounts. DPS: **112,000 accounts, ~10.8M gems** (1.69 wrong gems vs ~2.9 for
+the original model). Support: **62,400 joint Order+Chaos accounts, ~10.6M
+gems**, each side cut, packed, and fused at its own per-core rates (3.68 wrong
+gems vs 4.40 for the prior constants, and best in every spending tier).
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **M (fitted, DPS)** | 1.110 | 1.053 | 1.000 | 0.955 | 0.898 | 0.825 | 0.735 |
-| **M (fitted, support)** | 1.146 | 1.106 | 1.000 | 0.891 | 0.842 | 0.772 | 0.660 |
+| **K (fitted, DPS)** | +0.1528 | +0.1077 | 0 | −0.1560 | −0.2877 | −0.4083 | −0.5686 |
+| **K_sup (fitted, support)** | +0.0364 | +0.0218 | 0 | −0.0230 | −0.0450 | −0.0781 | −0.1361 |
 
-The constants are the **fixed point** of the cutting↔packing feedback loop:
-the score shapes the advisor's cutting play, which shapes what collections
-contain, which shapes what the optimal grid sockets. Three cut→pack→refit
-iterations converged here. (Cost 9's value is an upper bound — the optimal
-grid never sockets one, so the data cannot price it more precisely.)
+Why additive? A multiplier taxes a good gem more gold-for-gold than a bad one
+at the same cost; the packer's revealed price of budget is closer to a FLAT
+damage toll per cost. On both axes the additive form was the only candidate
+that called the correct winner in **every** packer-adjudicated ladder test —
+a perfect cost-8 c10 against progressively weaker high-willpower c8s, stripped
+line by line (DPS 11/11 rungs; support 9/9; every multiplicative variant
+misses at least one rung — on support, the rung where a slightly-weakened
+perfect c10 still beats the perfect c8). The support values are ~5× smaller
+than the DPS ones only because support effect lines are ~5× smaller — the
+shape is the same.
 
-Read it as the packer's revealed price of budget: **costs 3–6 are all viable,
-7 is taxed, 8 is heavy, and 9 is a cliff** — the optimal grid never sockets a
-cost-9 gem, even with perfect lines (cost 10 cannot exist; willpower minimum is
-1). The curve was cross-checked by direct experiments: probe gems of every cost
-dropped into real simulated accounts, and a "monster ladder" (a cost-8 c10 with
-perfect lines vs progressively weaker perfect-willpower c8s) whose empirical
-crossover the fitted table reproduces.
+Read the curve as the packer's revealed price of budget: **costs 3 and 4 earn
+a bonus, 5 is neutral, 6–9 are taxed harder and harder** — the optimal grid
+essentially never sockets a cost-9 gem (cost 10 cannot exist; willpower
+minimum is 1). Cost 9's price is an upper bound for the same reason: the data
+almost never sockets one, so it cannot price the cliff more precisely.
 
 ### The grading value
 
 ```
-gemValue      = (D(e1) + D(e2) + 0.161 × orderLevel) × M[effCost]        (DPS)
-supportValue  = (S(e1) + S(e2) + 0.043 × orderLevel) × M_sup[effCost]    (support)
+gemValue      = D(e1) + D(e2) + 0.159872 × (orderLevel − 4) + K[effCost]  (DPS)
+supportValue  = S(e1) + S(e2) + 0.02862 × orderLevel + K_sup[effCost]    (support)
 ```
 
-Note DPS order enters at its **fitted value weight** (0.161, close to its
-damage weight 0.15987 — the old model had order right all along). Support
-order carries proportionally more of the value (its effect lines are weaker),
-and support's toll is steeper — both measured by the support's own study, not
-carried over from DPS.
+DPS order is **pinned at its exact damage weight** — order damage is
+deterministic, so nothing is fitted there (re-fitting K with the pin in place
+scored slightly BETTER held-out than the earlier fitted weight, 1.678 vs 1.687
+misses) — and centered at level 4: order 4 adds nothing, 5 adds, 1–3 subtract.
+Support order keeps its **fitted value weight**, which lands almost exactly on
+its damage weight (0.0286 vs 0.0256) — the packer prices order at face value.
+Support's constants come from the support's own roster-bound joint Order+Chaos
+study, not carried over from DPS; refitting them with the whole sell-world
+corpus added to training moves them by less than a rounding step, so they are
+not an artifact of one corpus.
 
 ---
 
@@ -182,23 +200,24 @@ grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
 - **`anchorValue`** = the mean value of the **perfect Ark Grid layout** — 3
   perfect 8-costs + 3 perfect 9-costs + 6 perfect 10-costs (exactly the wp5
   packing 5+5+4+3 = 17 budget per core). **Grade 100 = this average**, so the
-  scale is open above: perfect c8/c9/c10 grade **95.3 / 98.5 / 103.1** on the
-  DPS axis and **96.9 / 101.0 / 101.1** on the support axis (each axis
-  anchors on its own perfect grid; support's perfect 9- and 10-costs are a
-  near-tie by value).
+  scale is open above: perfect c8/c9/c10 grade **96.7 / 100.1 / 101.6** on the
+  DPS axis and **96.3 / 98.8 / 102.5** on the support axis (each axis anchors
+  on its own perfect grid).
 - **`minValue`** = the worst legal gem (grade 0, both axes).
 - A TRUE perfect roll of any cost keeps the animated **rainbow badge** — the
-  badge is config-gated, not grade-gated, so it marks perfects at 95.3 and
-  103.1 alike.
+  badge is config-gated, not grade-gated, so it marks perfects at 96.3 and
+  102.5 alike.
 
-The letter rank is an explicit threshold table (`RANK_LADDER`) — the familiar
-5-point cuts, with one change: **the S+ cut sits at 95.3, the DPS perfect
-8-cost's grade**, so every perfect gem on either axis is S+ (S+ still holds
-roughly the top 0.3% of cut gems):
+The letter rank is an explicit threshold table — **one ladder, both axes**:
+the familiar 5-point cuts with S+ at the round **95**. Every perfect gem on
+either axis clears it (DPS perfect c8 = 96.7, support perfect c8 = 96.3), so
+all perfects are S+. (The per-axis plumbing — `RANK_LADDER` vs
+`SUPPORT_RANK_LADDER` — still exists in code so a future per-axis cut is a
+one-constant change, but both are identical today.)
 
 | S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 95.3 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
+| 95 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
 
 (The leaderboard's "support main" rule counts these same bands — see
 *how-the-leaderboard-ranks.md*.)
@@ -208,7 +227,9 @@ roughly the top 0.3% of cut gems):
 ## 7. Order / Chaos in detail
 
 Order/Chaos is the one line every gem rolls, and it's the strongest (0.15987 D per
-point). For **per-gem grading** it's flat: `orderScore = orderLevel × 0.15987`.
+point). For **per-gem grading** it is centered at level 4: `orderScore =
+(orderLevel − 4) × 0.15987` — order 4 contributes nothing, 5 adds damage, 1–3
+subtract. The weight is the exact in-game value, never fitted.
 
 In the **whole-grid total** (§9) it behaves differently: it's evaluated **per core**
 with a **17-point floor**. A core needs ~17 order points before it starts paying
@@ -277,10 +298,12 @@ which the sheet models as bar-count steps (5/10/15% base), not a smooth per-poin
 
 So a support point in Chaos Moon (Brand) is worth ~2.2× one in Order Star.
 
-Everything else (the willpower multiplier, the global grade normalization, the
-ranks) works identically — just with `supportValue` instead of `gemValue`. The
-Grader's **DPS / Support toggle** picks which axis a loadout is judged on; it
-auto-defaults to Support for support classes.
+Everything else works the same way structurally, but with support's OWN fitted
+pieces: its willpower credit `K_sup` (additive, same form as DPS), its own
+order value weight, and its own grade anchor (its own perfect grid). The rank
+ladder is shared with DPS (S+ 95, §6). The Grader's **DPS / Support toggle**
+picks which axis a loadout is judged on; it auto-defaults to Support for
+support classes.
 
 ---
 
@@ -358,15 +381,19 @@ damage %**.
 ## 11. Quick worked example
 
 A cost-10 gem, willpower 5 (→ effective cost 5), order 5, Boss Damage 5, Additional
-Damage 5:
+Damage 5 — the perfect 10-cost:
 
-- `gemDamage = 5·0.08127 (boss) + 5·0.05929 (add) + 5·0.15987 (order) = 1.50214`
-- `effectiveCost = 10 − 5 = 5` → `M(5) = 1`
-- `gemValue = 1.50214 × 1 = 1.50214` → the maximum → **grade 100, rank S+**
+- effects: `5·0.08127 (boss) + 5·0.05929 (add) = 0.70278`
+- order, centered at 4: `(5 − 4) × 0.159872 = 0.15987`
+- `effectiveCost = 10 − 5 = 5` → `K(5) = 0`
+- `gemValue = 0.70278 + 0.15987 + 0 = 0.86265` → **grade 101.6, rank S+** (above
+  100 because grade 100 is the perfect grid's *average*, and the 10-cost is its
+  best gem)
 
-Drop willpower to 1 (effective cost 9): `M(9) = 0.607`, so
-`gemValue = 1.50214 × 0.607 ≈ 0.911` → grade ≈ 58 → **B−**. Same damage lines, much
-worse gem, because the cost is far higher.
+Drop willpower to 1 (effective cost 9): `K(9) = −0.5686`, so
+`gemValue = 0.86265 − 0.5686 ≈ 0.294` → **grade 71.3 → A−**. Same damage lines,
+much worse gem, because the cost is far higher — but note the penalty is a flat
+damage toll, so it no longer scales up with how good the lines are.
 
 ---
 

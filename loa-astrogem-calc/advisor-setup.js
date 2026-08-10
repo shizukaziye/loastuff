@@ -79,18 +79,22 @@
       var bi = parseInt(s.baseIdx, 10);
       // restored char carries no gems → applyBaseline runs in manual mode, so the
       // shift lands exactly on the saved index
-      if (bi >= 0 && bi < Econ.GRADE_ROWS.length) baseShift = bi - DEFAULT_BASE_IDX;
+      if (bi >= 0 && bi < rows().length) baseShift = bi - DEFAULT_BASE_IDX;
     } catch (e) {}
   }
 
   function supportAxisAvailable() { return typeof root.supportGradeToScore === "function" || (A && typeof A.supportGradeToScore === "function"); }
   function g2s(grade) { return (A.gradeToScore || root.gradeToScore)(grade); }
   function sg2s(grade) { return (A.supportGradeToScore || root.supportGradeToScore)(grade); }
-  function rankOf(grade) { return (A.rankFromGrade || root.rankFromGrade)(grade); }
+  function rows() { return Econ.gradeRows ? Econ.gradeRows(axis) : Econ.GRADE_ROWS; }
+  function rankOf(grade) {
+    if (axis === "support" && A.supportRankFromGrade) return A.supportRankFromGrade(grade);
+    return (A.rankFromGrade || root.rankFromGrade)(grade);
+  }
   function rankColor(rank) { return (A.rankColor || root.Astrogem.rankColor)(rank); }
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
-  function baselineGrade() { return Econ.GRADE_ROWS[baseIdx]; }
+  function baselineGrade() { return rows()[baseIdx]; }
   function baselineScore() { return axis === "support" ? sg2s(baselineGrade()) : g2s(baselineGrade()); }
 
   // The character-derived baseline index (before the manual shift), or null.
@@ -108,7 +112,7 @@
   function applyBaseline() {
     var ci = charBaseIdx();
     var idx = (ci != null ? ci : DEFAULT_BASE_IDX) + baseShift;
-    baseIdx = Math.max(0, Math.min(Econ.GRADE_ROWS.length - 1, idx));
+    baseIdx = Math.max(0, Math.min(rows().length - 1, idx));
   }
 
   // Jump the baseline to an absolute GRADE_ROWS index (arrows + the badge picker).
@@ -338,12 +342,12 @@
       '    <span class="avs-popwrap">' +
       '      <button type="button" id="avs-base-val" class="avs-valbtn" title="Click to pick a baseline rank">' + rankBadge(m.baselineRank) + '</button>' +
       '      <div id="avs-base-pop" class="avs-minipop" style="display:none;grid-template-columns:repeat(6,auto)">' +
-      Econ.GRADE_ROWS.map(function (g, i) {
+      rows().map(function (g, i) {
         return '<button type="button" class="avs-rankopt' + (i === baseIdx ? " on" : "") + '" data-bi="' + i + '">' + rankBadge(rankOf(g)) + '</button>';
       }).join("") +
       '      </div>' +
       '    </span>' +
-      '    <button type="button" id="avs-base-up" class="avs-arrow"' + (baseIdx >= Econ.GRADE_ROWS.length - 1 ? " disabled" : "") + '>&#9654;</button>' +
+      '    <button type="button" id="avs-base-up" class="avs-arrow"' + (baseIdx >= rows().length - 1 ? " disabled" : "") + '>&#9654;</button>' +
       '  </span>' +
       '</div>' +
       (gnote ? '<div class="avs-note">' + gnote.replace(/⚠ [^·]+/g, function (w) { return '<span class="warn">' + esc(w.trim()) + '</span>'; }) + '</div>' : "") +
@@ -477,7 +481,7 @@
       }
       if (t.id === "avs-base-dn" || t.id === "avs-base-up") {
         var d = t.id === "avs-base-up" ? 1 : -1;
-        setBaseIdx(Math.max(0, Math.min(Econ.GRADE_ROWS.length - 1, baseIdx + d)));
+        setBaseIdx(Math.max(0, Math.min(rows().length - 1, baseIdx + d)));
         return;
       }
     };

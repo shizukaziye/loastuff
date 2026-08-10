@@ -515,14 +515,16 @@
     var pv = previewGrade(o);
     if (!pv) return "";
     if (pv.unknown) return '<span class="pw-oscore" title="The replacement effect is random — the score depends on what lands">→ ?</span>';
-    // Letter + colors from the grading system, same ladder both axes use.
+    // Letter + colors from the grading system, on the active axis's ladder
+    // (support has its own S+ cut).
     var A2 = window.Astrogem, badge = "";
     if (A2 && A2.rankFromGrade && A2.gradeColor) {
       var supAx = !!(window.AdvisorSetup && window.AdvisorSetup.getMarket &&
         window.AdvisorSetup.getMarket().axis === "support");
       var pvPf = !!(A2.isPerfectConfig && pv.cfg && A2.isPerfectConfig(pv.cfg, supAx ? "support" : "dps"));
       var col = A2.gradeColor(pv.grade, pvPf);
-      badge = '<b class="rk' + (col.cls ? " " + col.cls : "") + '" style="background:' + col.bg + ';color:' + col.fg + '">' + A2.rankFromGrade(pv.grade) + '</b> ';
+      var pvRank = (supAx && A2.supportRankFromGrade) ? A2.supportRankFromGrade(pv.grade) : A2.rankFromGrade(pv.grade);
+      badge = '<b class="rk' + (col.cls ? " " + col.cls : "") + '" style="background:' + col.bg + ';color:' + col.fg + '">' + pvRank + '</b> ';
     }
     return '<span class="pw-oscore" title="Gem score if this outcome lands (now ' + (curG != null ? curG.toFixed(1) : "?") + ')">→ ' + badge + pv.grade.toFixed(1) + '</span>';
   }

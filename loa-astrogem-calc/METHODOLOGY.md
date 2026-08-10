@@ -20,7 +20,7 @@ It reproduces the layout and verdict colors of the deployed reference page
 
 ---
 
-## 1. Scoring — real % damage (log-space `D`) × a FITTED willpower toll
+## 1. Scoring — real % damage (log-space `D`) + a FITTED willpower credit
 
 A gem has four levelled stats, each `1–5`: **Willpower efficiency**, **Order/Chaos**,
 and **two side effects** (effects depend on base cost; no duplicate effect).
@@ -32,30 +32,44 @@ as the accessory calculator, `~/lost-ark-accessory` §2):
 ```
 D = 100 · ln(multiplier)                              (≈ % damage for small values)
 gemDamage(config) = D(effect1) + D(effect2) + D(order)
-gemValue(config)  = (D(effect1) + D(effect2) + 0.161·orderLevel) × M[effCost]
+gemValue(config)  = D(effect1) + D(effect2) + 0.159872·(orderLevel − 4) + K[effCost]
                                                        ← THE value / EV quantity
-M[3..9] = 1.110, 1.053, 1.000, 0.955, 0.898, 0.825, 0.735
+K[3..9] = +0.1528, +0.1077, 0, −0.1560, −0.2877, −0.4083, −0.5686
 ```
 
 **Willpower is not a damage line** — it is budget (`effectiveCost = baseCost −
 willpowerLevel`; a cheap gem frees willpower that lets a bigger gem slot
-elsewhere). The 2026-08-09 reweight replaced the old perfect-tie calibration of
-`M` with a **fitted per-cost table**: 15,000 simulated accounts were cut by this
-site's own advisor and packed into optimal 3×17 Ark Grids by an exact-verified
-packer, and `M[cost]` (plus the order value-weight 0.1571) was fitted to
-minimize disagreements with the packer's socketed-vs-benched choices, then
-ITERATED to the fixed point of the cutting↔packing feedback loop (constants
-shape the advisor's play, which shapes collections, which shape the fit; three
-cut→pack→refit rounds converged). The curve says costs 3–6 are all viable, 7
-is taxed, 8 is heavy, and 9 is a cliff the optimal grid never sockets. Perfect
-gems no longer tie: the perfect Ark-Grid layout (3 c8 + 3 c9 + 6 c10)
-*averages* grade 100, with perfects at 95.3 / 98.5 / 103.1. This `gemValue` is
-what the grade, the DP terminal value, and every EV layer in this bake use.
-The support axis has its OWN fitted constants from a dedicated 30k-account
-joint order+chaos study (order 0.043/level, steeper toll M_sup[3..9] = 1.146,
-1.106, 1.000, 0.891, 0.842, 0.772, 0.660; support perfects 96.9/101.0/101.1).
-Full derivation: `docs/how-a-gem-is-graded.md`; study:
-`docs/account-study-2026-08-08.md`.
+elsewhere). The 2026-08-09 regrade prices that budget as a **fitted additive
+credit per effective cost**, `K[effCost]`, fitted on the ROSTER-BOUND world:
+astrogems can't be sold, so the study cut 112,000 simulated accounts (~10.8M
+gems, four spending tiers) that keep everything, equip the best 12, fuse every
+spare relic/ancient with two legendary 10-costs, and repeat until nothing
+fusable is left — then packed each roster into optimal 3×17 Ark Grids with an
+exact-verified packer. `K[cost]` minimizes
+disagreements with the packer's socketed-vs-benched choices on held-out
+accounts, and it is the only fitted form that called the correct winner in
+every willpower-vs-damage head-to-head ladder test (11/11). The curve says
+costs 3 and 4 earn a bonus, 5 is neutral, and 6–9 are taxed increasingly
+hard — but the tax is FLAT damage, not a percent, so it no longer inflates
+with gem quality. Perfect gems do not tie: the perfect Ark-Grid layout
+(3 c8 + 3 c9 + 6 c10) *averages* grade 100, with DPS perfects at
+96.7 / 100.1 / 101.6. Order is PINNED at its exact in-game damage weight
+(0.159872/point — order damage is deterministic, so it is never fitted) and
+centered at level 4: an order-4 gem gains nothing, 5 gains, 1–3 lose. Only
+willpower is fitted. The support axis uses the SAME additive form with its
+own constants from its own roster-bound study — 62,400 joint Order+Chaos
+accounts (~10.6M gems) cut under the live advisor with per-side keep and
+fusion rules: `supportValue = effects + 0.02862·order + K_sup[effCost]`,
+K_sup = +0.0364, +0.0218, 0, −0.0230, −0.0450, −0.0781, −0.1361. It was best
+on every held-out tier (3.68 wrong gems vs 4.40 for the prior constants) and
+9/9 on the packer-margin monster ladder; support perfects grade
+96.3 / 98.8 / 102.5. ONE ladder serves both axes — S+ at the round 95 (every
+perfect on either axis clears it), then the familiar 5-point steps. This
+`gemValue` is what the grade, the DP terminal value, and every EV layer in
+this bake use.
+Full derivation: `docs/how-a-gem-is-graded.md`; studies:
+`docs/account-study-2026-08-08.md` (sell-world fit) and the roster-bound
+distribution studies, DPS + support (scratch data + chat reports, 2026-08-09).
 
 The older **additive** `score(config) = Σ line D` (willpower as an additive `±D`
 line, a perfect gem ≈ 1.34–1.44%) survives only as a legacy layer — the grader's
@@ -80,8 +94,8 @@ per-level D = 100 · ln( (base + gridAdd/levels) / base )
 | Attack Power | other 12.1% (adrenaline relic book lv7 9% + accessories 3.1%); +1.1% over 30 | `100·ln((1.132+0.011/30)/1.132)` = **0.032386** |
 | Additional Damage | other 33.6% (100-quality weapon 30% + high necklace 2.6% + pet 1%); +2.42% over 30 | `100·ln((1.3602+0.0242/30)/1.3602)` = **0.059287** |
 | Boss Damage | no other sources; +2.5% over 30 | `100·ln((1.025+0.025/30)/1.025)` = **0.081268** |
-| Order/Chaos | flat ×1.0016 per point | `100·ln(1.0016)` = **0.159872** per point — `orderScore = orderLevel × 0.159872` (NOT relative to level 4) |
-| Willpower | efficiency vs cost 4; keeps the old willpower:attack ratio (2.4 : 1.0) | `2.4 × 0.032386` = **±0.077726** per cost-level. `willpowerCost = baseCost − willpowerLevel`; cost `<4` → `(4−cost)×D`, cost `>4` → `(cost−4)×(−D)`, cost `4` → 0. In the value model this additive form feeds only the legacy `score`; `gemValue` folds willpower in as the FITTED per-cost multiplier table `M[3..9]` instead (§1) |
+| Order/Chaos | ×1.0016 per point | `100·ln(1.0016)` = **0.159872** per point — `orderScore = (orderLevel − 4) × 0.159872` (level 4 = neutral; DPS axis) |
+| Willpower | efficiency vs cost 4; keeps the old willpower:attack ratio (2.4 : 1.0) | `2.4 × 0.032386` = **±0.077726** per cost-level. `willpowerCost = baseCost − willpowerLevel`; cost `<4` → `(4−cost)×D`, cost `>4` → `(cost−4)×(−D)`, cost `4` → 0. In the value model this additive form feeds only the legacy `score`; `gemValue` folds willpower in as the FITTED per-cost credit table `K[3..9]` instead (§1) |
 | Brand Power / Ally Damage Enh. / Ally Attack Enh. (support) | — | `0` on the DPS axis (they carry the parallel support axis — grading doc §8) |
 
 The bucket baselines live in `SCORING.baselines` (JS and Python) so the assumptions
@@ -123,9 +137,9 @@ For a **random gem within a tier** the core uses a closed-form distribution:
    symmetric, so both assignments are averaged).
 
 This yields an **exact** value distribution per `(baseCost, tier)` — no sampling.
-(`scoreDistributionForTier` enumerates on the **`gemValue` scale** — damage ×
-willpower multiplier — and is axis-aware: the support bake enumerates
-`supportValue` the same way.)
+(`scoreDistributionForTier` enumerates on the **`gemValue` scale** — damage plus
+that axis's fitted willpower credit — and is axis-aware: the support bake
+enumerates `supportValue` the same way with the support credit table.)
 
 ---
 
@@ -403,11 +417,22 @@ arbitrary-baseline "live" mode (a bilinear interpolation of baked anchors) is
 ## 8. Caveats
 
 ### Superseded scoring models
-This tool now values gems with the **multiplicative `gemValue`** (`D = 100·
-ln(multiplier)` per damage line, × the willpower multiplier `M`, §1), with gold =
-`(value − baseline) × goldPerDamage` where `goldPerDamage` is gold per 1% damage
-and `baseline` is a grade-derived threshold on the value scale (§3). Three earlier
-generations are superseded:
+This tool now values gems with **`gemValue`** (`D = 100·ln(multiplier)` per
+damage line, plus that axis's fitted additive willpower credit, §1), with gold
+= `(value − baseline) × goldPerDamage` where `goldPerDamage` is gold per 1%
+damage and `baseline` is a grade-derived threshold on the value scale (§3).
+Four earlier generations are superseded:
+
+0. **Multiplicative tolls fitted to the sell world** (2026-08-09, briefly):
+   `gemValue = gemDamage × M[effCost]` with `M` fitted (then fixed-point
+   iterated) on accounts cut by the gold-EV advisor — a world where bad gems
+   are abandoned. Astrogems are roster-bound, so the roster-bound studies
+   replaced it the same day with the additive `K` credits on BOTH axes; the
+   additive form beat every multiplicative refit on held-out roster accounts
+   and swept the packer-adjudicated ladders (11/11 DPS, 9/9 support). The
+   support sell-world fit had also never converged — its cut↔refit loop
+   oscillated between two order-weight regimes; the roster corpus is a fixed
+   population, so its fit is stable.
 
 1. **Additive score as the value metric** (this tool, up to 2026-06-26): value /
    grade / EV all used `score(config) = Σ line D` with willpower as an additive

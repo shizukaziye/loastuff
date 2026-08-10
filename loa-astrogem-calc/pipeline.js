@@ -111,7 +111,10 @@
   // direct key lookup (no interpolation).
   // One row per rank C- .. S+ (ladder band cuts; S+ row = 95.3) — must match
   // loadout-econ.js GRADE_ROWS and tools/collect-stats.js BAKED_GRADES.
-  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95.3];
+  var GRADE_ROWS_DPS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  var GRADE_ROWS_SUP = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  function axisRowsOf(ax) { return ax === "support" ? GRADE_ROWS_SUP : GRADE_ROWS_DPS; }
+  var GRADE_ROWS = axisRowsOf("dps");
 
   // Verdict gold-EV bands.
   var V = { green: CONST.RESET_THRESHOLD, yellowHi: 10000, yellowMid: 5000, yellowLo: 1000 };
@@ -853,10 +856,11 @@
       + '</tr></thead><tbody>';
 
     var body = "";
+    GRADE_ROWS = axisRowsOf(AXIS);
     for (var bi = 0; bi < GRADE_ROWS.length; bi++) {
       var grade = GRADE_ROWS[bi];
       var blPct = bakedBaselineForRow(bi, grade);
-      var rank = window.rankFromGrade(grade);
+      var rank = (AXIS === "support" && window.Astrogem && window.Astrogem.supportRankFromGrade) ? window.Astrogem.supportRankFromGrade(grade) : window.rankFromGrade(grade);
       var row = '<tr><td class="pipe blcell"><b>' + grade + '</b> ' + rankBadge(rank, grade) + '</td>';
 
       var uf = unopenedFusion(function (rs, r, c, b) {
@@ -923,10 +927,11 @@
       + '<th class="sep">w/ Relic</th><th>w/ Ancient</th></tr></thead><tbody>';
 
     var body = "";
+    GRADE_ROWS = axisRowsOf(AXIS);
     for (var bi = 0; bi < GRADE_ROWS.length; bi++) {
       var grade = GRADE_ROWS[bi];
       var bl = bakedBaselineForRow(bi, grade);
-      var rank = window.rankFromGrade(grade);
+      var rank = (AXIS === "support" && window.Astrogem && window.Astrogem.supportRankFromGrade) ? window.Astrogem.supportRankFromGrade(grade) : window.rankFromGrade(grade);
       var fodL = 0, fodR = 0, fodA = 0, evL = 0, evR = 0, evA = 0;
       for (var ci = 0; ci < COSTS.length; ci++) {
         var c = COSTS[ci], cw = CONST.COST_MIX[c];
@@ -1531,7 +1536,7 @@
     // would drift off the baked keys and miss every cell, same failure mode
     // bakedBaselineForRow guards against. (DATA isn't swapped until below, so read the
     // grid's baselines directly.)
-    var bi = GRADE_ROWS.indexOf(baselineGrade);
+    var bi = axisRowsOf(axis).indexOf(baselineGrade);
     var gridBL = grid.meta && grid.meta.bakedBaselines;
     var liveG2S = (axis === "support") ? window.supportGradeToScore : window.gradeToScore;
     var bl = (bi >= 0 && gridBL && gridBL[bi] != null)
