@@ -24,12 +24,14 @@
       '#astro-banner .ab-body{margin-top:6px;opacity:.9}' +
       '</style>' +
       '<button class="ab-x" title="Dismiss" aria-label="Dismiss">&times;</button>' +
-      '<b>Grading was refit on Aug 9 for roster-bound gems</b> &mdash; grades and letter cuts have changed. ' +
+      '<b>Grading was rebuilt Aug 9&ndash;10 for roster-bound gems</b> &mdash; grades, letter bands and fusion advice all changed. ' +
       '<details><summary>What changed?</summary><div class="ab-body">' +
       'Astrogems are roster-bound, so the model now assumes you keep and fuse everything instead of selling. ' +
-      'We simulated 174,000 accounts (~21M gems) cutting, equipping, and fusing spares the way the game ' +
-      'actually plays &mdash; 112k DPS accounts and 62k joint Order+Chaos support accounts &mdash; then fit ' +
-      'grades to match which gems win a grid slot. On both axes, willpower cost is now a flat credit or tax ' +
+      'We simulated 224,000 accounts (~22M gems) cutting, equipping, and fusing spares the way the game ' +
+      'actually plays &mdash; with each simulated account even choosing whether to steer its fusions at ' +
+      '9-costs or 10-costs optimally &mdash; then fit grades to match which gems win a grid slot. ' +
+      'The practical takeaway baked into the fodder tables: <b>fuse spares toward 9-costs</b> unless your ' +
+      'grid is nearly finished (whales split ~50/50 and shift to 10s as their weakest gem gets harder to beat). On both axes, willpower cost is now a flat credit or tax ' +
       'per cost: 3 and 4 get a bonus, 5 is neutral, 6&ndash;9 are taxed harder and harder. On both axes this ' +
       'scheme called the correct winner in every head-to-head ladder test we ran. DPS Order/Chaos is priced ' +
       'at its exact in-game damage (never fitted) and centered at level 4 &mdash; order 4 adds nothing, 5 adds, ' +

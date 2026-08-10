@@ -3,7 +3,7 @@
 A clean, from-scratch rebuild of the Lost Ark **astrogem-cutting** tool: a
 dependency-free, verified model core (JS with a Python mirror kept in lockstep)
 plus the full app — **Grader / Pipeline / Advisor / Leaderboard** tabs on a static
-site (GitHub Pages), backed by a small Cloudflare worker for character lookups.
+site (Cloudflare Pages via the loseii monorepo — live at www.loseii.com/loa-astrogem-calc), backed by a small Cloudflare worker for character lookups.
 **Shipping is two separate steps**: pushing `main` deploys the site; you deploy the
 worker separately (`worker/README-bible.md`).
 

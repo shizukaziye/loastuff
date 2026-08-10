@@ -140,10 +140,18 @@ equipped floor, fuse every spare relic/ancient with two legendary 10-costs,
 repeat until nothing fusable is left — then an exact-verified packer finds
 each roster's optimal 3×17-core Ark Grids, and the constants minimize
 disagreements between "top N by score" and the packer's real picks on held-out
-accounts. DPS: **112,000 accounts, ~10.8M gems** (1.69 wrong gems vs ~2.9 for
-the original model). Support: **62,400 joint Order+Chaos accounts, ~10.6M
-gems**, each side cut, packed, and fused at its own per-core rates (3.68 wrong
-gems vs 4.40 for the prior constants, and best in every spending tier).
+accounts. The current tables come from the **adaptive-fusion generation**
+(2026-08-10): each simulated account *chooses its own fusion target* — c9 or
+c10 — by exactly enumerating the fusion-output distribution and scoring every
+possible output with the packer's own swap marginal, re-deciding after every
+grid upgrade. DPS: **117,000 accounts** at gpd tiers 6M/2.5M/1M (held-out
+1.55 wrong gems vs ~2.9 for the original model; the fusion finding: most
+accounts should steer fusions at 9-costs, whales split ~50/50 and drift to
+10s as their grids strengthen). Support: **107,000 joint Order+Chaos
+accounts**, each side cut, packed, fused, and *targeted* at its own per-core
+rates (3.33 wrong gems vs 3.79 for the old sell-world constants; the same
+fuse-9s law holds side-by-side). Full protocol and findings:
+*roster-adaptive-studies-2026-08-10.md*.
 
 | effective cost | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 |---|---:|---:|---:|---:|---:|---:|---:|

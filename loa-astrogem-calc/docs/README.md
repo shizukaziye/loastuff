@@ -9,9 +9,10 @@ has its own doc — see *Operations* below.
 
 | Doc | What it explains |
 |---|---|
-| **[how-a-gem-is-graded.md](how-a-gem-is-graded.md)** | The whole scoring model: multiplicative damage in log space, the stat baselines and per-line `D` values, the willpower multiplier that makes perfect gems tie, the 0–100 grade + letter ranks, the support axis, and the lvl-0 whole-grid "% total damage". **Start here** — the other docs build on it. |
+| **[how-a-gem-is-graded.md](how-a-gem-is-graded.md)** | The whole scoring model: multiplicative damage in log space, the stat baselines and per-line `D` values, the fitted per-cost willpower credit (roster-bound account studies), the 0–100 grade (perfect-grid mean = 100, perfects do not tie) + the percentile-tuned letter bands with derived S+ cuts, the support axis, and the whole-grid "% total damage". **Start here** — the other docs build on it. |
 | **[how-the-pipeline-tables-are-computed.md](how-the-pipeline-tables-are-computed.md)** | The cut / fuse / throw decision per effect-pair archetype: the exact Bellman DP cut value, the fusion fixed-point EV, the verdict colors, and the weekly-throughput model. (Full bake reference: [`../METHODOLOGY.md`](../METHODOLOGY.md).) |
 | **[how-the-leaderboard-ranks.md](how-the-leaderboard-ranks.md)** | How a whole character is ranked: total damage % (the sort key), the pairing-invariant avg-grade, the DPS/Support toggle, the floorless boards, and the "support main" exclusion. |
+| **[roster-adaptive-studies-2026-08-10.md](roster-adaptive-studies-2026-08-10.md)** | The simulation campaign behind the shipped constants: the roster-bound protocol, the adaptive per-account c9/c10 fusion targeting, the fuse-9s-vs-10s findings by wealth tier, per-tier grade benchmarks, and what each model generation earned. |
 | **[how-the-advisor-works.md](how-the-advisor-works.md)** | The Advisor end to end: the structural screenshot parser (anchor geometry → normalization → graded evidence → constraint arbitration → honest confidence), the exact-DP action ranking incl. Reset, the collection flywheel, and the debugging methodology that got the parser to 99%+. |
 
 ## Operations / infrastructure

@@ -39,8 +39,8 @@ A gem's worth is its **% damage above your weakest equipped gem**, priced in gol
 directValue = max(0, (gemValue − baseline) × goldPerDamage)
 ```
 
-- **`gemValue`** = the gem's grading value (damage `D` × the willpower multiplier,
-  from *how-a-gem-is-graded.md*), in ≈%-damage units.
+- **`gemValue`** = the gem's grading value (damage `D` plus the fitted per-cost
+  willpower credit, from *how-a-gem-is-graded.md*), in ≈%-damage units.
 - **`baseline`** = the bar set by the weakest gem you'd replace — entered as a
   **0–100 grade** and converted to this scale by `gradeToScore` (the inverse of the
   global value grade). The bake evaluates exactly the twelve grade rows the tab

@@ -39,29 +39,33 @@ K[3..9] = +0.1327, +0.0896, 0, −0.1203, −0.2504, −0.3970, −0.5686
 
 **Willpower is not a damage line** — it is budget (`effectiveCost = baseCost −
 willpowerLevel`; a cheap gem frees willpower that lets a bigger gem slot
-elsewhere). The 2026-08-09 regrade prices that budget as a **fitted additive
-credit per effective cost**, `K[effCost]`, fitted on the ROSTER-BOUND world:
-astrogems can't be sold, so the study cut 112,000 simulated accounts (~10.8M
-gems, four spending tiers) that keep everything, equip the best 12, fuse every
-spare relic/ancient with two legendary 10-costs, and repeat until nothing
-fusable is left — then packed each roster into optimal 3×17 Ark Grids with an
-exact-verified packer. `K[cost]` minimizes
-disagreements with the packer's socketed-vs-benched choices on held-out
-accounts, and it is the only fitted form that called the correct winner in
-every willpower-vs-damage head-to-head ladder test (11/11). The curve says
-costs 3 and 4 earn a bonus, 5 is neutral, and 6–9 are taxed increasingly
-hard — but the tax is FLAT damage, not a percent, so it no longer inflates
-with gem quality. Perfect gems do not tie: the perfect Ark-Grid layout
+elsewhere). The regrade (2026-08-09/10) prices that budget as a **fitted
+additive credit per effective cost**, `K[effCost]`, fitted on the
+ROSTER-BOUND, ADAPTIVE-FUSION world: astrogems can't be sold, so the study
+cut simulated accounts that keep everything, equip the best 12, fuse every
+spare relic/ancient with two legendary 10-costs — with each account CHOOSING
+its own c9-vs-c10 fusion target from exact packer marginals, re-deciding
+after every upgrade — and repeat until nothing fusable is left, then packed
+each roster into optimal 3×17 Ark Grids with an exact-verified packer
+(117,000 DPS accounts, ~10.8M gems, gpd tiers 6M/2.5M/1M). `K[cost]`
+minimizes disagreements with the packer's socketed-vs-benched choices on
+held-out accounts (1.55 wrong gems vs ~2.9 for the original model), and the
+additive form is the only one that called the correct winner in every
+willpower-vs-damage head-to-head ladder test (11/11). The curve says costs 3
+and 4 earn a bonus, 5 is neutral, and 6–9 are taxed increasingly hard — but
+the tax is FLAT damage, not a percent, so it no longer inflates with gem
+quality. Perfect gems do not tie: the perfect Ark-Grid layout
 (3 c8 + 3 c9 + 6 c10) *averages* grade 100, with DPS perfects at
 96.1 / 99.7 / 102.1. Order is PINNED at its exact in-game damage weight
 (0.159872/point — order damage is deterministic, so it is never fitted) and
 centered at level 4: an order-4 gem gains nothing, 5 gains, 1–3 lose. Only
 willpower is fitted. The support axis uses the SAME additive form with its
-own constants from its own roster-bound study — 62,400 joint Order+Chaos
-accounts (~10.6M gems) cut under the live advisor with per-side keep and
-fusion rules: `supportValue = effects + 0.02879·order + K_sup[effCost]`,
-K_sup = +0.0252, +0.0150, 0, −0.0235, −0.0593, −0.0986, −0.1346. It was best
-on every held-out tier (3.68 wrong gems vs 4.40 for the prior constants) and
+own constants from its own roster-bound ADAPTIVE-FUSION study — 107,000
+joint Order+Chaos accounts (~10.8M gems, support gpd tiers 6M/2.5M/1M) cut
+under the live advisor with per-side keep, fusion, and per-SIDE c9/c10
+fusion targeting: `supportValue = effects + 0.02879·order + K_sup[effCost]`,
+K_sup = +0.0252, +0.0150, 0, −0.0235, −0.0593, −0.0986, −0.1346. Held-out
+3.33 wrong gems vs 3.79 for the old sell-world constants, and
 9/9 on the packer-margin monster ladder; support perfects grade
 94.6 / 98.2 / 103.6. The letter ladder (re-tuned 2026-08-10) uses even thirds
 of each 10-point band (A− 80 / A 83.3 / A+ 86.7, F = thirds of 0–50) with S+

@@ -1,3 +1,7 @@
+> **Superseded (2026-08-10):** this documents the first, SELL-WORLD account study.
+> The shipped constants now come from the roster-bound ADAPTIVE-FUSION studies —
+> see [roster-adaptive-studies-2026-08-10.md](roster-adaptive-studies-2026-08-10.md).
+
 # Account study — what should you cut, when you own everything?
 
 > **STATUS 2026-08-09: shipped, then ROLLED BACK the same day.** Phase 4's
