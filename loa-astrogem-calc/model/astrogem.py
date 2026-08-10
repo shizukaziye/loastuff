@@ -336,27 +336,28 @@ def grade_to_score(g, base_cost=None):
     return b["min"] + (max(0.0, min(110.0, g)) / 100) * (value_anchor() - b["min"])
 
 
-# Explicit rank threshold tables, ONE PER AXIS — mirrors astrogem.js. Each
-# axis's S+ cut sits at its own perfect 8-cost's grade.
-S_PLUS_CUT = 95
-SUP_S_PLUS_CUT = 95
-
-
+# Letter rank (2026-08-10 percentile-aware bands): EVEN THIRDS of each
+# 10-point band from 50 up; F = thirds of 0-50. S+ = the axis's perfect
+# 8-cost grade, DERIVED near the end of the module (needs both grade
+# functions defined; the ladders are rebuilt there — mirrors astrogem.js).
 def _ladder(s_plus):
     return [
-        ("S+", s_plus), ("S", 90), ("S-", 85),
-        ("A+", 80), ("A", 75), ("A-", 70),
-        ("B+", 65), ("B", 60), ("B-", 55),
-        ("C+", 50), ("C", 45), ("C-", 40),
-        ("D+", 35), ("D", 30), ("D-", 25),
-        ("F+", 20), ("F", 15), ("F-", 0),
+        ("S+", s_plus), ("S", 93.3), ("S-", 90),
+        ("A+", 86.7), ("A", 83.3), ("A-", 80),
+        ("B+", 76.7), ("B", 73.3), ("B-", 70),
+        ("C+", 66.7), ("C", 63.3), ("C-", 60),
+        ("D+", 56.7), ("D", 53.3), ("D-", 50),
+        ("F+", 33.3), ("F", 16.7), ("F-", 0),
     ]
 
 
-RANK_LADDER = _ladder(S_PLUS_CUT)
-SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT)
+# placeholders — assigned for real after support_grade is defined (module tail)
+S_PLUS_CUT = None
+SUP_S_PLUS_CUT = None
+RANK_LADDER = None
+SUPPORT_RANK_LADDER = None
 # Coarse letter starts derived from the ladder (kept for mirror compatibility).
-RANK_CUTS = [("S", 85), ("A", 70), ("B", 55), ("C", 40), ("D", 25), ("F", 0)]
+RANK_CUTS = [("S", 90), ("A", 80), ("B", 70), ("C", 60), ("D", 50), ("F", 0)]
 
 
 def _rank_from(ladder, g):
@@ -1015,3 +1016,16 @@ def fusion_value_for_tier(input_tier, base_cost, baseline, gold_per_damage, axis
 
 # (_solve3x3 removed 2026-07-18 in lockstep with the JS side — the joint fusion EV
 # converges by fixed-point iteration and never called it.)
+
+
+# ---- rank-ladder derivation (must sit after grade/support_grade defs) ----
+def _perfect_cfg8(es_fn):
+    pool = sorted(EFFECT_POOLS[8], key=lambda e: -es_fn(e, 5))
+    return {"baseCost": 8, "gemType": "order", "willpowerLevel": 5, "orderLevel": 5,
+            "effect1": pool[0], "effect1Level": 5, "effect2": pool[1], "effect2Level": 5}
+
+
+S_PLUS_CUT = grade(_perfect_cfg8(effect_score))
+SUP_S_PLUS_CUT = support_grade(_perfect_cfg8(support_effect_score))
+RANK_LADDER = _ladder(S_PLUS_CUT)
+SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT)

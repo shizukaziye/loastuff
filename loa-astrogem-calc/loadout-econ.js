@@ -50,8 +50,10 @@
   // One row per rank C- .. S+; each AXIS has its own S+ row (that axis's
   // perfect 8-cost grade), so a baseline choice is exactly "keep <rank> or
   // better" on that axis's ladder. Rows 0..10 are shared; row 11 differs.
-  var GRADE_ROWS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
-  var GRADE_ROWS_SUPPORT = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  // 12 baseline rows, one per rank C-..S+ on the 2026-08-10 band ladder; the
+  // S+ row is the axis ladder's own derived cut so refits track automatically.
+  var GRADE_ROWS = [60, 63.3, 66.7, 70, 73.3, 76.7, 80, 83.3, 86.7, 90, 93.3].concat([A.RANK_LADDER[0][1]]);
+  var GRADE_ROWS_SUPPORT = [60, 63.3, 66.7, 70, 73.3, 76.7, 80, 83.3, 86.7, 90, 93.3].concat([A.SUPPORT_RANK_LADDER[0][1]]);
   function gradeRows(axis) { return axis === "support" ? GRADE_ROWS_SUPPORT : GRADE_ROWS; }
   var GPD_TIERS = [500000, 1000000, 1500000, 2500000, 3500000, 5000000, 7500000, 10000000];
   var GPD_DEFAULT = 1500000;

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated": "2026-08-10T01:27:18.348Z",
+    "generated": "2026-08-10T05:01:29.555Z",
     "note": "Captured references for the deterministic core. Regenerate with `node tools/gen-refs.js`. Scoring is REAL % damage (D = 100*ln(multiplier)); supersedes the abstract-weight model and the removed SCORE_PER_PERCENT_DAMAGE=30.96.",
     "SCORING": {
       "willpowerPerLevel": 0.07772592845902067,
@@ -137,7 +137,7 @@
       "score": -0.077726,
       "damagePercent": 0,
       "grade": 55.7,
-      "rank": "B-",
+      "rank": "D",
       "breakdown": {
         "willpowerCost": 5,
         "willpowerScore": -0.077726,
@@ -161,7 +161,7 @@
       "score": -0.15633,
       "damagePercent": -0.078573,
       "grade": 51.5,
-      "rank": "C+",
+      "rank": "D-",
       "breakdown": {
         "willpowerCost": 5,
         "willpowerScore": -0.077726,
@@ -257,7 +257,7 @@
       "score": 0.097157,
       "damagePercent": 0.097205,
       "grade": 66.6,
-      "rank": "B+",
+      "rank": "C",
       "breakdown": {
         "willpowerCost": 4,
         "willpowerScore": 0,
@@ -347,7 +347,7 @@
       "supportScore": 0.103216,
       "supportRelValue": 0.007229,
       "supportGrade": 66.1,
-      "supportRank": "B+"
+      "supportRank": "C"
     },
     {
       "config": {
@@ -363,7 +363,7 @@
       "supportScore": -0.040269,
       "supportRelValue": -0.136256,
       "supportGrade": 48.5,
-      "supportRank": "C"
+      "supportRank": "F+"
     },
     {
       "config": {
@@ -379,7 +379,7 @@
       "supportScore": 0.137816,
       "supportRelValue": 0.041829,
       "supportGrade": 75.2,
-      "supportRank": "A"
+      "supportRank": "B"
     },
     {
       "config": {
@@ -395,7 +395,7 @@
       "supportScore": 0.179984,
       "supportRelValue": 0.083997,
       "supportGrade": 69.9,
-      "supportRank": "B+"
+      "supportRank": "C+"
     }
   ],
   "supportBounds": {

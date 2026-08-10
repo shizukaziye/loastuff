@@ -143,9 +143,7 @@ var EFFECT_BUCKETS = AXIS === "support" ? EFFECT_BUCKETS_SUPPORT : EFFECT_BUCKET
 // cell is an exact DP value at that baseline grade — no interpolation noise. Each grade
 // -> its score threshold via (support)gradeToScore (the SAME fn the UI uses), axis-aware
 // so support baselines sit on the support score scale.
-var BAKED_GRADES = AXIS === "support"
-  ? [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95]  // support ladder rows (unified round S+; perfect c8 = 96.3 clears it)
-  : [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95]; // DPS ladder rows (round S+ cut; perfect c8 = 96.9 clears it)
+var BAKED_GRADES = [60, 63.3, 66.7, 70, 73.3, 76.7, 80, 83.3, 86.7, 90, 93.3].concat([AXIS === "support" ? A.SUPPORT_RANK_LADDER[0][1] : A.RANK_LADDER[0][1]]); // one row per rank C-..S+ (2026-08-10 band ladder; S+ = axis perfect c8)
 var BAKED_BASELINES = BAKED_GRADES.map(function (g) {
   return AXIS === "support" ? A.supportGradeToScore(g) : A.gradeToScore(g);
 });

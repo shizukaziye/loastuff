@@ -63,8 +63,10 @@ fusion rules: `supportValue = effects + 0.02862·order + K_sup[effCost]`,
 K_sup = +0.0364, +0.0218, 0, −0.0230, −0.0450, −0.0781, −0.1361. It was best
 on every held-out tier (3.68 wrong gems vs 4.40 for the prior constants) and
 9/9 on the packer-margin monster ladder; support perfects grade
-96.3 / 98.8 / 102.5. ONE ladder serves both axes — S+ at the round 95 (every
-perfect on either axis clears it), then the familiar 5-point steps. This
+96.3 / 98.8 / 102.5. The letter ladder (re-tuned 2026-08-10) uses even thirds
+of each 10-point band (A− 80 / A 83.3 / A+ 86.7, F = thirds of 0–50) with S+
+pinned at each axis's perfect 8-cost grade (96.7 DPS / 96.3 support, derived
+from the model at load). This
 `gemValue` is what the grade, the DP terminal value, and every EV layer in
 this bake use.
 Full derivation: `docs/how-a-gem-is-graded.md`; studies:

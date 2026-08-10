@@ -208,18 +208,22 @@ grade = 100 × (gemValue − minValue) / (anchorValue − minValue)
   badge is config-gated, not grade-gated, so it marks perfects at 96.3 and
   102.5 alike.
 
-The letter rank is an explicit threshold table — **one ladder, both axes**:
-the familiar 5-point cuts with S+ at the round **95**. Every perfect gem on
-either axis clears it (DPS perfect c8 = 96.7, support perfect c8 = 96.3), so
-all perfects are S+. (The per-axis plumbing — `RANK_LADDER` vs
-`SUPPORT_RANK_LADDER` — still exists in code so a future per-axis cut is a
-one-constant change, but both are identical today.)
+The letter rank is an explicit threshold table, re-tuned 2026-08-10 to the new
+scale's measured percentiles: **each letter is an even third of its 10-point
+band** (A− at 80, A at 83.3, A+ at 86.7, and so on), F takes thirds of 0–50,
+and **S+ starts at the axis's perfect 8-cost grade** — derived from the model
+at load, so a refit moves the cut automatically. On DPS that lands exactly on
+the even grid (96.7); on support it sits at 96.3, because "every perfect gem
+is S+ on its axis" outranks grid evenness.
 
-| S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 95 | 90 | 85 | 80 | 75 | 70 | 65 | 60 | 55 | 50 | 45 | 40 | 35 | 30 | 25 | 20 | 15 | 0 |
+| axis | S+ | S | S− | A+ | A | A− | B+ | B | B− | C+ | C | C− | D+ | D | D− | F+ | F | F− |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| DPS | 96.7 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
+| support | 96.3 | 93.3 | 90 | 86.7 | 83.3 | 80 | 76.7 | 73.3 | 70 | 66.7 | 63.3 | 60 | 56.7 | 53.3 | 50 | 33.3 | 16.7 | 0 |
 
-(The leaderboard's "support main" rule counts these same bands — see
+Measured meaning under the roster advisor (share of finished cuts reaching
+the band, cross-tier): S ~1%, S− ~2%, A− ~14%, B− ~34%, C− ~55%. (The
+leaderboard's "support main" rule counts these same bands — see
 *how-the-leaderboard-ranks.md*.)
 
 ---
@@ -301,7 +305,8 @@ So a support point in Chaos Moon (Brand) is worth ~2.2× one in Order Star.
 Everything else works the same way structurally, but with support's OWN fitted
 pieces: its willpower credit `K_sup` (additive, same form as DPS), its own
 order value weight, and its own grade anchor (its own perfect grid). The rank
-ladder is shared with DPS (S+ 95, §6). The Grader's **DPS / Support toggle**
+ladder shares every cut with DPS except its own S+ pin (96.3, §6). The
+Grader's **DPS / Support toggle**
 picks which axis a loadout is judged on; it auto-defaults to Support for
 support classes.
 

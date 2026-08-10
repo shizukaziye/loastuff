@@ -111,8 +111,8 @@
   // direct key lookup (no interpolation).
   // One row per rank C- .. S+ (ladder band cuts; S+ row = 95.3) — must match
   // loadout-econ.js GRADE_ROWS and tools/collect-stats.js BAKED_GRADES.
-  var GRADE_ROWS_DPS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
-  var GRADE_ROWS_SUP = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+  var GRADE_ROWS_DPS = [60, 63.3, 66.7, 70, 73.3, 76.7, 80, 83.3, 86.7, 90, 93.3].concat([window.Astrogem.RANK_LADDER[0][1]]);
+  var GRADE_ROWS_SUP = [60, 63.3, 66.7, 70, 73.3, 76.7, 80, 83.3, 86.7, 90, 93.3].concat([window.Astrogem.SUPPORT_RANK_LADDER[0][1]]);
   function axisRowsOf(ax) { return ax === "support" ? GRADE_ROWS_SUP : GRADE_ROWS_DPS; }
   var GRADE_ROWS = axisRowsOf("dps");
 

@@ -454,29 +454,36 @@
     return b.min + (Math.max(0, Math.min(110, g)) / 100) * (valueAnchor() - b.min);
   }
 
-  // Letter rank: ONE unified ladder, both axes (2026-08-09) — the familiar
-  // 5-point cuts with S+ at the round 95. Every perfect gem on either axis
-  // clears it (DPS perfect c8 grades 96.9, support perfect c8 grades 96.3
-  // under the roster-fit constants). The per-axis ladder PLUMBING is kept —
-  // rankFromGrade vs supportRankFromGrade and the two exported ladders — so a
-  // future per-axis cut is a one-constant change, but today both cuts are 95
-  // and the ladders are identical.
-  var S_PLUS_CUT = 95;          // round cut; DPS perfect c8 (96.9) clears it
-  var SUP_S_PLUS_CUT = 95;      // unified with DPS: support perfect c8 (96.3) clears 95
+  // Letter rank (Shizu 2026-08-10, percentile-aware bands): EVEN THIRDS of
+  // each 10-point band from 50 up (D 50/53.3/56.7, C 60/…, B 70/…, A 80/83.3/
+  // 86.7, S 90/93.3/S+), F = thirds of 0-50. The S+ cut is the axis's PERFECT
+  // 8-COST grade, DERIVED from the model at load so refits move it
+  // automatically — on DPS that lands exactly on the even grid (96.7); on
+  // support it sits at 96.3 (its perfect c8 — the "every perfect is S+" rule
+  // outranks grid evenness there). Cuts use 1-decimal values because grade()
+  // rounds to 0.1 (a displayed 73.3 IS a B). Chosen against the measured
+  // cut-outcome percentiles of the v58 scale (S ~1%, A- ~14%, B- ~34%).
+  function _perfectCfg8(esFn) {
+    var pool = EFFECT_POOLS[8].slice().sort(function (a, b) { return esFn(b, 5) - esFn(a, 5); });
+    return { baseCost: 8, gemType: "order", willpowerLevel: 5, orderLevel: 5,
+      effect1: pool[0], effect1Level: 5, effect2: pool[1], effect2Level: 5 };
+  }
+  // Derived at the MODULE TAIL (needs SUPPORT_SCORING, which initializes in
+  // the support section below): S+ = 96.7 DPS / 96.3 support under the
+  // 2026-08-10 fit.
+  var S_PLUS_CUT, SUP_S_PLUS_CUT, RANK_LADDER, SUPPORT_RANK_LADDER;
   function _ladder(sPlus) {
     return [
-      ["S+", sPlus], ["S", 90], ["S-", 85],
-      ["A+", 80], ["A", 75], ["A-", 70],
-      ["B+", 65], ["B", 60], ["B-", 55],
-      ["C+", 50], ["C", 45], ["C-", 40],
-      ["D+", 35], ["D", 30], ["D-", 25],
-      ["F+", 20], ["F", 15], ["F-", 0]
+      ["S+", sPlus], ["S", 93.3], ["S-", 90],
+      ["A+", 86.7], ["A", 83.3], ["A-", 80],
+      ["B+", 76.7], ["B", 73.3], ["B-", 70],
+      ["C+", 66.7], ["C", 63.3], ["C-", 60],
+      ["D+", 56.7], ["D", 53.3], ["D-", 50],
+      ["F+", 33.3], ["F", 16.7], ["F-", 0]
     ];
   }
-  var RANK_LADDER = _ladder(S_PLUS_CUT);
-  var SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT);
   // Coarse letter starts derived from the ladder (kept for export compatibility).
-  var RANK_CUTS = [["S", 85], ["A", 70], ["B", 55], ["C", 40], ["D", 25], ["F", 0]];
+  var RANK_CUTS = [["S", 90], ["A", 80], ["B", 70], ["C", 60], ["D", 50], ["F", 0]];
   function _rankFrom(ladder, g) {
     for (var i = 0; i < ladder.length; i++) {
       if (g >= ladder[i][1]) return ladder[i][0];
@@ -1313,6 +1320,13 @@
 
   // (_solve3x3, a Gaussian 3x3 solver, was removed 2026-07-18 — the joint fusion
   // EV converges by fixed-point iteration below and never called it.)
+
+  // ---- rank-ladder derivation (sits after the support section so
+  // SUPPORT_SCORING is initialized; the vars are declared at the ladder block) ----
+  S_PLUS_CUT = grade(_perfectCfg8(effectScore));
+  SUP_S_PLUS_CUT = supportGrade(_perfectCfg8(supportEffectScore));
+  RANK_LADDER = _ladder(S_PLUS_CUT);
+  SUPPORT_RANK_LADDER = _ladder(SUP_S_PLUS_CUT);
 
   // -------------------- exports (dual: browser global + CommonJS) --------------------
 

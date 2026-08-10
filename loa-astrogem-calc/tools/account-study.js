@@ -858,12 +858,17 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
   // with 2 legendary c10s (infinite supply assumed): legendary outputs are
   // DISMANTLED (no infinite-supply abuse), sub-threshold relic+ outputs
   // re-fuse until none remain, keepers join the pool -> final re-equip.
+  // --bl=g1,g2,g3,g4 overrides the four tier baselines (R1..R4 order).
   var ROSTER_TIERS = {
-    R1: { name: "R1", gpd: 5000000, bl: 85 },
-    R2: { name: "R2", gpd: 2500000, bl: 80 },
-    R3: { name: "R3", gpd: 1000000, bl: 75 },
-    R4: { name: "R4", gpd: 500000, bl: 70 }
+    R1: { name: "R1", gpd: 6000000, bl: 90 },
+    R2: { name: "R2", gpd: 2500000, bl: 85 },
+    R3: { name: "R3", gpd: 1000000, bl: 80 },
+    R4: { name: "R4", gpd: 500000, bl: 75 }
   };
+  if (ARGS.bl) {
+    var _bls = String(ARGS.bl).split(",").map(Number);
+    ["R1", "R2", "R3", "R4"].forEach(function (tn, i) { if (_bls[i]) ROSTER_TIERS[tn].bl = _bls[i]; });
+  }
   // --mix=60,30,10 overrides the default cut mix; --fuse-target=9|10 sets the
   // fusion selector cost (2/3 you get the target, 1/3 the input cost);
   // --seed-tag=X namespaces the RNG streams so variant corpora are disjoint
@@ -874,7 +879,9 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
     var p = String(ARGS.mix).split(/[:,/]/).map(Number);
     return { 8: p[0] / 100, 9: p[1] / 100, 10: p[2] / 100 };
   })();
+  var FUSE_AUTO = String(ARGS["fuse-target"] || "") === "auto";
   var FUSE_TARGET = parseInt(ARGS["fuse-target"], 10) || 10;
+  if (FUSE_AUTO && AXIS === "support") { console.error("--fuse-target=auto is DPS-only for now"); process.exit(1); }
   var SEED_TAG = ARGS["seed-tag"] ? String(ARGS["seed-tag"]) : "";
   function makeRosterSolvers(tier) {
     // axis-aware: support roster accounts cut under the LIVE support model
@@ -1183,7 +1190,8 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
       });
     } else {
       var cp1 = rosterCutPool("roster", ra, "order");
-      var dres = rosterEquipFuse(cp1.cut, cp1.fuseRand, "order");
+      var dres = FUSE_AUTO ? rosterEquipFuseAuto(cp1.cut, cp1.fuseRand, "order")
+                           : rosterEquipFuse(cp1.cut, cp1.fuseRand, "order");
       rRows.push({
         a: ra,
         kept: dres.keepPool.map(function (g) {
@@ -1195,6 +1203,8 @@ else if (ARGS["size-roster"] || ARGS["roster-study"]) {
         sock: dres.keepPool.map(function (g, i) { return dres.sock2Set.has(g) ? i : -1; }).filter(function (i) { return i >= 0; }),
         cutN: dres.cutN, floor1: dres.floor1, floor2: dres.floor2, thr: dres.thr,
         fus: dres.fus,
+        ft: dres.hist ? [dres.hist.t0, dres.hist.tF, dres.hist.switches, dres.hist.upgrades,
+          +dres.hist.e9_0.toFixed(6), +dres.hist.e10_0.toFixed(6)] : undefined,
         cores: coresOf(dres.pack2),
         dmg: dres.pack2.dmg
       });
