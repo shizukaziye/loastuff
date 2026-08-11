@@ -64,6 +64,12 @@
   // Pre-cut fusion output mixes (rarity upgrade on fuse) + 50/50 NRB/RB split.
   var UC_FUSE = { uncommon: 0.85, rare: 0.135, epic: 0.015 };   // 3 UC same cost -> same cost out
   var RARE_FUSE = { uncommon: 0.52, rare: 0.44, epic: 0.04 };   // 1R + 2UC -> cost from inputs
+  // 1E + 2UC -> cost from inputs. Fusing an epic DOWNGRADES it on average (0.26 epic back),
+  // so it only pays as a COST-STEER: trade a cheap-cost epic for a shot at a 9/10-cost one.
+  // That is a KR play — there a fused output can be tradable and an epic has a floor sale
+  // value (KR_FLOOR), which rises with cost. Modelled in both regions; the fixed point's
+  // max(open, fuse) decides where it actually wins.
+  var EPIC_FUSE = { uncommon: 0.25, rare: 0.49, epic: 0.26 };
 
   // Post-cut L/R/A fusion output mixes. Priority A+2L -> R+2L -> 3L.
   var FUSE_A2L = { legendary: 0.35, relic: 0.40, ancient: 0.25 };
@@ -310,12 +316,13 @@
   // REAL unopened (rarity-upgrade) fusion value — what the BLOCK-level purple verdict
   // compares against opening. (Retained from the prior implementation; confirmed model.)
   // getCut(roster, rarity, cost, bucket) -> cut EV | null. Returns
-  //   { fuse:{uncommon:{8,9,10}, rare:{8,9,10}, epic:{8:null…}},   // raw fuse value/block
+  //   { fuse:{uncommon:{8,9,10}, rare:{8,9,10}, epic:{8,9,10}},    // raw fuse value/block
   //     steer:{uncommon:{8:8,…}, rare:{8:bestCost,…}, epic:{…}},   // cost to STEER fusion toward
   //     ovNrb:{rarity:{cost}} }                                    // NRB open value/block
   // or null if any required OV bucket is missing. The steer cost is the argmax-cost the
-  // fusion output is pushed toward: UC keeps its own cost; a Rare fuses its 2 partners
-  // toward argmax_c Out[c] (the cost whose rarity-mixed output EV is highest).
+  // fusion output is pushed toward: UC keeps its own cost; a Rare or an Epic fuses its 2
+  // partners toward argmax_c Out[c] (the cost whose rarity-mixed output EV is highest) —
+  // each lane using its own output mix, so they can steer to different costs.
   // ---------------------------------------------------------------------------
   function unopenedFusion(getCut) {
     function openValue(roster, rarity, cost) {
@@ -356,21 +363,28 @@
       }
       return 0.5 * OV.rb[rar][cost] + 0.5 * U_nrb[rar][cost];
     }
-    var fuseA = null, bestCost = 8;
+    // Output value of one fuse by OUTPUT COST, for a given rarity mix, plus the best
+    // cost to steer toward (argmax). The 2 added Uncommons carry 2/3 of the output cost,
+    // so a fuse lands at the steered cost with probability 2/3 and holds its own with 1/3.
+    function outByCost(mix) {
+      var out = {}, best = COSTS[0], max = -Infinity;
+      for (var i = 0; i < COSTS.length; i++) {
+        var c = COSTS[i];
+        out[c] = mix.uncommon * E("uncommon", c) + mix.rare * E("rare", c) + mix.epic * E("epic", c);
+        if (out[c] > max) { max = out[c]; best = c; }
+      }
+      return { out: out, best: best, max: max };
+    }
+    var fuseA = null, bestCost = 8, bestCostE = 8;
     for (var iter = 0; iter < 200; iter++) {
       var fA = { uncommon: {}, rare: {}, epic: {} };
-      var Out = {}, maxOut = -Infinity;
-      bestCost = COSTS[0];
-      for (var cc = 0; cc < COSTS.length; cc++) {
-        var c = COSTS[cc];
-        Out[c] = RARE_FUSE.uncommon * E("uncommon", c) + RARE_FUSE.rare * E("rare", c) + RARE_FUSE.epic * E("epic", c);
-        if (Out[c] > maxOut) { maxOut = Out[c]; bestCost = c; }
-      }
+      var R = outByCost(RARE_FUSE), Ep = outByCost(EPIC_FUSE);
+      bestCost = R.best; bestCostE = Ep.best;
       for (var cd = 0; cd < COSTS.length; cd++) {
         var cst = COSTS[cd];
         fA.uncommon[cst] = (UC_FUSE.uncommon * E("uncommon", cst) + UC_FUSE.rare * E("rare", cst) + UC_FUSE.epic * E("epic", cst) - CONST.FUSION_COST) / 3;
-        fA.rare[cst] = (1 / 3) * Out[cst] + (2 / 3) * maxOut - CONST.FUSION_COST;
-        fA.epic[cst] = null;
+        fA.rare[cst] = (1 / 3) * R.out[cst] + (2 / 3) * R.max - CONST.FUSION_COST;
+        fA.epic[cst] = (1 / 3) * Ep.out[cst] + (2 / 3) * Ep.max - CONST.FUSION_COST;
       }
       var maxChange = 0;
       for (var rk = 0; rk < RARITIES.length; rk++) {
@@ -387,22 +401,24 @@
       fuseA = fA;
       if (maxChange < 1e-9) break;
     }
-    // steer cost per (rarity, cost): UC fuse keeps its own cost; a Rare steers its 2
-    // partners toward the single best cost (argmax_c Out[c] == bestCost). Epic never fuses.
+    // steer cost per (rarity, cost): UC fuse keeps its own cost; a Rare or an Epic steers
+    // its 2 added Uncommons toward the best cost for ITS OWN output mix (argmax_c Out[c]).
+    // The two mixes differ, so the epic lane can steer somewhere the rare lane doesn't.
     var steer = { uncommon: {}, rare: {}, epic: {} };
     for (var sc = 0; sc < COSTS.length; sc++) {
       steer.uncommon[COSTS[sc]] = COSTS[sc];
       steer.rare[COSTS[sc]] = bestCost;
-      steer.epic[COSTS[sc]] = null;
+      steer.epic[COSTS[sc]] = bestCostE;
     }
     return { fuse: fuseA, steer: steer, ovNrb: U_nrb };
   }
 
   // ---------------------------------------------------------------------------
   // PRE-CUT fuse DECISIONS for one (baseline, gpd, roster). Mirrors generate_pipeline.py
-  // compute_fuse_decisions: per UC cost & per rare cost, decide whether fusing beats
-  // cutting directly, using UC opportunity cost = max(direct, fuse_value).
-  // Returns { uc:{8,9,10:bool}, rare:{8,9,10:bool}, rareUcCost:{8,9,10}, fuseEvByCost }.
+  // compute_fuse_decisions: per UC cost, per rare cost & per epic cost, decide whether
+  // fusing beats cutting directly, using UC opportunity cost = max(direct, fuse_value).
+  // Returns { uc:{8,9,10:bool}, rare:{…}, rareUcCost:{…}, fuseEvByCost,
+  //           epic:{…}, epicUcCost:{…}, epicEvByCost }.
   // ---------------------------------------------------------------------------
   function fuseDecisions(bl, gpd, roster) {
     var ucSf = {}, ucFpi = {}, ucValue = {};
@@ -420,32 +436,51 @@
       ucFpi[c] = fpi;
       ucValue[c] = Math.max(ucDirect, fpi);
     }
-    var fuseEvByCost = {};
-    for (var j = 0; j < COSTS.length; j++) {
-      var cc = COSTS[j], ev = 0;
-      for (var rj = 0; rj < RARITIES.length; rj++) {
-        var or2 = RARITIES[rj], rt = RARE_FUSE[or2];
-        ev += Math.max(gev(or2, cc, bl, gpd, "nrb"), 0) * rt * 0.5;
-        ev += Math.max(secondHalfGev(or2, cc, bl, gpd), 0) * rt * 0.5;
+    // Output EV by cost for the two "+2 Uncommon" recipes (1R+2UC and 1E+2UC). Same
+    // shape, different rarity mix — the epic recipe returns fewer epics but is the only
+    // way to move an epic's COST, which is what a tradable-chasing KR player is buying.
+    function outEvByCost(mix) {
+      var by = {};
+      for (var j = 0; j < COSTS.length; j++) {
+        var cc = COSTS[j], ev = 0;
+        for (var rj = 0; rj < RARITIES.length; rj++) {
+          var or2 = RARITIES[rj], rt = mix[or2];
+          ev += Math.max(gev(or2, cc, bl, gpd, "nrb"), 0) * rt * 0.5;
+          ev += Math.max(secondHalfGev(or2, cc, bl, gpd), 0) * rt * 0.5;
+        }
+        by[cc] = ev;
       }
-      fuseEvByCost[cc] = ev;
+      return by;
     }
-    var rSf = {}, rUc = {};
-    for (var k = 0; k < COSTS.length; k++) {
-      var rc = COSTS[k];
-      var rareEv = gev("rare", rc, bl, gpd, roster);
-      var bestMarg = -Infinity, bestUc = 8;
-      for (var u = 0; u < COSTS.length; u++) {
-        var uc = COSTS[u], uOpp = ucValue[uc], outEv;
-        if (rc === uc) outEv = fuseEvByCost[rc];
-        else outEv = (1 / 3) * fuseEvByCost[rc] + (2 / 3) * fuseEvByCost[uc];
-        var marg = outEv - CONST.FUSION_COST - 2 * uOpp;
-        if (marg > bestMarg) { bestMarg = marg; bestUc = uc; }
+    // Best "+2 Uncommon" fuse for one gem of `rarity` at `cost`: pick the Uncommon cost to
+    // add (the output lands there 2/3 of the time), net of the fee and the 2 Uncommons'
+    // opportunity cost. Fuse iff that beats opening the gem yourself.
+    function plusTwoUc(rarity, byCost) {
+      var sf = {}, pick = {};
+      for (var k = 0; k < COSTS.length; k++) {
+        var oc = COSTS[k];
+        var openEv = gev(rarity, oc, bl, gpd, roster);
+        var bestMarg = -Infinity, bestUc = 8;
+        for (var u = 0; u < COSTS.length; u++) {
+          var uc = COSTS[u], uOpp = ucValue[uc], outEv;
+          if (oc === uc) outEv = byCost[oc];
+          else outEv = (1 / 3) * byCost[oc] + (2 / 3) * byCost[uc];
+          var marg = outEv - CONST.FUSION_COST - 2 * uOpp;
+          if (marg > bestMarg) { bestMarg = marg; bestUc = uc; }
+        }
+        sf[oc] = bestMarg > openEv;
+        pick[oc] = bestUc;
       }
-      rSf[rc] = bestMarg > rareEv;
-      rUc[rc] = bestUc;
+      return { sf: sf, uc: pick };
     }
-    return { uc: ucSf, rare: rSf, rareUcCost: rUc, fuseEvByCost: fuseEvByCost };
+    var fuseEvByCost = outEvByCost(RARE_FUSE);
+    var epicEvByCost = outEvByCost(EPIC_FUSE);
+    var rare = plusTwoUc("rare", fuseEvByCost);
+    var epic = plusTwoUc("epic", epicEvByCost);
+    return {
+      uc: ucSf, rare: rare.sf, rareUcCost: rare.uc, fuseEvByCost: fuseEvByCost,
+      epic: epic.sf, epicUcCost: epic.uc, epicEvByCost: epicEvByCost
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -669,8 +704,42 @@
       for (var cr2 = 0; cr2 < COSTS.length; cr2++) pgb(trr * CONST.COST_MIX[COSTS[cr2]], "rare", COSTS[cr2]);
     }
 
-    // Epic processing (never fused pre-cut)
-    for (var ce2 = 0; ce2 < COSTS.length; ce2++) pgb(tep * CONST.COST_MIX[COSTS[ce2]], "epic", COSTS[ce2]);
+    // Epic processing (with pre-cut fuse where decided — the cost-steer play)
+    if (fd.epic && (fd.epic[8] || fd.epic[9] || fd.epic[10])) {
+      var eToFuse = { 8: 0, 9: 0, 10: 0 };
+      for (var ce2 = 0; ce2 < COSTS.length; ce2++) {
+        var c4 = COSTS[ce2], cnt4 = tep * CONST.COST_MIX[c4];
+        if (fd.epic[c4]) {
+          var bd4 = ba["epic_" + c4];
+          for (var bi4 = 0; bi4 < BUCKETS.length; bi4++) {
+            var r4 = bd4[BUCKETS[bi4]]; if (!r4) continue;
+            var b4 = cnt4 * BW[BUCKETS[bi4]] / BW_TOTAL;
+            at += b4 * (r4.pAbove || 0);
+            cg += b4 * (r4.expSpend || 0);
+            eToFuse[c4] += b4 * (1 - (r4.pAbove || 0));
+          }
+        } else {
+          pgb(cnt4, "epic", c4);
+        }
+      }
+      for (var cec = 0; cec < COSTS.length; cec++) {
+        var ecst = COSTS[cec], nfe = eToFuse[ecst];
+        if (nfe <= 0) continue;
+        var eucc = fd.epicUcCost[ecst];
+        fg += nfe * CONST.FUSION_COST;
+        var eCostDist = (ecst === eucc) ? [[ecst, 1.0]] : [[ecst, 1 / 3], [eucc, 2 / 3]];
+        for (var rr4 = 0; rr4 < RARITIES.length; rr4++) {
+          var orar4 = RARITIES[rr4], rate4 = EPIC_FUSE[orar4];
+          for (var cdix2 = 0; cdix2 < eCostDist.length; cdix2++) {
+            var oc2 = eCostDist[cdix2][0], cprob2 = eCostDist[cdix2][1];
+            pgb(nfe * rate4 * cprob2 * 0.5, orar4, oc2);
+            pgb(nfe * rate4 * cprob2 * 0.5, orar4, oc2);
+          }
+        }
+      }
+    } else {
+      for (var ce3 = 0; ce3 < COSTS.length; ce3++) pgb(tep * CONST.COST_MIX[COSTS[ce3]], "epic", COSTS[ce3]);
+    }
 
     // post-cut L/R/A fusion: A+2L -> R+2L -> 3L
     var ha = fusionHit(bl, FUSE_A2L), hr = fusionHit(bl, FUSE_R2L), hl = fusionHit(bl, FUSE_3L);
@@ -772,11 +841,10 @@
       var verdictTxt = win > 0
         ? '<b class="pt-win">Fuse wins</b> by ' + fmtGold(Math.abs(win))
         : '<b class="pt-win pt-open">Open wins</b> by ' + fmtGold(Math.abs(win));
-      var steerTxt = (rarity === "epic")
-        ? '<span class="pt-dim">Epic — never fused</span>'
-        : (rarity === "uncommon")
-          ? 'fuse as 3× <b>' + cost + '-cost</b> Uncommon (cost held)'
-          : 'fuse + 2× <b>' + (steerCost || cost) + '-cost</b> Uncommon';
+      var steerTxt = (rarity === "uncommon")
+        ? 'fuse as 3× <b>' + cost + '-cost</b> Uncommon (cost held)'
+        : 'fuse + 2× <b>' + (steerCost || cost) + '-cost</b> Uncommon'
+          + (rarity === "epic" ? '<span class="pt-dim"> (steers the cost; 0.26 stays Epic)</span>' : '');
       fuseBlock = '<div class="pt-sec"><div class="pt-sec-h">Block fusion decision (NRB)</div>'
         + '<div class="pt-fuse-grid">'
         + '<span class="pt-k">Steer cost</span><span class="pt-v">' + steerTxt + '</span>'
@@ -1521,7 +1589,10 @@
   //   Rare block     -> fuse as this Rare + 2× Uncommon, the 2 Uncommons steered toward
   //                     `addCost` (= the fixed point's steer cost, the same cost the
   //                     tab's hover tip names) so the output cost is pushed there.
-  //   Epic           -> never fuses.
+  //   Epic block     -> same shape (Epic + 2× Uncommon), steered by the epic lane's own
+  //                     argmax. It gives back only 0.26 Epic, so it wins only where the
+  //                     steered cost is worth more than opening — mostly KR, where a
+  //                     tradable epic has a floor sale value that rises with cost.
   // These are Uncommon / Rare / Epic (the UNOPENED rarities), NOT the finished-gem
   // Legendary/Relic/Ancient processed-fusion tiers — do not conflate the two.
   // The Grader renders this as "fuse + 2× <addCost>-cost Uncommon" (the 2 you add).
@@ -1578,7 +1649,7 @@
           var ov = gev(rarity, cost, bl, gpd, roster);   // 1:2:2:1-weighted open value
           // Block fuse — EXACTLY gemCell's test: the block's fixed-point fuse value
           // beats the plain (unclamped) 1:2:2:1 mean of its 4 bucket cut-EVs, all 4
-          // present. Epic never fuses (fuseA.epic is all null); RB never fuses (uf null).
+          // present. RB never fuses (uf null, so f3 stays null).
           var f3 = fuseA && fuseA[rarity] ? fuseA[rarity][cost] : null;
           var blockFuse = false;
           if (f3 != null) {
@@ -1613,10 +1684,11 @@
             // addCost = the cost of the 2 Uncommons you ADD. A UC fuse holds its own
             // cost; a Rare fuse steers its 2 added Uncommons toward the fixed point's
             // best output cost (uf.steer — the cost the tab's hover tip names too).
-            addCost = (rarity === "uncommon") ? cost : ((steer && steer.rare && steer.rare[cost] != null) ? steer.rare[cost] : cost);
+            var lane = steer && steer[rarity];
+            addCost = (rarity === "uncommon") ? cost : ((lane && lane[cost] != null) ? lane[cost] : cost);
             recipe = (rarity === "uncommon")
               ? ("3× " + cost + "-cost Uncommon")
-              : (cost + "-cost Rare + 2× " + addCost + "-cost Uncommon");
+              : (cost + "-cost " + RARITY_LABEL[rarity] + " + 2× " + addCost + "-cost Uncommon");
           } else if (allAgree) {
             verdict = agreeRef;   // every bucket shares one verdict -> use it
           } else {
