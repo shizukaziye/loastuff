@@ -135,7 +135,7 @@
   // deploy bumped the pin but not the constant, so the DEPLOYED file told every
   // fresh load it was outdated and no reload could clear it; the runtime
   // derivation is what makes that class impossible now).
-  var CLIENT_V = 95;
+  var CLIENT_V = 96;
   try {
     var _pinM = ((document.currentScript && document.currentScript.src) || "")
       .match(/advisor\.js\?v=(\d+)/);
@@ -1228,6 +1228,14 @@
     };
     window.AdvisorSetup.init($("av-setup"), { onChange: onAnyEdit });
     window.AdvisorWindow.init($("av-window"), { onChange: onAnyEdit, onApplied: onOutcomeApplied });
+    // advisor-window.js keeps ONE state per host element, and the Grader's
+    // "Custom input" mode mounts the same component in its own tab. Whichever
+    // window is on screen has to claim the component, so re-init on every
+    // activation of this tab — it restores our gem, it does not reset it.
+    document.addEventListener("tabselected", function (ev) {
+      if (ev && ev.detail && ev.detail.tab === "advisor" && $("av-window"))
+        window.AdvisorWindow.init($("av-window"), { onChange: onAnyEdit, onApplied: onOutcomeApplied });
+    });
     renderEngines();
     renderShareBar();
 

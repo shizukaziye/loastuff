@@ -42,7 +42,9 @@ advisor.js          Advisor tab controller: screenshot/screen-share intake, auto
                     pair table), parse-collection shipping.
 advisor-setup.js    Advisor "who/market" panel (roster search, axis, gpd, baseline).
 advisor-window.js   The in-game Processing-window lookalike input form (tap-to-edit,
-                    amber "confirm me" flags, Process ▸ turn-advance).
+                    amber "confirm me" flags, Process ▸ turn-advance). ALSO the
+                    Grader's "Custom input" form, mounted with gemOnly:true —
+                    one state per host element, so the two never collide.
 leaderboard.js      Leaderboard tab: every cached character ranked by total damage.
 loadout-econ.js     Shared baseline/gpd economics + character-fetch glue.
 favorites.js / gate.js / bible-import.js

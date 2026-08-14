@@ -6,8 +6,13 @@
  *   grade (0-100)  ·  letter rank (S/A/B/C/D/F with +/-)  ·  exact % damage.
  *
  * Input modes:
- *   1. Custom — a live form (cost / type / willpower / order / 2 effects + levels,
- *      the effect dropdowns filtered to the cost's pool). Grades on every change.
+ *   1. Custom — the ADVISOR'S in-game-lookalike gem window (advisor-window.js) in
+ *      its gem-only dress: same wheel, same tap-to-edit, minus everything that
+ *      belongs to a live cut (rarity, reset, outcomes, rerolls, cost/Process).
+ *      Grades on every change. That component keeps one state PER HOST element,
+ *      so this mount and the Advisor's never clobber each other; it is loaded on
+ *      demand using the pin from index.html's LAZY_TABS.advisor, the only place
+ *      that pin lives.
  *   2. From screenshot — drop a screenshot of the in-game Ark Grid (Astrogem tab)
  *      and every gem in the list on the right is read, graded and ranked. Owned
  *      by gemlist.js, which fills #gr-body-shots and renders into #gr-result;
@@ -653,17 +658,9 @@
 
 // --- custom mode ---
 '    <div class="gr-modebody" id="gr-body-custom" style="display:none">' +
-'      <div class="ig">' +
-'        <div class="fld"><label>Base cost</label><select id="gr-cost">' + opts([8, 9, 10], 10) + '</select></div>' +
-'        <div class="fld"><label>Gem type</label><select id="gr-type">' + opts([{ v: "order", t: "Order" }, { v: "chaos", t: "Chaos" }], "order") + '</select></div>' +
-'        <div class="fld"><label>Willpower Lv</label><select id="gr-wp">' + opts([1, 2, 3, 4, 5], 5) + '</select></div>' +
-'        <div class="fld"><label>Order Lv</label><select id="gr-ord">' + opts([1, 2, 3, 4, 5], 5) + '</select></div>' +
-'        <div class="fld"><label>Effect 1</label><select id="gr-e1"></select></div>' +
-'        <div class="fld"><label>Effect 1 Lv</label><select id="gr-e1l">' + opts([1, 2, 3, 4, 5], 5) + '</select></div>' +
-'        <div class="fld"><label>Effect 2</label><select id="gr-e2"></select></div>' +
-'        <div class="fld"><label>Effect 2 Lv</label><select id="gr-e2l">' + opts([1, 2, 3, 4, 5], 5) + '</select></div>' +
-'      </div>' +
-'      <div class="note">Willpower cost = base cost &minus; willpower level (lower is better). Effect 1 and Effect 2 must differ; the dropdowns are filtered to this cost’s pool.</div>' +
+'      <div id="gr-gemwin"></div>' +
+'      <div class="gr-status" id="gr-custom-status"></div>' +
+'      <div class="note">Tap any part of the gem to change it &mdash; the base cost, the Order/Chaos name, a diamond to swap that effect, or its gold number to set the level. <b>Astrogem Points</b> is the four levels summed; check it against the number the game shows. Willpower cost = base cost &minus; willpower level, and lower is better.</div>' +
 '    </div>' +
 
 // --- screenshot mode: gemlist.js owns everything inside this body (and renders its
@@ -734,33 +731,48 @@
   }
 
   // ---------------- custom mode ----------------
-  function refillCustomEffects(preferE1, preferE2) {
-    var bc = parseInt($("gr-cost").value, 10) || 10;
-    var list = availableEffects(bc);
-    [["gr-e1", preferE1], ["gr-e2", preferE2]].forEach(function (pair) {
-      var sel = $(pair[0]);
-      var prev = pair[1] || sel.value;
-      sel.innerHTML = list.map(function (e) { return '<option value="' + esc(e) + '">' + esc(e) + "</option>"; }).join("");
-      if (list.indexOf(prev) !== -1) sel.value = prev;
-    });
-    // keep effect1 != effect2
-    if ($("gr-e1").value === $("gr-e2").value && list.length > 1) {
-      var alt = list.filter(function (e) { return e !== $("gr-e1").value; })[0];
-      if (alt) $("gr-e2").value = alt;
-    }
+  // The form IS the Advisor's in-game-lookalike gem window (advisor-window.js) in
+  // its gem-only dress: same wheel, same tap-to-edit, minus everything that belongs
+  // to a live cut. It lazy-loads on first use, taking its ?v= pin straight out of
+  // index.html's LAZY_TABS.advisor so the Grader and the Advisor can never end up
+  // asking for two different builds of the same file.
+  var gemWinState = 0;   // 0 = untouched, 1 = loading, 2 = ready, 3 = failed
+  function gemWinSrc() {
+    var list = (typeof window !== "undefined" && window.LAZY_TABS && window.LAZY_TABS.advisor) || [];
+    for (var i = 0; i < list.length; i++) if (/^advisor-window\.js/.test(list[i])) return list[i];
+    return "advisor-window.js";   // lint-pins guards against ever needing this
+  }
+  function setCustomStatus(msg, cls) {
+    var el = $("gr-custom-status");
+    if (el) { el.textContent = msg || ""; el.className = "gr-status" + (cls ? " " + cls : ""); }
+  }
+  function ensureGemWindow(cb) {
+    if (window.AdvisorWindow) { gemWinState = 2; return cb(true); }
+    if (gemWinState === 3) return cb(false);
+    if (gemWinState === 1) return;                       // a load is already in flight
+    gemWinState = 1;
+    setCustomStatus("Loading the gem editor…", "working");
+    var sc = document.createElement("script");
+    sc.src = gemWinSrc();
+    sc.onload = function () {
+      // tell index.html's lazy loader not to fetch it again when the Advisor
+      // tab opens — re-running the file would reset the component
+      if (window.loadedScripts) window.loadedScripts[sc.getAttribute("src")] = 1;
+      gemWinState = window.AdvisorWindow ? 2 : 3;
+      setCustomStatus(gemWinState === 2 ? "" : "The gem editor failed to load. Reload the page.", gemWinState === 2 ? "" : "err");
+      cb(gemWinState === 2);
+    };
+    sc.onerror = function () {
+      gemWinState = 3;
+      setCustomStatus("The gem editor failed to load. Reload the page.", "err");
+      cb(false);
+    };
+    document.body.appendChild(sc);
   }
 
   function readCustomConfig() {
-    return {
-      baseCost: parseInt($("gr-cost").value, 10),
-      gemType: $("gr-type").value,
-      willpowerLevel: parseInt($("gr-wp").value, 10),
-      orderLevel: parseInt($("gr-ord").value, 10),
-      effect1: $("gr-e1").value,
-      effect1Level: parseInt($("gr-e1l").value, 10),
-      effect2: $("gr-e2").value,
-      effect2Level: parseInt($("gr-e2l").value, 10)
-    };
+    if (!window.AdvisorWindow) return null;
+    return window.AdvisorWindow.getState().config;
   }
 
   // Build the big single-gem headline (badge + % damage + bar).
@@ -785,10 +797,31 @@
 '</div>';
   }
 
+  // Mount (or re-mount) the gem window into this tab's host and grade what it holds.
+  // init() is called on EVERY activation on purpose: it parks the Advisor's own gem
+  // and restores ours, so the two mounts never share a state.
   function renderCustom() {
-    refillCustomEffects();
-    var cfg = readCustomConfig();
     var out = $("gr-result");
+    ensureGemWindow(function (ok) {
+      if (!ok) {
+        out.innerHTML = '<div class="panel"><div class="gr-status err">The gem editor failed to load — reload the page.</div></div>';
+        return;
+      }
+      window.AdvisorWindow.init($("gr-gemwin"), {
+        gemOnly: true, title: "Gem", onChange: gradeCustom,
+        // Seeds a fresh mount only — the same perfect 10-cost the old dropdown
+        // form opened on, so people land on a gem worth looking at rather than
+        // the all-level-1 gem the Advisor starts a cut from.
+        initial: { baseCost: 10, gemType: "order", willpowerLevel: 5, orderLevel: 5,
+          effect1: "Boss Damage", effect1Level: 5, effect2: "Additional Damage", effect2Level: 5 }
+      });
+      gradeCustom();
+    });
+  }
+  function gradeCustom() {
+    var out = $("gr-result");
+    var cfg = readCustomConfig();
+    if (!cfg) return;
     var v = validateConfig(cfg);
     if (!v.valid) {
       out.innerHTML = '<div class="panel"><div class="gr-status err">' + esc(v.error || "Invalid gem.") + '</div></div>';
@@ -2214,16 +2247,6 @@ presetToggleHtml(data) +
 
     // region change -> update the Re-pull label + source note to match the site
     if ($("gr-region")) $("gr-region").addEventListener("change", function () { syncSourceUI(this.value); });
-
-    // custom mode: build effect lists, grade on every change
-    refillCustomEffects("Boss Damage", "Additional Damage");
-    var liveIds = ["gr-cost", "gr-type", "gr-wp", "gr-ord", "gr-e1", "gr-e1l", "gr-e2", "gr-e2l"];
-    liveIds.forEach(function (id) {
-      $(id).addEventListener("change", function () {
-        if (id === "gr-cost") refillCustomEffects(); // re-filter pools, keep what carries over
-        renderCustom();
-      });
-    });
 
     // mode buttons
     $("gr-mode-custom").addEventListener("click", function () { selectMode("custom"); });

@@ -17,8 +17,18 @@
  * parsed.confidence < 0.8 get a pulsing "confirm me" highlight that clears on tap or
  * edit (see the confidence contract in ocr/engine.js constraintSnap).
  *
+ * TWO MOUNTS. The Advisor shows the whole window; the Grader's "Custom input"
+ * mode shows the same component with `gemOnly: true`, which drops rarity, the
+ * reset pill, the four outcomes, rerolls and the cost/Process footer and leaves
+ * the base cost, the Order/Chaos name, the points checksum and the wheel — the
+ * exact set of fields a finished gem's grade depends on. State is kept PER HOST
+ * ELEMENT so opening one never wipes a cut in progress in the other, and the
+ * file no-ops if it is loaded twice (both loaders ask for the same pinned url).
+ * Whoever puts their window on screen calls init() again to claim the component.
+ * CSS is scoped to `.pw-host`, a class init() adds to whatever host it is given.
+ *
  * API (window.AdvisorWindow):
- *   init(hostEl, { onChange })
+ *   init(hostEl, { onChange, onApplied, gemOnly, title, initial })
  *   getState() -> the exact advisor `state` shape (rosterBound left false; the
  *                 caller owns that toggle):
  *     { config, currentTurn, maxTurns, rerollsRemaining, processCost,
@@ -30,6 +40,14 @@
  */
 (function (root) {
   "use strict";
+
+  // IDEMPOTENT LOAD. Two places pull this file in: the Advisor tab's LAZY_TABS
+  // list, and the Grader's "Custom input" mode, which injects it on demand.
+  // Whichever is second would otherwise re-run this IIFE, reset `hosts` and hand
+  // out a fresh window — silently throwing away a cut in progress in the other
+  // tab. Both ask for the SAME pinned url (lint-pins enforces it), so the module
+  // already in memory is the same build: keep it.
+  if (root.AdvisorWindow) return;
 
   var A = root.Astrogem || root;
   var RARITY = A.RARITY || { uncommon: { maxTurns: 5, maxRerolls: 1 }, rare: { maxTurns: 7, maxRerolls: 2 }, epic: { maxTurns: 9, maxRerolls: 3 } };
@@ -57,19 +75,41 @@
   var RARITY_COLOR = { epic: "#b06fe0", rare: "#4f9be0", uncommon: "#5aae4a" };
 
   // ---- state ----
+  // ONE WINDOW PER HOST ELEMENT. Two places mount this component — the Advisor,
+  // and the Grader's "Custom input" mode in gem-only dress — and they live in
+  // different tabs. A single shared `win` would mean opening the Grader wiped a
+  // cut in progress in the Advisor, so each host keeps its own and whoever shows
+  // their window calls init() again to make theirs the active one. Only one host
+  // is ever visible, so the inactive one's handlers can't be reached.
   var host = null, onChangeCb = null, onAppliedCb = null;
-  var win = {
-    rarity: "epic",
-    config: { baseCost: 9, gemType: "chaos", willpowerLevel: 1, orderLevel: 1,
-      effect1: "Attack Power", effect1Level: 1, effect2: "Boss Damage", effect2Level: 1 },
-    currentTurn: 1,
-    rerollsRemaining: 3,          // MODEL units (incl. the paid final reroll)
-    resetsRemaining: 1,           // the in-game "Reset (x/1)" counter; undefined = unknown
-    costMult: 0,
-    outcomes: [{ type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }],
-    unconfirmed: {}               // key -> 1 (e.g. "config.effect1", "outcomes.2", "state.rerollsRemaining")
-  };
+  var view = { gemOnly: false, title: "Processing" };
+  var hosts = [];                 // [{ host, win, view, lastApply }]
+  function freshWin() {
+    return {
+      rarity: "epic",
+      config: { baseCost: 9, gemType: "chaos", willpowerLevel: 1, orderLevel: 1,
+        effect1: "Attack Power", effect1Level: 1, effect2: "Boss Damage", effect2Level: 1 },
+      currentTurn: 1,
+      rerollsRemaining: 3,          // MODEL units (incl. the paid final reroll)
+      resetsRemaining: 1,           // the in-game "Reset (x/1)" counter; undefined = unknown
+      costMult: 0,
+      outcomes: [{ type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }, { type: "do_nothing" }],
+      unconfirmed: {}               // key -> 1 (e.g. "config.effect1", "outcomes.2", "state.rerollsRemaining")
+    };
+  }
+  var win = freshWin();
+  function hostRec(el) {
+    for (var i = 0; i < hosts.length; i++) if (hosts[i].host === el) return hosts[i];
+    return null;
+  }
+  // Park the live state back on its own host. undoApply REPLACES `win` wholesale,
+  // so the record has to be rewritten, not assumed to alias.
+  function stashActive() {
+    var rec = hostRec(host);
+    if (rec) { rec.win = win; rec.view = view; rec.lastApply = lastApply; }
+  }
   var pop = null;                 // open popover descriptor
+  var lastApply = null;           // pre-apply snapshot for undo (per host, see stashActive)
 
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function maxTurns() { return (RARITY[win.rarity] || RARITY.epic).maxTurns; }
@@ -184,85 +224,97 @@
   }
 
   // ---- styles ----
+  // The stylesheet goes into <head> ONCE. It used to be part of every host's
+  // innerHTML, which was fine with a single mount and would now put two elements
+  // with the same id on the page.
+  var styleInjected = false;
+  function injectStyle() {
+    if (styleInjected || typeof document === "undefined") return;
+    styleInjected = true;
+    var d = document.createElement("div");
+    d.innerHTML = css();
+    var el = d.firstChild;
+    if (el) document.head.appendChild(el);
+  }
   function css() {
     return '<style id="pw-style">' +
       // Rarity + base cost live INSIDE the frame now (redesign 2026-07-21): they are
       // parsed fields like everything else in the window, so they sit with the window
       // and inherit the same low-confidence glow (group-level pw-unconfirmed).
-      '#av-window .pw-metabar{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 0 10px;padding:7px 8px;background:rgba(8,11,18,.55);border:1px solid #232a38;border-radius:9px;font-family:system-ui,sans-serif}' +
+      '.pw-host .pw-metabar{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 0 10px;padding:7px 8px;background:rgba(8,11,18,.55);border:1px solid #232a38;border-radius:9px;font-family:system-ui,sans-serif}' +
       // groups wrap as units — a lone "10" chip orphaned on its own line reads badly
-      '#av-window .pw-metabar .grp{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;border-radius:8px}' +
-      '#av-window .pw-metabar .lab{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8a93a5;font-weight:700}' +
-      '#av-window .pw-metabar .mbtn{padding:4px 9px;font-size:12px}' +
-      '#av-window .pw-frame{position:relative;max-width:420px;margin:0 auto;background:linear-gradient(180deg,#131a29 0%,#0e1420 100%);border:1px solid var(--border);outline:1px solid #39414f;outline-offset:-4px;border-radius:12px;padding:16px 14px 14px;font-family:Georgia,"Times New Roman",serif;color:#e7e9ee;box-shadow:0 10px 30px rgba(0,0,0,.45)}' +
-      '#av-window .pw-title{text-align:center;font-size:22px;letter-spacing:.08em;color:#f5f7fb;margin:0 0 10px}' +
-      '#av-window .pw-head{text-align:center}' +
-      '#av-window button{font-family:inherit}' +
-      '#av-window .pw-btnreset{background:none;border:0;padding:0;cursor:pointer;color:inherit}' +
-      '#av-window .pw-gemname{display:block;margin:6px auto 2px;font-size:17px;background:none;border:0;cursor:pointer}' +
-      '#av-window .pw-points{font-size:13px;color:#e7e9ee}' +
-      '#av-window .pw-points .q{display:inline-flex;width:15px;height:15px;border-radius:50%;background:#2b8f7c;color:#dff6ef;font-size:10px;align-items:center;justify-content:center;margin-left:5px;font-family:sans-serif;cursor:help}' +
-      '#av-window .pw-resetpill{display:block;margin:9px auto;background:#3a3f4a;border:1px solid #4a5160;border-radius:7px;color:#b9bfca;font-size:13px;padding:5px 0;width:72%;text-align:center;cursor:pointer;font-family:inherit}' +
-      '#av-window .pw-resetpill:hover{border-color:#66c7ff}' +
-      '#av-window .pw-wheel{position:relative;width:300px;height:286px;margin:4px auto}' +
-      '#av-window .pw-node{position:absolute;width:96px;background:none;border:0;cursor:pointer;color:#f2f4f8;text-align:center;padding:0}' +
-      '#av-window .pw-node .nm{display:block;font-size:12px;line-height:1.15;text-shadow:0 1px 3px #000;margin-top:2px}' +
+      '.pw-host .pw-metabar .grp{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;border-radius:8px}' +
+      '.pw-host .pw-metabar .lab{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8a93a5;font-weight:700}' +
+      '.pw-host .pw-metabar .mbtn{padding:4px 9px;font-size:12px}' +
+      '.pw-host .pw-frame{position:relative;max-width:420px;margin:0 auto;background:linear-gradient(180deg,#131a29 0%,#0e1420 100%);border:1px solid var(--border);outline:1px solid #39414f;outline-offset:-4px;border-radius:12px;padding:16px 14px 14px;font-family:Georgia,"Times New Roman",serif;color:#e7e9ee;box-shadow:0 10px 30px rgba(0,0,0,.45)}' +
+      '.pw-host .pw-title{text-align:center;font-size:22px;letter-spacing:.08em;color:#f5f7fb;margin:0 0 10px}' +
+      '.pw-host .pw-head{text-align:center}' +
+      '.pw-host button{font-family:inherit}' +
+      '.pw-host .pw-btnreset{background:none;border:0;padding:0;cursor:pointer;color:inherit}' +
+      '.pw-host .pw-gemname{display:block;margin:6px auto 2px;font-size:17px;background:none;border:0;cursor:pointer}' +
+      '.pw-host .pw-points{font-size:13px;color:#e7e9ee}' +
+      '.pw-host .pw-points .q{display:inline-flex;width:15px;height:15px;border-radius:50%;background:#2b8f7c;color:#dff6ef;font-size:10px;align-items:center;justify-content:center;margin-left:5px;font-family:sans-serif;cursor:help}' +
+      '.pw-host .pw-resetpill{display:block;margin:9px auto;background:#3a3f4a;border:1px solid #4a5160;border-radius:7px;color:#b9bfca;font-size:13px;padding:5px 0;width:72%;text-align:center;cursor:pointer;font-family:inherit}' +
+      '.pw-host .pw-resetpill:hover{border-color:#66c7ff}' +
+      '.pw-host .pw-wheel{position:relative;width:300px;height:286px;margin:4px auto}' +
+      '.pw-host .pw-node{position:absolute;width:96px;background:none;border:0;cursor:pointer;color:#f2f4f8;text-align:center;padding:0}' +
+      '.pw-host .pw-node .nm{display:block;font-size:12px;line-height:1.15;text-shadow:0 1px 3px #000;margin-top:2px}' +
       // display:table + margin auto: the badge shrink-wraps on its OWN centered line —
       // inline-block let short names ("Chaos Points") pull it beside them instead.
       // Explicit dark background: a bare <button> otherwise renders the UA's white
       // chrome, which drowns the gold digits.
-      '#av-window .pw-node .lv{display:table;margin:2px auto 0;background:rgba(8,11,18,.72);border:1px solid rgba(242,201,76,.45);color:#f2c94c;font-size:13px;font-weight:700;padding:0 7px;border-radius:5px;cursor:pointer;text-shadow:0 1px 2px #000}' +
-      '#av-window .pw-node .lv:hover{background:rgba(242,201,76,.2);border-color:#f2c94c}' +
-      '#av-window .pw-dial{position:absolute;inset:0;pointer-events:none;opacity:.10}' +
-      '#av-window .pw-divider{border:0;border-top:1px solid #39414f;margin:8px 0 6px}' +
-      '#av-window .pw-hint{text-align:center;color:#d7dbe4;font-size:13px;margin:2px 0 8px}' +
-      '#av-window .pw-outcomes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 56px;gap:6px;align-items:stretch}' +
-      '#av-window .pw-rerollpill{align-self:start}' +
-      '#av-window .pw-orow{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;color:#e7e9ee;text-align:center;font-size:11.5px;line-height:1.25;padding:4px 2px;display:flex;flex-direction:column;align-items:center}' +
-      '#av-window .pw-orow .cap{display:block}' +
-      '#av-window .pw-orow:hover{border-color:#39414f;background:rgba(102,199,255,.05)}' +
-      '#av-window .pw-orow .ic{display:block;margin:0 auto 2px;width:22px;height:22px}' +
+      '.pw-host .pw-node .lv{display:table;margin:2px auto 0;background:rgba(8,11,18,.72);border:1px solid rgba(242,201,76,.45);color:#f2c94c;font-size:13px;font-weight:700;padding:0 7px;border-radius:5px;cursor:pointer;text-shadow:0 1px 2px #000}' +
+      '.pw-host .pw-node .lv:hover{background:rgba(242,201,76,.2);border-color:#f2c94c}' +
+      '.pw-host .pw-dial{position:absolute;inset:0;pointer-events:none;opacity:.10}' +
+      '.pw-host .pw-divider{border:0;border-top:1px solid #39414f;margin:8px 0 6px}' +
+      '.pw-host .pw-hint{text-align:center;color:#d7dbe4;font-size:13px;margin:2px 0 8px}' +
+      '.pw-host .pw-outcomes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 56px;gap:6px;align-items:stretch}' +
+      '.pw-host .pw-rerollpill{align-self:start}' +
+      '.pw-host .pw-orow{background:none;border:1px solid transparent;border-radius:8px;cursor:pointer;color:#e7e9ee;text-align:center;font-size:11.5px;line-height:1.25;padding:4px 2px;display:flex;flex-direction:column;align-items:center}' +
+      '.pw-host .pw-orow .cap{display:block}' +
+      '.pw-host .pw-orow:hover{border-color:#39414f;background:rgba(102,199,255,.05)}' +
+      '.pw-host .pw-orow .ic{display:block;margin:0 auto 2px;width:22px;height:22px}' +
       // Score preview: pinned to a shared bottom row (flex column + margin-top:auto,
       // stretched grid items) so the four previews align whatever the caption height.
-      '#av-window .pw-orow .pw-oscore{display:block;margin-top:auto;padding-top:3px;font-size:10.5px;font-variant-numeric:tabular-nums;color:#8b93a7}' +
-      '#av-window .pw-orow .pw-oscore .rk{display:inline-block;min-width:15px;padding:0 4px;border-radius:99px;font-weight:800;font-size:10px;line-height:1.5;font-style:normal}' +
-      '#av-window .pw-up{color:#5fc94f}#av-window .pw-dn{color:#e0533f}' +
-      '#av-window .pw-sub2{color:#c8cdd8;font-size:10.5px}' +
-      '#av-window .pw-dim{color:#8a93a5;font-style:italic}' +
-      '#av-window .pw-rerollpill{align-self:center;display:inline-flex;gap:5px;align-items:center;background:#2c3240;border:1px solid #454c5c;border-radius:8px;color:#e7e9ee;font-size:13px;padding:5px 8px;cursor:pointer;font-variant-numeric:tabular-nums}' +
+      '.pw-host .pw-orow .pw-oscore{display:block;margin-top:auto;padding-top:3px;font-size:10.5px;font-variant-numeric:tabular-nums;color:#8b93a7}' +
+      '.pw-host .pw-orow .pw-oscore .rk{display:inline-block;min-width:15px;padding:0 4px;border-radius:99px;font-weight:800;font-size:10px;line-height:1.5;font-style:normal}' +
+      '.pw-host .pw-up{color:#5fc94f}.pw-host .pw-dn{color:#e0533f}' +
+      '.pw-host .pw-sub2{color:#c8cdd8;font-size:10.5px}' +
+      '.pw-host .pw-dim{color:#8a93a5;font-style:italic}' +
+      '.pw-host .pw-rerollpill{align-self:center;display:inline-flex;gap:5px;align-items:center;background:#2c3240;border:1px solid #454c5c;border-radius:8px;color:#e7e9ee;font-size:13px;padding:5px 8px;cursor:pointer;font-variant-numeric:tabular-nums}' +
       // turn 1: the game shows the counter greyed out (reroll locked until one process)
-      '#av-window .pw-rerollpill.pw-pill-off{opacity:.45}' +
-      '#av-window .pw-footer{margin-top:10px;font-size:14px}' +
-      '#av-window .pw-frow{display:flex;justify-content:space-between;align-items:center;padding:4px 2px;border-top:1px solid #232a38}' +
-      '#av-window .pw-frow .v{display:inline-flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}' +
-      '#av-window .pw-frow button.v{background:none;border:0;color:#fff;font-size:14px;cursor:pointer;border-radius:6px;padding:2px 6px}' +
-      '#av-window .pw-frow button.v:hover{background:rgba(102,199,255,.1)}' +
-      '#av-window .pw-balance{color:#b9a7e6}' +
-      '#av-window .pw-turnnote{font-size:12px;color:#97a0b4;margin:6px 0 2px;text-align:center}' +
-      '#av-window .pw-turnnote b{color:#e0a83f;font-weight:600}' +
-      '#av-window .pw-buttons{display:flex;gap:8px;margin-top:8px}' +
-      '#av-window .pw-buttons .bc{flex:1;background:#2b313d;border:1px solid #3a4150;border-radius:7px;color:#aab1bd;font-size:14px;padding:9px 0;text-align:center}' +
-      '#av-window .pw-buttons .bp{flex:1;background:#39414f;border:1px solid #4a5468;border-radius:7px;color:#fff;font-size:14px;padding:9px 0;text-align:center;cursor:pointer}' +
-      '#av-window .pw-buttons .bp:hover{background:#414b5c}' +
+      '.pw-host .pw-rerollpill.pw-pill-off{opacity:.45}' +
+      '.pw-host .pw-footer{margin-top:10px;font-size:14px}' +
+      '.pw-host .pw-frow{display:flex;justify-content:space-between;align-items:center;padding:4px 2px;border-top:1px solid #232a38}' +
+      '.pw-host .pw-frow .v{display:inline-flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}' +
+      '.pw-host .pw-frow button.v{background:none;border:0;color:#fff;font-size:14px;cursor:pointer;border-radius:6px;padding:2px 6px}' +
+      '.pw-host .pw-frow button.v:hover{background:rgba(102,199,255,.1)}' +
+      '.pw-host .pw-balance{color:#b9a7e6}' +
+      '.pw-host .pw-turnnote{font-size:12px;color:#97a0b4;margin:6px 0 2px;text-align:center}' +
+      '.pw-host .pw-turnnote b{color:#e0a83f;font-weight:600}' +
+      '.pw-host .pw-buttons{display:flex;gap:8px;margin-top:8px}' +
+      '.pw-host .pw-buttons .bc{flex:1;background:#2b313d;border:1px solid #3a4150;border-radius:7px;color:#aab1bd;font-size:14px;padding:9px 0;text-align:center}' +
+      '.pw-host .pw-buttons .bp{flex:1;background:#39414f;border:1px solid #4a5468;border-radius:7px;color:#fff;font-size:14px;padding:9px 0;text-align:center;cursor:pointer}' +
+      '.pw-host .pw-buttons .bp:hover{background:#414b5c}' +
       // confidence overlay
-      '#av-window .pw-unconfirmed{outline:2px solid #e8b84a;outline-offset:2px;border-radius:8px;animation:pwPulse 1.6s ease-in-out infinite;position:relative}' +
+      '.pw-host .pw-unconfirmed{outline:2px solid #e8b84a;outline-offset:2px;border-radius:8px;animation:pwPulse 1.6s ease-in-out infinite;position:relative}' +
       '@keyframes pwPulse{0%,100%{outline-color:#e8b84a}50%{outline-color:rgba(232,184,74,.25)}}' +
-      '#av-window .pw-confstrip{max-width:420px;margin:0 auto 8px;background:rgba(232,184,74,.12);border:1px solid #e8b84a;color:#f0d090;border-radius:8px;font-size:12.5px;padding:7px 11px}' +
+      '.pw-host .pw-confstrip{max-width:420px;margin:0 auto 8px;background:rgba(232,184,74,.12);border:1px solid #e8b84a;color:#f0d090;border-radius:8px;font-size:12.5px;padding:7px 11px}' +
       // popover
-      '#av-window .pw-pop{position:absolute;z-index:60;background:var(--panel2,#1b2030);border:1px solid var(--border,#2a3142);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.55);padding:10px;min-width:230px;font-family:inherit}' +
-      '#av-window .pw-pop h4{margin:0 0 7px;font-size:12px;color:var(--dim,#97a0b4);text-transform:uppercase;letter-spacing:.05em;font-family:sans-serif}' +
-      '#av-window .pw-pop .grp{margin-bottom:7px}' +
-      '#av-window .pw-pop .grp .gl{font-size:12px;margin-bottom:3px;display:flex;gap:6px;align-items:center}' +
-      '#av-window .pw-pop .opts{display:flex;gap:5px;flex-wrap:wrap}' +
-      '#av-window .pw-pop button.opt{background:var(--panel,#161a24);border:1px solid var(--border,#2a3142);border-radius:7px;color:var(--text,#e7e9ee);cursor:pointer;padding:6px 10px;font-size:13px;min-width:38px}' +
-      '#av-window .pw-pop button.opt:hover{border-color:var(--accent,#66c7ff)}' +
-      '#av-window .pw-pop button.opt.on{border-color:var(--accent,#66c7ff);background:rgba(102,199,255,.12)}' +
-      '#av-window .pw-pop button.opt:disabled{opacity:.3;cursor:default}' +
-      '#av-window .pw-pop .sw{display:inline-block;width:10px;height:10px;border-radius:3px}' +
-      '#av-window .pw-pop .pfoot{display:flex;justify-content:flex-end;margin-top:9px;padding-top:9px;border-top:1px solid var(--border,#2a3142)}' +
-      '#av-window .pw-pop button.papply{border-color:var(--accent,#66c7ff);color:var(--accent,#66c7ff);font-weight:700}' +
-      '#av-window .pw-pop button.papply:hover{background:rgba(102,199,255,.14)}' +
-      '@media (max-width:480px){#av-window .pw-pop{position:fixed;left:8px;right:8px;bottom:8px;min-width:0}}' +
+      '.pw-host .pw-pop{position:absolute;z-index:60;background:var(--panel2,#1b2030);border:1px solid var(--border,#2a3142);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.55);padding:10px;min-width:230px;font-family:inherit}' +
+      '.pw-host .pw-pop h4{margin:0 0 7px;font-size:12px;color:var(--dim,#97a0b4);text-transform:uppercase;letter-spacing:.05em;font-family:sans-serif}' +
+      '.pw-host .pw-pop .grp{margin-bottom:7px}' +
+      '.pw-host .pw-pop .grp .gl{font-size:12px;margin-bottom:3px;display:flex;gap:6px;align-items:center}' +
+      '.pw-host .pw-pop .opts{display:flex;gap:5px;flex-wrap:wrap}' +
+      '.pw-host .pw-pop button.opt{background:var(--panel,#161a24);border:1px solid var(--border,#2a3142);border-radius:7px;color:var(--text,#e7e9ee);cursor:pointer;padding:6px 10px;font-size:13px;min-width:38px}' +
+      '.pw-host .pw-pop button.opt:hover{border-color:var(--accent,#66c7ff)}' +
+      '.pw-host .pw-pop button.opt.on{border-color:var(--accent,#66c7ff);background:rgba(102,199,255,.12)}' +
+      '.pw-host .pw-pop button.opt:disabled{opacity:.3;cursor:default}' +
+      '.pw-host .pw-pop .sw{display:inline-block;width:10px;height:10px;border-radius:3px}' +
+      '.pw-host .pw-pop .pfoot{display:flex;justify-content:flex-end;margin-top:9px;padding-top:9px;border-top:1px solid var(--border,#2a3142)}' +
+      '.pw-host .pw-pop button.papply{border-color:var(--accent,#66c7ff);color:var(--accent,#66c7ff);font-weight:700}' +
+      '.pw-host .pw-pop button.papply:hover{background:rgba(102,199,255,.14)}' +
+      '@media (max-width:480px){.pw-host .pw-pop{position:fixed;left:8px;right:8px;bottom:8px;min-width:0}}' +
       '</style>';
   }
 
@@ -271,6 +323,7 @@
   function render() {
     if (!host) return;
     injectDefs();
+    injectStyle();
     normalize();
     var c = win.config;
     var N = maxTurns();
@@ -289,18 +342,20 @@
         '</div>';
     };
 
-    host.innerHTML = css() +
-      (unconfN ? '<div class="pw-confstrip">Parsed — <b>' + unconfN + '</b> field' + (unconfN > 1 ? "s" : "") + ' need a look; tap the highlighted ones to confirm.</div>' : "") +
+    var gemOnly = !!view.gemOnly;
+    host.innerHTML =
+      (unconfN && !gemOnly ? '<div class="pw-confstrip">Parsed — <b>' + unconfN + '</b> field' + (unconfN > 1 ? "s" : "") + ' need a look; tap the highlighted ones to confirm.</div>' : "") +
       '<div class="pw-frame" id="pw-frame">' +
-      '  <h3 class="pw-title">Processing</h3>' +
+      '  <h3 class="pw-title">' + esc(view.title || "Processing") + '</h3>' +
       // Rarity/base cost are PARSED fields — they live inside the frame with the
       // rest of the window and glow at group level when the parse is unsure
       // (rarity derives from maxTurns; see setParsed).
       '  <div class="pw-metabar">' +
+      (gemOnly ? "" :
       '  <span class="grp' + conf("state.maxTurns") + '"><span class="lab">Rarity</span>' +
       ["uncommon", "rare", "epic"].map(function (r) {
         return '<button type="button" class="mbtn' + (win.rarity === r ? " active" : "") + '" data-act="rarity" data-v="' + r + '">' + r.charAt(0).toUpperCase() + r.slice(1) + ' (' + RARITY[r].maxTurns + ')</button>';
-      }).join("") + '</span>' +
+      }).join("") + '</span>') +
       '  <span class="grp' + conf("config.baseCost") + '"><span class="lab">Base cost</span>' +
       [8, 9, 10].map(function (b) {
         return '<button type="button" class="mbtn' + (c.baseCost === b ? " active" : "") + '" data-act="basecost" data-v="' + b + '">' + b + '</button>';
@@ -312,8 +367,9 @@
       '    <button type="button" class="pw-gemname' + conf("config.gemType") + '" data-act="gemtype" style="color:' + (RARITY_COLOR[win.rarity] || "#b06fe0") + '" title="Click to switch Order/Chaos">' +
              esc(c.gemType === "chaos" ? "Chaos Astrogem" : "Order Astrogem") + '</button>' +
       '    <div class="pw-points">' + pointsSum() + ' Astrogem Points<span class="q" title="Derived: the four levels summed. Check it against the number the game shows — a mismatch means a transcription slip.">?</span></div>' +
+      (gemOnly ? "" :
       '    <button type="button" class="pw-resetpill' + conf("state.resetsRemaining") + '" data-act="reset" title="Reset — pay 20,000g to return the gem to a fresh unprocessed state. Click to set what the game currently shows.">' +
-             'Reset (' + (win.resetsRemaining === 0 ? 0 : 1) + '/1)</button>' +
+             'Reset (' + (win.resetsRemaining === 0 ? 0 : 1) + '/1)</button>') +
       '  </div>' +
       '  <div class="pw-wheel">' +
       '    <svg class="pw-dial" viewBox="0 0 300 270" aria-hidden="true">' +
@@ -326,6 +382,7 @@
       wheelNode("E", "slotE", c.effect2, "Lv. " + c.effect2Level, "effect2", "config.effect2", "config.effect2Level") +
       wheelNode("S", "points", (c.gemType === "chaos" ? "Chaos" : "Order") + " Points", c.orderLevel, "gemtype", "config.gemType2", "config.orderLevel") +
       '  </div>' +
+      (gemOnly ? "" :
       '  <hr class="pw-divider">' +
       '  <div class="pw-hint">One of the following is randomly applied.</div>' +
       '  <div class="pw-outcomes">' +
@@ -348,7 +405,7 @@
       '      <span class="bc">Processing Complete</span>' +
       '      <button type="button" class="bp' + conf("state.currentTurn") + (win.completed ? " pw-pill-off" : "") + '" data-act="turn"' + (win.completed ? ' title="Cut finished — tap to correct the turn"' : '') + '>Process (' + x + '/' + N + ')</button>' +
       '    </div>' +
-      '  </div>' +
+      '  </div>') +
       '</div>';
     wire();
   }
@@ -462,7 +519,6 @@
   // auto-resets), reroll_increase stacks, change_side_option keeps the level and only
   // swaps the name (the player is asked what it rolled into). Entry point: the
   // Process button in the outcome editor — never a bare row click.
-  var lastApply = null;   // pre-apply snapshot for undo
   function describeOutcome(o) {
     var amt = o.amount || 1;
     if (o.type === "raise_effect") return statDisplay(o.target) + " +" + amt + " ▲";
@@ -638,10 +694,33 @@
 
   // ---- public API ----
   var API = {
+    // init(hostEl, { onChange, onApplied, gemOnly, title })
+    // Call it EVERY time your window becomes visible, not just once: it parks the
+    // outgoing host's gem and restores this host's, so two mounts never share one
+    // state. `gemOnly` drops everything that belongs to a live cut — rarity, the
+    // reset pill, the four outcomes, rerolls and the cost/Process footer — leaving
+    // the base cost, the Order/Chaos name, the points checksum and the wheel. That
+    // is exactly the set of fields a finished gem's grade depends on.
     init: function (hostEl, opts) {
+      opts = opts || {};
+      if (host && host !== hostEl) stashActive();
       host = hostEl;
-      onChangeCb = (opts && opts.onChange) || null;
-      onAppliedCb = (opts && opts.onApplied) || null;
+      var rec = hostRec(hostEl);
+      if (rec) { win = rec.win; view = rec.view; lastApply = rec.lastApply || null; }
+      else {
+        win = freshWin(); view = {}; lastApply = null;
+        // opts.initial seeds a NEW host only. The Advisor wants the all-level-1
+        // gem it reads off a fresh cut; the Grader wants something worth grading.
+        if (opts.initial) for (var k in opts.initial) {
+          if (Object.prototype.hasOwnProperty.call(opts.initial, k)) win.config[k] = opts.initial[k];
+        }
+        hosts.push({ host: hostEl, win: win, view: view, lastApply: null });
+      }
+      view.gemOnly = !!opts.gemOnly;
+      view.title = opts.title || (opts.gemOnly ? "Gem" : "Processing");
+      if (hostEl && hostEl.classList) hostEl.classList.add("pw-host");
+      onChangeCb = opts.onChange || null;
+      onAppliedCb = opts.onApplied || null;
       render();
     },
     // re-render without a state change (e.g. the advisor's axis flipped, which

@@ -87,8 +87,8 @@ var LAZY_TABS = {
     "model/nested.js?v=54", "model/dp.js?v=59",
     "ocr/engine.js?v=55", "ocr/layout.js?v=55", "ocr/glyphs.js?v=55", "ocr/level-refs.js?v=4", "ocr/level-model.js?v=2", "ocr/name-model.js?v=2", "ocr/tile-model.js?v=1", "ocr/tesseract-engine.js?v=44",
     "ocr/structural-engine.js?v=104",
-    "advisor-setup.js?v=50", "advisor-window.js?v=63",
-    "advisor.js?v=95"
+    "advisor-setup.js?v=50", "advisor-window.js?v=64",
+    "advisor.js?v=96"
   ],
   leaderboard: ["leaderboard.js?v=50"],
   feedback: ["feedback.js?v=1"]
@@ -99,11 +99,15 @@ var LAZY_TABS = {
 // gemlist.js reads this array, so the two can never drift apart.
 var LAZY_GEMLIST = ["ocr/gemlist-engine.js?v=1", "ocr/gemlist-refs.js?v=1"];
 var lazyLoaded = {};
+// Per-FILE, not per-tab: advisor-window.js is in the advisor's list AND injected
+// on demand by the Grader's custom mode, and fetching it twice re-runs it.
+var loadedScripts = {};
 function loadScriptsSeq(list, done){
   if (!list.length) { done(); return; }
+  if (loadedScripts[list[0]]) { loadScriptsSeq(list.slice(1), done); return; }
   var s = document.createElement('script');
   s.src = list[0];
-  s.onload = function(){ loadScriptsSeq(list.slice(1), done); };
+  s.onload = function(){ loadedScripts[list[0]] = 1; loadScriptsSeq(list.slice(1), done); };
   s.onerror = function(){ loadScriptsSeq(list.slice(1), done); }; // skip a failed script (e.g. CDN blocked); modules degrade gracefully
   document.body.appendChild(s);
 }
@@ -143,7 +147,7 @@ function selectTab(name){
 <script src="bible-import.js?v=3"></script>
 <script src="bible-oauth.js?v=8"></script>
 <script src="gemlist.js?v=1"></script>
-<script src="grader.js?v=78"></script>
+<script src="grader.js?v=79"></script>
 <script src="pipeline.js?v=51"></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>

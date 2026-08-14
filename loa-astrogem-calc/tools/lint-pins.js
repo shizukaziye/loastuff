@@ -66,6 +66,18 @@ if (!lazy) {
   });
 }
 
+// grader.js's "Custom input" mode mounts advisor-window.js and looks its pinned
+// url up inside LAZY_TABS.advisor rather than carrying a second copy of the pin.
+// If that entry is ever renamed or dropped, the Grader silently falls back to an
+// UNPINNED url and the two tabs can end up running different builds of the same
+// component. Check the entry it looks for is really there.
+var adv = html.match(/advisor:\s*\[([\s\S]*?)\]/);
+if (!adv) {
+  problems.push("index.html: LAZY_TABS.advisor not found — grader.js could not find advisor-window.js's pin");
+} else if (!/"advisor-window\.js\?v=\d+"/.test(adv[1])) {
+  problems.push("index.html: LAZY_TABS.advisor has no pinned advisor-window.js — the Grader's custom mode would load it unpinned");
+}
+
 problems.forEach(function (p) { console.log("ERROR " + p); });
 console.log("lint-pins: " + problems.length + " problem(s)");
 process.exit(problems.length ? 1 : 0);
