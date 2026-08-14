@@ -30,7 +30,11 @@ data/pipeline.json / data/pipeline-support.json
 index.html          App shell: header + tab bar (Grader / Pipeline / Advisor / Leaderboard).
 styles.css          Shared dark theme + tab styling.
 grader.js           Grader tab: pull a character (lostark.bible / lopec.kr via the
-                    worker) or enter gems by hand; 0-100 grades + ranks + grid totals.
+                    worker), drop a screenshot, or enter gems by hand; 0-100 grades
+                    + ranks + grid totals.
+gemlist.js          Grader's "From screenshot" mode: drop screenshots of the in-game
+                    Ark Grid list and every gem in it is read, graded and ranked in
+                    an editable table. Lazy-loads ocr/gemlist-*.js on first use.
 pipeline.js         Pipeline tab: cut/fuse/throw verdict tables + the weekly-economy
                     group (editable CONST block).
 advisor.js          Advisor tab controller: screenshot/screen-share intake, auto-advice
@@ -43,11 +47,14 @@ leaderboard.js      Leaderboard tab: every cached character ranked by total dama
 loadout-econ.js     Shared baseline/gpd economics + character-fetch glue.
 favorites.js / gate.js / bible-import.js
                     Roster favorites, shared gating, character-import glue.
-ocr/                The screenshot parser: structural engine (the live one, 99%+ on the
-                    corpus), engine contract/constraintSnap, glyph atlas, legacy lexicon.
-                    Strategy doc: docs/how-the-advisor-works.md.
-samples/            Real Processing-screen captures + linted ground truth
-                    (tools/eval-ocr.js scores; tools/lint-labels.js validates labels).
+ocr/                TWO unrelated screenshot readers. The Advisor's structural engine
+                    (Processing window; 99%+ on its corpus, contract/constraintSnap,
+                    glyph atlas, legacy lexicon — strategy doc:
+                    docs/how-the-advisor-works.md), and gemlist-engine.js +
+                    gemlist-refs.js, which read the Ark Grid LIST of up to 9 owned
+                    gems for the Grader. See ocr/README.md.
+samples/            Real captures + linted ground truth (gitignored). Processing shots
+                    for tools/eval-ocr.js; samples/gemlist/ for tools/eval-gemlist.js.
 worker/             Cloudflare workers, each DEPLOYED SEPARATELY from the site:
                     astrogem-bible.js (fetch/cache/queue/leaderboard) and
                     astrogem-data.js (Advisor parse collection, KV). See README-bible.md.

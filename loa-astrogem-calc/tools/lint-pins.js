@@ -48,6 +48,24 @@ var dpw = fs.readFileSync(path.join(ROOT, "model/dp-worker.js"), "utf8");
   }
 });
 
+// The Grader's screenshot mode injects its OCR files at runtime. gemlist.js reads
+// the pinned list out of index.html (window.LAZY_GEMLIST) rather than carrying its
+// own copy, so there is nothing to cross-check — but if the array goes missing the
+// mode silently falls back to UNPINNED urls, which the loseii zone then caches for
+// four hours. Check the array exists and names files that are actually there.
+var lazy = html.match(/var\s+LAZY_GEMLIST\s*=\s*\[([^\]]*)\]/);
+if (!lazy) {
+  problems.push("index.html: LAZY_GEMLIST is missing — gemlist.js would load its OCR files unpinned");
+} else {
+  var files = lazy[1].match(/"([^"]+)"/g) || [];
+  if (!files.length) problems.push("index.html: LAZY_GEMLIST is empty");
+  files.forEach(function (q) {
+    var rel = q.replace(/"/g, "");
+    if (!/\?v=\d+/.test(rel)) problems.push("index.html: LAZY_GEMLIST entry " + rel + " has no ?v= pin");
+    if (!fs.existsSync(path.join(ROOT, rel.split("?")[0]))) problems.push("index.html: LAZY_GEMLIST names a missing file: " + rel);
+  });
+}
+
 problems.forEach(function (p) { console.log("ERROR " + p); });
 console.log("lint-pins: " + problems.length + " problem(s)");
 process.exit(problems.length ? 1 : 0);

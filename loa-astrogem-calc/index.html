@@ -32,8 +32,10 @@
     EAGER (bottom of <body>, in order): model/astrogem.js (the deterministic core
     on window.Astrogem — grade / gemRank / damagePercent / tierExpectedValue …),
     then gate.js, favorites.js, tip.js, loadout-econ.js, bible-import.js,
-    bible-oauth.js, grader.js (#tab-grader) and pipeline.js (#tab-pipeline, which
-    also feeds the grader's plan section via pipelineReady).
+    bible-oauth.js, gemlist.js (the Grader's "From screenshot" mode; its OCR
+    files load from LAZY_GEMLIST on first use), grader.js (#tab-grader) and
+    pipeline.js (#tab-pipeline, which also feeds the grader's plan section via
+    pipelineReady).
     LAZY (the LAZY_TABS map in the inline script below): the Advisor stack
     (model/nested.js + model/dp.js + ocr/* + advisor*.js), leaderboard.js and
     feedback.js load on FIRST activation of their tab.
@@ -91,6 +93,11 @@ var LAZY_TABS = {
   leaderboard: ["leaderboard.js?v=50"],
   feedback: ["feedback.js?v=1"]
 };
+// The Grader's "From screenshot" mode reads the in-game astrogem list. Its
+// engine + glyph templates are ~60 KB and only matter to that one mode, so
+// gemlist.js injects them on first use. The pins live HERE and nowhere else —
+// gemlist.js reads this array, so the two can never drift apart.
+var LAZY_GEMLIST = ["ocr/gemlist-engine.js?v=1", "ocr/gemlist-refs.js?v=1"];
 var lazyLoaded = {};
 function loadScriptsSeq(list, done){
   if (!list.length) { done(); return; }
@@ -135,7 +142,8 @@ function selectTab(name){
 <script src="loadout-econ.js?v=8"></script>
 <script src="bible-import.js?v=3"></script>
 <script src="bible-oauth.js?v=8"></script>
-<script src="grader.js?v=77"></script>
+<script src="gemlist.js?v=1"></script>
+<script src="grader.js?v=78"></script>
 <script src="pipeline.js?v=51"></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>

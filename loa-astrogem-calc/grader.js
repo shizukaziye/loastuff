@@ -5,10 +5,14 @@
  *
  *   grade (0-100)  ·  letter rank (S/A/B/C/D/F with +/-)  ·  exact % damage.
  *
- * Two input modes:
+ * Input modes:
  *   1. Custom — a live form (cost / type / willpower / order / 2 effects + levels,
  *      the effect dropdowns filtered to the cost's pool). Grades on every change.
- *   2. Pull from lostark.bible — region + character name -> a Cloudflare Worker
+ *   2. From screenshot — drop a screenshot of the in-game Ark Grid (Astrogem tab)
+ *      and every gem in the list on the right is read, graded and ranked. Owned
+ *      by gemlist.js, which fills #gr-body-shots and renders into #gr-result;
+ *      it lazy-loads ocr/gemlist-engine.js + ocr/gemlist-refs.js on first use.
+ *   3. Pull from lostark.bible — region + character name -> a Cloudflare Worker
  *      (worker/astrogem-bible.js) fetches the page, extracts arkGridCores, and
  *      returns every equipped gem. We grade the WHOLE loadout: a per-gem list
  *      grouped by core, plus an overall summary. The Worker URL is a configurable
@@ -641,6 +645,7 @@
 '  <div id="gr-inputs-body">' +
 '    <div class="gr-modes">' +
 '      <button class="mbtn active" id="gr-mode-pull" type="button">Pull from lostark.bible</button>' +
+'      <button class="mbtn" id="gr-mode-shots" type="button">From screenshot</button>' +
 '      <button class="mbtn" id="gr-mode-custom" type="button">Custom input</button>' +
 '      <button class="mbtn" id="gr-mode-bookmarklet" type="button">Bookmarklet</button>' +
 '      <span class="gr-authbtns" id="gr-authbtns"></span>' +
@@ -660,6 +665,10 @@
 '      </div>' +
 '      <div class="note">Willpower cost = base cost &minus; willpower level (lower is better). Effect 1 and Effect 2 must differ; the dropdowns are filtered to this cost’s pool.</div>' +
 '    </div>' +
+
+// --- screenshot mode: gemlist.js owns everything inside this body (and renders its
+//     table into #gr-result, like the other modes). It lazy-loads the OCR files. ---
+'    <div class="gr-modebody" id="gr-body-shots" style="display:none"></div>' +
 
 // --- pull mode: compact controls LEFT, saved characters as a vertical list RIGHT ---
 '    <div class="gr-modebody" id="gr-body-pull">' +
@@ -718,6 +727,8 @@
 '  <p><b>Grade &amp; rank.</b> The grade is normalized so the <b>perfect Ark-Grid layout averages 100</b> (3 perfect 8s + 3 perfect 9s + 6 perfect 10s) and the worst legal gem is <b>0</b>. Perfect gems don’t tie &mdash; a perfect 10-cost genuinely beats a perfect 8-cost (DPS 96.1 / 99.7 / 102.1). Letters are even thirds of 10-point bands tuned to real cut-outcome rarity &mdash; <b>S&minus;&nbsp;90 / A&minus;&nbsp;80 / B&minus;&nbsp;70 / C&minus;&nbsp;60 / D&minus;&nbsp;50</b>, F in thirds below 50 &mdash; and <b>S+ starts at the perfect 8-cost’s grade</b> (96.1 DPS / 94.6 support), so every perfect gem is S+.</p>' +
 '  <p><b>The loadout total (“% total dmg”)</b> answers a different question: the real damage your <i>whole 6-core grid</i> adds over having no grid. Effect levels pool into stat buckets that multiply over your gear (so two of the same stat give <b>diminishing returns</b>), and order/chaos is counted <i>per core</i> above a ~17-point floor, the six cores multiplying. Because of that, the per-gem numbers <b>don’t sum to the total &mdash; by design</b>: a gem is rated standalone, the total accounts for the whole grid.</p>' +
 '  <p><b>Support.</b> Flip <b>Grade as &rarr; Support</b> for support classes &mdash; a parallel axis where Ally Attack / Brand / Ally Damage are the &ldquo;damage&rdquo; lines and order points are worth different amounts per core (Brand on Chaos Moon is the strongest). The total is the per-ally party %, the same figure the leaderboard shows.</p>' +
+'  <p><b>From screenshot.</b> A gem&rsquo;s grade needs only its <b>willpower cost</b>, its <b>order/chaos points</b> and its <b>two effect lines</b> &mdash; and the in-game Ark Grid list shows all four for nine gems at once. So drop a screenshot of that screen and every row is read and graded, including gems you own but haven&rsquo;t equipped. The 8/9/10 base cost is worked back out from the effect pair afterwards, purely as a label: it never enters the grade, so a pair that fits two pools (shown as &ldquo;8/9&rdquo;) still grades exactly right. Scroll the list and drop a second shot to cover the rest &mdash; repeated rows are merged.</p>' +
+'  <p class="note">The reader flags anything it isn&rsquo;t sure of and opens that row for you to correct, rather than quietly grading a misread &mdash; on the test corpus it reads every field right at 4K, 99.5% at 1440p, and it <i>refuses</i> a capture too small to read instead of guessing. Give it the original screenshot, not a resized or re-uploaded copy.</p>' +
 '  <p class="note">Pulling a character fetches the loadout from lostark.bible (cached 7 days; &ldquo;Re-pull&rdquo; forces fresh). Effect ids and each gem’s cost/type are decoded from the page’s grid data &mdash; check a gem or two against the in-game display.</p>' +
 '</details>';
   }
@@ -1746,13 +1757,21 @@ presetToggleHtml(data) +
 
   // ---------------- mode switching ----------------
   function selectMode(mode) {
-    if (mode !== "custom" && mode !== "bookmarklet") mode = "pull";
+    if (mode !== "custom" && mode !== "bookmarklet" && mode !== "shots") mode = "pull";
     $("gr-mode-pull").classList.toggle("active", mode === "pull");
+    $("gr-mode-shots").classList.toggle("active", mode === "shots");
     $("gr-mode-custom").classList.toggle("active", mode === "custom");
     $("gr-mode-bookmarklet").classList.toggle("active", mode === "bookmarklet");
     $("gr-body-pull").style.display = mode === "pull" ? "" : "none";
+    $("gr-body-shots").style.display = mode === "shots" ? "" : "none";
     $("gr-body-custom").style.display = mode === "custom" ? "" : "none";
     $("gr-body-bookmarklet").style.display = mode === "bookmarklet" ? "" : "none";
+    if (window.GemList) window.GemList.deactivate();
+    if (mode === "shots") {
+      if (window.GemList) window.GemList.activate();
+      else $("gr-result").innerHTML = '<div class="panel"><div class="gr-status err">gemlist.js didn’t load — reload the page.</div></div>';
+      return;
+    }
     if (mode === "custom") {
       renderCustom();
     } else if (mode === "bookmarklet") {
@@ -2208,6 +2227,7 @@ presetToggleHtml(data) +
 
     // mode buttons
     $("gr-mode-custom").addEventListener("click", function () { selectMode("custom"); });
+    $("gr-mode-shots").addEventListener("click", function () { selectMode("shots"); });
     $("gr-mode-pull").addEventListener("click", function () { selectMode("pull"); });
     $("gr-mode-bookmarklet").addEventListener("click", function () { selectMode("bookmarklet"); });
 

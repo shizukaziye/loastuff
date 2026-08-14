@@ -1,4 +1,14 @@
-# OCR engines (Advisor screenshot reading)
+# OCR engines
+
+Two readers live here, with **nothing in common but the folder**. They read
+different screens for different tabs.
+
+| reader | screen | tab |
+|--------|--------|-----|
+| the structural engine (below) | the single-gem **Processing** window | Advisor |
+| `gemlist-engine.js` ([its own section](#the-ark-grid-list-reader)) | the **Ark Grid → Astrogem** list of up to 9 gems | Grader, "From screenshot" |
+
+## The Processing-window parser (Advisor)
 
 The Advisor tab can prefill its form from a Lost Ark **Processing** screenshot.
 There are **swappable engines** behind one interface, plus a shared repair pass
@@ -110,3 +120,83 @@ daily budget. Design notes: `../docs/how-the-advisor-works.md` §6.
 `tools/eval-ocr.js` scores the engines' per-field accuracy against the real
 screenshot + ground-truth pairs in `../samples/` (see `../samples/README.md` for
 the samples, the measured per-engine scores, and how to add more).
+
+---
+
+## The Ark Grid list reader
+
+`gemlist-engine.js` + `gemlist-refs.js` read the **list of owned astrogems** on
+the middle right of the Ark Grid screen (Astrogem tab) — up to nine at a time.
+It backs the Grader's **From screenshot** mode (`gemlist.js`). It shares no code
+with the Processing parser above: different screen, different job, one file.
+
+| file | what it is |
+|------|------------|
+| `gemlist-engine.js` | the whole reader — masks, panel anchor, field cutting, matching. No dependencies, runs in the browser and in Node. |
+| `gemlist-refs.js` | GENERATED glyph templates (rebuild via `tools/build-gemlist-refs.js`). |
+
+**Why nine rows are enough to grade.** `model/astrogem.js` scores a gem from its
+willpower COST, its order/chaos points and its two effect lines. The base cost
+(8/9/10) never enters `gemValue`, and this panel shows everything that does. The
+base cost is recovered afterwards from the effect PAIR, purely for the label —
+where two pools both fit, the grade is identical either way.
+
+**The anchor.** Everything hangs off the nine gold **(P)** discs: the only place
+on the screen where a small bright-gold blob repeats down one column at a fixed
+pitch. A sliding window collects gold row-runs and keeps the column whose runs
+best fit an arithmetic progression. That yields the icon column x, the row
+pitch (i.e. the UI scale) and each row's y **without assuming any resolution** —
+every later measurement is a fraction of the pitch.
+
+Three things had to be added before that was trustworthy, each after it actually
+went wrong on the corpus:
+
+* **The half-pitch alias.** Loosen the run filter enough for a small capture and
+  the hollow willpower icon on line 1 starts qualifying too — every row becomes
+  two and the pitch halves. So the sweep runs twice: once with loose absolute
+  thresholds to get a ballpark pitch, then again with thresholds derived from
+  it, testing both that pitch and twice it. Candidates are checked for
+  *uniformity* (a real panel's nine anchors are the same glyph, so their gold
+  densities barely differ; the alias alternates and gives itself away).
+* **The impostor column.** The game's right-hand icon bar is also evenly spaced
+  gold, and a bare periodicity test happily locks onto it. A candidate only
+  survives if most of its rows carry **white text** to their right, which a gem
+  row does and an icon bar does not.
+* **The tinted row.** On an equipped row the background is bright orange and a
+  small white digit is mostly antialiased edge, so the global white mask can come
+  back empty. There is a local re-threshold inside the digit box for that case.
+
+**Bands.** Patches are size-normalized before matching, but normalizing does not
+undo blur: a digit that was 17 px tall at 4K and one that was 11 px tall at
+1440p end up the same size with visibly different stroke weight. Templates are
+therefore harvested at several capture sizes and kept in **separate bands** keyed
+by the pitch they were seen at — the same lesson `tools/build-glyphs.js` learned
+as `GLYPH_BANDS`. Pooling them measurably hurt.
+
+**Where it refuses.** Below a row pitch of 62 the reader returns `ok:false` with a
+plain message instead of guessing. That number is measured, not chosen: reading
+the corpus at shrinking sizes gives 100% of fields at pitch 105, 99.5% at 70,
+84% at 58 and 31% at 35, and below ~62 the wrong digits stop being separable
+from the right ones by match margin.
+
+**Silent errors are the gate.** A wrong field the reader FLAGGED is fine — the
+Grader opens that row in its editor with the doubtful cells outlined. A wrong
+field it did not flag is not, because it grades a gem the user is never asked
+about. Every threshold here is set from the measured margin distributions of
+right-vs-wrong reads, and the cost gets a structural cross-check on top: the
+effect pair fixes which base-cost pool the gem is from, and a pool only ever
+yields willpower costs `base-5 .. base-1`.
+
+### Working on it
+
+```bash
+npm run gemlist-refs            # rebuild ocr/gemlist-refs.js from samples/gemlist
+npm run eval-gemlist            # shipped refs vs the labels — must be 100%, 0 silents
+npm run eval-gemlist-holdout    # leave-one-screenshot-out — the honest number
+node tools/eval-gemlist.js --scales   # 4K down to refusal — 0 silents at every size
+```
+
+The corpus is `samples/gemlist/` (gitignored, like the rest of `samples/`):
+screenshots plus `labels.json`. **Adding screenshots is the main way to improve
+this** — especially captures at a resolution or UI scale not in there yet. Label
+them, rebuild the refs, then re-run all three commands.
