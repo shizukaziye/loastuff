@@ -246,14 +246,18 @@ function coresToGems(cores) {
 // ---- KV cache config + helpers ----
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // a cached character is "fresh" for 7 days.
 const INDEX_KEY = "__index__";               // LEGACY key, never written anymore — kept only so isCharKey() can skip an old stored one.
-const SNAPSHOT_KEY = "lb:snapshot";          // LEGACY plain-JSON snapshot key (read as a fallback, deleted after migration).
-const SNAPSHOT_GZ_KEY = "lb:snapshot:gz";    // the whole leaderboard list, stored GZIPPED. The plain JSON hit ~26.1MB at ~5k
+const SNAPSHOT_KEY = "lb:snapshot";          // LEGACY plain-JSON snapshot key (deleted on rebuild; never read anymore).
+const SNAPSHOT_GZ_KEY = "lb:snapshot:gz";    // LEGACY v1 gzip key — serve-only fallback until the first post-fix rebuild
+                                             // deletes it. NEVER read for mutation and never written: its ~93MB expansion
+                                             // at ~19k characters OOM'd the 128MB isolate on every cron tick (Aug 16-17
+                                             // board freeze). v2 below is the only stored format now.
+                                             // (historical: the whole leaderboard list, stored GZIPPED. The plain JSON hit ~26.1MB at ~5k
                                              // characters — 65KB under KV's 25MiB value cap (writes were days from silently
                                              // failing and freezing the board). Gzip is ~1MB (≈25x headroom) and ?list=1
-                                             // serves the bytes as-is (Content-Encoding: gzip) — no 26MB parse+stringify per request.
-const SNAPSHOT_GZ2_KEY = "lb:snapshot:gz2";  // the SAME list in compact format v2 (?list=1&fmt=2): gems as 9-slot tuples with
-                                             // table-indexed names — ~10x less JSON for the browser to parse (~3MB vs 30MB).
-                                             // v1 stays alongside for stale-cached clients; both rebuilt together.
+                                             // serves the bytes as-is (Content-Encoding: gzip) — no 26MB parse+stringify per request.)
+const SNAPSHOT_GZ2_KEY = "lb:snapshot:gz2";  // THE snapshot: compact format v2, gzipped. Gems as 9-slot tuples with
+                                             // table-indexed names — ~10x less JSON than v1 (~9MB vs ~93MB uncompressed).
+                                             // Served to every ?list=1 (fmt ignored); the rebuild reads and writes ONLY this.
 const DIRTY_PREFIX = "lb:dirty:";            // #3: per-character "changed since last snapshot" marker — the cron merges only these instead of re-reading every character.
 const SNAPSHOT_DIRTY_TTL_S = 7 * 24 * 3600;  // a dirty marker self-expires after 7 days (safety net; the rebuild normally clears it).
 const LASTWRITE_KEY = "lb:lastwrite";        // ms timestamp of the most recent REAL lostark.bible pull (drain, probe, kick, or direct lookup). Bookmarklet imports do NOT bump it — the admin reads this as "last successful bible pull", so a user-supplied import must not masquerade as one.
@@ -1031,22 +1035,34 @@ async function handleFeedbackAdmin(env, u) {
 //   are dropped — the grader pulls full records per character, only the board uses this.
 const CORE_ID_BY_LABEL = {};
 for (const _cid in SLOT_LABEL) CORE_ID_BY_LABEL[SLOT_LABEL[_cid]] = parseInt(_cid, 10);
-function encodeSnapshotV2(builtAt, characters) {
-  const classes = [], classIdx = {}, effects = [], effectIdx = {};
-  function ci(n) { if (!n) return -1; if (classIdx[n] == null) { classIdx[n] = classes.length; classes.push(n); } return classIdx[n]; }
-  function ei(n) { if (!n) return 0; if (effectIdx[n] == null) { effectIdx[n] = effects.length + 1; effects.push(n); } return effectIdx[n]; }
-  const chars = characters.map(function (c) {
-    const gems = (c.gems || []).map(function (g) {
-      let core = 0;
-      if (g.coreBase != null && SLOT_LABEL[g.coreBase]) core = g.coreBase - 10000;
-      else if (g.slot != null && CORE_ID_BY_LABEL[g.slot]) core = CORE_ID_BY_LABEL[g.slot] - 10000;
-      return [core, g.baseCost == null ? null : g.baseCost, g.gemType === "chaos" ? 1 : 0,
-        g.willpowerLevel == null ? null : g.willpowerLevel, g.orderLevel == null ? null : g.orderLevel,
-        ei(g.effect1), g.effect1Level == null ? null : g.effect1Level,
-        ei(g.effect2), g.effect2Level == null ? null : g.effect2Level];
-    });
-    return [c.region, c.name, c.itemLevel == null ? null : c.itemLevel, ci(c.class), c.pulledAt || 0, gems];
+// Interning closures over EXISTING class/effect tables (mutated in place as new names
+// appear) — the incremental rebuild seeds these from the stored snapshot's own tables so
+// merged rows index into them consistently.
+function v2Tables(classes, effects) {
+  const classIdx = {}, effectIdx = {};
+  for (let i = 0; i < classes.length; i++) classIdx[classes[i]] = i;
+  for (let i = 0; i < effects.length; i++) effectIdx[effects[i]] = i + 1;
+  return {
+    ci: function (n) { if (!n) return -1; if (classIdx[n] == null) { classIdx[n] = classes.length; classes.push(n); } return classIdx[n]; },
+    ei: function (n) { if (!n) return 0; if (effectIdx[n] == null) { effectIdx[n] = effects.length + 1; effects.push(n); } return effectIdx[n]; }
+  };
+}
+function encodeCharRowV2(c, ci, ei) {
+  const gems = (c.gems || []).map(function (g) {
+    let core = 0;
+    if (g.coreBase != null && SLOT_LABEL[g.coreBase]) core = g.coreBase - 10000;
+    else if (g.slot != null && CORE_ID_BY_LABEL[g.slot]) core = CORE_ID_BY_LABEL[g.slot] - 10000;
+    return [core, g.baseCost == null ? null : g.baseCost, g.gemType === "chaos" ? 1 : 0,
+      g.willpowerLevel == null ? null : g.willpowerLevel, g.orderLevel == null ? null : g.orderLevel,
+      ei(g.effect1), g.effect1Level == null ? null : g.effect1Level,
+      ei(g.effect2), g.effect2Level == null ? null : g.effect2Level];
   });
+  return [c.region, c.name, c.itemLevel == null ? null : c.itemLevel, ci(c.class), c.pulledAt || 0, gems];
+}
+function encodeSnapshotV2(builtAt, characters) {
+  const classes = [], effects = [];
+  const t = v2Tables(classes, effects);
+  const chars = characters.map(function (c) { return encodeCharRowV2(c, t.ci, t.ei); });
   return { v: 2, builtAt: builtAt, classes: classes, effects: effects, characters: chars };
 }
 
@@ -1059,13 +1075,16 @@ async function gunzipToJson(buf) {
   const ds = new DecompressionStream("gzip");
   return new Response(new Response(buf).body.pipeThrough(ds)).json();
 }
-// Read the snapshot object for MUTATION (the incremental rebuild): gz first, legacy plain fallback.
-async function readSnapshotObj(env) {
+// Read the stored V2 snapshot for MUTATION (the incremental rebuild). v2 ONLY, by design:
+// materializing the legacy v1 object (~93MB of JSON at ~19k characters) is exactly what
+// blew the isolate's 128MB limit and froze the board for 2 days (every cron tick died
+// exceededMemory) — it must never be read again. No v2 stored -> null -> chunked first build.
+async function readSnapshotV2(env) {
   try {
-    const gz = await env.CHARS.get(SNAPSHOT_GZ_KEY, "arrayBuffer");
+    const gz = await env.CHARS.get(SNAPSHOT_GZ2_KEY, "arrayBuffer");
     if (gz && gz.byteLength) return await gunzipToJson(gz);
   } catch (e) {}
-  return kvGetJson(env, SNAPSHOT_KEY); // legacy (pre-gz) — read once, migrated on the next rebuild
+  return null;
 }
 
 // GET /?list=1 — leaderboard list. Serves the STORED GZIP BYTES as-is in a single read
@@ -1075,9 +1094,11 @@ async function readSnapshotObj(env) {
 async function handleList(env, acceptEncoding, fmt) {
   if (!env || !env.CHARS) return json({ characters: [] }, 200);
   try {
-    // fmt=2 -> the compact tuple snapshot; falls back to v1 until the first gz2 rebuild
-    // (the client's decoder branches on the payload's `v` field, so either shape works).
-    const gz = (fmt === "2" && await env.CHARS.get(SNAPSHOT_GZ2_KEY, "arrayBuffer"))
+    // v2 (compact tuples) is the ONLY stored format now — `fmt` is accepted but ignored.
+    // (v1 grew to ~93MB uncompressed and OOM'd the rebuild; every live client requests
+    // fmt=2 and its decoder branches on the payload's `v` field.) The legacy gz key is a
+    // read fallback only until the first post-fix rebuild deletes it.
+    const gz = (await env.CHARS.get(SNAPSHOT_GZ2_KEY, "arrayBuffer"))
       || await env.CHARS.get(SNAPSHOT_GZ_KEY, "arrayBuffer");
     if (gz && gz.byteLength) {
       if (!/gzip/i.test(acceptEncoding || "")) {
@@ -1117,34 +1138,40 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
   try { dirty = await env.CHARS.list({ prefix: DIRTY_PREFIX }); } catch (e) { return; }
   if (builtAt > 0 && !dirty.keys.length) return;                                // nothing changed since the last build
   const startedAt = Date.now();
-  const snap = await readSnapshotObj(env);
-  let characters, fromScratch = false;
+  const snap = await readSnapshotV2(env);
+  let payload, fromScratch = false;
   if (snap && Array.isArray(snap.characters) && snap.characters.length) {
-    // INCREMENTAL: merge only the changed characters into the existing snapshot (upsert by region:name).
-    characters = snap.characters.slice();
+    // INCREMENTAL, in TUPLE SPACE: upsert the changed characters as encoded v2 rows,
+    // never expanding the snapshot into full per-gem objects (at ~19k characters that
+    // object graph rivals the isolate's 128MB limit — the tuple form stays ~10x smaller).
+    // The interning tables are seeded from the stored snapshot so old rows keep their indices.
+    const classes = snap.classes || [], effects = snap.effects || [];
+    const t = v2Tables(classes, effects);
+    const rows = snap.characters;
     const idx = {};
-    for (let i = 0; i < characters.length; i++) { const c = characters[i]; idx[(c.region + ":" + c.name).toLowerCase()] = i; }
+    for (let i = 0; i < rows.length; i++) idx[(rows[i][0] + ":" + rows[i][1]).toLowerCase()] = i;
     const charKeys = dirty.keys.map(function (k) { return k.name.slice(DIRTY_PREFIX.length); });
     const recs = await Promise.all(charKeys.map(function (ck) { return kvGetJson(env, ck); }));
     for (const c of recs) {
       if (c && Array.isArray(c.gems)) {
-        const e = { region: c.region, name: c.name, gems: c.gems, pulledAt: c.pulledAt, itemLevel: c.itemLevel, class: c.class };
+        const row = encodeCharRowV2(c, t.ci, t.ei);
         const id = (c.region + ":" + c.name).toLowerCase();
-        if (idx[id] != null) characters[idx[id]] = e; else { idx[id] = characters.length; characters.push(e); }
+        if (idx[id] != null) rows[idx[id]] = row; else { idx[id] = rows.length; rows.push(row); }
       }
     }
+    payload = { v: 2, builtAt: startedAt, classes: classes, effects: effects, characters: rows };
   } else {
     // First build: CHUNKED across cron ticks (#8) — null means "progress parked, resume next tick".
     fromScratch = true;
-    characters = await buildCharacterListChunk(env);
+    const characters = await buildCharacterListChunk(env);
     if (!characters) return;
+    if (!characters.length) return;
+    payload = encodeSnapshotV2(startedAt, characters);
   }
-  if (!characters.length) return;
-  const gzBytes = await gzipString(JSON.stringify({ builtAt: startedAt, characters: characters }));
-  await env.CHARS.put(SNAPSHOT_GZ_KEY, gzBytes);
-  const gz2Bytes = await gzipString(JSON.stringify(encodeSnapshotV2(startedAt, characters)));
+  const gz2Bytes = await gzipString(JSON.stringify(payload));
   await env.CHARS.put(SNAPSHOT_GZ2_KEY, gz2Bytes);
-  try { await env.CHARS.delete(SNAPSHOT_KEY); } catch (e) {} // drop the 26MB legacy plain copy once gz exists
+  try { await env.CHARS.delete(SNAPSHOT_GZ_KEY); } catch (e) {} // drop the v1 blob for good (its ~93MB expansion is what OOM'd the rebuild)
+  try { await env.CHARS.delete(SNAPSHOT_KEY); } catch (e) {}    // pre-gz plain copy, if any pre-migration deploy still has one
   await env.CHARS.put(BUILTAT_KEY, String(startedAt));
   // clear ONLY the markers we listed (any written mid-build keep theirs -> picked up next rebuild).
   // A finished FROM-SCRATCH build keeps ALL markers: it spanned several ticks, so a character
