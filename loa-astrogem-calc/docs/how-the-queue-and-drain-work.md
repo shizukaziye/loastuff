@@ -440,5 +440,5 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 
 ---
 
-*Last updated 2026-07-25. Source of truth is always `worker/astrogem-bible.js`,
+*Last updated 2026-08-17 (added §5b, the weekly repull sweep). Source of truth is always `worker/astrogem-bible.js`,
 `queue-admin.html`, and `grader.js` — if this doc and the code disagree, the code wins.*
