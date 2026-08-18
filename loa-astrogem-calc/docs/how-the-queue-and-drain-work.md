@@ -230,6 +230,37 @@ trips to `probe` so it self-heals.)
 
 ---
 
+## 5b. The weekly repull sweep (2026-08-17)
+
+The top of the leaderboard used to stale out (a character's record refreshes only when someone
+presses Re-pull). The sweep keeps it fresh automatically:
+
+- **Targets.** Top **1000 overall** (total dmg%, the board's ranking key) plus the top **100 of
+  every class** (the four support classes ranked by their party-buff axis, matching the board's
+  Support view). Deduped, this is ~2.9k characters. Junk classes (`"null"` in a few imported
+  records) get no quota.
+- **Priority.** `min(overall rank, 10 × class rank)`, ascending — overall #1 and every class's #1
+  go first, and the class quota's tail (#100) aligns with overall #1000.
+- **Plan.** Rebuilt from the snapshot **once a week** (`rp:plan`, ordered; `rp:state`, cursor +
+  counters), scored with the **real model** — `model/astrogem.js` is bundled into the Worker at
+  deploy, so the sweep ranks exactly like `leaderboard.js`.
+- **Pace.** At most **one upstream fetch per cron minute**, and only while the drain mode is
+  `run` — probe/off pauses the sweep exactly like it pauses lookups. A full sweep is ~2 days,
+  then it idles until the next weekly rebuild. Fetches count against the monthly budget and
+  appear in the admin drain history tagged **`repull`**.
+- **Staleness.** An entry is fetched only if its record is **>7 days old at fetch time**
+  (`CACHE_TTL_MS`); anything a user re-pulled meanwhile is skipped free (≤25 skips/tick).
+- **Auth.** The armed **probe/service token** (`POST /oauth/probe-token` — the owner's own
+  sign-in). Upstream **401/403** with it pauses only the sweep (6h backoff, `lastResult` says to
+  re-arm) and **never trips the breaker** — user lookups are unaffected. A genuine site block
+  (429/418/451) trips the breaker to `probe` exactly like the drain would.
+- **Transient failures** retry the same entry with doubling backoff (5 min → 6h cap) and give the
+  entry up after 5 attempts, so one broken name can't stall the sweep.
+
+Live state is in `?metrics=1` under `repull` (cursor/planLen is the sweep's progress bar).
+
+---
+
 ## 6. The edge rate-limit layers
 
 Five Cloudflare rate-limit bindings (configured in `wrangler.bible.toml`) gate requests **before any
@@ -323,7 +354,7 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | POST | `?feedback=1` | public (throttled) | Store a feedback note (JSON body; ~90-day TTL). |
 | GET | `/oauth/start`, `/oauth/callback` | public | lostark.bible sign-in (Authorization Code + PKCE). |
 | GET/POST | `/oauth/me`, `/oauth/logout` | public | Session check / sign-out (`?s=<session>`). |
-| GET | `?metrics=1` | **admin** | `{mode, drain:{perMin,delayMs}, queue:{premium,free,total,list}, usage, lastWriteMs, drainLog, hasProbeToken, paused}`. |
+| GET | `?metrics=1` | **admin** | `{mode, drain:{perMin,delayMs}, queue:{premium,free,total,list}, usage, lastWriteMs, drainLog, hasProbeToken, repull, paused}`. |
 | GET | `?feedback=1` | **admin** | Newest ≤200 notes: `{items, count, total, unread}`. |
 | GET | `?dequeue=1&list=1` | **admin** | The raw queue keys. |
 | POST | `?control=1&mode=&rate=` | **admin** | Set mode (`run`/`off`/`probe`) and/or rate (1–30). Resuming fires an immediate drain. |
@@ -352,6 +383,8 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | `lb:snapshot:gz2` | The same list in the compact v2 tuple format (`?list=1&fmt=2`) — ~10× less JSON for the browser. Rebuilt together with `:gz`. |
 | `lb:rebuild:cursor` / `lb:rebuild:acc:gz` | From-scratch rebuild state: the list cursor + the gzipped partial character list. Present only while a chunked first build is in flight (≤750 record reads per cron tick, so the build fits the ~1k-subrequest budget); cleared when it finishes. |
 | `lb:dirty:<key>` | Per-character "changed since last snapshot" marker (incremental rebuild). |
+| `rp:plan` | The weekly repull sweep's ordered target list `[[region, name], …]` (§5b). |
+| `rp:state` | Sweep progress: `{ builtAt, planLen, cursor, fetched, skipped, dropped, headAtt, failStreak, backoffUntil, lastAt, lastResult }`. |
 
 ---
 
@@ -374,6 +407,10 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | `IMPORT_DAILY_CAP` | 40 | Per-IP `?submit=1` uploads per day. |
 | `FB_TTL_S` / `FB_LIST_MAX` | 90d / 200 | Feedback note lifetime / newest notes the admin list reads. |
 | `REBUILD_KEYS_PER_RUN` | 750 | Record reads per cron tick during a chunked from-scratch rebuild. |
+| `REPULL_TOP_OVERALL` / `REPULL_TOP_CLASS` | 1000 / 100 | Sweep depth: overall board / per class (§5b). |
+| `REPULL_WEEK_MS` | 7 days | Plan rebuild cadence (also the staleness bar, via `CACHE_TTL_MS`). |
+| `REPULL_SKIP_CAP` | 25 | Fresh-entry skips per cron tick (each is one KV read). |
+| `REPULL_BACKOFF_FIRST_MS` / `_MAX_MS` | 5 min / 6h | Sweep-local transient backoff (doubling) / hard pause on a rejected token. |
 | `?wait` hold / check | 25s / 1.5s | Long-poll duration / poll interval (after the is-it-pending pre-check). |
 | admin poll | 2s | (in `queue-admin.html`) metrics refresh cadence. |
 

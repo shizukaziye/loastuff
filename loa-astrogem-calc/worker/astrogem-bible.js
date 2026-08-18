@@ -59,6 +59,11 @@
  *    1..5; opts levels in 1..5.
  */
 
+// The REAL scoring model, bundled in at deploy time (wrangler/esbuild resolves the CJS
+// branch of its UMD wrapper). Used only by the weekly repull sweep to rank the board the
+// same way leaderboard.js does — never re-implement scoring here, import it.
+import AG from "../model/astrogem.js";
+
 // Exact-match CORS allowlist (was "*"). The site origins come first; the two lostark.bible
 // origins must stay listed because the "+ add to leaderboard" bookmarklet POSTs ?submit=1
 // FROM a lostark.bible character page (its JSON body forces a preflight, and the preflight
@@ -1195,6 +1200,172 @@ async function appendDrainLog(env, run) {
   } catch (e) {}
 }
 
+// ==================== the weekly top-rank repull sweep ====================
+// Keeps the top of the leaderboard fresh without anyone pressing Re-pull. Owner-approved
+// design (2026-08-17):
+//   - TARGETS  : top 1000 overall (total dmg%, the board's ranking key) + top 100 of every
+//                class (the four support classes ranked by their party-buff axis, matching
+//                the board's Support view) — deduped, ~2.9k characters at 29 classes
+//                (measured 2026-08-17), so a full sweep is ~2 days at 1/min.
+//   - PRIORITY : min(overall rank, 10 x class rank), ascending — overall #1 and each class's
+//                #1 lead, and the class quota's tail (#100) aligns with overall #1000.
+//   - PACE     : at most ONE upstream fetch per cron minute, and only while the drain mode
+//                is "run" (probe/off pauses the sweep exactly like it pauses lookups).
+//   - STALENESS: an entry is fetched only if its record is >7d old (CACHE_TTL_MS) AT FETCH
+//                TIME — fresh entries (user re-pulled meanwhile) are skipped for free.
+//   - AUTH     : the armed probe/service token (the owner's own sign-in, /oauth/probe-token).
+//                Upstream 401/403 with it pauses ONLY the sweep (never the breaker); a real
+//                site block (429/418/451) trips the breaker to probe exactly like the drain.
+//   - The plan rebuilds once a week from the snapshot; fetches count against the monthly
+//     budget and show in the admin drain history tagged `repull`.
+const REPULL_PLAN_KEY = "rp:plan";           // JSON [[region, name], ...] in priority order
+const REPULL_STATE_KEY = "rp:state";         // { builtAt, planLen, cursor, fetched, skipped, dropped, headAtt, failStreak, backoffUntil, lastAt, lastResult }
+const REPULL_WEEK_MS = 7 * 24 * 3600 * 1000; // plan rebuild cadence
+const REPULL_TOP_OVERALL = 1000;             // overall board depth
+const REPULL_TOP_CLASS = 100;                // per-class depth
+const REPULL_SKIP_CAP = 25;                  // fresh-entry skips per tick (each is a KV read)
+const REPULL_MAX_HEAD_ATTEMPTS = 5;          // transient retries before an entry is given up (mirrors MAX_FETCH_ATTEMPTS)
+const REPULL_BACKOFF_FIRST_MS = 5 * 60 * 1000;   // transient-failure backoff: 5 min, doubling
+const REPULL_BACKOFF_MAX_MS = 6 * 3600 * 1000;   // ... capped at 6h (also the hard pause on a rejected token)
+const REPULL_SUPPORT_CLASSES = { "Bard": 1, "Paladin": 1, "Artist": 1, "Valkyrie": 1 }; // keep in sync with leaderboard.js
+
+// Decode one v2 snapshot row's gems back to model-shaped objects (inverse of encodeCharRowV2,
+// same field set the board's client decoder builds — enough for AG.gridDamage).
+function repullDecodeGems(payload, row) {
+  const effects = payload.effects || [];
+  function eff(i) { return (typeof i === "number" && i > 0) ? (effects[i - 1] || null) : null; }
+  return (row[5] || []).map(function (g) {
+    return {
+      coreBase: g[0] ? 10000 + g[0] : null, baseCost: g[1], gemType: g[2] ? "chaos" : "order",
+      willpowerLevel: g[3], orderLevel: g[4],
+      effect1: eff(g[5]), effect1Level: g[6], effect2: eff(g[7]), effect2Level: g[8]
+    };
+  });
+}
+
+// Build the week's ranked plan from the stored snapshot. Runs on its own cron tick (no
+// fetch that minute). Scoring stays transient per character — decode, score, discard —
+// so the full object graph never accumulates (same memory discipline as the rebuild).
+async function buildRepullPlan(env) {
+  const snap = await readSnapshotV2(env);
+  if (!snap || !Array.isArray(snap.characters) || !snap.characters.length) return false;
+  const classes = snap.classes || [];
+  const scored = [];
+  for (let i = 0; i < snap.characters.length; i++) {
+    const r = snap.characters[i];
+    const gems = repullDecodeGems(snap, r);
+    if (!gems.length) continue;
+    const cls = (r[3] != null && r[3] >= 0) ? classes[r[3]] : null;
+    let dps = 0, clsMetric = 0;
+    try {
+      dps = AG.gridDamage(gems, "dps") || 0;
+      clsMetric = (cls && REPULL_SUPPORT_CLASSES[cls]) ? (AG.gridDamage(gems, "support") || 0) : dps;
+    } catch (e) { continue; }
+    scored.push({ region: r[0], name: r[1], cls: cls, dps: dps, cm: clsMetric, pri: Infinity });
+  }
+  scored.sort(function (a, b) { return b.dps - a.dps; });
+  for (let i = 0; i < scored.length && i < REPULL_TOP_OVERALL; i++) scored[i].pri = i + 1;
+  const byClass = {};
+  // "null"/"undefined" are real strings in a few imported records — junk classes get no quota.
+  for (let i = 0; i < scored.length; i++) { const s = scored[i]; if (s.cls && s.cls !== "null" && s.cls !== "undefined") (byClass[s.cls] = byClass[s.cls] || []).push(s); }
+  for (const cls in byClass) {
+    const list = byClass[cls].sort(function (a, b) { return b.cm - a.cm; });
+    for (let i = 0; i < list.length && i < REPULL_TOP_CLASS; i++) list[i].pri = Math.min(list[i].pri, (i + 1) * 10);
+  }
+  const picked = scored.filter(function (s) { return s.pri !== Infinity; })
+    .sort(function (a, b) { return a.pri - b.pri || b.dps - a.dps; })
+    .map(function (s) { return [s.region, s.name]; });
+  if (!picked.length) return false;
+  await env.CHARS.put(REPULL_PLAN_KEY, JSON.stringify(picked));
+  await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify({
+    builtAt: Date.now(), planLen: picked.length, cursor: 0,
+    fetched: 0, skipped: 0, dropped: 0, headAtt: 0, failStreak: 0, backoffUntil: 0,
+    lastAt: Date.now(), lastResult: "plan built (" + picked.length + " targets)"
+  }));
+  return true;
+}
+
+// One cron tick of the sweep: skip fresh entries (bounded), then do AT MOST one upstream
+// fetch. Outcome branches mirror the drain's (ok / our-4xx / auth / block / transient).
+async function runRepullTick(env, deadlineMs) {
+  if (!env || !env.CHARS) return;
+  try {
+    const cfg = await getDrainConfig(env);
+    if (cfg.mode !== "run") return;                       // breaker/probe/off pauses the sweep too
+    const now = Date.now();
+    const st = await kvGetJson(env, REPULL_STATE_KEY);
+    if (!st || ((st.cursor | 0) >= (st.planLen | 0) && now - (st.builtAt || 0) >= REPULL_WEEK_MS)) {
+      await buildRepullPlan(env);                         // build tick — the sweep starts next minute
+      return;
+    }
+    if ((st.cursor | 0) >= (st.planLen | 0)) return;      // sweep done; wait out the week
+    if (st.backoffUntil && now < st.backoffUntil) return;
+    const token = await getServiceToken(env);
+    if (!token) {
+      st.lastAt = now; st.lastResult = "paused: no service token armed (POST /oauth/probe-token)";
+      st.backoffUntil = now + REPULL_BACKOFF_MAX_MS;      // don't re-log this every minute
+      await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify(st));
+      return;
+    }
+    const usage = await kvGetJson(env, USAGE_KEY);        // same monthly budget the drain honors
+    if (usage && usage.month === new Date().toISOString().slice(0, 7) && (usage.count | 0) >= MONTHLY_CHAR_BUDGET) return;
+    const plan = await kvGetJson(env, REPULL_PLAN_KEY);
+    if (!Array.isArray(plan) || !plan.length) {           // plan lost (KV wipe): finish the cycle, rebuild next week-tick
+      st.cursor = st.planLen; await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify(st));
+      return;
+    }
+    let skips = 0;
+    while ((st.cursor | 0) < plan.length && skips < REPULL_SKIP_CAP && Date.now() < deadlineMs) {
+      const target = plan[st.cursor], region = target[0], name = target[1];
+      const key = charKey(region, name);
+      const rec = await kvGetJson(env, key);
+      if (rec && rec.pulledAt && Date.now() - rec.pulledAt < CACHE_TTL_MS) {
+        st.cursor++; st.skipped++; st.headAtt = 0; skips++; continue;  // fresh (<7d): the rule — skip, no fetch
+      }
+      const t0 = Date.now();
+      let res = null;
+      try { res = await fetchCharacterData(env, region, name, token); } catch (e) { res = null; }
+      const upstream = (res && res.body && res.body.upstreamStatus) || null;
+      if (res && res.ok) {
+        await env.CHARS.put(key, JSON.stringify(Object.assign({}, res.data, { pulledAt: Date.now() })));
+        await markDirty(env, key);
+        await env.CHARS.put(LASTWRITE_KEY, String(Date.now()));
+        const m = new Date().toISOString().slice(0, 7);
+        const u2 = await kvGetJson(env, USAGE_KEY);
+        await env.CHARS.put(USAGE_KEY, JSON.stringify({ month: m, count: (u2 && u2.month === m ? (u2.count | 0) : 0) + 1 }), { expirationTtl: 40 * 24 * 3600 });
+        await appendDrainLog(env, { t: Date.now(), cached: [region + ":" + name], dropped: [], failed: [], stop: null, repull: true, ms: Date.now() - t0 });
+        st.cursor++; st.fetched++; st.headAtt = 0; st.failStreak = 0; st.backoffUntil = 0;
+        st.lastResult = "cached " + region + ":" + name;
+      } else if (res && res.status >= 400 && res.status < 500) {
+        // our 404/422: renamed/deleted or no Ark Grid anymore — skip it for this sweep
+        // (no nf: marker — that would block a legit user lookup of a maybe-transient miss for an hour)
+        st.cursor++; st.dropped++; st.headAtt = 0;
+        st.lastResult = "dropped " + region + ":" + name + " (HTTP " + res.status + ")";
+      } else if (upstream === 401 || upstream === 403) {
+        // the SERVICE token expired/revoked (mirrors the drain's per-item auth branch): pause
+        // ONLY the sweep and say so — never trip the breaker, user lookups are unaffected.
+        st.backoffUntil = now + REPULL_BACKOFF_MAX_MS;
+        st.lastResult = "paused: service token rejected (upstream " + upstream + ") — re-arm via /oauth/probe-token";
+      } else if (upstream >= 400 && upstream < 500) {
+        // genuine site block (429/418/451): hand off to the breaker exactly like the drain;
+        // probe auto-recovers, and the mode gate above keeps the sweep paused meanwhile.
+        await setDrainConfig(env, { mode: "probe", drainPerMin: cfg.drainPerMin, lastProbe: Date.now(), interval: PAUSE_PROBE_FIRST_MS });
+        st.lastResult = "blocked (upstream " + upstream + ") — breaker tripped to probe";
+      } else {
+        // transient 5xx/network/timeout: retry the same entry next tick with doubling backoff;
+        // give the entry up after REPULL_MAX_HEAD_ATTEMPTS so one broken name can't stall the sweep.
+        st.headAtt = (st.headAtt | 0) + 1; st.failStreak = (st.failStreak | 0) + 1;
+        st.backoffUntil = now + Math.min(REPULL_BACKOFF_FIRST_MS * Math.pow(2, Math.max(0, st.failStreak - 1)), REPULL_BACKOFF_MAX_MS);
+        if (st.headAtt >= REPULL_MAX_HEAD_ATTEMPTS) { st.cursor++; st.dropped++; st.headAtt = 0; }
+        st.lastResult = "transient failure on " + region + ":" + name + " (att " + st.headAtt + ")";
+      }
+      break;                                              // at most ONE upstream fetch per tick, whatever the outcome
+    }
+    st.lastAt = Date.now();
+    await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify(st));
+  } catch (e) {}
+}
+
 // Re-queue characters at the FRONT of the free queue (oldest ts=1, attempts reset) so a paused
 // queue resumes by retrying exactly the lookups that failed, first. Dedupes by region:name.
 async function requeueFront(env, items) {
@@ -1707,9 +1878,13 @@ export default {
 
   async scheduled(controller, env, ctx) {
     // Every minute: drain a few queued characters (paced), then refresh the leaderboard snapshot
-    // if it's due (rebuildSnapshotIfChanged self-throttles to ~every 30 min so reads stay low).
+    // if it's due (rebuildSnapshotIfChanged self-throttles to ~every 30 min so reads stay low),
+    // then advance the weekly repull sweep by at most one fetch — skipped entirely when the
+    // drain/snapshot work already ate the minute (the 50s deadline mirrors DRAIN_BUDGET_MS).
+    const t0 = Date.now();
     await drainQueue(env);
     await rebuildSnapshotIfChanged(env);
+    if (Date.now() - t0 < 45000) await runRepullTick(env, t0 + 50000);
   }
 };
 
@@ -1885,12 +2060,13 @@ async function handleFetch(request, env, ctx) {
       // Lists the LIVE queue fresh (listQueueOrder — it does NOT read the q:order snapshot:
       // one admin viewer, and fresh beats cached so new enqueues show immediately) + the small
       // state keys, all independent -> one parallel round-trip.
-      const [items, usage0, lw, dlog, cfg] = await Promise.all([
+      const [items, usage0, lw, dlog, cfg, repullSt] = await Promise.all([
         listQueueOrder(env).catch(function () { return []; }), // admin: always the LIVE queue (1 owner; fresh > cached so new enqueues show immediately)
         kvGetJson(env, USAGE_KEY).catch(function () { return null; }),
         env.CHARS.get(LASTWRITE_KEY).catch(function () { return null; }),
         kvGetJson(env, DRAIN_LOG_KEY).catch(function () { return null; }),
-        getDrainConfig(env).catch(function () { return { mode: "run", drainPerMin: DRAIN_PER_RUN }; })
+        getDrainConfig(env).catch(function () { return { mode: "run", drainPerMin: DRAIN_PER_RUN }; }),
+        kvGetJson(env, REPULL_STATE_KEY).catch(function () { return null; })
       ]);
       const usage = usage0 || {}, lastWrite = parseInt(lw, 10) || 0;
       const drainLog = Array.isArray(dlog) ? dlog : [];
@@ -1907,6 +2083,7 @@ async function handleFetch(request, env, ctx) {
         lastWriteMs: lastWrite,
         drainLog: drainLog,
         hasProbeToken: !!(await getServiceToken(env)),   // is the drain/probe armed with an owner token?
+        repull: repullSt || null,                        // the weekly top-rank sweep's live state (null until the first plan build)
         paused: cfg.mode !== "run"
       }, 200);
     }
