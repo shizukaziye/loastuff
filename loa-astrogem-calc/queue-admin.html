@@ -77,6 +77,10 @@
       <div id="hbody" style="max-height:36vh;overflow:auto"></div>
     </div>
     <div class="panel">
+      <h2 id="rphead">Weekly repull sweep</h2>
+      <div id="rpbody"></div>
+    </div>
+    <div class="panel">
       <h2 id="qhead">Queue</h2>
       <div id="qbody" style="max-height:58vh;overflow:auto"></div>
     </div>
@@ -112,6 +116,13 @@
     if(s<60) return s+"s ago";
     var m = Math.round(s/60); if(m<60) return m+"m ago";
     return Math.round(m/60)+"h ago";
+  }
+  function fmtIn(ms){ // future counterpart of fmtAgo (repull ETAs)
+    var s = Math.max(0, Math.round((ms-Date.now())/1000));
+    if(s<60) return "in "+s+"s";
+    var m = Math.round(s/60); if(m<60) return "in "+m+"m";
+    var h = Math.round(m/60); if(h<48) return "in "+h+"h";
+    return "in "+Math.round(h/24)+"d";
   }
   function fmtWait(s){ if(s==null) return "—"; if(s<60) return s+"s"; var m=Math.floor(s/60); if(m<60) return m+"m"; return Math.floor(m/60)+"h "+(m%60)+"m"; }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c];}); }
@@ -163,8 +174,38 @@
     }
     renderErrors(j.drainLog);
     renderDrainHistory(j.drainLog);
+    renderRepull(j.repull);
     renderControls(j);
     setStatus();
+  }
+
+  // The weekly top-rank repull sweep (?metrics repull; see docs/how-the-queue-and-drain-work.md §5b).
+  function renderRepull(rp){
+    var el = $("rpbody");
+    if(!rp){
+      el.innerHTML = '<p class="muted" style="padding:16px;margin:0">No plan yet — the first plan builds on an upcoming cron tick.</p>';
+      return;
+    }
+    var doneN = rp.cursor|0, total = rp.planLen|0;
+    var pct = total ? Math.min(100, Math.round(100*doneN/total)) : 0;
+    var sweepDone = doneN >= total;
+    var now = Date.now();
+    var paused = rp.backoffUntil && now < rp.backoffUntil;
+    var stateTxt = sweepDone ? '<span class="good">complete</span> <small>next plan '+fmtIn(rp.builtAt + 7*24*3600*1000)+'</small>'
+      : paused ? '<span class="warn">paused</span> <small>resumes '+fmtIn(rp.backoffUntil)+'</small>'
+      : '<span class="good">sweeping</span> <small>1/min while stale</small>';
+    el.innerHTML =
+      '<div style="padding:14px 16px">' +
+        '<div class="row" style="gap:14px;align-items:baseline;flex-wrap:wrap">' +
+          '<span>'+stateTxt+'</span>' +
+          '<span class="muted">plan '+num(total)+' · built '+fmtAgo(rp.builtAt)+'</span>' +
+          '<span class="muted">pulled <span class="good">'+num(rp.fetched|0)+'</span> · fresh-skipped '+num(rp.skipped|0)+' · dropped '+num(rp.dropped|0)+'</span>' +
+        '</div>' +
+        '<div style="margin:10px 0 6px;height:6px;border-radius:3px;background:var(--panel2);overflow:hidden">' +
+          '<div style="height:100%;width:'+pct+'%;background:var(--accent)"></div>' +
+        '</div>' +
+        '<p class="muted" style="margin:6px 0 0;font-size:12px">'+num(doneN)+' / '+num(total)+' ('+pct+'%) · last: '+esc(rp.lastResult||"—")+' · '+fmtAgo(rp.lastAt)+'</p>' +
+      '</div>';
   }
 
   // Controls: reflect the live mode + rate, and POST changes to the admin-only ?control endpoint.
