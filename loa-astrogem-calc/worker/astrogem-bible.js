@@ -661,6 +661,55 @@ function parseAccessories(html) {
   return out.length ? out : null;
 }
 
+// Per-piece honing from the equipment slots (raid loadout = first occurrence
+// per slot). armorMin is the next tap target; weaponAdv rides for display.
+function parseEquipmentHoning(html) {
+  const re = /slot:"(weapon|head|upper_body|lower_body|hand|shoulder)",data:\{type:"equipment",stats:\[.*?\],honing:(\d+)(?:,advancedHoning:(\d+))?/g;
+  const seen = {}; let m;
+  while ((m = re.exec(html)) !== null) {
+    if (seen[m[1]] == null) seen[m[1]] = { honing: +m[2], adv: m[3] != null ? +m[3] : null };
+  }
+  const armor = ["head", "upper_body", "lower_body", "hand", "shoulder"]
+    .map(sl => seen[sl]).filter(Boolean);
+  if (!armor.length && !seen.weapon) return null;
+  return {
+    weapon: seen.weapon ? seen.weapon.honing : null,
+    weaponAdv: seen.weapon ? seen.weapon.adv : null,
+    armorMin: armor.length ? Math.min.apply(null, armor.map(a => a.honing)) : null,
+    armor: armor.map(a => a.honing)
+  };
+}
+
+// karma:{evolution,enlightenment,leap} — enlightenment is the level the GPD
+// chart's karma ladder prices (21-30).
+function parseKarma(html) {
+  const m = html.match(/karma:\{evolution:(\d+),enlightenment:(\d+),leap:(\d+)\}/);
+  return m ? { evolution: +m[1], enlightenment: +m[2], leap: +m[3] } : null;
+}
+
+// ability stone: three engravings [offense, offense, malus] with node counts.
+function parseStone(html) {
+  const m = html.match(/slot:"ability_stone",data:\{engravings:\[\{id:\d+,nodes:(\d+)\},\{id:\d+,nodes:(\d+)\},\{id:\d+,nodes:(\d+)\}\]/);
+  if (!m) return null;
+  return { a: Math.max(+m[1], +m[2]), b: Math.min(+m[1], +m[2]), malus: +m[3] };
+}
+
+// bracelet: fixed type-2 entries are the two stats; fixed:false rows the lines.
+function parseBracelet(html) {
+  const i = html.indexOf('slot:"bracelet"');
+  if (i < 0) return null;
+  const end = html.indexOf('slot:"', i + 10);
+  const seg = html.slice(i, end > 0 ? end : i + 1500);
+  const re = /\{type:(\d+),index:(\d+),id:\d+,value:(\d+),fixed:(true|false)\}/g;
+  const stats = [], lines = []; let m;
+  while ((m = re.exec(seg)) !== null) {
+    if (m[4] === "true" && m[1] === "2") stats.push(+m[3]);
+    else if (m[4] === "false") lines.push({ type: +m[1], index: +m[2], value: +m[3] });
+  }
+  if (!stats.length && !lines.length) return null;
+  return { stats: stats, lines: lines };
+}
+
 // Classic (skill) gem levels from the equipment `gems:[{slot,id,effects}]` array.
 // The gem id's level digits are unreliable across families (event gems break them), so
 // the level comes from the primary effect value first — linear tables confirmed on
@@ -815,11 +864,19 @@ async function fetchCharacterData(env, region, name, userToken) {
   const combatPower = isKR ? null : parseCombatPower(html);
   const accessories = isKR ? null : parseAccessories(html);
   const classicGemLevels = isKR ? null : parseClassicGemLevels(html);
+  const equipment = isKR ? null : parseEquipmentHoning(html);
+  const karma = isKR ? null : parseKarma(html);
+  const stone = isKR ? null : parseStone(html);
+  const bracelet = isKR ? null : parseBracelet(html);
   return { ok: true, data: {
     region: region,
     combatPower: combatPower,
     accessories: accessories,
     classicGemLevels: classicGemLevels,
+    equipment: equipment,
+    karma: karma,
+    stone: stone,
+    bracelet: bracelet,
     // Normalize the DISPLAY name (Roman-script -> Title-case; Korean left as-is). This
     // record flows into both the KV value and the JSON response, and ?list=1 echoes it,
     // so the leaderboard shows normalized names. The KV cache KEY is unaffected — it
