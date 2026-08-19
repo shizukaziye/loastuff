@@ -73,6 +73,7 @@ const ALLOW_ORIGINS = [
   "https://www.loseii.com",
   "https://loseii.com",
   "https://loastuff.pages.dev",
+  "https://shizukaziye.github.io",   // the GPD chart's character lookup (2026-08-19)
   "https://lostark.bible",
   "https://www.lostark.bible"
 ];
