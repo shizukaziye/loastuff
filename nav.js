@@ -43,6 +43,7 @@
       label: "TCG",
       items: [
         { name: "CN Card Finder",    url: "https://shizukaziye.github.io/cn-card-finder/" },
+        { name: "Riftbound Tier List", url: "https://shizukaziye.github.io/riftbound-tierlist/" },
         { name: "TCG Price Tracker", url: "https://tcg-price-tracker.pages.dev/" }
       ]
     },

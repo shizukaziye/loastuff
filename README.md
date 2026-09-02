@@ -32,6 +32,7 @@ Cloudflare Pages deploys `main` on every push. The custom domain is `www.loseii.
 
 **Trading Card Games**
 - [CN Card Finder](https://shizukaziye.github.io/cn-card-finder/) — EN→CN card names + search strings for sourcing from China (own repo)
+- [Riftbound Tier List Maker](https://shizukaziye.github.io/riftbound-tierlist/) — search every Riftbound card, drag into tiers, share link / PNG export (own repo)
 - [TCG Price Tracker](https://tcg-price-tracker.pages.dev/) — price watchlist incl. jihuanshe CNY vs PriceCharting USD (own repo)
 
 **Finance**
