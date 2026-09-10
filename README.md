@@ -13,6 +13,7 @@ Cloudflare Pages deploys `main` on every push. The custom domain is `www.loseii.
 - `loa-astrogem-calc/` — Astrogem Calculator (grader / pipeline / advisor / leaderboard, plus its Cloudflare workers under `worker/`)
 - `loa-crafting-calculator/` — Stronghold Crafting Profit (baked market snapshot)
 - `loa-deal-finder/` — Deal Finder (baked market data)
+- `loa-hell-key-calc/` — Hell Key Calculator (Paradise Hell key EV; baked market reference prices)
 - `loa-on-2026-summer/` — LOA ON 2026 Summer recap
 - `loa-tierlist/` — retired; redirect stub
 - `.github/workflows/refresh-data.yml` — re-bakes the two market tools' data every 6 hours and commits back (which redeploys)
@@ -24,6 +25,7 @@ Cloudflare Pages deploys `main` on every push. The custom domain is `www.loseii.
 - [Astrogem Calculator](https://www.loseii.com/loa-astrogem-calc/) — cut/fuse/throw pipeline tables, screenshot advisor, leaderboard
 - [Stronghold Crafting Profit](https://www.loseii.com/loa-crafting-calculator/) — every craft ranked by net gold, gold/hr, ROI
 - [Deal Finder](https://www.loseii.com/loa-deal-finder/) — market items ranked vs a robust 14-day fair price
+- [Hell Key Calculator](https://www.loseii.com/loa-hell-key-calc/) — Paradise Hell key EV, middle-jump strategy, altar verdict, season projection
 - [LOA ON Bingo](https://loa-on-bingo.shizukaziye.workers.dev/) — live multiplayer watch-party bingo (own repo)
 - [LOA ON 2026 Summer](https://www.loseii.com/loa-on-2026-summer/) — showcase recap
 

@@ -1,3 +1,5 @@
 .wrangler/
 node_modules/
 .DS_Store
+loa-hell-key-calc/prices_raw.json
+loa-hell-key-calc/__pycache__/

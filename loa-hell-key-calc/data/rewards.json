@@ -1,0 +1,976 @@
+{
+ "source": "https://docs.google.com/spreadsheets/d/1MicXg7ve7G6sXKwMezKXYJYPsf-dULJnJ5l3htASjSA/edit",
+ "extracted_at": "2026-07-15T00:00:00Z",
+ "keys": {
+  "hell1730": {
+   "label": "1730 Splendid Hell Key",
+   "element": "Hell",
+   "chest_cats": [
+    "stones",
+    "juice",
+    "fusions",
+    "leap",
+    "gold",
+    "taps",
+    "brace",
+    "karma",
+    "astro",
+    "elysian",
+    "kits"
+   ],
+   "bands": [
+    {
+     "range": "0 - 9",
+     "rewards": {
+      "stones": 500,
+      "juice": 10,
+      "fusions": 60,
+      "leap": 25,
+      "gold": 4500,
+      "taps": 24,
+      "brace": 8,
+      "karma": 7,
+      "astro": [
+       0.0,
+       2.0,
+       0.0
+      ],
+      "kits": 8,
+      "b_shards": 5200,
+      "b_red": 26,
+      "b_blue": 170,
+      "b_leap": 4
+     }
+    },
+    {
+     "range": "10 - 19",
+     "rewards": {
+      "stones": 600,
+      "juice": 15,
+      "fusions": 90,
+      "leap": 36,
+      "gold": 7200,
+      "taps": 40,
+      "brace": 10,
+      "karma": 12,
+      "astro": [
+       0.0,
+       5.0,
+       0.0
+      ],
+      "kits": 10,
+      "b_shards": 6500,
+      "b_red": 32,
+      "b_blue": 200,
+      "b_leap": 5
+     }
+    },
+    {
+     "range": "20 - 29",
+     "rewards": {
+      "stones": 900,
+      "juice": 20,
+      "fusions": 125,
+      "leap": 48,
+      "gold": 9500,
+      "taps": 56,
+      "brace": 13,
+      "karma": 15,
+      "astro": [
+       0.0,
+       7.0,
+       0.0
+      ],
+      "kits": 15,
+      "b_shards": 7700,
+      "b_red": 38,
+      "b_blue": 230,
+      "b_leap": 6
+     }
+    },
+    {
+     "range": "30 - 39",
+     "rewards": {
+      "stones": 1200,
+      "juice": 25,
+      "fusions": 150,
+      "leap": 64,
+      "gold": 12000,
+      "taps": 70,
+      "brace": 16,
+      "karma": 18,
+      "astro": [
+       0.0,
+       10.0,
+       0.0
+      ],
+      "kits": 20,
+      "b_shards": 9000,
+      "b_red": 44,
+      "b_blue": 280,
+      "b_leap": 7
+     }
+    },
+    {
+     "range": "40 - 49",
+     "rewards": {
+      "stones": 1600,
+      "juice": 36,
+      "fusions": 225,
+      "leap": 90,
+      "gold": 16000,
+      "taps": 96,
+      "brace": 24,
+      "karma": 27,
+      "astro": [
+       0.0,
+       15.0,
+       0.0
+      ],
+      "kits": 25,
+      "b_shards": 10000,
+      "b_red": 52,
+      "b_blue": 330,
+      "b_leap": 8
+     }
+    },
+    {
+     "range": "50 - 59",
+     "rewards": {
+      "stones": 2200,
+      "juice": 48,
+      "fusions": 300,
+      "leap": 130,
+      "gold": 22000,
+      "taps": 130,
+      "brace": 32,
+      "karma": 36,
+      "astro": [
+       0.0,
+       0.0,
+       1.0
+      ],
+      "elysian": 2,
+      "kits": 30,
+      "b_shards": 11500,
+      "b_red": 60,
+      "b_blue": 380,
+      "b_leap": 9
+     }
+    },
+    {
+     "range": "60 - 69",
+     "rewards": {
+      "stones": 3000,
+      "juice": 72,
+      "fusions": 450,
+      "leap": 190,
+      "gold": 32000,
+      "taps": 180,
+      "brace": 42,
+      "karma": 54,
+      "astro": [
+       0.0,
+       0.0,
+       2.0
+      ],
+      "elysian": 4,
+      "kits": 45,
+      "b_shards": 13000,
+      "b_red": 70,
+      "b_blue": 440,
+      "b_leap": 10
+     }
+    },
+    {
+     "range": "70 - 79",
+     "rewards": {
+      "stones": 4500,
+      "juice": 96,
+      "fusions": 600,
+      "leap": 250,
+      "gold": 45000,
+      "taps": 260,
+      "brace": 60,
+      "karma": 72,
+      "astro": [
+       0.0,
+       0.0,
+       3.0
+      ],
+      "elysian": 7,
+      "kits": 60,
+      "b_shards": 14000,
+      "b_red": 80,
+      "b_blue": 500,
+      "b_leap": 11
+     }
+    },
+    {
+     "range": "80 - 89",
+     "rewards": {
+      "stones": 6500,
+      "juice": 132,
+      "fusions": 850,
+      "leap": 350,
+      "gold": 65000,
+      "taps": 360,
+      "brace": 80,
+      "karma": 100,
+      "astro": [
+       0.0,
+       0.0,
+       4.0
+      ],
+      "elysian": 10,
+      "kits": 80,
+      "b_shards": 15500,
+      "b_red": 90,
+      "b_blue": 560,
+      "b_leap": 12
+     }
+    },
+    {
+     "range": "90 - 99",
+     "rewards": {
+      "stones": 9000,
+      "juice": 192,
+      "fusions": 1200,
+      "leap": 500,
+      "gold": 95000,
+      "taps": 500,
+      "brace": 120,
+      "karma": 150,
+      "astro": [
+       0.0,
+       0.0,
+       5.0
+      ],
+      "elysian": 15,
+      "kits": 120,
+      "b_shards": 17000,
+      "b_red": 100,
+      "b_blue": 620,
+      "b_leap": 13
+     }
+    },
+    {
+     "range": "100",
+     "rewards": {
+      "stones": 15000,
+      "juice": 320,
+      "fusions": 2000,
+      "leap": 850,
+      "gold": 130000,
+      "taps": 850,
+      "brace": 200,
+      "karma": 240,
+      "astro": [
+       0.0,
+       0.0,
+       6.0
+      ],
+      "elysian": 20,
+      "kits": 200,
+      "b_shards": 18000,
+      "b_red": 110,
+      "b_blue": 680,
+      "b_leap": 15
+     }
+    }
+   ]
+  },
+  "hell1750": {
+   "label": "1750 Hell Key",
+   "element": "Hell",
+   "chest_cats": [
+    "stones",
+    "juice",
+    "fusions",
+    "leap",
+    "gold",
+    "taps",
+    "brace",
+    "karma",
+    "astro",
+    "elysian",
+    "kits"
+   ],
+   "bands": [
+    {
+     "range": "0 - 9",
+     "rewards": {
+      "stones": 600,
+      "juice": 12,
+      "fusions": 75,
+      "leap": 30,
+      "gold": 5500,
+      "taps": 28,
+      "brace": 9,
+      "karma": 9,
+      "astro": [
+       0.0,
+       3.0,
+       0.0
+      ],
+      "kits": 9,
+      "b_shards": 5200,
+      "b_red": 26,
+      "b_blue": 170,
+      "b_leap": 4
+     }
+    },
+    {
+     "range": "10 - 19",
+     "rewards": {
+      "stones": 750,
+      "juice": 18,
+      "fusions": 110,
+      "leap": 42,
+      "gold": 8200,
+      "taps": 45,
+      "brace": 12,
+      "karma": 13,
+      "astro": [
+       0.0,
+       6.0,
+       0.0
+      ],
+      "kits": 12,
+      "b_shards": 6500,
+      "b_red": 32,
+      "b_blue": 200,
+      "b_leap": 5
+     }
+    },
+    {
+     "range": "20 - 29",
+     "rewards": {
+      "stones": 1100,
+      "juice": 24,
+      "fusions": 150,
+      "leap": 56,
+      "gold": 11000,
+      "taps": 62,
+      "brace": 15,
+      "karma": 18,
+      "astro": [
+       0.0,
+       8.0,
+       0.0
+      ],
+      "kits": 18,
+      "b_shards": 7700,
+      "b_red": 38,
+      "b_blue": 230,
+      "b_leap": 6
+     }
+    },
+    {
+     "range": "30 - 39",
+     "rewards": {
+      "stones": 1500,
+      "juice": 30,
+      "fusions": 200,
+      "leap": 76,
+      "gold": 14400,
+      "taps": 84,
+      "brace": 18,
+      "karma": 24,
+      "astro": [
+       0.0,
+       12.0,
+       0.0
+      ],
+      "kits": 25,
+      "b_shards": 9000,
+      "b_red": 44,
+      "b_blue": 280,
+      "b_leap": 7
+     }
+    },
+    {
+     "range": "40 - 49",
+     "rewards": {
+      "stones": 2000,
+      "juice": 40,
+      "fusions": 270,
+      "leap": 108,
+      "gold": 19200,
+      "taps": 115,
+      "brace": 27,
+      "karma": 33,
+      "astro": [
+       0.0,
+       0.0,
+       1.0
+      ],
+      "kits": 33,
+      "b_shards": 10000,
+      "b_red": 52,
+      "b_blue": 330,
+      "b_leap": 8
+     }
+    },
+    {
+     "range": "50 - 59",
+     "rewards": {
+      "stones": 2700,
+      "juice": 60,
+      "fusions": 360,
+      "leap": 160,
+      "gold": 26400,
+      "taps": 155,
+      "brace": 36,
+      "karma": 45,
+      "astro": [
+       0.0,
+       0.0,
+       2.0
+      ],
+      "elysian": 2,
+      "kits": 45,
+      "b_shards": 11500,
+      "b_red": 60,
+      "b_blue": 380,
+      "b_leap": 9
+     }
+    },
+    {
+     "range": "60 - 69",
+     "rewards": {
+      "stones": 3600,
+      "juice": 90,
+      "fusions": 540,
+      "leap": 230,
+      "gold": 38400,
+      "taps": 220,
+      "brace": 45,
+      "karma": 72,
+      "astro": [
+       0.0,
+       0.0,
+       3.0
+      ],
+      "elysian": 4,
+      "kits": 60,
+      "b_shards": 13000,
+      "b_red": 70,
+      "b_blue": 440,
+      "b_leap": 10
+     }
+    },
+    {
+     "range": "70 - 79",
+     "rewards": {
+      "stones": 5400,
+      "juice": 130,
+      "fusions": 720,
+      "leap": 320,
+      "gold": 54000,
+      "taps": 310,
+      "brace": 65,
+      "karma": 90,
+      "astro": [
+       0.0,
+       0.0,
+       4.0
+      ],
+      "elysian": 7,
+      "kits": 80,
+      "b_shards": 14000,
+      "b_red": 80,
+      "b_blue": 500,
+      "b_leap": 11
+     }
+    },
+    {
+     "range": "80 - 89",
+     "rewards": {
+      "stones": 7800,
+      "juice": 180,
+      "fusions": 1000,
+      "leap": 450,
+      "gold": 78000,
+      "taps": 430,
+      "brace": 90,
+      "karma": 120,
+      "astro": [
+       0.0,
+       0.0,
+       5.0
+      ],
+      "elysian": 10,
+      "kits": 110,
+      "b_shards": 15500,
+      "b_red": 90,
+      "b_blue": 560,
+      "b_leap": 12
+     }
+    },
+    {
+     "range": "90 - 99",
+     "rewards": {
+      "stones": 10800,
+      "juice": 260,
+      "fusions": 1440,
+      "leap": 650,
+      "gold": 114000,
+      "taps": 600,
+      "brace": 130,
+      "karma": 180,
+      "astro": [
+       0.0,
+       0.0,
+       6.0
+      ],
+      "elysian": 15,
+      "kits": 150,
+      "b_shards": 17000,
+      "b_red": 100,
+      "b_blue": 620,
+      "b_leap": 13
+     }
+    },
+    {
+     "range": "100",
+     "rewards": {
+      "stones": 18000,
+      "juice": 380,
+      "fusions": 2400,
+      "leap": 1000,
+      "gold": 156000,
+      "taps": 1000,
+      "brace": 220,
+      "karma": 300,
+      "astro": [
+       0.0,
+       0.0,
+       7.0
+      ],
+      "elysian": 20,
+      "kits": 220,
+      "b_shards": 18000,
+      "b_red": 110,
+      "b_blue": 680,
+      "b_leap": 15
+     }
+    }
+   ]
+  },
+  "nw1730": {
+   "label": "1730 Splendid Netherworld Key",
+   "element": "Netherworld",
+   "chest_cats": [
+    "juice",
+    "gold",
+    "brace",
+    "karma",
+    "astro",
+    "books",
+    "kits",
+    "cards",
+    "gems"
+   ],
+   "bands": [
+    {
+     "range": "0 - 9",
+     "rewards": {
+      "juice": 50,
+      "gold": 22500,
+      "brace": 40,
+      "karma": 35,
+      "astro": [
+       0.0,
+       10.0,
+       0.0
+      ],
+      "books": 4,
+      "kits": 40,
+      "cards": 1
+     }
+    },
+    {
+     "range": "10 - 19",
+     "rewards": {
+      "juice": 75,
+      "gold": 36000,
+      "brace": 50,
+      "karma": 60,
+      "astro": [
+       0.0,
+       25.0,
+       0.0
+      ],
+      "books": 6,
+      "kits": 50,
+      "cards": 5
+     }
+    },
+    {
+     "range": "20 - 29",
+     "rewards": {
+      "juice": 100,
+      "gold": 47500,
+      "brace": 65,
+      "karma": 75,
+      "astro": [
+       0.0,
+       35.0,
+       0.0
+      ],
+      "books": 8,
+      "kits": 75,
+      "cards": 10
+     }
+    },
+    {
+     "range": "30 - 39",
+     "rewards": {
+      "juice": 125,
+      "gold": 60000,
+      "brace": 80,
+      "karma": 90,
+      "astro": [
+       0.0,
+       50.0,
+       0.0
+      ],
+      "books": 10,
+      "kits": 100,
+      "cards": 20
+     }
+    },
+    {
+     "range": "40 - 49",
+     "rewards": {
+      "juice": 180,
+      "gold": 80000,
+      "brace": 120,
+      "karma": 135,
+      "astro": [
+       0.0,
+       75.0,
+       0.0
+      ],
+      "books": 15,
+      "kits": 125,
+      "cards": 40
+     }
+    },
+    {
+     "range": "50 - 59",
+     "rewards": {
+      "juice": 240,
+      "gold": 110000,
+      "brace": 160,
+      "karma": 180,
+      "astro": [
+       0.0,
+       0.0,
+       5.0
+      ],
+      "books": 20,
+      "kits": 150,
+      "cards": 70
+     }
+    },
+    {
+     "range": "60 - 69",
+     "rewards": {
+      "juice": 360,
+      "gold": 160000,
+      "brace": 210,
+      "karma": 270,
+      "astro": [
+       0.0,
+       0.0,
+       10.0
+      ],
+      "books": 27,
+      "kits": 225,
+      "cards": 100
+     }
+    },
+    {
+     "range": "70 - 79",
+     "rewards": {
+      "juice": 480,
+      "gold": 225000,
+      "brace": 300,
+      "karma": 360,
+      "astro": [
+       0.0,
+       0.0,
+       15.0
+      ],
+      "books": 35,
+      "kits": 300,
+      "cards": 150
+     }
+    },
+    {
+     "range": "80 - 89",
+     "rewards": {
+      "juice": 660,
+      "gold": 325000,
+      "brace": 400,
+      "karma": 500,
+      "astro": [
+       0.0,
+       0.0,
+       20.0
+      ],
+      "books": 50,
+      "kits": 400,
+      "cards": 200,
+      "gems": 4
+     }
+    },
+    {
+     "range": "90 - 99",
+     "rewards": {
+      "juice": 960,
+      "gold": 475000,
+      "brace": 600,
+      "karma": 750,
+      "astro": [
+       0.0,
+       0.0,
+       25.0
+      ],
+      "books": 70,
+      "kits": 600,
+      "cards": 300,
+      "gems": 5
+     }
+    },
+    {
+     "range": "100",
+     "rewards": {
+      "juice": 1600,
+      "gold": 650000,
+      "brace": 1000,
+      "karma": 1200,
+      "astro": [
+       0.0,
+       0.0,
+       30.0
+      ],
+      "books": 100,
+      "kits": 1000,
+      "cards": 500,
+      "gems": 6
+     }
+    }
+   ]
+  },
+  "nw1750": {
+   "label": "1750 Netherworld Key",
+   "element": "Netherworld",
+   "chest_cats": [
+    "juice",
+    "gold",
+    "brace",
+    "karma",
+    "astro",
+    "books",
+    "kits",
+    "cards",
+    "gems"
+   ],
+   "bands": [
+    {
+     "range": "0 - 9",
+     "rewards": {
+      "juice": 60,
+      "gold": 27500,
+      "brace": 45,
+      "karma": 45,
+      "astro": [
+       0.0,
+       15.0,
+       0.0
+      ],
+      "books": 5,
+      "kits": 45,
+      "cards": 1
+     }
+    },
+    {
+     "range": "10 - 19",
+     "rewards": {
+      "juice": 90,
+      "gold": 41000,
+      "brace": 60,
+      "karma": 65,
+      "astro": [
+       0.0,
+       30.0,
+       0.0
+      ],
+      "books": 7,
+      "kits": 60,
+      "cards": 5
+     }
+    },
+    {
+     "range": "20 - 29",
+     "rewards": {
+      "juice": 120,
+      "gold": 55000,
+      "brace": 75,
+      "karma": 90,
+      "astro": [
+       0.0,
+       40.0,
+       0.0
+      ],
+      "books": 9,
+      "kits": 90,
+      "cards": 10
+     }
+    },
+    {
+     "range": "30 - 39",
+     "rewards": {
+      "juice": 150,
+      "gold": 72000,
+      "brace": 90,
+      "karma": 120,
+      "astro": [
+       0.0,
+       60.0,
+       0.0
+      ],
+      "books": 12,
+      "kits": 125,
+      "cards": 20
+     }
+    },
+    {
+     "range": "40 - 49",
+     "rewards": {
+      "juice": 200,
+      "gold": 96000,
+      "brace": 135,
+      "karma": 165,
+      "astro": [
+       0.0,
+       0.0,
+       5.0
+      ],
+      "books": 18,
+      "kits": 165,
+      "cards": 40
+     }
+    },
+    {
+     "range": "50 - 59",
+     "rewards": {
+      "juice": 300,
+      "gold": 132000,
+      "brace": 180,
+      "karma": 225,
+      "astro": [
+       0.0,
+       0.0,
+       10.0
+      ],
+      "books": 24,
+      "kits": 225,
+      "cards": 70
+     }
+    },
+    {
+     "range": "60 - 69",
+     "rewards": {
+      "juice": 450,
+      "gold": 192000,
+      "brace": 225,
+      "karma": 360,
+      "astro": [
+       0.0,
+       0.0,
+       15.0
+      ],
+      "books": 32,
+      "kits": 300,
+      "cards": 100
+     }
+    },
+    {
+     "range": "70 - 79",
+     "rewards": {
+      "juice": 650,
+      "gold": 270000,
+      "brace": 325,
+      "karma": 450,
+      "astro": [
+       0.0,
+       0.0,
+       20.0
+      ],
+      "books": 42,
+      "kits": 400,
+      "cards": 150
+     }
+    },
+    {
+     "range": "80 - 89",
+     "rewards": {
+      "juice": 900,
+      "gold": 390000,
+      "brace": 450,
+      "karma": 600,
+      "astro": [
+       0.0,
+       0.0,
+       25.0
+      ],
+      "books": 60,
+      "kits": 550,
+      "cards": 200,
+      "gems": 5
+     }
+    },
+    {
+     "range": "90 - 99",
+     "rewards": {
+      "juice": 1300,
+      "gold": 570000,
+      "brace": 650,
+      "karma": 900,
+      "astro": [
+       0.0,
+       0.0,
+       30.0
+      ],
+      "books": 85,
+      "kits": 750,
+      "cards": 300,
+      "gems": 6
+     }
+    },
+    {
+     "range": "100",
+     "rewards": {
+      "juice": 1900,
+      "gold": 780000,
+      "brace": 1100,
+      "karma": 1500,
+      "astro": [
+       0.0,
+       0.0,
+       35.0
+      ],
+      "books": 120,
+      "kits": 1100,
+      "cards": 500,
+      "gems": 7
+     }
+    }
+   ]
+  }
+ }
+}

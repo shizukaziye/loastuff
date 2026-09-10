@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang='en'><head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Hell Key Calculator — Lost Ark Paradise</title>
+<meta name='description' content='Gold value of Lost Ark Hell keys (Paradise Season 4): EV per key, when to take the middle jump, whether to altar a key, season projection.'>
+<link rel='stylesheet' href='styles.css?v=6'>
+</head><body>
+<div class='wrap'>
+  <h1>Hell Key Calculator</h1>
+  <div class='tag'>Paradise Season 4 · 1730 / 1750 keys · EV per key, when to take the middle jump, whether to altar a key, season projection. All gold values editable.</div>
+
+  <div class='inputs'>
+    <div class='ihdr'>
+      <span class='tgl' onclick='toggleInputs()'><span id='caret'>&#9662;</span> Inputs</span>
+      <span>
+        <span class='dim' style='text-transform:none;letter-spacing:0;font-weight:400'>Key</span>
+        <button class='mbtn active' data-k='hell1750' onclick='setKey("hell1750")'>1750</button>
+        <button class='mbtn' data-k='hell1730' onclick='setKey("hell1730")'>1730</button>
+      </span>
+    </div>
+    <div id='infields'>
+      <div class='subh'>Gold value per unit</div>
+      <div id='unitTable'></div>
+      <div class='note' id='priceNote'></div>
+
+      <div class='subh'>Season plan</div>
+      <div class='ig'>
+        <div class='fld'><label>Weeks left</label><input id='pl_weeks' type='number' step='1'></div>
+        <div class='fld'><label>Rare / week</label><input id='pl_rare' type='number' step='0.1'></div>
+        <div class='fld'><label>Epic / week</label><input id='pl_epic' type='number' step='0.1'></div>
+        <div class='fld'><label>Legendary / week</label><input id='pl_legendary' type='number' step='0.1'></div>
+        <div class='fld'><label>Rare in stock</label><input id='pl_sRare' type='number' step='1'></div>
+        <div class='fld'><label>Epic in stock</label><input id='pl_sEpic' type='number' step='1'></div>
+        <div class='fld'><label>Legendary in stock</label><input id='pl_sLegendary' type='number' step='1'></div>
+      </div>
+
+      <div class='subh'>Mechanics</div>
+      <div class='ig'>
+        <div class='fld'><label>Middle jump: big descent %</label><input id='m_midUp' type='number' step='1'></div>
+        <div class='fld'><label>Big descent min</label><input id='m_midUpMin' type='number' step='1'></div>
+        <div class='fld'><label>Big descent max</label><input id='m_midUpMax' type='number' step='1'></div>
+        <div class='fld'><label>Ascent min</label><input id='m_midDownMin' type='number' step='1'></div>
+        <div class='fld'><label>Ascent max</label><input id='m_midDownMax' type='number' step='1'></div>
+        <div class='fld'><label>Same-jump bonus gold</label><input id='m_bonusGold' type='number' step='1000'></div>
+        <div class='fld'><label>Same jumps needed</label><input id='m_bonusStreak' type='number' step='1'></div>
+        <div class='fld'><label>Chests shown</label><input id='m_chestsShown' type='number' step='1'></div>
+        <div class='fld'><label>Natural abundant %</label><input id='m_natAbundant' type='number' step='1'></div>
+        <div class='fld'><label>Abundant multiplier</label><input id='m_abundantMult' type='number' step='1'></div>
+        <div class='fld'><label>Altar weight: Descent +1</label><input id='m_w_desc' type='number' step='1'></div>
+        <div class='fld'><label>Altar weight: Chest +1</label><input id='m_w_chest' type='number' step='1'></div>
+        <div class='fld'><label>Altar weight: Wealth +1</label><input id='m_w_wealth' type='number' step='1'></div>
+        <div class='fld'><label>Altar weight: Rocket jump</label><input id='m_w_rocket' type='number' step='1'></div>
+      </div>
+      <div class='subh'>Transmutation outcome %</div>
+      <div class='ig'>
+        <div class='fld'><label>Grade −2</label><input id='m_t_d2' type='number' step='1'></div>
+        <div class='fld'><label>Grade −1</label><input id='m_t_d1' type='number' step='1'></div>
+        <div class='fld'><label>Grade +1</label><input id='m_t_u1' type='number' step='1'></div>
+        <div class='fld'><label>Grade +2</label><input id='m_t_u2' type='number' step='1'></div>
+        <div class='fld'><label>Flame key</label><input id='m_t_flame' type='number' step='1'></div>
+        <div class='fld'><label>Frost key</label><input id='m_t_frost' type='number' step='1'></div>
+      </div>
+      <div class='barrow'>
+        <button onclick='recalc()'>Recalculate</button>
+        <button class='sec' onclick='resetDefaults();recalc()'>Reset defaults</button>
+        <span class='status' id='status'></span>
+      </div>
+    </div>
+  </div>
+
+  <div class='tabs'>
+    <button class='mbtn active' data-t='summary' onclick='setTab("summary")'>Summary</button>
+    <button class='mbtn' data-t='jump' onclick='setTab("jump")'>Jump strategy</button>
+    <button class='mbtn' data-t='altar' onclick='setTab("altar")'>Altar</button>
+    <button class='mbtn' data-t='plan' onclick='setTab("plan")'>Season plan</button>
+    <button class='mbtn' data-t='tables' onclick='setTab("tables")'>Reward tables</button>
+  </div>
+
+  <div class='tab active' id='tab_summary'>
+    <h2>Expected value per key</h2>
+    <div class='panel' id='headline'></div>
+    <div class='panel' style='margin-top:12px' id='evTable'></div>
+  </div>
+
+  <div class='tab' id='tab_jump'>
+    <h2>When to take the middle jump</h2>
+    <div class='panel' style='margin-bottom:12px'>
+      <div class='ig'>
+        <div class='fld'><label>Previous identical jumps</label>
+          <select id='j_streak' onchange='renderJump()'><option value='0'>none</option><option value='1'>1</option><option value='2'>2</option></select></div>
+        <div class='fld'><label>Their distance</label><select id='j_last' onchange='renderJump()'></select></div>
+      </div>
+    </div>
+    <div class='panel' id='jumpText'></div>
+    <div class='panel' style='margin-top:12px;overflow-x:auto' id='jumpGrid'></div>
+    <div class='note'>Gold gained by taking the middle instead of a normal descent. Green = take it. Rows: floor. Columns: descents left, counting this one.</div>
+  </div>
+
+  <div class='tab' id='tab_altar'>
+    <h2>Altar a key?</h2>
+    <div class='panel' id='altarTable'></div>
+    <div class='grid c2' style='margin-top:12px'>
+      <div class='panel' id='nwTable'></div>
+      <div class='panel' id='stopText'></div>
+    </div>
+  </div>
+
+  <div class='tab' id='tab_plan'>
+    <h2>Season projection</h2>
+    <div class='panel' id='planHead'></div>
+    <div class='panel' style='margin-top:12px' id='planTable'></div>
+  </div>
+
+  <div class='tab' id='tab_tables'>
+    <h2>Reward tables</h2>
+    <div class='panel' style='overflow-x:auto' id='rewardTable'></div>
+  </div>
+
+  <details class='method'>
+    <summary>How it works</summary>
+    <p><b>Run.</b> A key gives D descents: Common 3, Uncommon 4, Rare 5, Epic 6, Legendary 7, Relic 8, Ancient 9. A descent drops 1–20 floors, capped at 100. On floors 10, 20 … 90 a middle option appears: 63% a big descent of 16–20 floors, 37% an ascent of 1–5, every floor in range equally likely. Landing on 11, 22 … 99 spawns an altar with two of four effects drawn by weight (Descent +1, Chest +1, Wealth +1, Rocket jump); the model takes the better one. Three identical jump distances in a row pay 30,000 gold, and every further repeat pays again.</p>
+    <p><b>Rewards.</b> The floor you finish on fixes the band (0–9, 10–19 … 90–99, 100). The game draws 3 chests (4 with Chest +1) from the band's categories, 10 of them (11 from floor 50, when the Elysian ticket joins), and you keep one; the model takes the highest gold value. A guaranteed chest of shards, stones and leapstones comes on top, ×10 when abundant (10% on its own, always with Wealth +1). Bound items are priced at whatever you type above; the grey market figure is the NA East robust 14-day price of the tradeable version.</p>
+    <div class='formula'>P(j-th best category is the best one shown) = C(N−1−j, k−1) / C(N, k)
+V(floor, descents, streak, flags) = max over {normal, middle} of E[bonus + V(next)]      Netherworld adds {stop}
+EV(key) = V(0, D, no streak, no flags), by backward induction over descents left</div>
+    <p><b>Middle jump.</b> Worth taking when the band you might reach is worth much more than the one you fall back to and you still have descents to recover, or when two identical jumps are behind you and the middle's 12.6% chance of a 20 (63% × 1/5) beats a normal descent's 5%. The jump grid reads the same model at a fixed state: no altar effects, the streak you select.</p>
+    <p><b>Netherworld.</b> Transmuting a Destiny key gives, by default, 15% each a key two or one grades down or up and 20% each a same-grade Flame or Frost key. Only Crucible ranking keys can be fed, once each; the altar appears in the lobby 20% of the time and on floors 50 and 100. Flame keys die on odd floors, Frost on even (100 is safe). One revive; dying without one forfeits the run, so the policy also decides when to stop and claim. No guaranteed chest. Netherworld chests: breath, gold, bracelets, Processed Destiny Stones, astrogems, relic engraving books, ability stone kits, card packs, Lv. 8 gems from floor 80.</p>
+    <p><b>Stop table.</b> Fresh state on a safe floor. "always" = keep going from any safe floor, a range = only from those floors, "stop" = claim now. Once the revive is gone the policy mostly stops unless floor 100 is in reach.</p>
+    <p><b>Ability stones.</b> Season 4 removed the ability-stone chest from the 1730 and 1750 tables. What remains is the Soaring Stone Engraving Setting Kit chest (the ability-stone kit); price it in the "Ability stone kit" field.</p>
+    <p><b>Season plan.</b> Keys per week × weeks plus stock, each grade at its EV. Quantities are expectations under the optimal policy. Stones show the destruction count; the chest offers 3× as guardian instead. "Processed Destiny Stone" is a selection chest of destiny or chaos stones; price whichever you would take.</p>
+    <p><b>Data.</b> Reward quantities: <a href='https://sekwahar.github.io/loa_datamining/pages/hell_drops.html'>sekwahar's data-mined Season 4 tables</a> via the <a href='https://thejunglewalrus.github.io/hell-rewards-picker/'>Hell Reward Picker</a> dump. Altar odds: <a href='https://www.inven.co.kr/board/lostark/4821/108631'>Inven</a>. Mechanics: KR Season 4 patch notes. Cross-checked against Ple0k's 1750 sheet: fed its gold values, this model lands 2–5% above it (it skips Descent +1 and Rocket jump). A Python mirror (<code>verify.py</code>) reproduces the page's numbers.</p>
+  </details>
+</div>
+<script src='data.js?v=6'></script>
+<script src='prices.js?v=6'></script>
+<script src='model.js?v=6'></script>
+<script src='app.js?v=6'></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body></html>

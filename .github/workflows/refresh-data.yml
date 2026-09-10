@@ -33,16 +33,20 @@ jobs:
         working-directory: loa-crafting-calculator
         run: python3 refresh_prices.py
 
+      - name: Refresh Hell key market reference prices (prices.js)
+        working-directory: loa-hell-key-calc
+        run: python3 fetch_prices.py
+
       - name: Commit refreshed data if changed
         run: |
-          if git diff --quiet -- loa-deal-finder/index.html loa-crafting-calculator/index.html; then
+          if git diff --quiet -- loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js; then
             echo "No data changes."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add loa-deal-finder/index.html loa-crafting-calculator/index.html
-          git commit -m "Auto-refresh baked market data (deal finder + crafting)"
+          git add loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js
+          git commit -m "Auto-refresh baked market data (deal finder + crafting + hell keys)"
           # A push can race a manual push to main (it has: run 2026-07-22 08:31
           # failed non-fast-forward and that refresh was lost). Rebase and retry.
           for i in 1 2 3; do
