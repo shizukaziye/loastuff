@@ -102,7 +102,8 @@ normalized): e.g. 3 Legendaries → 99/1/0% Leg/Relic/Anc, 3 Relics → 19/75/6%
 Ancients → 0/25/75%. It takes any 3 inputs, so all **10** mixes of three tiers have
 odds — the Grader's "Processed (finished) gems" card prices every one of them (the
 three standard recipes show by default, "Show all recipes" opens the rest); the
-full table is in METHODOLOGY §4.
+full table is in METHODOLOGY §4, along with the card's per-gem marginals (what one
+Ancient / Relic adds over a Legendary in its place).
 
 Because a fused output can itself be kept or re-fused, the expected values are
 **coupled** — and the real recipes (`3L`, `1R+2L`, `1A+2L`) couple the **base

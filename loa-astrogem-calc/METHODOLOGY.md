@@ -209,6 +209,13 @@ Only the three the pipeline's own fodder math is written against (`3L`, `1R+2L`,
 `Σ mix[T] · E[T_c]` — the value of the single output gem, **before** the 500g fee
 and before what the three inputs are worth.
 
+The card's **Per gem** lines give the marginal value of one Ancient or Relic in a
+recipe: `EV(recipe) − EV(recipe with that gem swapped for a Legendary)`. The mix is
+additive per input but clamped (relic share ≤ 100 − ancient share, legendary ≥ 0), so
+the marginals are not constant — the second and third Ancient add less relic share
+than the first — which is why the card shows a per-recipe figure instead of one
+number per tier.
+
 ### Tier expected value (the joint fixed point ACROSS COSTS)
 
 `tierExpectedValue(baseCost, baseline, goldPerDamage)` returns `E[L], E[R], E[A]`,

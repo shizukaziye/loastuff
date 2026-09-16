@@ -1798,6 +1798,30 @@
           }
           return { key: r.key, recipe: r.label, counts: r.counts, std: r.std, mix: r.mix, evByCost: evByCost };
         });
+        // Per-gem breakdown: what ONE Ancient (or Relic) in this recipe adds to the
+        // output value, against a Legendary in its place — this recipe minus the recipe
+        // with that gem swapped down to a Legendary. The mix is additive per input but
+        // clamps once ancients pile up (relic share is capped at 100 − ancient), so the
+        // second and third Ancient add less relic share than the first; a per-recipe
+        // marginal is the honest number, and it is exactly "is my Ancient worth more
+        // here or in another fuse". Mixed Ancient + Relic recipes get one figure each.
+        var byKey = {};
+        for (var pi = 0; pi < processed.length; pi++) byKey[processed[pi].key] = processed[pi];
+        function swapKey(cn, tier) {   // this recipe with one `tier` gem replaced by a Legendary
+          var a = cn.ancient - (tier === "ancient" ? 1 : 0), rr = cn.relic - (tier === "relic" ? 1 : 0);
+          return a + "a" + rr + "r" + (3 - a - rr) + "l";
+        }
+        for (pi = 0; pi < processed.length; pi++) {
+          var row = processed[pi], per = {};
+          ["ancient", "relic"].forEach(function (tier) {
+            if (!row.counts[tier]) return;
+            var below = byKey[swapKey(row.counts, tier)];
+            if (!below) return;
+            per[tier] = {};
+            for (var k2 = 0; k2 < COSTS.length; k2++) per[tier][COSTS[k2]] = row.evByCost[COSTS[k2]] - below.evByCost[COSTS[k2]];
+          });
+          row.perGem = per;
+        }
       }
 
       return {
