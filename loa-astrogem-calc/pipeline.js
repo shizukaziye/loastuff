@@ -76,6 +76,56 @@
   var FUSE_R2L = { legendary: 0.73, relic: 0.25, ancient: 0.02 };
   var FUSE_3L = { legendary: 0.99, relic: 0.01, ancient: 0.00 };
 
+  // Every way to pick 3 post-cut fodder gems out of {Legendary, Relic, Ancient} — the
+  // 10 multisets — with the output-tier odds taken straight from the model
+  // (Astrogem.fusionOutputDist). That function reproduces the three constants above
+  // exactly (3L 99/1/0, 1R+2L 73/25/2, 1A+2L 35/40/25), so nothing here re-states the
+  // table; the constants stay because the pipeline's own fodder math is written
+  // against those three recipes.
+  //
+  // `std` marks those three, so the Grader can show them first and keep the other
+  // seven behind a toggle. Rows run from all-Legendary to all-Ancient.
+  // Built once and cached (the odds never depend on baseline or gold-per-damage).
+  var TIER_WORD = { ancient: "Ancient", relic: "Relic", legendary: "Legendary" };
+  function recipeLabel(nA, nR, nL) {
+    if (nA === 3) return "3× Ancient";
+    if (nR === 3) return "3× Relic";
+    if (nL === 3) return "3× Legendary";
+    var parts = [];
+    if (nA) parts.push(nA + " " + TIER_WORD.ancient);
+    if (nR) parts.push(nR + " " + TIER_WORD.relic);
+    if (nL) parts.push(nL + " " + TIER_WORD.legendary);
+    return parts.join(" + ");
+  }
+  var FUSE_RECIPES = null;
+  function fusionRecipes() {
+    if (FUSE_RECIPES) return FUSE_RECIPES;
+    var dist = window.Astrogem && window.Astrogem.fusionOutputDist;
+    var out = [], nA, nR, nL, i, inputs;
+    for (nA = 0; nA <= 3; nA++) {
+      for (nR = 0; nR <= 3 - nA; nR++) {
+        nL = 3 - nA - nR;
+        var std = (nA === 0 && nR === 0) || (nA === 0 && nR === 1) || (nA === 1 && nR === 0);
+        // Without the model only the three hard-coded mixes are known — drop the rest
+        // rather than invent odds for them.
+        if (!dist && !std) continue;
+        inputs = [];
+        for (i = 0; i < nA; i++) inputs.push("ancient");
+        for (i = 0; i < nR; i++) inputs.push("relic");
+        for (i = 0; i < nL; i++) inputs.push("legendary");
+        out.push({
+          key: nA + "a" + nR + "r" + nL + "l",
+          label: recipeLabel(nA, nR, nL),
+          counts: { ancient: nA, relic: nR, legendary: nL },
+          std: std,
+          mix: dist ? dist(inputs) : (nA === 1 ? FUSE_A2L : (nR === 1 ? FUSE_R2L : FUSE_3L))
+        });
+      }
+    }
+    FUSE_RECIPES = out;
+    return out;
+  }
+
   // ---- display / model axes ----
   var COSTS = [8, 9, 10];
   var RARITIES = ["uncommon", "rare", "epic"];
@@ -1727,31 +1777,33 @@
         if (p.buyEpic) boxes.list.push(CONST.BOX_EPIC.max + "×43k");
       }
 
-      // Processed (finished) gems — fusion guide. Per fodder tier: the recipe, the
+      // Processed (finished) gems — fusion guide. One row per RECIPE (all 10 ways to
+      // pick 3 fodder gems from Legendary/Relic/Ancient, see fusionRecipes): the
       // output-tier odds, and the mix-weighted expected output value at each cost.
       // window.tierExpectedValue(cost, bl, gpd, axis) -> {legendary,relic,ancient} = the
       // value of a fusion-output gem that lands at that tier (support: the core applies
       // the ×3 party-gpd multiplier internally; bl is already on the support scale).
+      // evByCost is the value of the ONE gem that comes out — the 500g fee and what the
+      // three inputs are worth are NOT netted off (the Grader's note says so).
       var processed = null;
       if (typeof window.tierExpectedValue === "function") {
-        var fuMix = { legendary: FUSE_3L, relic: FUSE_R2L, ancient: FUSE_A2L };
-        var fuRecipe = { legendary: "3× Legendary", relic: "1 Relic + 2 Legendary", ancient: "1 Ancient + 2 Legendary" };
         var tevC = {};
         for (var ci2 = 0; ci2 < COSTS.length; ci2++) tevC[COSTS[ci2]] = window.tierExpectedValue(COSTS[ci2], bl, gpd, axis);
-        processed = TIERS.map(function (t) {
-          var mix = fuMix[t], evByCost = {};
+        processed = fusionRecipes().map(function (r) {
+          var evByCost = {};
           for (var k = 0; k < COSTS.length; k++) {
             var c2 = COSTS[k], tev = tevC[c2], ev = 0;
-            for (var j = 0; j < TIERS.length; j++) ev += (mix[TIERS[j]] || 0) * ((tev && tev[TIERS[j]]) || 0);
+            for (var j = 0; j < TIERS.length; j++) ev += (r.mix[TIERS[j]] || 0) * ((tev && tev[TIERS[j]]) || 0);
             evByCost[c2] = ev;
           }
-          return { tier: t, recipe: fuRecipe[t], mix: mix, evByCost: evByCost };
+          return { key: r.key, recipe: r.label, counts: r.counts, std: r.std, mix: r.mix, evByCost: evByCost };
         });
       }
 
       return {
         region: wantRegion, roster: roster, axis: axis,
         grade: baselineGrade, baselineScore: bl, gpd: gpd,
+        fusionCost: CONST.FUSION_COST,
         plan: plan, boxes: boxes, processed: processed
       };
     } finally {

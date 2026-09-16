@@ -621,8 +621,13 @@
 '  #tab-grader .gr-boxes .box{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;background:var(--panel);border:1px solid var(--border);color:var(--text)}' +
 '  #tab-grader .gr-boxes .none{color:var(--dim);font-style:italic}' +
 '  #tab-grader .gr-proc{margin-top:12px}' +
-'  #tab-grader .gr-proc .proc-h{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--text)}' +
+'  #tab-grader .gr-proc .proc-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--text)}' +
+'  #tab-grader .gr-proc .proc-h .ptgl{background:var(--panel2);border:1px solid var(--border);color:var(--dim);border-radius:99px;padding:3px 11px;font-size:10.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:border-color .12s,color .12s}' +
+'  #tab-grader .gr-proc .proc-h .ptgl:hover{border-color:var(--accent);color:var(--accent)}' +
+'  #tab-grader .gr-proc .proc-note{padding:9px 14px;border-top:1px solid var(--border);font-size:11px;line-height:1.5;color:var(--dim)}' +
+'  #tab-grader .gr-proc .proc-note b{color:var(--text);font-weight:700}' +
 '  #tab-grader table.gr-ptab td.odds{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}' +
+'  @media(max-width:560px){#tab-grader table.gr-ptab td.odds{white-space:normal;font-size:10px}#tab-grader .gr-proc table.gr-ptab .rar{white-space:normal}}' +
 '  #tab-grader .gr-plan-legend{margin-top:12px;font-size:11px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap;align-items:center}' +
 '  #tab-grader .gr-plan-legend .vpill{font-size:10px;padding:1px 8px}' +
 // ---- single blanket baseline header + ◀▶ nudge ----
@@ -713,6 +718,7 @@
 '<details class="method">' +
 '  <summary>How a gem is graded</summary>' +
 '  <p>A finished, equipped gem is judged on <b>quality alone</b> &mdash; no cut expected-value or fusion-fodder value here (those only matter while you’re still deciding whether to cut or scrap a gem; that’s the Pipeline tab).</p>' +
+'  <p><b>What to do with your astrogems.</b> Under the loadout, the plan table says whether to cut, reset, fuse or dismantle each block at your baseline, and the <b>Processed (finished) gems</b> card prices the fuses: 3 finished gems become 1, and the card gives the odds of that output landing Legendary / Relic / Ancient and what it is worth at 8, 9 and 10 cost. It opens on the three usual recipes (3&times; Legendary, 1 Relic + 2 Legendary, 1 Ancient + 2 Legendary); <b>Show all recipes</b> opens all ten mixes of three tiers &mdash; 2 Relic + 1 Legendary, 3&times; Relic, 2 Ancient + 1 Legendary and the rest &mdash; so you can see where a richer mix starts to pay. Each figure is the output gem on its own, before the 500g fee and before what the three gems you feed in are worth.</p>' +
 '  <p><b>Damage is multiplicative.</b> In Lost Ark, +10% and +10% give &times;1.21, not +20%. So each line is scored <code>D = 100&middot;ln(multiplier)</code> &mdash; that makes multiplicative gains <i>add up</i> in log space, and D reads as &asymp; % damage. A gem’s damage is the sum of its lines’ D, and the headline %dmg is the exact <code>(e^(&Sigma;D/100) &minus; 1)&times;100</code>.</p>' +
 '  <p><b>What each line is worth.</b> Only damage lines count for a DPS grade &mdash; <b>Attack Power, Additional Damage, Boss Damage</b> and <b>Order/Chaos</b> points; Brand / Ally lines are support-only and score 0. The per-level values aren’t arbitrary &mdash; each is the marginal multiplier of one more level on a full grid, given how much of that stat you already have from gear:</p>' +
 '  <ul>' +
@@ -1121,23 +1127,60 @@
     }
     return parts.join(" · ");
   }
+  // Three standard recipes (3L / 1R+2L / 1A+2L) show by default; the toggle opens all
+  // ten. The choice is remembered across visits.
+  var PROC_ALL_KEY = "astrogem_proc_all";
+  var procAll = false;
+  try { procAll = localStorage.getItem(PROC_ALL_KEY) === "1"; } catch (e) {}
+  var lastProcAdv = null;   // last advice rendered, so the toggle can redraw the card alone
+
   function processedTableHtml(adv) {
     if (!adv || !adv.processed || !adv.processed.length) return "";
+    lastProcAdv = adv;
+    var all = adv.processed, i;
+    var show = [];
+    for (i = 0; i < all.length; i++) if (procAll || all[i].std) show.push(all[i]);
+    var extra = all.length - show.length;
+
     var rows = '<table class="gr-ptab"><thead><tr>'
       + '<th>Fuse</th><th>Output odds</th>'
       + '<th class="r">8-cost</th><th class="r">9-cost</th><th class="r">10-cost</th>'
       + '</tr></thead><tbody>';
-    for (var i = 0; i < adv.processed.length; i++) {
-      var p = adv.processed[i];
+    for (i = 0; i < show.length; i++) {
+      var p = show[i];
       rows += '<tr><td><span class="rar">' + esc(p.recipe) + '</span></td>'
-        + '<td class="odds">' + esc(oddsStr(p.mix)) + '</td>'
-        + '<td class="r ov">' + fmtGoldShort(p.evByCost[8]) + '</td>'
+        + '<td class="odds">' + esc(oddsStr(p.mix)) + '</td>';
+      rows += '<td class="r ov">' + fmtGoldShort(p.evByCost[8]) + '</td>'
         + '<td class="r ov">' + fmtGoldShort(p.evByCost[9]) + '</td>'
         + '<td class="r ov">' + fmtGoldShort(p.evByCost[10]) + '</td></tr>';
     }
     rows += '</tbody></table>';
-    return '<div class="gr-plan-card gr-proc"><div class="proc-h">Processed (finished) gems — fuse fodder up a tier</div>' + rows + '</div>';
+
+    var btn = '<button type="button" class="ptgl" id="gr-proc-toggle" onclick="window.__grToggleProcAll()">'
+      + (procAll ? "Fewer" : ("Show all recipes" + (extra > 0 ? " (" + extra + " more)" : "")))
+      + '</button>';
+    var fee = (adv.fusionCost != null) ? Math.round(adv.fusionCost).toLocaleString("en-US") : "500";
+    var note = '<div class="proc-note">Each number is what the <b>one gem you get back</b> is worth on average at that base cost &mdash; '
+      + 'before the ' + fee + 'g fuse fee, and before what the three gems you feed in are worth. '
+      + 'Richer inputs always give a richer output; weigh that against what the extra Relic or Ancient would be worth kept or fused another way.'
+      + '</div>';
+
+    return '<div class="gr-plan-card gr-proc" id="gr-proc-card">'
+      + '<div class="proc-h"><span>Processed (finished) gems &mdash; fuse fodder up a tier</span>' + btn + '</div>'
+      + rows + note + '</div>';
   }
+
+  // "Show all recipes" / "Fewer". Redraws the one card from the cached advice —
+  // the numbers don't change, only which rows are on screen.
+  window.__grToggleProcAll = function () {
+    procAll = !procAll;
+    try { localStorage.setItem(PROC_ALL_KEY, procAll ? "1" : "0"); } catch (e) {}
+    var card = document.getElementById("gr-proc-card");
+    if (!card || !lastProcAdv) return;
+    var tmp = document.createElement("div");
+    tmp.innerHTML = processedTableHtml(lastProcAdv);
+    if (tmp.firstChild) card.parentNode.replaceChild(tmp.firstChild, card);
+  };
 
   // Baseline header: the ONE baseline rank, what it came from, and the ◀ ▶ nudge arrows.
   function baselineHeadHtml(base) {

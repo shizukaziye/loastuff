@@ -99,7 +99,10 @@ correction over the deployed page's sequential sampler (METHODOLOGY §8 quantifi
 Three gems of the same base cost fuse into one (random output), costing **500 gold**.
 The output tier depends on the inputs (`fusionOutputDist`, additive-per-input then
 normalized): e.g. 3 Legendaries → 99/1/0% Leg/Relic/Anc, 3 Relics → 19/75/6%, 3
-Ancients → 0/25/75%.
+Ancients → 0/25/75%. It takes any 3 inputs, so all **10** mixes of three tiers have
+odds — the Grader's "Processed (finished) gems" card prices every one of them (the
+three standard recipes show by default, "Show all recipes" opens the rest); the
+full table is in METHODOLOGY §4.
 
 Because a fused output can itself be kept or re-fused, the expected values are
 **coupled** — and the real recipes (`3L`, `1R+2L`, `1A+2L`) couple the **base

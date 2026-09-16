@@ -13,7 +13,8 @@
     "eval-gemlist": "node tools/eval-gemlist.js",
     "eval-gemlist-holdout": "node tools/eval-gemlist.js --holdout",
     "lint-labels": "node tools/lint-labels.js",
-    "eval-gate": "node tools/lint-pins.js && node tools/lint-labels.js && node tools/eval-ocr.js --engines=structural --gate=structural:0.97,0.95",
+    "test-gem-ids": "node tools/test-gem-ids.js",
+    "eval-gate": "node tools/lint-pins.js && node tools/lint-labels.js && node tools/test-gem-ids.js && node tools/eval-ocr.js --engines=structural --gate=structural:0.97,0.95",
     "serve": "npx http-server -p 8080 -c-1 .",
     "lint-pins": "node tools/lint-pins.js"
   },

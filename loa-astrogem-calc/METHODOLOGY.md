@@ -187,6 +187,28 @@ Output-tier mix (additive per-input contributions, normalized; `fusionOutputDist
 The mixed inputs are the recipes the model actually uses: `1R+2L → 73/25/2`,
 `1A+2L → 35/40/25`.
 
+`fusionOutputDist` takes **any** 3 inputs, so all 10 mixes of three tiers have odds.
+The Grader's "Processed (finished) gems" card lists them (the three above show by
+default, "Show all recipes" opens the other seven):
+
+| Fuse | Legendary | Relic | Ancient |
+|------|-----------|-------|---------|
+| 3× Legendary | 99% | 1% | 0% |
+| 1 Relic + 2 Legendary | 73% | 25% | 2% |
+| 2 Relic + 1 Legendary | 46% | 50% | 4% |
+| 3× Relic | 19% | 75% | 6% |
+| 1 Ancient + 2 Legendary | 35% | 40% | 25% |
+| 1 Ancient + 1 Relic + 1 Legendary | 8% | 65% | 27% |
+| 1 Ancient + 2 Relic | 0% | 71% | 29% |
+| 2 Ancient + 1 Legendary | 0% | 50% | 50% |
+| 2 Ancient + 1 Relic | 0% | 48% | 52% |
+| 3× Ancient | 0% | 25% | 75% |
+
+Only the three the pipeline's own fodder math is written against (`3L`, `1R+2L`,
+`1A+2L`) feed the fixed point below; the other seven are priced for the card as
+`Σ mix[T] · E[T_c]` — the value of the single output gem, **before** the 500g fee
+and before what the three inputs are worth.
+
 ### Tier expected value (the joint fixed point ACROSS COSTS)
 
 `tierExpectedValue(baseCost, baseline, goldPerDamage)` returns `E[L], E[R], E[A]`,

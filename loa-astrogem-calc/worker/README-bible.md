@@ -138,6 +138,56 @@ Each gem looks like:
     map `→ 8/9/10`. Cross-checked on all 24 Paroxysmal gems: every gem's two `opts`
     fall inside exactly the cost's effect pool (0 mismatches).
 
+### The 2026-09-16 second id family (and why there is now a fallback)
+
+That digit rule only covers ids starting `674`. On **2026-09-16** a second family
+appeared — `40621173`, `40621174`, `40621175`, `40621176`, all fixed 5/5/5/5 gems —
+and the digit rule calls every one of them a **9-cost chaos** gem. They are 8-cost, so
+the Grader drew a `?` and the error
+`Effect 2 "Additional Damage" is not available for 9 cost gems`.
+
+| id | really is | effects |
+|----|-----------|---------|
+| `40621173` | 8-cost **order** | Attack Power + Additional Damage |
+| `40621174` | 8-cost **order** | Brand Power + Ally Damage Enh. |
+| `40621175` | 8-cost **chaos** | Attack Power + Additional Damage |
+| `40621176` | 8-cost **chaos** | Brand Power + Ally Damage Enh. |
+
+Evidence:
+
+1. The leaderboard snapshot of 2026-09-16 holds **530,675 gems**; exactly **200** carry
+   effects their derived cost's pool does not allow, and all 200 are these four ids.
+   Every one sits in a character pulled that same day — nothing before it.
+2. lostark.bible draws each gem with a `use_13_2NN` icon (`202–204` = order 8/9/10,
+   `205–207` = chaos 8/9/10). On ten character pages, after accounting for every `674`
+   gem's icon, the one icon left over was `202` for `40621173`/`74` and `205` for
+   `40621175`/`76` — order 8-cost and chaos 8-cost.
+3. Across all 200 characters the four ids appear 170 times, `173`/`74` in Order cores
+   and `175`/`76` in Chaos cores, and never carry anything but an 8-cost effect pair.
+
+Two things this is **not**: the 9-cost pool has not changed (no `674` 9-cost gem in the
+530k carries Additional Damage), and no effect id outside `2001–2003` / `2011–2013` has
+turned up.
+
+So `gemIdentity()` now reads three things in order:
+
+1. `GEM_ID_OVERRIDES` — the table above. Add a row when a new family shows up.
+2. the id digits — still right for every `674xxxxx` gem.
+3. a check against the effect pools — if the two effects do not both fit the derived
+   cost's pool, and exactly one pool holds them both, that cost wins. Six pairs pin a
+   cost on their own (Add+Atk, Brand+AllyDmg → 8; Boss+Atk, AllyDmg+AllyAtk → 9;
+   Boss+Add, Brand+AllyAtk → 10); the other three sit in two pools each and stay
+   ambiguous, so the id keeps the last word.
+
+Every correction, and every id outside the known format, raises a line in the response's
+`warnings`. `kvGetJson()` runs the same repair over any character record read back from
+KV, so characters cached under the old rule grade right away instead of waiting out
+their 7-day entry — and the leaderboard picks the fix up on its next rebuild.
+
+The rule, the table and the fallback are duplicated in `../bible-import.js` (the
+bookmarklet / paste path). `node tools/test-gem-ids.js` asserts both copies agree on 22
+real ids and fails if only one side is fixed.
+
 ## CORS / security
 
 CORS is an **exact-match Origin allowlist** (`ALLOW_ORIGINS` in the source): the

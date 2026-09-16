@@ -17,6 +17,9 @@
  * `text` is the page HTML/source (or, from the bookmarklet, just the arkGridCores slice).
  * `hint` is an optional { region, name } the bookmarklet reads from the page URL.
  * Each emitted gem matches the shape Astrogem.validateConfig expects.
+ *
+ * The gem-id -> cost/type block below must stay in step with the Worker's. Run
+ * `node tools/test-gem-ids.js` after touching either — it fails when only one is fixed.
  */
 (function (root) {
   "use strict";
@@ -37,7 +40,45 @@
     10004: "Chaos Sun", 10005: "Chaos Moon", 10006: "Chaos Star"
   };
 
-  // derive cost + type from the gem id.
+  // ---- cost + type from the gem id ----
+  // The id the digit rule was built on: 674 [type 0/1] 1 [shape 0-5] 2 [variant]. On
+  // 2026-09-16 a second family appeared — 40621173/74/75/76, fixed 5/5/5/5 gems — which
+  // the digit rule reads as 9-cost chaos, so the grid rejected them with
+  // 'Effect 2 "Additional Damage" is not available for 9 cost gems'. They are 8-cost:
+  // 173/74 order, 175/76 chaos. Full evidence in worker/astrogem-bible.js's header and
+  // worker/README-bible.md. Keep this block and the Worker's in step.
+  const GEM_ID_674 = /^674[01]1[0-5]2\d$/;
+  const GEM_ID_OVERRIDES = {
+    "40621173": { baseCost: 8, gemType: "order" },   // Attack Power + Additional Damage, 5/5/5/5
+    "40621174": { baseCost: 8, gemType: "order" },   // Brand Power + Ally Damage Enh., 5/5/5/5
+    "40621175": { baseCost: 8, gemType: "chaos" },   // Attack Power + Additional Damage, 5/5/5/5
+    "40621176": { baseCost: 8, gemType: "chaos" }    // Brand Power + Ally Damage Enh., 5/5/5/5
+  };
+
+  // Mirror of model/astrogem.js EFFECT_POOLS, so a derived cost can be checked here.
+  const EFFECT_POOLS = {
+    8:  ["Additional Damage", "Attack Power", "Brand Power", "Ally Damage Enh."],
+    9:  ["Boss Damage", "Attack Power", "Ally Damage Enh.", "Ally Attack Enh."],
+    10: ["Boss Damage", "Additional Damage", "Brand Power", "Ally Attack Enh."]
+  };
+  function poolHolds(cost, e1, e2) {
+    const p = EFFECT_POOLS[cost];
+    return !!p && !!e1 && !!e2 && p.indexOf(e1) !== -1 && p.indexOf(e2) !== -1;
+  }
+  // The ONE cost whose pool holds both effects, or null when none or more than one does.
+  // Add+Atk and Brand+AllyDmg -> 8; Boss+Atk and AllyDmg+AllyAtk -> 9; Boss+Add and
+  // Brand+AllyAtk -> 10. Atk+AllyDmg, Add+Brand and Boss+AllyAtk sit in two pools each,
+  // so they stay ambiguous and the id keeps the last word.
+  function costFromEffects(e1, e2) {
+    if (!e1 || !e2 || e1 === e2) return null;
+    let hit = null;
+    const costs = [8, 9, 10];
+    for (let i = 0; i < costs.length; i++) {
+      if (poolHolds(costs[i], e1, e2)) { if (hit !== null) return null; hit = costs[i]; }
+    }
+    return hit;
+  }
+
   function costFromGemId(idStr) {
     const shape = parseInt(idStr[5], 10);
     if (!Number.isFinite(shape)) return null;
@@ -45,6 +86,36 @@
   }
   function typeFromGemId(idStr) {
     return idStr[3] === "0" ? "order" : "chaos";
+  }
+
+  // Cost + type for one gem: the override table first, then the id digits, then a repair
+  // from the effect pools. Each repair (and each id we cannot trust) raises a warning.
+  function gemIdentity(idStr, e1, e2) {
+    const warnings = [];
+    const ov = GEM_ID_OVERRIDES[idStr];
+    let baseCost = ov ? ov.baseCost : costFromGemId(idStr);
+    const gemType = ov ? ov.gemType : typeFromGemId(idStr);
+    if (baseCost == null) warnings.push("could not derive cost from gem id " + idStr);
+    else if (!ov && !GEM_ID_674.test(idStr)) {
+      warnings.push("gem id " + idStr + " is not in the known 674xxxxx format — cost/type are a guess");
+    }
+    if (ov && (costFromGemId(idStr) !== ov.baseCost || typeFromGemId(idStr) !== ov.gemType)) {
+      warnings.push("gem id " + idStr + " reads as " + costFromGemId(idStr) + "-cost " +
+        typeFromGemId(idStr) + " by the id digits — the known-ids table says " +
+        ov.baseCost + "-cost " + ov.gemType);
+    }
+    if (baseCost != null && e1 && e2 && !poolHolds(baseCost, e1, e2)) {
+      const fix = costFromEffects(e1, e2);
+      if (fix != null) {
+        warnings.push("gem id " + idStr + " reads as " + baseCost + "-cost, but " + e1 + " + " +
+          e2 + " only fits the " + fix + "-cost pool — read as " + fix + "-cost");
+        baseCost = fix;
+      } else {
+        warnings.push("gem id " + idStr + " reads as " + baseCost + "-cost, but no single pool holds " +
+          e1 + " + " + e2 + " — cost left as derived");
+      }
+    }
+    return { baseCost: baseCost, gemType: gemType, warnings: warnings };
   }
 
   // Pull every `arkGridCores:[ ... ]` array out of the page (one per loadout). Prefer the
@@ -100,9 +171,6 @@
   function mapGem(rawGem, core) {
     const warnings = [];
     const idStr = String(rawGem.id);
-    const baseCost = costFromGemId(idStr);
-    const gemType = typeFromGemId(idStr);
-    if (baseCost == null) warnings.push("could not derive cost from gem id " + idStr);
     const opts = Array.isArray(rawGem.opts) ? rawGem.opts : [];
     function nameOf(o) {
       const n = EFFECT_ID_TO_NAME[o && o.id];
@@ -110,19 +178,22 @@
       return n || ("Effect#" + (o && o.id));
     }
     const e1 = opts[0] || {}, e2 = opts[1] || {};
+    const n1 = nameOf(e1), n2 = nameOf(e2);
+    const ident = gemIdentity(idStr, n1, n2);
+    for (const w of ident.warnings) warnings.push(w);
     return {
       gem: {
         slot: SLOT_LABEL[core.base] || ("Core " + core.base),
         coreBase: core.base,
         gemId: idStr,
         idx: rawGem.idx,
-        baseCost: baseCost,
-        gemType: gemType,
+        baseCost: ident.baseCost,
+        gemType: ident.gemType,
         willpowerLevel: rawGem.costReduc,
         orderLevel: rawGem.corePoints,
-        effect1: nameOf(e1),
+        effect1: n1,
         effect1Level: e1.level,
-        effect2: nameOf(e2),
+        effect2: n2,
         effect2Level: e2.level
       },
       warnings: warnings
@@ -165,7 +236,7 @@
     function pushGem(m, coreBase, slot) {
       const icon = parseInt(m[1], 10), rel = icon - 202;
       if (rel < 0 || rel > 5) { warnings.push("unexpected gem icon " + icon); return; }
-      const baseCost = 8 + (rel % 3);
+      let baseCost = 8 + (rel % 3);
       const gemType = rel < 3 ? "order" : "chaos";
       const effs = [];
       let e;
@@ -176,6 +247,18 @@
         effs.push({ name: en || ("Effect:" + e[1]), level: parseInt(e[2], 10) });
       }
       const e1 = effs[0] || {}, e2 = effs[1] || {};
+      // Same pool check the bible path gets, BEFORE willpowerLevel (which is cost-relative).
+      if (e1.name && e2.name && !poolHolds(baseCost, e1.name, e2.name)) {
+        const fix = costFromEffects(e1.name, e2.name);
+        if (fix != null) {
+          warnings.push("gem icon " + icon + " reads as " + baseCost + "-cost, but " + e1.name +
+            " + " + e2.name + " only fits the " + fix + "-cost pool — read as " + fix + "-cost");
+          baseCost = fix;
+        } else {
+          warnings.push("gem icon " + icon + " reads as " + baseCost + "-cost, but no single pool holds " +
+            e1.name + " + " + e2.name + " — cost left as derived");
+        }
+      }
       gems.push({
         slot: slot, coreBase: coreBase,
         baseCost: baseCost, gemType: gemType,

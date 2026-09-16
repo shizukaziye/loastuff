@@ -31,7 +31,10 @@ index.html          App shell: header + tab bar (Grader / Pipeline / Advisor / L
 styles.css          Shared dark theme + tab styling.
 grader.js           Grader tab: pull a character (lostark.bible / lopec.kr via the
                     worker), drop a screenshot, or enter gems by hand; 0-100 grades
-                    + ranks + grid totals.
+                    + ranks + grid totals. Under the loadout: the cut/reset/fuse/
+                    dismantle plan and the "Processed (finished) gems" card, which
+                    prices all 10 three-gem fuse recipes (three shown, the rest
+                    behind "Show all recipes").
 gemlist.js          Grader's "From screenshot" mode: drop screenshots of the in-game
                     Ark Grid list and every gem in it is read, graded and ranked in
                     an editable table. Lazy-loads ocr/gemlist-*.js on first use.
