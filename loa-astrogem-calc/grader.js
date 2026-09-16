@@ -624,12 +624,11 @@
 '  #tab-grader .gr-proc .proc-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--text)}' +
 '  #tab-grader .gr-proc .proc-h .ptgl{background:var(--panel2);border:1px solid var(--border);color:var(--dim);border-radius:99px;padding:3px 11px;font-size:10.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:border-color .12s,color .12s}' +
 '  #tab-grader .gr-proc .proc-h .ptgl:hover{border-color:var(--accent);color:var(--accent)}' +
-'  #tab-grader .gr-proc .proc-h .ptgls{display:inline-flex;gap:6px;flex-wrap:wrap}' +
-'  #tab-grader .gr-proc .proc-h .ptgl.on{border-color:var(--accent);color:var(--accent)}' +
-'  #tab-grader table.gr-ptab td.ov .pg{font-size:9.5px;font-weight:600;line-height:1.3;color:var(--dim);white-space:nowrap;margin-top:1px}' +
-'  #tab-grader table.gr-ptab td.ov .pg .pa{color:#d9a441}' +
-'  #tab-grader table.gr-ptab td.ov .pg .pr{color:#c084fc}' +
-'  @media(max-width:560px){#tab-grader table.gr-ptab td.ov .pg{white-space:normal;font-size:9px}#tab-grader table.gr-ptab td.ov .pg span{display:block}}' +
+'  #tab-grader table.gr-ptab td.ov[data-gloss]{cursor:help}' +
+'  #tab-grader .gr-proc .pip{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:5px;vertical-align:middle;position:relative;top:-1px}' +
+'  #tab-grader .gr-proc .pip.pa{background:#d9a441}' +
+'  #tab-grader .gr-proc .pip.pr{background:#c084fc}' +
+'  #tab-grader .gr-proc .proc-note .pip{margin:0 2px 0 0}' +
 '  #tab-grader .gr-proc .proc-note{padding:9px 14px;border-top:1px solid var(--border);font-size:11px;line-height:1.5;color:var(--dim)}' +
 '  #tab-grader .gr-proc .proc-note b{color:var(--text);font-weight:700}' +
 '  #tab-grader table.gr-ptab td.odds{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}' +
@@ -724,7 +723,7 @@
 '<details class="method">' +
 '  <summary>How a gem is graded</summary>' +
 '  <p>A finished, equipped gem is judged on <b>quality alone</b> &mdash; no cut expected-value or fusion-fodder value here (those only matter while you’re still deciding whether to cut or scrap a gem; that’s the Pipeline tab).</p>' +
-'  <p><b>What to do with your astrogems.</b> Under the loadout, the plan table says whether to cut, reset, fuse or dismantle each block at your baseline, and the <b>Processed (finished) gems</b> card prices the fuses: 3 finished gems become 1, and the card gives the odds of that output landing Legendary / Relic / Ancient and what it is worth at 8, 9 and 10 cost. It opens on the three usual recipes (3&times; Legendary, 1 Relic + 2 Legendary, 1 Ancient + 2 Legendary); <b>Show all recipes</b> opens all ten mixes of three tiers &mdash; 2 Relic + 1 Legendary, 3&times; Relic, 2 Ancient + 1 Legendary and the rest &mdash; so you can see where a richer mix starts to pay. Each figure is the output gem on its own, before the 500g fee and before what the three gems you feed in are worth. With <b>Per gem</b> on, the small line under each figure is what one Ancient or Relic in that recipe adds over a Legendary in its place &mdash; the recipe minus the same recipe with that gem swapped down &mdash; so you can see where an extra Ancient or Relic pays most.</p>' +
+'  <p><b>What to do with your astrogems.</b> Under the loadout, the plan table says whether to cut, reset, fuse or dismantle each block at your baseline, and the <b>Processed (finished) gems</b> card prices the fuses: 3 finished gems become 1, and the card gives the odds of that output landing Legendary / Relic / Ancient and what it is worth at 8, 9 and 10 cost. It opens on the three usual recipes (3&times; Legendary, 1 Relic + 2 Legendary, 1 Ancient + 2 Legendary); <b>Show all recipes</b> opens all ten mixes of three tiers &mdash; 2 Relic + 1 Legendary, 3&times; Relic, 2 Ancient + 1 Legendary and the rest &mdash; so you can see where a richer mix starts to pay. Each figure is the output gem on its own, before the 500g fee and before what the three gems you feed in are worth. Hover a figure for what one Ancient or Relic in that recipe adds over a Legendary in its place &mdash; the recipe minus the same recipe with that gem swapped down &mdash; so you can see where an extra Ancient or Relic pays most. A gold dot marks the recipe where one Ancient adds the most at that cost, a purple dot the same for a Relic; those rows always show, even before you open all recipes.</p>' +
 '  <p><b>Damage is multiplicative.</b> In Lost Ark, +10% and +10% give &times;1.21, not +20%. So each line is scored <code>D = 100&middot;ln(multiplier)</code> &mdash; that makes multiplicative gains <i>add up</i> in log space, and D reads as &asymp; % damage. A gem’s damage is the sum of its lines’ D, and the headline %dmg is the exact <code>(e^(&Sigma;D/100) &minus; 1)&times;100</code>.</p>' +
 '  <p><b>What each line is worth.</b> Only damage lines count for a DPS grade &mdash; <b>Attack Power, Additional Damage, Boss Damage</b> and <b>Order/Chaos</b> points; Brand / Ally lines are support-only and score 0. The per-level values aren’t arbitrary &mdash; each is the marginal multiplier of one more level on a full grid, given how much of that stat you already have from gear:</p>' +
 '  <ul>' +
@@ -1139,25 +1138,63 @@
   var procAll = false;
   try { procAll = localStorage.getItem(PROC_ALL_KEY) === "1"; } catch (e) {}
   var lastProcAdv = null;   // last advice rendered, so the toggle can redraw the card alone
-  // "Per gem": under each output value, what one Ancient / Relic in the recipe adds over
-  // a Legendary in its place (adv.processed[i].perGem, from pipeline.js). On by default.
-  var PROC_PER_KEY = "astrogem_proc_pergem";
-  var procPer = true;
-  try { procPer = localStorage.getItem(PROC_PER_KEY) !== "0"; } catch (e) {}
-  function perGemHtml(p, cost) {
-    if (!procPer || !p.perGem) return "";
-    var parts = [];
-    if (p.perGem.ancient) parts.push('<span class="pa">+' + fmtGoldShort(p.perGem.ancient[cost]) + ' /Anc</span>');
-    if (p.perGem.relic) parts.push('<span class="pr">+' + fmtGoldShort(p.perGem.relic[cost]) + ' /Relic</span>');
-    return parts.length ? '<div class="pg">' + parts.join(" ") + '</div>' : "";
+  // Per-gem breakdown lives in the hover tooltip (tip.js data-gloss) of each cost cell:
+  // what one Ancient / Relic in the recipe adds over a Legendary in its place
+  // (adv.processed[i].perGem, from pipeline.js). Kept off the table so it stays clean.
+  function perGemGloss(p, cost, best) {
+    if (!p.perGem) return "";
+    var parts = [], lead = [];
+    if (p.perGem.ancient) parts.push("+" + fmtGoldShort(p.perGem.ancient[cost]) + " per Ancient");
+    if (p.perGem.relic) parts.push("+" + fmtGoldShort(p.perGem.relic[cost]) + " per Relic");
+    if (!parts.length) return "";
+    if (best.ancient[cost] === p) lead.push("Best fuse for an Ancient at " + cost + "-cost.");
+    if (best.relic[cost] === p) lead.push("Best fuse for a Relic at " + cost + "-cost.");
+    return ' data-gloss="' + esc((lead.length ? lead.join(" ") + " " : "") + parts.join(" · ")
+      + " — what one gem of that tier adds over a Legendary in its place") + '"';
+  }
+  // Recommended fuses: for each cost, the recipe where ONE Ancient (and, separately, one
+  // Relic) adds the most. Anything within 2% of the leader counts as a tie, and ties go
+  // to the earlier row — the recipe with fewer rich inputs. (The 3× Legendary special
+  // case, 99/1 instead of 100/0, shifts the plain recipes' marginals by about 1%; without
+  // the band that artifact would decide the pick.)
+  var PROC_COSTS = [8, 9, 10], BEST_TIE = 1.02;
+  function bestPerGem(all) {
+    var best = { ancient: {}, relic: {} }, tiers = ["ancient", "relic"];
+    for (var t = 0; t < tiers.length; t++) {
+      for (var c = 0; c < PROC_COSTS.length; c++) {
+        var cost = PROC_COSTS[c], top = null, tv = -Infinity;
+        for (var i = 0; i < all.length; i++) {
+          var pg = all[i].perGem && all[i].perGem[tiers[t]];
+          if (!pg) continue;
+          var v = pg[cost];
+          if (v != null && isFinite(v) && v > tv * BEST_TIE) { tv = v; top = all[i]; }
+        }
+        best[tiers[t]][cost] = top;
+      }
+    }
+    return best;
+  }
+  function pipsHtml(p, cost, best) {
+    var s = "";
+    if (best.ancient[cost] === p) s += '<i class="pip pa" aria-label="best for an Ancient"></i>';
+    if (best.relic[cost] === p) s += '<i class="pip pr" aria-label="best for a Relic"></i>';
+    return s;
   }
 
   function processedTableHtml(adv) {
     if (!adv || !adv.processed || !adv.processed.length) return "";
     lastProcAdv = adv;
-    var all = adv.processed, i;
+    var all = adv.processed, i, c;
+    var best = bestPerGem(all);
+    // Collapsed view: the three standard recipes plus any recommended one, so a best
+    // fuse is never hidden behind the toggle.
+    var isBest = {};
+    for (c = 0; c < PROC_COSTS.length; c++) {
+      if (best.ancient[PROC_COSTS[c]]) isBest[best.ancient[PROC_COSTS[c]].key] = true;
+      if (best.relic[PROC_COSTS[c]]) isBest[best.relic[PROC_COSTS[c]].key] = true;
+    }
     var show = [];
-    for (i = 0; i < all.length; i++) if (procAll || all[i].std) show.push(all[i]);
+    for (i = 0; i < all.length; i++) if (procAll || all[i].std || isBest[all[i].key]) show.push(all[i]);
     var extra = all.length - show.length;
 
     var rows = '<table class="gr-ptab"><thead><tr>'
@@ -1168,23 +1205,22 @@
       var p = show[i];
       rows += '<tr><td><span class="rar">' + esc(p.recipe) + '</span></td>'
         + '<td class="odds">' + esc(oddsStr(p.mix)) + '</td>';
-      rows += '<td class="r ov">' + fmtGoldShort(p.evByCost[8]) + perGemHtml(p, 8) + '</td>'
-        + '<td class="r ov">' + fmtGoldShort(p.evByCost[9]) + perGemHtml(p, 9) + '</td>'
-        + '<td class="r ov">' + fmtGoldShort(p.evByCost[10]) + perGemHtml(p, 10) + '</td></tr>';
+      for (c = 0; c < PROC_COSTS.length; c++) {
+        var cost = PROC_COSTS[c];
+        rows += '<td class="r ov"' + perGemGloss(p, cost, best) + '>' + fmtGoldShort(p.evByCost[cost]) + pipsHtml(p, cost, best) + '</td>';
+      }
+      rows += '</tr>';
     }
     rows += '</tbody></table>';
 
-    var btn = '<span class="ptgls">'
-      + '<button type="button" class="ptgl' + (procPer ? " on" : "") + '" id="gr-proc-pergem" onclick="window.__grToggleProcPer()" title="Show what each Ancient / Relic adds to the fuse">Per gem</button>'
-      + '<button type="button" class="ptgl" id="gr-proc-toggle" onclick="window.__grToggleProcAll()">'
+    var btn = '<button type="button" class="ptgl" id="gr-proc-toggle" onclick="window.__grToggleProcAll()">'
       + (procAll ? "Fewer" : ("Show all recipes" + (extra > 0 ? " (" + extra + " more)" : "")))
-      + '</button></span>';
+      + '</button>';
     var fee = (adv.fusionCost != null) ? Math.round(adv.fusionCost).toLocaleString("en-US") : "500";
     var note = '<div class="proc-note">Each number is what the <b>one gem you get back</b> is worth on average at that base cost &mdash; '
       + 'before the ' + fee + 'g fuse fee, and before what the three gems you feed in are worth. '
-      + (procPer
-        ? 'The small <b>+&hellip; /Anc</b> and <b>+&hellip; /Relic</b> lines are what <b>one</b> Ancient or Relic in that recipe adds over a Legendary in its place (this recipe minus the same recipe with that gem swapped for a Legendary). Later Ancients add less than the first, so compare these before deciding where an extra Ancient goes.'
-        : 'Richer inputs always give a richer output; turn on <b>Per gem</b> to see what each Ancient or Relic adds.')
+      + '<b>Hover a value</b> for what one Ancient or Relic in that recipe adds over a Legendary in its place. '
+      + '<i class="pip pa"></i> best fuse for an <b>Ancient</b> and <i class="pip pr"></i> best fuse for a <b>Relic</b> at that cost.'
       + '</div>';
 
     return '<div class="gr-plan-card gr-proc" id="gr-proc-card">'
@@ -1206,11 +1242,7 @@
     try { localStorage.setItem(PROC_ALL_KEY, procAll ? "1" : "0"); } catch (e) {}
     redrawProcCard();
   };
-  window.__grToggleProcPer = function () {
-    procPer = !procPer;
-    try { localStorage.setItem(PROC_PER_KEY, procPer ? "1" : "0"); } catch (e) {}
-    redrawProcCard();
-  };
+
 
   // Baseline header: the ONE baseline rank, what it came from, and the ◀ ▶ nudge arrows.
   function baselineHeadHtml(base) {
