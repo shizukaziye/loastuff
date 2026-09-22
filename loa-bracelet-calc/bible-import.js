@@ -1090,7 +1090,10 @@
       }
       return '<div class="bi-msg bad">' + t + "</div>";
     }
-    if (state.note) return '<div class="bi-msg good">' + esc(state.note) + "</div>";
+    if (state.note) {
+      var g = state.noteGloss ? esc(state.noteGloss).split('"').join("&quot;") : "";
+      return '<div class="bi-msg good">' + (g ? '<span data-gloss="' + g + '">' + esc(state.note) + "</span>" : esc(state.note)) + "</div>";
+    }
     return "";
   }
   function renderMsg() {
@@ -1410,30 +1413,35 @@
     renderLoadoutPills();
     renderFavRow();
 
+    // ONE LINE. Shizu, 2026-09-22: "too much text — remove it all or reduce it
+    // to one line." The line states the facts; the explanation (why defaults,
+    // how to import their real stats, why the copy is cached) rides in the
+    // line's tooltip. The loadout/score commentary went earlier (2026-08-11):
+    // the pills and the banner already say it.
     var n = built.patch.rows.length;
-    var note = "Loaded " + rec.name +
-      (built.patch.character.loadoutLabel ? " (" + built.patch.character.loadoutLabel + " loadout)" : "") +
-      " — " + (built.patch.grade === "relic" ? "Relic" : "Ancient") + ", " +
-      n + " granted slot" + (n === 1 ? "" : "s") + ".";
+    var parts = [
+      rec.name + (built.patch.character.loadoutLabel ? " · " + built.patch.character.loadoutLabel : ""),
+      built.patch.grade === "relic" ? "Relic" : "Ancient",
+      n + " slot" + (n === 1 ? "" : "s")
+    ];
+    var gloss = [];
     if (canImport) {
-      note += " The settings are the calculator's defaults, which is what the board ranks everyone on — " +
-        "press Import Character Stats on the character board to put " + rec.name +
-        "'s own honing, accessories, gems, karma and the rest in the panel instead. " +
-        "The gold rate and the baseline are already theirs.";
-    }
-    // The loadout/score commentary that used to live here is gone (Shizu,
-    // 2026-08-11): the pills already show each loadout and its score, and the
-    // banner shows what the bracelet is worth. Saying it again in prose was noise.
-    if (l.unmapped) {
-      built.warn.push(l.unmapped + " line" + (l.unmapped > 1 ? "s use stat indices" : " uses a stat index") +
-        " the model does not map yet, so " + (l.unmapped > 1 ? "they score" : "it scores") + " zero");
+      parts.push("calculator defaults");
+      gloss.push("The board ranks everyone on the calculator's defaults. Press Import Character Stats on the " +
+        "character board to use " + rec.name + "'s own honing, accessories, gems and karma; the gold rate " +
+        "and the baseline are already theirs.");
     }
     if (rec.stale) {
-      built.warn.push("lostark.bible could not be reached, so this is a copy from about " +
-        (rec.staleHours || 0) + "h ago");
+      parts.push("cached copy, ~" + (rec.staleHours || 0) + "h old");
+      gloss.push("lostark.bible could not be reached, so this is a copy from about " + (rec.staleHours || 0) + "h ago.");
     }
-    if (built.warn.length) note += " Note: " + built.warn.join("; ") + ".";
-    state.note = note;
+    if (l.unmapped) {
+      parts.push(l.unmapped + " unmapped line" + (l.unmapped > 1 ? "s" : ""));
+      gloss.push(l.unmapped + " line" + (l.unmapped > 1 ? "s use stat indices" : " uses a stat index") +
+        " the model does not map yet, so " + (l.unmapped > 1 ? "they score" : "it scores") + " zero.");
+    }
+    state.note = parts.join(" · ");
+    state.noteGloss = gloss.join(" ");
     renderMsg();
     return true;
   }
@@ -1551,7 +1559,7 @@
 
       if (show) {
         if (!maybeAutoRepullForProfile(show)) {
-          setPullStatus("Graded " + name + " on " + (show.cached ? "a cached" : "a fresh") + " copy.", "ok");
+          setPullStatus("", "");   // the loaded line below is the confirmation
         }
         return;
       }
@@ -1732,7 +1740,7 @@
       var rec = fromWorkerRecord(d);
       if (!rec) { endWatch("The refresh came back with no bracelet."); return; }
       showRecord(rec);
-      setPullStatus("Graded " + rec.name + " on a fresh copy.", "ok");
+      setPullStatus("", "");   // the loaded line below is the confirmation
     }
     function endWatch(msg) {
       stopPoll(); clearRefreshBanner();
@@ -1821,7 +1829,7 @@
     $("bi-auth-load").onclick = function () { loadRosters(true); };
     $("bi-auth-out").onclick = function () {
       state.chars = null; state.user = null; state.raw = null;
-      state.note = null; state.error = null;
+      state.note = null; state.noteGloss = null; state.error = null;
       OA.logout().then(render);       // logout() forgets locally first, so render is already right
       render();
     };
@@ -1836,7 +1844,7 @@
     if (!OA.signedIn()) { render(); return; }
     if (state.busy) return;
     if (state.chars && !force) { render(); return; }
-    state.busy = true; state.error = null; state.note = null;
+    state.busy = true; state.error = null; state.note = null; state.noteGloss = null;
     setPullStatus("Loading your roster…", "working");
     renderAuth();
 
