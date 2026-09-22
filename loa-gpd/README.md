@@ -30,4 +30,5 @@ Game tables come from Maxroll's planner feed and are re-baked by
 `python tools/fetch-game-data.py`, which cross-checks itself against bebkok's
 gear sheet. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
-GitHub Pages first; it moves to loseii.com once it settles.
+Lives at https://www.loseii.com/loa-gpd/ inside the [loastuff](https://github.com/shizukaziye/loastuff)
+monorepo (`loa-gpd/`), since 2026-09-22. `shizukaziye.github.io/loa-gpd` redirects here.

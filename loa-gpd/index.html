@@ -5,7 +5,7 @@
 <title>Lost Ark GPD Chart</title>
 <meta name="description" content="What every Lost Ark progression system costs per 1% damage, on one scale — honing, karma, gems, stones, bracelets, accessories and the ark grid.">
 <meta name='theme-color' content='#0d1017'>
-<link rel='canonical' href='https://shizukaziye.github.io/loa-gpd/'>
+<link rel='canonical' href='https://www.loseii.com/loa-gpd/'>
 <meta property='og:type' content='website'>
 <meta property='og:title' content='Lost Ark GPD Chart'>
 <meta property="og:description" content="What every Lost Ark progression system costs per 1% damage, on one scale.">
@@ -90,7 +90,7 @@
 <div class='foot'>
   Game tables from Maxroll's planner feed and the official Stove probability pages, cross-checked against
   bebkok's gear sheet. Support damage uses the <a href='https://www.loseii.com/lost-ark-accessories/'>accessory
-  calculator</a>'s model, bracelet ranks the <a href='https://shizukaziye.github.io/loa-bracelet-calc/'>bracelet
+  calculator</a>'s model, bracelet ranks the <a href='https://www.loseii.com/loa-bracelet-calc/'>bracelet
   calculator</a>'s ladder, ark grid costs the <a href='https://www.loseii.com/loa-astrogem-calc/'>astrogem
   calculator</a>'s cut engine. Method and every assumption:
   <a href='docs/METHODOLOGY.md'>METHODOLOGY.md</a>. Part of <a href='https://www.loseii.com/'>loseii.com</a>.
@@ -1223,7 +1223,9 @@
   // DPS ladder here was built from (commit ba4c708), so the two cannot disagree.
   var LK_WORKER = "https://astrogem-bible.shizukaziye.workers.dev";
   var BC_WORKER = "https://bracelet-bible.shizukaziye.workers.dev";
-  var BC_BASE = "https://shizukaziye.github.io/loa-bracelet-calc/";
+  // the bracelet calculator lives on loseii too; its github.io address is a
+  // redirect stub since 2026-09-22 and serves no scripts
+  var BC_BASE = "https://www.loseii.com/loa-bracelet-calc/";
   // line tier tables from the accessory calculator (values in %, bible sends x100)
   var LK_RAW = {
     "Outgoing Damage %": [0.55, 1.20, 2.00], "Additional Damage %": [0.95, 1.60, 2.60],
@@ -1279,7 +1281,7 @@
         if (window[f[1]]) return null;               // already there; do not re-run it
         return new Promise(function (res, rej) {
           var el2 = document.createElement("script");
-          el2.src = BC_BASE + f[0] + "?v=20260827";
+          el2.src = BC_BASE + f[0] + "?v=20260922b";
           el2.onload = function () { res(); };
           el2.onerror = function () { rej(new Error(f[0])); };
           document.head.appendChild(el2);

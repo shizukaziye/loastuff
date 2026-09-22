@@ -1,5 +1,15 @@
 # Resume — where this project stopped, 2026-08-20
 
+> **Moved 2026-09-22.** The source is `C:\Users\Shizu\loastuff\loa-gpd`, live at
+> https://www.loseii.com/loa-gpd/ (Cloudflare Pages, git-connected: a push to
+> loastuff `main` is the deploy). `C:\Users\Shizu\loa-gpd` is a redirect stub —
+> never develop there. Every path below that says `loa-gpd` means the loastuff
+> copy. The sweep driver's own git publish now commits into the monorepo: stage
+> by explicit path, and if a push is rejected `git pull --no-rebase` — never
+> `--rebase` across a subtree merge. The bracelet tools' `../../loa-bracelet-calc`
+> requires resolve to the monorepo's copy on their own. Cache dirs
+> (`tools/.cache`, `data/cells`) came across with the move.
+
 The sweeps were stopped cleanly for a three-week break. Nothing is lost:
 every finished tier is a shard on disk, and both drivers resume by reading
 them. Three repos are clean with nothing unpushed (`loa-gpd`, `loastuff`,
@@ -7,7 +17,7 @@ them. Three repos are clean with nothing unpushed (`loa-gpd`, `loastuff`,
 
 ## Restart the sweeps
 
-Run from the repo root (`C:\Users\Shizu\loa-gpd`). The `--workers` count is
+Run from the tool root (`C:\Users\Shizu\loastuff\loa-gpd`). The `--workers` count is
 the only thing to think about: 14 on a free machine, 6 while gaming, 2 if
 the game is choppy.
 
@@ -63,11 +73,12 @@ rare 250k, epic 250k, rare 1.09M, epic 1.09M, rare 3.96M.
    against `braceletScore` at build time.
 2. **DPS sweep completion** — resume as above; the site flips each series
    from "coming soon" to live rows on its own as tiers publish.
-3. **OAuth redirect URIs are not registered yet.** The character lookup can
-   read cached characters but cannot pull fresh ones until Shizu adds these
-   on his lostark.bible developer page:
-   - `https://shizukaziye.github.io/loa-gpd/` → prod client `22zuv73nnkcgczoxitokvo2q6u`
-   - `http://localhost:8734/` → dev client `onwc5iva725mxhak2dxq3ikjti`
+3. ~~OAuth redirect URIs are not registered yet.~~ **Done 2026-09-22**:
+   `https://www.loseii.com/loa-gpd/` is registered on the prod client
+   `22zuv73nnkcgczoxitokvo2q6u`. The dev client's whitelist is
+   `http://localhost:8080/` only, so to sign in locally serve the TOOL dir on
+   8080 (`python -m http.server 8080 --directory C:/Users/Shizu/loastuff/loa-gpd`);
+   the `loa-gpd` launch config on 8734 cannot sign in.
 4. **CP model has two cheap open measurements** (docs/research/combat-power-model.md):
    one bracelet swapped, and one gem dropped a level, each read off the
    profile screen. They would retire the last assumed weights.
