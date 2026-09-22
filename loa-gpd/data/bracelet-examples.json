@@ -1,0 +1,152 @@
+{
+ "S": {
+  "cut": 90,
+  "example": {
+   "stats": "76/83",
+   "lines": [
+    "crit dmg resist epic",
+    "crit resist blue",
+    "defence shred epic"
+   ],
+   "score": 90.1
+  }
+ },
+ "S-": {
+  "cut": 82.5,
+  "example": {
+   "stats": "76/72",
+   "lines": [
+    "crit resist epic",
+    "crit dmg resist blue",
+    "shielded dmg epic"
+   ],
+   "score": 82.5
+  }
+ },
+ "A+": {
+  "cut": 75,
+  "example": {
+   "stats": "102/82",
+   "lines": [
+    "crit dmg resist epic",
+    "crit resist blue",
+    "weapon power (stacking) epic"
+   ],
+   "score": 75
+  }
+ },
+ "A": {
+  "cut": 67.5,
+  "example": {
+   "stats": "63/82",
+   "lines": [
+    "crit dmg resist legendary",
+    "defence shred blue"
+   ],
+   "score": 67.5
+  }
+ },
+ "A-": {
+  "cut": 60,
+  "example": {
+   "stats": "101/73",
+   "lines": [
+    "crit dmg resist legendary",
+    "ally atk power blue"
+   ],
+   "score": 60
+  }
+ },
+ "B+": {
+  "cut": 52.5,
+  "example": {
+   "stats": "78/110",
+   "lines": [
+    "crit dmg resist epic",
+    "weapon power epic"
+   ],
+   "score": 52.5
+  }
+ },
+ "B": {
+  "cut": 45,
+  "example": {
+   "stats": "77/76",
+   "lines": [
+    "crit dmg resist blue",
+    "ally atk power blue"
+   ],
+   "score": 45
+  }
+ },
+ "B-": {
+  "cut": 37.5,
+  "example": {
+   "stats": "75/96",
+   "lines": [
+    "crit resist blue"
+   ],
+   "score": 37.5
+  }
+ },
+ "C+": {
+  "cut": 30,
+  "example": {
+   "stats": "93/99",
+   "lines": [
+    "ally damage blue"
+   ],
+   "score": 30
+  }
+ },
+ "C": {
+  "cut": 25,
+  "example": {
+   "stats": "74/66",
+   "lines": [
+    "ally damage blue"
+   ],
+   "score": 25
+  }
+ },
+ "C-": {
+  "cut": 20,
+  "example": {
+   "stats": "76/76",
+   "lines": [
+    "weapon power blue"
+   ],
+   "score": 20
+  }
+ },
+ "D+": {
+  "cut": 15,
+  "example": {
+   "stats": "86/78",
+   "lines": [
+    "nothing"
+   ],
+   "score": 15
+  }
+ },
+ "D": {
+  "cut": 10,
+  "example": {
+   "stats": "81/79",
+   "lines": [
+    "nothing"
+   ],
+   "score": 10
+  }
+ },
+ "D-": {
+  "cut": 5,
+  "example": {
+   "stats": "68/73",
+   "lines": [
+    "nothing"
+   ],
+   "score": 5
+  }
+ }
+}

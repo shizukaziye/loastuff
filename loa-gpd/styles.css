@@ -1,0 +1,293 @@
+/* astrogem-calculator — shared dark theme + tab styling.
+   Palette tokens are the house tokens from the calculator-webapp skill. */
+:root{
+  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
+  --dim:#97a0b4;--accent:#66c7ff;--high:#ffb86b;--mid:#c78cff;--low:#6ad4ff;
+  --none:#4f5666;--useless:#707788;--good:#6ee7a8;--bad:#ff7f7f;
+  /* tier colors */
+  --legendary:#ffb86b;--relic:#c78cff;--ancient:#6ad4ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 18px 80px}
+h1{font-size:25px;margin:0 0 4px;letter-spacing:-.02em}
+.tag{color:var(--dim);font-size:13px;margin-bottom:18px}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:26px 0 10px;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.panel+.panel{margin-top:12px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.good{color:var(--good)}.bad{color:var(--bad)}.accent{color:var(--accent)}
+.legendary{color:var(--legendary)}.relic{color:var(--relic)}.ancient{color:var(--ancient)}
+code,.mono{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:12px}
+.formula{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-family:"SF Mono",Menlo,monospace;font-size:12.5px;overflow-x:auto;white-space:pre}
+.grid{display:grid;gap:12px}
+.grid.c2{grid-template-columns:1fr 1fr}
+.grid.c3{grid-template-columns:1fr 1fr 1fr}
+
+/* ---- header ---- */
+.appbar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* ---- tab bar ---- */
+.tabbar{display:flex;gap:6px;margin:18px 0 16px;border-bottom:1px solid var(--border)}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
+  padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+  letter-spacing:.02em;border-radius:0;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tabpane{display:none}
+.tabpane.active{display:block}
+
+/* ---- sticky, collapsible input panel (for the UI agents to use) ---- */
+.inputs{position:sticky;top:var(--loseii-nav-offset,0px);z-index:20;background:rgba(13,16,23,.97);
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px)}
+.ihdr{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;user-select:none;margin-bottom:10px}
+.ihdr .tgl{cursor:pointer}
+.ihdr #gr-caret{display:inline-block;width:12px}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px}
+.fld{display:flex;flex-direction:column;gap:2px}
+.fld label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.fld input,.fld select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-family:inherit;width:100%}
+.fld input:disabled{color:var(--accent);opacity:1;cursor:not-allowed;border-style:dashed}
+.fld input:focus,.fld select:focus{outline:1px solid var(--accent)}
+.subh{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700;margin:12px 0 6px}
+.subh:first-child{margin-top:0}
+.barrow{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+button.primary{background:var(--accent);color:#06121f;border:none;border-radius:7px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+button.primary:hover{filter:brightness(1.08)}
+
+/* mode / market toggle buttons */
+.mbtn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--dim)}
+.mbtn.active{color:#06121f;background:var(--accent)}
+.note{color:var(--dim);font-size:11px;margin-top:6px}
+
+/* placeholder block for stub tabs */
+.placeholder{border:1px dashed var(--border);border-radius:10px;padding:40px 20px;text-align:center;color:var(--dim)}
+.placeholder b{color:var(--text);font-size:16px;display:block;margin-bottom:6px}
+
+details.method{margin-top:26px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px 16px}
+details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
+details.method p,details.method li{font-size:13px;color:var(--text)}
+
+/* ---- small screens (phones) ----
+   The tab bar is the one shell element that can push the page wider than the viewport
+   (4 tabs at desktop padding ≈ 382px): let it scroll sideways itself, never the page.
+   Wide data tables are handled per-module with overflow-x wrappers. */
+@media (max-width:700px){
+  .wrap{padding:16px 10px 60px}
+  h1{font-size:21px}
+  .grid.c2,.grid.c3{grid-template-columns:1fr}
+  .tabbar{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabbar::-webkit-scrollbar{display:none}
+  .tab{padding:9px 11px;font-size:12.5px;flex:0 0 auto;white-space:nowrap}
+  th,td{padding:5px 6px}
+}
+
+/* Top-tier S+ rainbow badge (from the decommissioned tier list). The rank color's
+   inline `background:` sets the pastel gradient; these add the 400% tiling and the
+   seamless 8s slide. background-size needs !important because the inline background
+   shorthand resets it to auto. Static gradient under reduced-motion. */
+.rank-rainbow{background-size:400% 100% !important}
+@media (prefers-reduced-motion:no-preference){
+  .rank-rainbow{animation:rank-rainbow-slide 8s linear infinite}
+  @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
+}
+
+/* Abbreviation tooltip: a dotted underline + help cursor signals "hover (or tap) for
+   the full meaning" (the definition rides in data-gloss; tip.js shows it — no title=).
+   Bare [data-gloss] (e.g. the grader plan-table cells) gets the same affordance as
+   .gloss. Used for 2D/Op/Sub/No, cp%, gpd, etc. */
+.gloss,[data-gloss]{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
+th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}
+
+/* Instant styled tooltip (no native-title delay). One floating node positioned by tip.js on
+   hover of any [data-gloss] element; data-gloss holds the text. Distinct from the pipeline's
+   data-tip (which drives its own rich .pl-pop popup). */
+#gm-tip{position:fixed;z-index:99999;max-width:290px;background:#10131c;border:1px solid var(--border);
+  color:var(--text);font-size:12px;line-height:1.45;padding:7px 10px;border-radius:7px;
+  box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
+#gm-tip.on{opacity:1;visibility:visible}
+
+/* ---- material price grid, laid out like maxroll's upgrade calculator ---- */
+.mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:6px 10px}
+.mat{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:7px;padding:4px 7px 4px 5px}
+.mat.off{opacity:.4}
+.mat input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px;flex:none;margin:0}
+.mat .ico{width:30px;height:30px;flex:none;border-radius:4px;background:#0c0f16 center/contain no-repeat;
+  border:1px solid var(--border)}
+.mat input[type=number]{background:transparent;color:var(--text);border:none;border-bottom:1px solid var(--border);
+  border-radius:0;padding:2px 2px;font-size:13px;font-family:inherit;width:100%;min-width:0;
+  text-align:right;font-variant-numeric:tabular-nums}
+.mat input[type=number]:focus{outline:none;border-bottom-color:var(--accent)}
+.mat .nm{font-size:12px;color:var(--dim);flex:1;min-width:0;white-space:nowrap;font-weight:600}
+.mat .nm i{color:var(--none);font-style:normal;font-size:10px}
+.mat input[type=number]{width:74px;flex:none}
+.mats{grid-template-columns:repeat(auto-fill,minmax(196px,1fr))}
+
+/* ---- gpd chart: the loadout planner, the ranked table and the hover card ---- */
+.slider{display:flex;align-items:center;gap:14px;margin:2px 0 14px}
+.slider input[type=range]{flex:1;accent-color:var(--accent)}
+.gpdval{font-size:20px;font-variant-numeric:tabular-nums;min-width:120px;font-weight:700;color:var(--accent)}
+.plan{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+/* Every plan card is the same height, so dragging the slider cannot resize the
+   grid under the cursor. The bracelet was the worst offender — its example runs
+   one to three rolled lines — but the ark grid's node list is the tallest, so
+   that sets the height and everything else fits inside it. The two numbers are
+   pinned to the bottom, which keeps them on one line across the whole row. */
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;
+  cursor:help;height:182px;display:flex;flex-direction:column;overflow:hidden}
+/* margin-bottom:auto on the top block pushes the two numbers to the card's
+   foot. (:first-of-type cannot be used on .num2 — .top is the first div.) */
+.card .top{flex:0 0 auto;min-height:0;margin-bottom:auto}
+.card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+/* The example's headline sits opposite the rank, and its effects go in chips
+   on their own row underneath — one chip an effect, left to right, at a size
+   you can actually read. */
+.card .top .eg{text-align:right;font-size:14px;line-height:1.3;color:var(--text);flex:1;min-width:0;
+  padding-top:3px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.card .top .eg i{font-style:normal;font-weight:600;font-size:11px;color:var(--dim)}
+.card .top .eg .cores6{font-size:12px;letter-spacing:-.02em}
+.card .chips{display:flex;flex-wrap:nowrap;gap:4px;margin-top:7px;min-width:0}
+/* no colour here: .t-blue / .t-epic / .t-LEG carry the rarity and a colour on
+   .card .chip would out-specify them */
+.card .chip{background:var(--panel);border:1px solid var(--border);border-radius:5px;
+  padding:2px 6px;font-size:11.5px;line-height:1.5;white-space:nowrap;
+  min-width:0;overflow:hidden;text-overflow:ellipsis}
+.card .chip b{font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.card.coming{cursor:default}
+.card.coming .sm2{margin-top:auto;font-size:11.5px;line-height:1.5;color:var(--dim)}
+.card h4{margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.pill{display:inline-block;padding:2px 11px;border-radius:99px;font-weight:800;
+  font-size:16px;line-height:1.45;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+td .pill{font-size:13px;padding:1px 9px}
+#tip .pill{font-size:13px;padding:0 8px}
+.t-blue{color:var(--ancient)}.t-epic{color:var(--relic)}.t-LEG{color:var(--legendary)}
+.t-low{color:var(--low)}.t-mid{color:var(--mid)}.t-high{color:var(--high)}
+.card .big{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.card .ilvl{color:var(--text);font-size:12px;margin:-1px 0 6px}
+.card .num2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px}
+.card .num2 span{color:var(--dim);font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em}
+.totals{display:flex;gap:26px;margin-top:14px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.totals div{font-size:17px;font-weight:700}
+.totals div span{display:block;color:var(--dim);font-size:10px;text-transform:uppercase;
+  letter-spacing:.06em;font-weight:700;margin-bottom:2px}
+/* The legend had no rule at all, so its entries ran into one another. It only
+   showed once the ark grid split into two long names. */
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;font-size:11.5px;color:var(--text)}
+.legend{display:block}
+.lg-ctls{display:flex;gap:8px;margin-bottom:8px}
+.lg-ctl{cursor:pointer;user-select:none;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:2px 12px;font-size:11px}
+.lg-ctl:hover{color:var(--text)}
+.lg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.legend .lg{cursor:pointer;user-select:none;transition:opacity .12s;display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.legend .lg-off{opacity:.32;text-decoration:line-through}
+.rk-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:10px}
+.rk-input{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:12.5px;font-family:inherit;width:180px}
+.rk-under{font-size:11.5px;color:var(--dim);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.rk-count{font-size:11.5px;color:var(--dim);margin-left:auto;font-variant-numeric:tabular-nums}
+.rk-seg{display:flex;align-items:center;gap:4px}
+.rk-lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.rk-pill{cursor:pointer;user-select:none;font-size:11px;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 8px}
+.rk-pill:hover{color:var(--text)}
+.rk-pill.on{color:var(--text);border-color:#e8b75c;background:rgba(232,183,92,.10)}
+.accctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0 0 12px;padding:8px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px}
+.acc-title{font-size:12px;font-weight:600}
+.acc-hint{font-size:11px;color:var(--dim);margin-left:auto}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text)}
+.legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.legend .swatch{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+.bar{height:8px;border-radius:4px;display:block}
+tr[data-tip]{cursor:help}
+tr[data-tip]:hover td{background:rgba(102,199,255,.06)}
+#tip{position:fixed;z-index:99;max-width:360px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;padding:11px 13px;font-size:12px;line-height:1.6;color:var(--text);
+  box-shadow:0 10px 30px rgba(0,0,0,.55);pointer-events:none;display:none}
+#tip b{color:var(--accent)}
+#tip .k{color:var(--dim);display:block;margin-top:7px;font-size:10px;text-transform:uppercase;
+  letter-spacing:.07em;font-weight:700}
+#tip table{margin-top:3px;font-size:11px}
+#tip td{padding:1px 0;border:none}
+#tip td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+#tip td:first-child{color:var(--dim);padding-right:18px}
+#tip table{width:100%;margin:4px 0 0}
+.card .big .per{font-size:11px;color:var(--none);font-weight:400}
+
+/* ---- character lookup ---- */
+#lookupPanel { margin-bottom: 14px; }
+.lk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lk-row select, .lk-row input {
+  background: var(--bg2, #151a23); color: inherit;
+  border: 1px solid var(--line, #2a3140); border-radius: 6px; padding: 7px 10px;
+}
+.lk-row input { min-width: 220px; }
+.lk-row button {
+  background: var(--high, #e8b75c); color: #1a1408; font-weight: 600;
+  border: 0; border-radius: 6px; padding: 8px 16px; cursor: pointer;
+}
+.lk-status { font-size: 13px; opacity: 0.85; }
+.lk-status.err { color: #ff8d8d; }
+.lk-status.ok { color: #7fd79f; }
+.lk-banner { margin-top: 8px; font-size: 14px; }
+.lk-banner:empty { display: none; }
+.lk-note { display: block; font-size: 12px; opacity: 0.65; margin-top: 2px; }
+.card .lk-yours {
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line, #2a3140);
+  font-size: 12px; opacity: 0.9;
+}
+.card .lk-yours span { opacity: 0.6; margin-right: 6px; text-transform: uppercase; font-size: 10px; }
+.card.hl-next { outline: 2px solid var(--high, #e8b75c); outline-offset: 1px; }
+.card.hl-next::after { content: "upgrade next"; display: block; margin-top: 4px;
+  color: var(--high, #e8b75c); font-size: 11px; font-weight: 700; letter-spacing: 0.4px; }
+
+.card.hl-last { outline: 2px solid #4f9be0; outline-offset: 1px; }
+.card.hl-last::after { content: "last upgraded"; display: block; margin-top: 4px;
+  color: #4f9be0; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; }
+.card.hl-next.hl-last { outline: 2px solid var(--high, #e8b75c); }
+
+.lk-status.warn { color: #e8c05c; }
+#lk-repull { background: transparent; color: var(--high, #e8b75c);
+  border: 1px solid var(--high, #e8b75c); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+#lk-auth { background: transparent; color: #9ad0f0;
+  border: 1px solid #35506a; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+
+/* ---- the gear list: what the lookup sees, and what it rates it ---- */
+.lk-views { display: flex; gap: 6px; margin-top: 10px; }
+.lk-view {
+  background: transparent; color: var(--dim); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 14px; font: inherit; font-size: 12px;
+  font-weight: 700; cursor: pointer; letter-spacing: .02em;
+}
+.lk-view.active { color: #1a1408; background: var(--high, #e8b75c); border-color: var(--high, #e8b75c); }
+
+.gv-head { display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.gv-best-card { text-align: right; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--dim); }
+.gv-best-card b { display: block; font-size: 15px; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+.gv-sub { display: block; font-size: 11.5px; color: var(--dim); letter-spacing: 0;
+  text-transform: none; font-weight: 400; margin-top: 2px; }
+table.gv td { vertical-align: top; }
+table.gv tr.gv-best td { background: rgba(232, 183, 92, .09); }
+table.gv tr.gv-best td:first-child { box-shadow: inset 2px 0 0 var(--high, #e8b75c); }
+table.gv tr.gv-off td { color: var(--dim); }
+.gv-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 8px; background: var(--none); vertical-align: 1px; }
+.gv-dim { color: var(--none); }
+#gearView { margin-top: 8px; }
+.gv-warn { display: block; font-size: 12px; color: #e8c05c; margin-top: 4px; }
+.gv-warn a { color: var(--high, #e8b75c); }
+table.gv th.gv-grp { border-bottom: 1px solid var(--border); color: var(--text);
+  opacity: .8; letter-spacing: .04em; }
+table.gv thead tr:first-child th.gv-grp + th.gv-grp { box-shadow: inset 1px 0 0 var(--border); }
+.gv-wrap { overflow-x: auto; }
+.gv-wrap table.gv { min-width: 760px; }
+table.gv th.num { white-space: nowrap; }

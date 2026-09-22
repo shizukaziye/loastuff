@@ -1,0 +1,1378 @@
+{
+ "note": "Rows for the DPS axis of the gold-per-damage chart. Gold and damage per step; damage is percent of ONE character's own damage — no party multiplier belongs on this axis. Scored with loa-bracelet-calc/model/bracelet.js on the reference character: ilvl 1785 T4 Upper, level-9 gems, high/high accessories, 9-7 stone, Adrenaline 7, karma 21, ark grid 60/60/60 side nodes with the Ancient ATTACK core at 20 points, 90% crit / 280% crit damage. Accessory rows are not baked: the page builds them live from accessory-scores.json / accessory-configs.json (support) and accessory-configs-dps.json (DPS) for the flat-line and main-stat families the switches tick.",
+ "rows": [
+  {
+   "series": "armor",
+   "label": "+11 → +12",
+   "gold": 250538,
+   "damage": 1.19185,
+   "detail": "0 breath, 11.4 taps at 5.00%",
+   "buy": "five armour pieces from +11 to +12, with no breath — the juice costs more than the taps it saves",
+   "odds": "base rate 5.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.4 taps expected, per piece",
+   "minimum": "all five pieces at +12 — 13,570 more main stat across the set",
+   "from": "+11",
+   "to": "+12"
+  },
+  {
+   "series": "armor",
+   "label": "+12 → +13",
+   "gold": 275140,
+   "damage": 1.20449,
+   "detail": "0 breath, 11.4 taps at 5.00%",
+   "buy": "five armour pieces from +12 to +13, with no breath — the juice costs more than the taps it saves",
+   "odds": "base rate 5.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.4 taps expected, per piece",
+   "minimum": "all five pieces at +13 — 14,046 more main stat across the set",
+   "from": "+12",
+   "to": "+13"
+  },
+  {
+   "series": "armor",
+   "label": "+13 → +14",
+   "gold": 358664,
+   "damage": 1.21682,
+   "detail": "0 breath, 13.7 taps at 4.00%",
+   "buy": "five armour pieces from +13 to +14, with no breath — the juice costs more than the taps it saves",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 13.7 taps expected, per piece",
+   "minimum": "all five pieces at +14 — 14,537 more main stat across the set",
+   "from": "+13",
+   "to": "+14"
+  },
+  {
+   "series": "armor",
+   "label": "+14 → +15",
+   "gold": 399216,
+   "damage": 1.22879,
+   "detail": "14 breath, 10.0 taps at 4.00%",
+   "buy": "five armour pieces from +14 to +15, with 14 breaths a tap",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 10.0 taps expected, per piece",
+   "minimum": "all five pieces at +15 — 15,043 more main stat across the set",
+   "from": "+14",
+   "to": "+15"
+  },
+  {
+   "series": "armor",
+   "label": "+15 → +16",
+   "gold": 418915,
+   "damage": 1.24109,
+   "detail": "20 breath, 9.0 taps at 4.00%",
+   "buy": "five armour pieces from +15 to +16, with 20 breaths a tap",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 9.0 taps expected, per piece",
+   "minimum": "all five pieces at +16 — 15,573 more main stat across the set",
+   "from": "+15",
+   "to": "+16"
+  },
+  {
+   "series": "armor",
+   "label": "+16 → +17",
+   "gold": 592783,
+   "damage": 1.07166,
+   "detail": "0 breath, 17.5 taps at 3.00%",
+   "buy": "five armour pieces from +16 to +17, with no breath — the juice costs more than the taps it saves",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 17.5 taps expected, per piece",
+   "minimum": "all five pieces at +17 — 13,761 more main stat across the set",
+   "from": "+16",
+   "to": "+17"
+  },
+  {
+   "series": "armor",
+   "label": "+17 → +18",
+   "gold": 644389,
+   "damage": 1.0747,
+   "detail": "19 breath, 12.6 taps at 3.00%",
+   "buy": "five armour pieces from +17 to +18, with 19 breaths a tap",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 12.6 taps expected, per piece",
+   "minimum": "all five pieces at +18 — 14,099 more main stat across the set",
+   "from": "+17",
+   "to": "+18"
+  },
+  {
+   "series": "armor",
+   "label": "+18 → +19",
+   "gold": 678340,
+   "damage": 1.07795,
+   "detail": "25 breath, 11.6 taps at 3.00%",
+   "buy": "five armour pieces from +18 to +19, with 25 breaths a tap",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.6 taps expected, per piece",
+   "minimum": "all five pieces at +19 — 14,449 more main stat across the set",
+   "from": "+18",
+   "to": "+19"
+  },
+  {
+   "series": "armor",
+   "label": "+19 → +20",
+   "gold": 1328655,
+   "damage": 1.0813,
+   "detail": "25 breath, 21.6 taps at 1.50%",
+   "buy": "five armour pieces from +19 to +20, with 25 breaths a tap",
+   "odds": "base rate 1.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 21.6 taps expected, per piece",
+   "minimum": "all five pieces at +20 — 14,810 more main stat across the set",
+   "from": "+19",
+   "to": "+20"
+  },
+  {
+   "series": "armor",
+   "label": "+20 → +21",
+   "gold": 1389813,
+   "damage": 1.08494,
+   "detail": "25 breath, 21.6 taps at 1.50%",
+   "buy": "five armour pieces from +20 to +21, with 25 breaths a tap",
+   "odds": "base rate 1.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 21.6 taps expected, per piece",
+   "minimum": "all five pieces at +21 — 15,185 more main stat across the set",
+   "from": "+20",
+   "to": "+21"
+  },
+  {
+   "series": "armor",
+   "label": "+21 → +22",
+   "gold": 2131220,
+   "damage": 1.0878,
+   "detail": "25 breath, 31.5 taps at 1.00%",
+   "buy": "five armour pieces from +21 to +22, with 25 breaths a tap",
+   "odds": "base rate 1.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 31.5 taps expected, per piece",
+   "minimum": "all five pieces at +22 — 15,559 more main stat across the set",
+   "from": "+21",
+   "to": "+22"
+  },
+  {
+   "series": "armor",
+   "label": "+22 → +23",
+   "gold": 2211599,
+   "damage": 1.09112,
+   "detail": "25 breath, 31.5 taps at 1.00%",
+   "buy": "five armour pieces from +22 to +23, with 25 breaths a tap",
+   "odds": "base rate 1.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 31.5 taps expected, per piece",
+   "minimum": "all five pieces at +23 — 15,950 more main stat across the set",
+   "from": "+22",
+   "to": "+23"
+  },
+  {
+   "series": "armor",
+   "label": "+23 → +24",
+   "gold": 4224934,
+   "damage": 1.09432,
+   "detail": "50 breath, 45.7 taps at 0.50%",
+   "buy": "five armour pieces from +23 to +24, with 50 breaths a tap",
+   "odds": "base rate 0.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 45.7 taps expected, per piece",
+   "minimum": "all five pieces at +24 — 16,350 more main stat across the set",
+   "from": "+23",
+   "to": "+24"
+  },
+  {
+   "series": "armor",
+   "label": "+24 → +25",
+   "gold": 4370384,
+   "damage": 1.09721,
+   "detail": "50 breath, 45.7 taps at 0.50%",
+   "buy": "five armour pieces from +24 to +25, with 50 breaths a tap",
+   "odds": "base rate 0.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 45.7 taps expected, per piece",
+   "minimum": "all five pieces at +25 — 16,756 more main stat across the set",
+   "from": "+24",
+   "to": "+25"
+  },
+  {
+   "series": "weapon",
+   "label": "+11 → +12",
+   "gold": 210850,
+   "damage": 1.37327,
+   "detail": "20 breath, 7.5 taps at 5.00%",
+   "buy": "the weapon from +11 to +12, with 20 breaths a tap",
+   "odds": "base rate 5.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 7.5 taps expected",
+   "minimum": "the weapon at +12 — 4,767 more weapon power",
+   "from": "+11",
+   "to": "+12"
+  },
+  {
+   "series": "weapon",
+   "label": "+12 → +13",
+   "gold": 230298,
+   "damage": 1.38241,
+   "detail": "20 breath, 7.5 taps at 5.00%",
+   "buy": "the weapon from +12 to +13, with 20 breaths a tap",
+   "odds": "base rate 5.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 7.5 taps expected",
+   "minimum": "the weapon at +13 — 4,933 more weapon power",
+   "from": "+12",
+   "to": "+13"
+  },
+  {
+   "series": "weapon",
+   "label": "+13 → +14",
+   "gold": 298760,
+   "damage": 1.39223,
+   "detail": "20 breath, 9.0 taps at 4.00%",
+   "buy": "the weapon from +13 to +14, with 20 breaths a tap",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 9.0 taps expected",
+   "minimum": "the weapon at +14 — 5,108 more weapon power",
+   "from": "+13",
+   "to": "+14"
+  },
+  {
+   "series": "weapon",
+   "label": "+14 → +15",
+   "gold": 320985,
+   "damage": 1.40075,
+   "detail": "20 breath, 9.0 taps at 4.00%",
+   "buy": "the weapon from +14 to +15, with 20 breaths a tap",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 9.0 taps expected",
+   "minimum": "the weapon at +15 — 5,285 more weapon power",
+   "from": "+14",
+   "to": "+15"
+  },
+  {
+   "series": "weapon",
+   "label": "+15 → +16",
+   "gold": 343209,
+   "damage": 1.40981,
+   "detail": "20 breath, 9.0 taps at 4.00%",
+   "buy": "the weapon from +15 to +16, with 20 breaths a tap",
+   "odds": "base rate 4.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 9.0 taps expected",
+   "minimum": "the weapon at +16 — 5,471 more weapon power",
+   "from": "+15",
+   "to": "+16"
+  },
+  {
+   "series": "weapon",
+   "label": "+16 → +17",
+   "gold": 491638,
+   "damage": 1.21266,
+   "detail": "25 breath, 11.6 taps at 3.00%",
+   "buy": "the weapon from +16 to +17, with 25 breaths a tap",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.6 taps expected",
+   "minimum": "the weapon at +17 — 4,831 more weapon power",
+   "from": "+16",
+   "to": "+17"
+  },
+  {
+   "series": "weapon",
+   "label": "+17 → +18",
+   "gold": 524251,
+   "damage": 1.21346,
+   "detail": "25 breath, 11.6 taps at 3.00%",
+   "buy": "the weapon from +17 to +18, with 25 breaths a tap",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.6 taps expected",
+   "minimum": "the weapon at +18 — 4,953 more weapon power",
+   "from": "+17",
+   "to": "+18"
+  },
+  {
+   "series": "weapon",
+   "label": "+18 → +19",
+   "gold": 555417,
+   "damage": 1.21374,
+   "detail": "25 breath, 11.6 taps at 3.00%",
+   "buy": "the weapon from +18 to +19, with 25 breaths a tap",
+   "odds": "base rate 3.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 11.6 taps expected",
+   "minimum": "the weapon at +19 — 5,076 more weapon power",
+   "from": "+18",
+   "to": "+19"
+  },
+  {
+   "series": "weapon",
+   "label": "+19 → +20",
+   "gold": 1099878,
+   "damage": 1.21424,
+   "detail": "25 breath, 21.6 taps at 1.50%",
+   "buy": "the weapon from +19 to +20, with 25 breaths a tap",
+   "odds": "base rate 1.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 21.6 taps expected",
+   "minimum": "the weapon at +20 — 5,203 more weapon power",
+   "from": "+19",
+   "to": "+20"
+  },
+  {
+   "series": "weapon",
+   "label": "+20 → +21",
+   "gold": 1163409,
+   "damage": 1.21491,
+   "detail": "25 breath, 21.6 taps at 1.50%",
+   "buy": "the weapon from +20 to +21, with 25 breaths a tap",
+   "odds": "base rate 1.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 21.6 taps expected",
+   "minimum": "the weapon at +21 — 5,334 more weapon power",
+   "from": "+20",
+   "to": "+21"
+  },
+  {
+   "series": "weapon",
+   "label": "+21 → +22",
+   "gold": 1792402,
+   "damage": 1.21506,
+   "detail": "25 breath, 31.5 taps at 1.00%",
+   "buy": "the weapon from +21 to +22, with 25 breaths a tap",
+   "odds": "base rate 1.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 31.5 taps expected",
+   "minimum": "the weapon at +22 — 5,466 more weapon power",
+   "from": "+21",
+   "to": "+22"
+  },
+  {
+   "series": "weapon",
+   "label": "+22 → +23",
+   "gold": 1885050,
+   "damage": 1.2158,
+   "detail": "25 breath, 31.5 taps at 1.00%",
+   "buy": "the weapon from +22 to +23, with 25 breaths a tap",
+   "odds": "base rate 1.00%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 31.5 taps expected",
+   "minimum": "the weapon at +23 — 5,604 more weapon power",
+   "from": "+22",
+   "to": "+23"
+  },
+  {
+   "series": "weapon",
+   "label": "+23 → +24",
+   "gold": 3223016,
+   "damage": 1.216,
+   "detail": "50 breath, 45.7 taps at 0.50%",
+   "buy": "the weapon from +23 to +24, with 50 breaths a tap",
+   "odds": "base rate 0.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 45.7 taps expected",
+   "minimum": "the weapon at +24 — 5,743 more weapon power",
+   "from": "+23",
+   "to": "+24"
+  },
+  {
+   "series": "weapon",
+   "label": "+24 → +25",
+   "gold": 3367552,
+   "damage": 1.21651,
+   "detail": "50 breath, 45.7 taps at 0.50%",
+   "buy": "the weapon from +24 to +25, with 50 breaths a tap",
+   "odds": "base rate 0.50%, rising 10% of base per failure, guaranteed once the rates spent reach 215%. 45.7 taps expected",
+   "minimum": "the weapon at +25 — 5,887 more weapon power",
+   "from": "+24",
+   "to": "+25"
+  },
+  {
+   "series": "karma",
+   "label": "lv 21 → 22",
+   "gold": 4113,
+   "damage": 0.04554,
+   "detail": "4.6 tries at 20.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "20.00% a try, and each failure banks 10.00% karma energy; the bar guarantees the attempt at 100%. 4.6 tries expected",
+   "minimum": "Karmic Enlightenment at level 22 — 2.20% weapon power",
+   "from": "lv 21",
+   "to": "lv 22"
+  },
+  {
+   "series": "karma",
+   "label": "lv 22 → 23",
+   "gold": 5476,
+   "damage": 0.0455,
+   "detail": "6.1 tries at 15.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "15.00% a try, and each failure banks 7.50% karma energy; the bar guarantees the attempt at 100%. 6.1 tries expected",
+   "minimum": "Karmic Enlightenment at level 23 — 2.30% weapon power",
+   "from": "lv 22",
+   "to": "lv 23"
+  },
+  {
+   "series": "karma",
+   "label": "lv 23 → 24",
+   "gold": 8015,
+   "damage": 0.04546,
+   "detail": "8.9 tries at 10.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "10.00% a try, and each failure banks 5.00% karma energy; the bar guarantees the attempt at 100%. 8.9 tries expected",
+   "minimum": "Karmic Enlightenment at level 24 — 2.40% weapon power",
+   "from": "lv 23",
+   "to": "lv 24"
+  },
+  {
+   "series": "karma",
+   "label": "lv 24 → 25",
+   "gold": 11400,
+   "damage": 0.04541,
+   "detail": "12.7 tries at 7.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "7.00% a try, and each failure banks 3.50% karma energy; the bar guarantees the attempt at 100%. 12.7 tries expected",
+   "minimum": "Karmic Enlightenment at level 25 — 2.50% weapon power",
+   "from": "lv 24",
+   "to": "lv 25"
+  },
+  {
+   "series": "karma",
+   "label": "lv 25 → 26",
+   "gold": 20304,
+   "damage": 0.04537,
+   "detail": "22.6 tries at 4.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "4.00% a try, and each failure banks 1.80% karma energy; the bar guarantees the attempt at 100%. 22.6 tries expected",
+   "minimum": "Karmic Enlightenment at level 26 — 2.60% weapon power",
+   "from": "lv 25",
+   "to": "lv 26"
+  },
+  {
+   "series": "karma",
+   "label": "lv 26 → 27",
+   "gold": 40411,
+   "damage": 0.04533,
+   "detail": "44.9 tries at 2.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "2.00% a try, and each failure banks 0.90% karma energy; the bar guarantees the attempt at 100%. 44.9 tries expected",
+   "minimum": "Karmic Enlightenment at level 27 — 2.70% weapon power",
+   "from": "lv 26",
+   "to": "lv 27"
+  },
+  {
+   "series": "karma",
+   "label": "lv 27 → 28",
+   "gold": 82778,
+   "damage": 0.04529,
+   "detail": "92.0 tries at 1.00%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "1.00% a try, and each failure banks 0.40% karma energy; the bar guarantees the attempt at 100%. 92.0 tries expected",
+   "minimum": "Karmic Enlightenment at level 28 — 2.80% weapon power",
+   "from": "lv 27",
+   "to": "lv 28"
+  },
+  {
+   "series": "karma",
+   "label": "lv 28 → 29",
+   "gold": 165390,
+   "damage": 0.04525,
+   "detail": "183.8 tries at 0.50%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "0.50% a try, and each failure banks 0.20% karma energy; the bar guarantees the attempt at 100%. 183.8 tries expected",
+   "minimum": "Karmic Enlightenment at level 29 — 2.90% weapon power",
+   "from": "lv 28",
+   "to": "lv 29"
+  },
+  {
+   "series": "karma",
+   "label": "lv 29 → 30",
+   "gold": 344284,
+   "damage": 0.04521,
+   "detail": "382.5 tries at 0.25%, +0.10% weapon power",
+   "buy": "nothing — 900g and a Destiny Stone a try, and you have the stones",
+   "odds": "0.25% a try, and each failure banks 0.08% karma energy; the bar guarantees the attempt at 100%. 382.5 tries expected",
+   "minimum": "Karmic Enlightenment at level 30 — 3.00% weapon power",
+   "from": "lv 29",
+   "to": "lv 30"
+  },
+  {
+   "series": "stone",
+   "label": "7-7 → 9-7",
+   "gold": 14167000,
+   "damage": 1.14767,
+   "detail": "704 stones at 9 pheons each, P(activation level 5+) = 0.13793%",
+   "buy": "uncut Ancient stones at 9 pheons each, 20,132g apiece",
+   "odds": "0.13793% of facets reach level 5 or more, so 725 stones for one and 704 above a 7-7. One part only: +1.5% basic attack power. Nothing else on the stone is damage for a dealer",
+   "minimum": "any 9-7, 10-6, 9-9 or 10-10 — combined activation level 5 or more",
+   "from": "7-7",
+   "to": "9-7"
+  },
+  {
+   "series": "arkgrid",
+   "label": "ungraded → C-",
+   "gold": 507086,
+   "damage": 3.56996,
+   "detail": "all twenty-four gems, the first gem worth socketing",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 4.0 raw gems per gem that lands at C-",
+   "minimum": "twenty-four gems at C-",
+   "from": "ungraded",
+   "to": "C-",
+   "grid": {
+    "cores": 16,
+    "nodes": [
+     [
+      "atk power",
+      22
+     ],
+     [
+      "boss dmg",
+      18
+     ],
+     [
+      "add dmg",
+      22
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C- → C",
+   "gold": 65414,
+   "damage": 0.82845,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 4.5 raw gems per gem that lands at C",
+   "minimum": "twenty-four gems at C",
+   "from": "C-",
+   "to": "C",
+   "grid": {
+    "cores": 16,
+    "nodes": [
+     [
+      "atk power",
+      25
+     ],
+     [
+      "boss dmg",
+      24
+     ],
+     [
+      "add dmg",
+      26
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C → C+",
+   "gold": 93422,
+   "damage": 0.85029,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 5.2 raw gems per gem that lands at C+",
+   "minimum": "twenty-four gems at C+",
+   "from": "C",
+   "to": "C+",
+   "grid": {
+    "cores": 17,
+    "nodes": [
+     [
+      "atk power",
+      28
+     ],
+     [
+      "boss dmg",
+      31
+     ],
+     [
+      "add dmg",
+      31
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C+ → B-",
+   "gold": 132554,
+   "damage": 1.08712,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 6.2 raw gems per gem that lands at B-",
+   "minimum": "twenty-four gems at B-",
+   "from": "C+",
+   "to": "B-",
+   "grid": {
+    "cores": 17,
+    "nodes": [
+     [
+      "atk power",
+      30
+     ],
+     [
+      "boss dmg",
+      37
+     ],
+     [
+      "add dmg",
+      35
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B- → B",
+   "gold": 181032,
+   "damage": 1.21377,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 7.6 raw gems per gem that lands at B",
+   "minimum": "twenty-four gems at B",
+   "from": "B-",
+   "to": "B",
+   "grid": {
+    "cores": 18,
+    "nodes": [
+     [
+      "atk power",
+      33
+     ],
+     [
+      "boss dmg",
+      43
+     ],
+     [
+      "add dmg",
+      39
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B → B+",
+   "gold": 286260,
+   "damage": 1.2471,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 9.8 raw gems per gem that lands at B+",
+   "minimum": "twenty-four gems at B+",
+   "from": "B",
+   "to": "B+",
+   "grid": {
+    "cores": 18,
+    "nodes": [
+     [
+      "atk power",
+      36
+     ],
+     [
+      "boss dmg",
+      49
+     ],
+     [
+      "add dmg",
+      43
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B+ → A-",
+   "gold": 454190,
+   "damage": 1.2071,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 13.3 raw gems per gem that lands at A-",
+   "minimum": "twenty-four gems at A-",
+   "from": "B+",
+   "to": "A-",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "atk power",
+      38
+     ],
+     [
+      "boss dmg",
+      55
+     ],
+     [
+      "add dmg",
+      47
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A- → A",
+   "gold": 647120,
+   "damage": 1.20385,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 18.3 raw gems per gem that lands at A",
+   "minimum": "twenty-four gems at A",
+   "from": "A-",
+   "to": "A",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "atk power",
+      41
+     ],
+     [
+      "boss dmg",
+      61
+     ],
+     [
+      "add dmg",
+      52
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A → A+",
+   "gold": 1000506,
+   "damage": 1.23697,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 25.9 raw gems per gem that lands at A+",
+   "minimum": "twenty-four gems at A+",
+   "from": "A",
+   "to": "A+",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "atk power",
+      44
+     ],
+     [
+      "boss dmg",
+      67
+     ],
+     [
+      "add dmg",
+      56
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A+ → S-",
+   "gold": 3298858,
+   "damage": 1.19734,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 51.2 raw gems per gem that lands at S-",
+   "minimum": "twenty-four gems at S-",
+   "from": "A+",
+   "to": "S-",
+   "grid": {
+    "cores": 20,
+    "nodes": [
+     [
+      "atk power",
+      47
+     ],
+     [
+      "boss dmg",
+      73
+     ],
+     [
+      "add dmg",
+      60
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "S- → S",
+   "gold": 12786482,
+   "damage": 1.02108,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 149.1 raw gems per gem that lands at S",
+   "minimum": "twenty-four gems at S",
+   "from": "S-",
+   "to": "S",
+   "grid": {
+    "cores": 20,
+    "nodes": [
+     [
+      "atk power",
+      49
+     ],
+     [
+      "boss dmg",
+      79
+     ],
+     [
+      "add dmg",
+      64
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "S → S+",
+   "gold": 35250608,
+   "damage": 0.67741,
+   "detail": "all twenty-four gems; the S to S+ band is only 2.8 points wide",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, DPS axis, advisor baseline 85 at 2.5M gold per 1%. 419.0 raw gems per gem that lands at S+",
+   "minimum": "twenty-four gems at S+",
+   "from": "S",
+   "to": "S+",
+   "grid": {
+    "cores": 20,
+    "nodes": [
+     [
+      "atk power",
+      51
+     ],
+     [
+      "boss dmg",
+      84
+     ],
+     [
+      "add dmg",
+      68
+     ]
+    ]
+   }
+  },
+  {
+   "series": "gems",
+   "label": "all lv7 → lv8",
+   "from": "level 7",
+   "to": "level 8",
+   "gold": 3080000,
+   "damage": 4.83333,
+   "mats": [
+    [
+     "11 gems, two more lv7 each",
+     22,
+     3080000
+    ],
+    [
+     "skill damage",
+     "32% → 36%",
+     0
+    ],
+    [
+     "cooldown reduction",
+     "18% → 20%",
+     0
+    ]
+   ],
+   "buy": "11 gems from level 7 to 8 — three of a level make one of the next, so two more each",
+   "odds": "no chance involved. 3.03% from the damage bucket and 1.75% from casting 2.50% more often, with 70% of damage on cooldown",
+   "minimum": "every gem at level 8 — 36% skill damage and 20% cooldown"
+  },
+  {
+   "series": "gems",
+   "label": "all lv8 → lv9",
+   "from": "level 8",
+   "to": "level 9",
+   "gold": 9240000,
+   "damage": 4.78884,
+   "mats": [
+    [
+     "11 gems, two more lv8 each",
+     22,
+     9240000
+    ],
+    [
+     "skill damage",
+     "36% → 40%",
+     0
+    ],
+    [
+     "cooldown reduction",
+     "20% → 22%",
+     0
+    ]
+   ],
+   "buy": "11 gems from level 8 to 9 — three of a level make one of the next, so two more each",
+   "odds": "no chance involved. 2.94% from the damage bucket and 1.79% from casting 2.56% more often, with 70% of damage on cooldown",
+   "minimum": "every gem at level 9 — 40% skill damage and 22% cooldown"
+  },
+  {
+   "series": "gems",
+   "label": "all lv9 → lv10",
+   "from": "level 9",
+   "to": "level 10",
+   "gold": 27720000,
+   "damage": 4.75188,
+   "mats": [
+    [
+     "11 gems, two more lv9 each",
+     22,
+     27720000
+    ],
+    [
+     "skill damage",
+     "40% → 44%",
+     0
+    ],
+    [
+     "cooldown reduction",
+     "22% → 24%",
+     0
+    ]
+   ],
+   "buy": "11 gems from level 9 to 10 — three of a level make one of the next, so two more each",
+   "odds": "no chance involved. 2.86% from the damage bucket and 1.84% from casting 2.63% more often, with 70% of damage on cooldown",
+   "minimum": "every gem at level 10 — 44% skill damage and 24% cooldown"
+  },
+  {
+   "series": "bracelet",
+   "label": "C → C+",
+   "from": "F",
+   "to": "C+",
+   "gold": 200728,
+   "damage": 8.78205,
+   "total": 249930,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "epic"
+     },
+     {
+      "name": "crit dmg",
+      "id": 32,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with dmg, +cd epic, crit dmg blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     4,
+     72491.6249637765
+    ],
+    [
+     "pheons",
+     80,
+     177438.43199536402
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 4 rolled 100/100 bracelets reaches C+",
+   "totalDamage": 11.7487
+  },
+  {
+   "series": "bracelet",
+   "label": "C+ → B-",
+   "from": "C+",
+   "to": "B-",
+   "gold": 161608,
+   "damage": 0.75033,
+   "total": 411538,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "back atk",
+      "id": 25,
+      "tier": "epic"
+     },
+     {
+      "name": "wp x30 stack",
+      "id": 22,
+      "tier": "epic"
+     },
+     {
+      "name": "damage",
+      "id": 23,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with back atk epic, wp x30 stack epic, damage blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     7,
+     119365.60976251723
+    ],
+    [
+     "pheons",
+     140,
+     292172.3252998547
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 7 rolled 100/100 bracelets reaches B-",
+   "totalDamage": 12.4991
+  },
+  {
+   "series": "bracelet",
+   "label": "B- → B",
+   "from": "B-",
+   "to": "B",
+   "gold": 311491,
+   "damage": 0.76278,
+   "total": 723029,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "crit dmg+",
+      "id": 12,
+      "tier": "blue"
+     },
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "blue"
+     },
+     {
+      "name": "weapon power",
+      "id": 33,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with crit dmg+ blue, def shred blue, weapon power epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     11,
+     209712.72750059795
+    ],
+    [
+     "pheons",
+     220,
+     513315.8148375243
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 11 rolled 100/100 bracelets reaches B",
+   "totalDamage": 13.2618
+  },
+  {
+   "series": "bracelet",
+   "label": "B → B+",
+   "from": "B",
+   "to": "B+",
+   "gold": 709365,
+   "damage": 0.75659,
+   "total": 1432394,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "LEG"
+     },
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with crit shred LEG, dmg, +cd blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     23,
+     415462.4348885505
+    ],
+    [
+     "pheons",
+     460,
+     1016931.3080847233
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 23 rolled 100/100 bracelets reaches B+",
+   "totalDamage": 14.0184
+  },
+  {
+   "series": "bracelet",
+   "label": "B+ → A-",
+   "from": "B+",
+   "to": "A-",
+   "gold": 1831108,
+   "damage": 0.75317,
+   "total": 3263502,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "LEG"
+     },
+     {
+      "name": "damage",
+      "id": 23,
+      "tier": "epic"
+     },
+     {
+      "name": "back atk",
+      "id": 25,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with dmg, +cd LEG, damage epic, back atk blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     52,
+     946570.9751553937
+    ],
+    [
+     "pheons",
+     1040,
+     2316930.6756169843
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 52 rolled 100/100 bracelets reaches A-",
+   "totalDamage": 14.7716
+  },
+  {
+   "series": "bracelet",
+   "label": "A- → A",
+   "from": "A-",
+   "to": "A",
+   "gold": 5109321,
+   "damage": 0.75882,
+   "total": 8372823,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "blue"
+     },
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "blue"
+     },
+     {
+      "name": "non-directional",
+      "id": 27,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with dmg, +cd blue, crit shred blue, non-directional epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     133,
+     2428517.5970790745
+    ],
+    [
+     "pheons",
+     2660,
+     5944305.35546946
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "odds": "1 in 133 rolled 100/100 bracelets reaches A",
+   "totalDamage": 15.5304
+  },
+  {
+   "series": "bracelet",
+   "label": "A → A+",
+   "from": "A",
+   "to": "A+",
+   "gold": 15913032,
+   "damage": 0.75823,
+   "total": 24285855,
+   "hit": {
+    "stats": "110/110",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "epic"
+     },
+     {
+      "name": "dmg+stagger",
+      "id": 13,
+      "tier": "LEG"
+     },
+     {
+      "name": "back atk",
+      "id": 25,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "110/110 crit/spec with cdmg shred epic, dmg+stagger LEG, back atk blue",
+   "mats": [
+    [
+     "cut 110/110 bracelets",
+     209,
+     14929293.257880466
+    ],
+    [
+     "pheons",
+     4180,
+     9356562.068864295
+    ]
+   ],
+   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
+   "odds": "1 in 209 rolled 110/110 bracelets reaches A+",
+   "totalDamage": 16.2887
+  },
+  {
+   "series": "bracelet",
+   "label": "A+ → S-",
+   "from": "A+",
+   "to": "S-",
+   "gold": 59655424,
+   "damage": 0.71464,
+   "total": 83941279,
+   "hit": {
+    "stats": "110/110",
+    "lines": [
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "blue"
+     },
+     {
+      "name": "dmg+stagger",
+      "id": 13,
+      "tier": "epic"
+     },
+     {
+      "name": "crit dmg+",
+      "id": 12,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "110/110 crit/spec with dmg, +cd blue, dmg+stagger epic, crit dmg+ epic",
+   "mats": [
+    [
+     "cut 110/110 bracelets",
+     723,
+     51601393.371334314
+    ],
+    [
+     "pheons",
+     14460,
+     32339885.859226372
+    ]
+   ],
+   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
+   "odds": "1 in 723 rolled 110/110 bracelets reaches S-",
+   "totalDamage": 17.0033
+  },
+  {
+   "series": "bracelet",
+   "label": "S- → S",
+   "from": "S-",
+   "to": "S",
+   "gold": 281212085,
+   "damage": 0.78121,
+   "total": 365153364,
+   "hit": {
+    "stats": "110/110",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "LEG"
+     },
+     {
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "LEG"
+     },
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "110/110 crit/spec with cdmg shred LEG, dmg, +cd LEG, def shred blue",
+   "mats": [
+    [
+     "cut 110/110 bracelets",
+     3145,
+     224471470.1163914
+    ],
+    [
+     "pheons",
+     62900,
+     140681893.4127772
+    ]
+   ],
+   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
+   "odds": "1 in 3,145 rolled 110/110 bracelets reaches S",
+   "totalDamage": 17.7845
+  },
+  {
+   "series": "bracelet",
+   "label": "S → S+",
+   "from": "S",
+   "to": "S+",
+   "gold": 1881533540,
+   "damage": 0.92589,
+   "total": 2246686904,
+   "hit": {
+    "stats": "120/120",
+    "lines": [
+     {
+      "name": "crit dmg+",
+      "id": 12,
+      "tier": "LEG"
+     },
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "epic"
+     },
+     {
+      "name": "front atk",
+      "id": 26,
+      "tier": "LEG"
+     }
+    ]
+   },
+   "minimum": "120/120 crit/spec with crit dmg+ LEG, cdmg shred epic, front atk LEG",
+   "mats": [
+    [
+     "cut 120/120 bracelets",
+     6944,
+     1936014389.5428345
+    ],
+    [
+     "pheons",
+     138880,
+     310672514.61988294
+    ]
+   ],
+   "buy": "120/120 crit/spec unrolled bracelets, about 278,786 each",
+   "odds": "1 in 6,944 rolled 120/120 bracelets reaches S+",
+   "totalDamage": 18.7104
+  }
+ ],
+ "honingDamage": {
+  "armor": {
+   "12": 1.19185,
+   "13": 1.20449,
+   "14": 1.21682,
+   "15": 1.22879,
+   "16": 1.24109,
+   "17": 1.07166,
+   "18": 1.0747,
+   "19": 1.07795,
+   "20": 1.0813,
+   "21": 1.08494,
+   "22": 1.0878,
+   "23": 1.09112,
+   "24": 1.09432,
+   "25": 1.09721
+  },
+  "weapon": {
+   "12": 1.37327,
+   "13": 1.38241,
+   "14": 1.39223,
+   "15": 1.40075,
+   "16": 1.40981,
+   "17": 1.21266,
+   "18": 1.21346,
+   "19": 1.21374,
+   "20": 1.21424,
+   "21": 1.21491,
+   "22": 1.21506,
+   "23": 1.2158,
+   "24": 1.216,
+   "25": 1.21651
+  }
+ },
+ "karmaDamage": {
+  "22": 0.04554,
+  "23": 0.0455,
+  "24": 0.04546,
+  "25": 0.04541,
+  "26": 0.04537,
+  "27": 0.04533,
+  "28": 0.04529,
+  "29": 0.04525,
+  "30": 0.04521
+ }
+}

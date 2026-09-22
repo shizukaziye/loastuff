@@ -1,0 +1,15 @@
+{
+ "updated": "2026-09-17T16:09:26.264Z",
+ "total": 29,
+ "reps": 10000,
+ "draw": "dd",
+ "axis": "support",
+ "rare": {
+  "done": 29,
+  "quarantined": 0
+ },
+ "epic": {
+  "done": 29,
+  "quarantined": 0
+ }
+}

@@ -1,0 +1,292 @@
+{
+ "F+": {
+  "stats": "70/70",
+  "lines": [
+   {
+    "name": "heal+shield eff",
+    "id": 28,
+    "tier": "epic"
+   },
+   {
+    "name": "less dmg taken",
+    "id": 3,
+    "tier": "blue"
+   },
+   {
+    "name": "dmg+stagger",
+    "id": 13,
+    "tier": "LEG"
+   }
+  ]
+ },
+ "D-": {
+  "stats": "80/80",
+  "lines": [
+   {
+    "name": "wp x6 stack",
+    "id": 20,
+    "tier": "blue"
+   }
+  ]
+ },
+ "D": {
+  "stats": "80/80",
+  "lines": [
+   {
+    "name": "wp x30 stack",
+    "id": 22,
+    "tier": "epic"
+   },
+   {
+    "name": "resource regen",
+    "id": 8,
+    "tier": "blue"
+   }
+  ]
+ },
+ "D+": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "blue"
+   },
+   {
+    "name": "crit dmg",
+    "id": 32,
+    "tier": "epic"
+   },
+   {
+    "name": "atk+move spd",
+    "id": 1,
+    "tier": "blue"
+   }
+  ]
+ },
+ "C-": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "wp x30 stack",
+    "id": 22,
+    "tier": "blue"
+   },
+   {
+    "name": "wp hp>50%",
+    "id": 21,
+    "tier": "blue"
+   }
+  ]
+ },
+ "C": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "ally atk buff",
+    "id": 29,
+    "tier": "epic"
+   },
+   {
+    "name": "wp x30 stack",
+    "id": 22,
+    "tier": "blue"
+   }
+  ]
+ },
+ "C+": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "epic"
+   },
+   {
+    "name": "wp x30 stack",
+    "id": 22,
+    "tier": "blue"
+   },
+   {
+    "name": "dmg+stagger",
+    "id": 13,
+    "tier": "blue"
+   }
+  ]
+ },
+ "B-": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "LEG"
+   },
+   {
+    "name": "heal+shield eff",
+    "id": 28,
+    "tier": "blue"
+   },
+   {
+    "name": "push immunity",
+    "id": 10,
+    "tier": "epic"
+   }
+  ]
+ },
+ "B": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "epic"
+   },
+   {
+    "name": "ally atk buff",
+    "id": 29,
+    "tier": "epic"
+   }
+  ]
+ },
+ "B+": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "blue"
+   },
+   {
+    "name": "ally atk buff",
+    "id": 29,
+    "tier": "epic"
+   },
+   {
+    "name": "weapon power",
+    "id": 33,
+    "tier": "LEG"
+   }
+  ]
+ },
+ "A-": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "blue"
+   },
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "blue"
+   },
+   {
+    "name": "wp hp>50%",
+    "id": 21,
+    "tier": "epic"
+   }
+  ]
+ },
+ "A": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "blue"
+   },
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "blue"
+   },
+   {
+    "name": "ally atk buff",
+    "id": 29,
+    "tier": "blue"
+   }
+  ]
+ },
+ "A+": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "crit shred",
+    "id": 17,
+    "tier": "epic"
+   },
+   {
+    "name": "identity buff",
+    "id": 30,
+    "tier": "LEG"
+   },
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "blue"
+   }
+  ]
+ },
+ "S-": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "blue"
+   },
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "blue"
+   },
+   {
+    "name": "crit shred",
+    "id": 17,
+    "tier": "epic"
+   }
+  ]
+ },
+ "S": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "LEG"
+   },
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "LEG"
+   },
+   {
+    "name": "ally atk buff",
+    "id": 29,
+    "tier": "epic"
+   }
+  ]
+ },
+ "S+": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "epic"
+   },
+   {
+    "name": "crit shred",
+    "id": 17,
+    "tier": "epic"
+   },
+   {
+    "name": "def shred",
+    "id": 16,
+    "tier": "LEG"
+   }
+  ]
+ }
+}

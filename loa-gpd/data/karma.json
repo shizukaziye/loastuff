@@ -1,0 +1,1433 @@
+{
+ "10000": {
+  "levels": {
+   "1": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 400
+     }
+    ],
+    "successRate": 2000
+   },
+   "10": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 4000
+     }
+    ],
+    "successRate": 1500
+   },
+   "11": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 4400
+     }
+    ],
+    "successRate": 1000
+   },
+   "12": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 4800
+     }
+    ],
+    "successRate": 700
+   },
+   "13": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 5200
+     }
+    ],
+    "successRate": 2000
+   },
+   "14": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 5600
+     }
+    ],
+    "successRate": 1500
+   },
+   "15": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 6000
+     }
+    ],
+    "successRate": 1000
+   },
+   "16": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 6400
+     }
+    ],
+    "successRate": 700
+   },
+   "17": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 6800
+     }
+    ],
+    "successRate": 2000
+   },
+   "18": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 7200
+     }
+    ],
+    "successRate": 1500
+   },
+   "19": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 7600
+     }
+    ],
+    "successRate": 1000
+   },
+   "2": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 800
+     }
+    ],
+    "successRate": 1500
+   },
+   "20": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 8000
+     }
+    ],
+    "successRate": 700
+   },
+   "21": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 8400
+     }
+    ],
+    "successRate": 2000
+   },
+   "22": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 8800
+     }
+    ],
+    "successRate": 1500
+   },
+   "23": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 9200
+     }
+    ],
+    "successRate": 1000
+   },
+   "24": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 9600
+     }
+    ],
+    "successRate": 700
+   },
+   "25": {
+    "energyPerFail": 180,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 10000
+     }
+    ],
+    "successRate": 400
+   },
+   "26": {
+    "energyPerFail": 90,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 10400
+     }
+    ],
+    "successRate": 200
+   },
+   "27": {
+    "energyPerFail": 40,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 10800
+     }
+    ],
+    "successRate": 100
+   },
+   "28": {
+    "energyPerFail": 20,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 11200
+     }
+    ],
+    "successRate": 50
+   },
+   "29": {
+    "energyPerFail": 8,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 11600
+     }
+    ],
+    "successRate": 25
+   },
+   "3": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 1200
+     }
+    ],
+    "successRate": 1000
+   },
+   "30": {
+    "energyPerFail": 0,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 12000
+     }
+    ],
+    "successRate": 0
+   },
+   "4": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 1600
+     }
+    ],
+    "successRate": 700
+   },
+   "5": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 2000
+     }
+    ],
+    "successRate": 2000
+   },
+   "6": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 2400
+     }
+    ],
+    "successRate": 1500
+   },
+   "7": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 2800
+     }
+    ],
+    "successRate": 1000
+   },
+   "8": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 3200
+     }
+    ],
+    "successRate": 700
+   },
+   "9": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "MAX_HP",
+      "value": 3600
+     }
+    ],
+    "successRate": 2000
+   }
+  },
+  "name": "Karmic Evolution",
+  "openCost": {
+   "gold": 1100,
+   "mats": {
+    "52324201": 20
+   }
+  },
+  "rankBonus": {
+   "1": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 100
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 100
+    }
+   ],
+   "2": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 200
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 200
+    }
+   ],
+   "3": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 300
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 300
+    }
+   ],
+   "4": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 400
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 400
+    }
+   ],
+   "5": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 500
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 500
+    }
+   ],
+   "6": [
+    {
+     "stat": "EVOLUTION_DAM_RATE",
+     "value": 600
+    },
+    {
+     "stat": "STIGMA_POWER_RATE",
+     "value": 600
+    }
+   ]
+  }
+ },
+ "20000": {
+  "levels": {
+   "1": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 10
+     }
+    ],
+    "successRate": 2000
+   },
+   "10": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 100
+     }
+    ],
+    "successRate": 1500
+   },
+   "11": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 110
+     }
+    ],
+    "successRate": 1000
+   },
+   "12": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 120
+     }
+    ],
+    "successRate": 700
+   },
+   "13": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 130
+     }
+    ],
+    "successRate": 2000
+   },
+   "14": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 140
+     }
+    ],
+    "successRate": 1500
+   },
+   "15": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 150
+     }
+    ],
+    "successRate": 1000
+   },
+   "16": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 160
+     }
+    ],
+    "successRate": 700
+   },
+   "17": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 170
+     }
+    ],
+    "successRate": 2000
+   },
+   "18": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 180
+     }
+    ],
+    "successRate": 1500
+   },
+   "19": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 190
+     }
+    ],
+    "successRate": 1000
+   },
+   "2": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 20
+     }
+    ],
+    "successRate": 1500
+   },
+   "20": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 200
+     }
+    ],
+    "successRate": 700
+   },
+   "21": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 210
+     }
+    ],
+    "successRate": 2000
+   },
+   "22": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 220
+     }
+    ],
+    "successRate": 1500
+   },
+   "23": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 230
+     }
+    ],
+    "successRate": 1000
+   },
+   "24": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 240
+     }
+    ],
+    "successRate": 700
+   },
+   "25": {
+    "energyPerFail": 180,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 250
+     }
+    ],
+    "successRate": 400
+   },
+   "26": {
+    "energyPerFail": 90,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 260
+     }
+    ],
+    "successRate": 200
+   },
+   "27": {
+    "energyPerFail": 40,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 270
+     }
+    ],
+    "successRate": 100
+   },
+   "28": {
+    "energyPerFail": 20,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 280
+     }
+    ],
+    "successRate": 50
+   },
+   "29": {
+    "energyPerFail": 8,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 290
+     }
+    ],
+    "successRate": 25
+   },
+   "3": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 30
+     }
+    ],
+    "successRate": 1000
+   },
+   "30": {
+    "energyPerFail": 0,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 300
+     }
+    ],
+    "successRate": 0
+   },
+   "4": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 40
+     }
+    ],
+    "successRate": 700
+   },
+   "5": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 50
+     }
+    ],
+    "successRate": 2000
+   },
+   "6": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 60
+     }
+    ],
+    "successRate": 1500
+   },
+   "7": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 70
+     }
+    ],
+    "successRate": 1000
+   },
+   "8": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 80
+     }
+    ],
+    "successRate": 700
+   },
+   "9": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "WEAPON_DAM_X",
+      "value": 90
+     }
+    ],
+    "successRate": 2000
+   }
+  },
+  "name": "Karmic Enlightenment",
+  "openCost": {
+   "gold": 1100,
+   "mats": {
+    "52324201": 20
+   }
+  },
+  "rankBonus": {
+   "1": [
+    {
+     "stat": "NONE",
+     "value": 1
+    }
+   ],
+   "2": [
+    {
+     "stat": "NONE",
+     "value": 2
+    }
+   ],
+   "3": [
+    {
+     "stat": "NONE",
+     "value": 3
+    }
+   ],
+   "4": [
+    {
+     "stat": "NONE",
+     "value": 4
+    }
+   ],
+   "5": [
+    {
+     "stat": "NONE",
+     "value": 5
+    }
+   ],
+   "6": [
+    {
+     "stat": "NONE",
+     "value": 6
+    }
+   ]
+  }
+ },
+ "30000": {
+  "levels": {
+   "1": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 50
+     }
+    ],
+    "successRate": 2000
+   },
+   "10": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 500
+     }
+    ],
+    "successRate": 1500
+   },
+   "11": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 550
+     }
+    ],
+    "successRate": 1000
+   },
+   "12": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 600
+     }
+    ],
+    "successRate": 700
+   },
+   "13": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 650
+     }
+    ],
+    "successRate": 2000
+   },
+   "14": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 700
+     }
+    ],
+    "successRate": 1500
+   },
+   "15": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 750
+     }
+    ],
+    "successRate": 1000
+   },
+   "16": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 800
+     }
+    ],
+    "successRate": 700
+   },
+   "17": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 850
+     }
+    ],
+    "successRate": 2000
+   },
+   "18": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 900
+     }
+    ],
+    "successRate": 1500
+   },
+   "19": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 950
+     }
+    ],
+    "successRate": 1000
+   },
+   "2": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 100
+     }
+    ],
+    "successRate": 1500
+   },
+   "20": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1000
+     }
+    ],
+    "successRate": 700
+   },
+   "21": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1050
+     }
+    ],
+    "successRate": 2000
+   },
+   "22": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1100
+     }
+    ],
+    "successRate": 1500
+   },
+   "23": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1150
+     }
+    ],
+    "successRate": 1000
+   },
+   "24": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1200
+     }
+    ],
+    "successRate": 700
+   },
+   "25": {
+    "energyPerFail": 180,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1250
+     }
+    ],
+    "successRate": 400
+   },
+   "26": {
+    "energyPerFail": 90,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1300
+     }
+    ],
+    "successRate": 200
+   },
+   "27": {
+    "energyPerFail": 40,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1350
+     }
+    ],
+    "successRate": 100
+   },
+   "28": {
+    "energyPerFail": 20,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1400
+     }
+    ],
+    "successRate": 50
+   },
+   "29": {
+    "energyPerFail": 8,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1450
+     }
+    ],
+    "successRate": 25
+   },
+   "3": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 150
+     }
+    ],
+    "successRate": 1000
+   },
+   "30": {
+    "energyPerFail": 0,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 1500
+     }
+    ],
+    "successRate": 0
+   },
+   "4": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 200
+     }
+    ],
+    "successRate": 700
+   },
+   "5": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 250
+     }
+    ],
+    "successRate": 2000
+   },
+   "6": {
+    "energyPerFail": 750,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 300
+     }
+    ],
+    "successRate": 1500
+   },
+   "7": {
+    "energyPerFail": 500,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 350
+     }
+    ],
+    "successRate": 1000
+   },
+   "8": {
+    "energyPerFail": 350,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 400
+     }
+    ],
+    "successRate": 700
+   },
+   "9": {
+    "energyPerFail": 1000,
+    "gold": 900,
+    "mats": {
+     "66103002": 1
+    },
+    "stats": [
+     {
+      "stat": "ULTIMATE_AWAKENING_DAM_RATE",
+      "value": 450
+     }
+    ],
+    "successRate": 2000
+   }
+  },
+  "name": "Karmic Leap",
+  "openCost": {
+   "gold": 1100,
+   "mats": {
+    "52324201": 20
+   }
+  },
+  "rankBonus": {
+   "1": [
+    {
+     "stat": "NONE",
+     "value": 2
+    }
+   ],
+   "2": [
+    {
+     "stat": "NONE",
+     "value": 4
+    }
+   ],
+   "3": [
+    {
+     "stat": "NONE",
+     "value": 6
+    }
+   ],
+   "4": [
+    {
+     "stat": "NONE",
+     "value": 8
+    }
+   ],
+   "5": [
+    {
+     "stat": "NONE",
+     "value": 10
+    }
+   ],
+   "6": [
+    {
+     "stat": "NONE",
+     "value": 12
+    }
+   ]
+  }
+ }
+}
