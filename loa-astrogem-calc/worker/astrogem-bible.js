@@ -753,7 +753,9 @@ const OUTGOING_BY_TIER = [55, 120, 200];
 //              support neck); value is always 0, synthesized like Outgoing.
 const GAUGE_BY_TIER = [160, 360, 600];
 //   other buff-style types (value ×100 like type:2):
-const BUFF_TYPE_NAME = { 51: "Healing %", 54: "Ally Atk Buff %", 59: "Ally Dmg Buff %" };
+// 50 sits beside Healing %: NA/Limerent's support earrings carry type:50 at 95 and 350,
+// the low and high tiers of the shield line (0.95 / 2.10 / 3.50%).
+const BUFF_TYPE_NAME = { 50: "Shield %", 51: "Healing %", 54: "Ally Atk Buff %", 59: "Ally Dmg Buff %" };
 
 // The page's HEADLINE (top-left) Combat Power is estimatedMaxCombatPower — the
 // estimated RAID loadout. The plain combatPower field is only the last-seen equipped
