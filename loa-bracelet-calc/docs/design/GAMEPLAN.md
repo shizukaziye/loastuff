@@ -77,6 +77,11 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
    busters (`?cb=…`), never a pinned URL — the zone caches `.js` for four
    hours and a stale edge node would cache the old file under the new pin.
    The old standalone repo is a redirect stub, not a source.
+   One trap, already stepped in: `git pull --rebase` FLATTENS merge commits, so
+   run against an unpushed subtree merge it replays the whole imported history
+   onto the monorepo root and conflicts on every root file. Rebase is safe only
+   for ordinary commits on top of pushed history; anything carrying a merge
+   goes up by `git merge` / `git pull --no-rebase`.
 8. Never invent data. A missing character is missing.
 
 ## Decisions made on Shizu's behalf (flag at wake-up)

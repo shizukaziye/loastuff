@@ -74,6 +74,12 @@
   </section>
 </div>
 
+<!-- One-time carry-over of saved data from the tool's old address
+     (shizukaziye.github.io). FIRST script in the body on purpose: a successful
+     import reloads the page once, and the earlier that happens the less work is
+     thrown away. Silent, self-limiting, and gone for good once it has run. -->
+<script src="handoff.js?v=1"></script>
+
 <!-- Tab switching: toggle .active on the matching button + pane. -->
 <script>
 "use strict";
