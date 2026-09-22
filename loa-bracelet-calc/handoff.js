@@ -216,6 +216,10 @@
    * browser error page in front of them, which is worse than not importing.
    */
   function bounce(force) {
+    if (!LOCAL && location.hostname !== "www.loseii.com") {   // same rule as goOrStay, for the link
+      if (force) showNote("The old address only hands data to www.loseii.com.");
+      return;
+    }
     var target = OLD.handoff + "?return=" + encodeURIComponent(location.href);
     if (typeof fetch !== "function") { miss(force); return; }   // no probe, no trip
     var spent = false, timer;
@@ -270,6 +274,11 @@
     if (forcePending()) { showNote(NOTE_DEAD); return; }
 
     if (window.top !== window) return;                    // framed: never move somebody's frame
+    // The automatic trip belongs to the production host only. On a branch
+    // preview (profile.loastuff.pages.dev) the old address refuses the return
+    // and forwards the visitor to www instead — seen 2026-09-22. Local dev keeps
+    // its own old side for testing; every other host marks itself done and stays.
+    if (!LOCAL && location.hostname !== "www.loseii.com") { lsSet(DONE, "1"); return; }
     if (OLD.origin === location.origin) { lsSet(DONE, "1"); dropV1(); return; }  // the github.io mirror
     if (lsGet(DONE)) return;
     if (Date.now() > SUNSET) return;
