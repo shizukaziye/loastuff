@@ -9,3 +9,7 @@
 # Retired tier list — never long-cache the redirect stub (clears a stale 7-day copy).
 /loa-tierlist/*
   Cache-Control: no-cache
+# Bracelet calculator data (board seed, character records) is re-baked without
+# a pin bump, so always revalidate.
+/loa-bracelet-calc/data/*
+  Cache-Control: no-cache

@@ -27,6 +27,7 @@
       items: [
         { name: "Accessory Calculator", url: "https://www.loseii.com/lost-ark-accessories/" },
         { name: "Astrogem Calculator",  url: "https://www.loseii.com/loa-astrogem-calc/" },
+        { name: "Bracelet Calculator",  url: "https://www.loseii.com/loa-bracelet-calc/" },
         { name: "Crafting Profit",      url: "https://www.loseii.com/loa-crafting-calculator/" },
         { name: "Deal Finder",          url: "https://www.loseii.com/loa-deal-finder/" },
         { name: "Hell Key Calculator",  url: "https://www.loseii.com/loa-hell-key-calc/" },

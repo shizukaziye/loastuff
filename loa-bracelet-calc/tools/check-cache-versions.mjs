@@ -46,9 +46,19 @@ function git(args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 
+// The tool may live in a subdirectory of its repo (loseii's loastuff monorepo
+// vendors it at loa-bracelet-calc/). git names paths from the repo root, so
+// every path-bearing call goes through the prefix: `git show` wants
+// "<prefix>index.html", diffs are asked --relative to this directory, and
+// ls-tree is pointed at the subtree. Without this the checker compared
+// "loa-bracelet-calc/model/bracelet.js" against "model/bracelet.js", matched
+// nothing, and passed every commit — on a zone that caches .js for four hours.
+let PREFIX = "";
+try { PREFIX = git(["rev-parse", "--show-prefix"]).trim().split(String.fromCharCode(92)).join("/"); } catch (e) {}
+
 let head;
 try {
-  head = git(["show", REF + ":index.html"]);
+  head = git(["show", REF + ":" + PREFIX + "index.html"]);
 } catch (e) {
   console.error("cannot read index.html at " + REF + " — is this a git checkout?");
   process.exit(2);
@@ -57,7 +67,8 @@ try {
 /** path -> version, for every literal `path.js?v=N` in the text. */
 function versions(text) {
   const out = new Map();
-  const re = /([A-Za-z0-9_./-]+\.js)\?v=(\d+)/g;
+  // .json too: data/characters.json?v=1 is a pin the page fetches by stamp.
+  const re = /([A-Za-z0-9_./-]+\.(?:js|json))\?v=(\d+)/g;
   let m;
   while ((m = re.exec(text)) !== null) out.set(m[1], Number(m[2]));
   return out;
@@ -68,7 +79,7 @@ const was = versions(head);
 
 // Files that differ from the ref, including staged and unstaged work.
 const changed = new Set(
-  git(["diff", REF, "--name-only"]).split("\n").map(s => s.trim()).filter(Boolean)
+  git(["diff", "--relative", REF, "--name-only"]).split("\n").map(s => s.trim()).filter(Boolean)
 );
 
 const missing = [], bumped = [], untracked = [], conflicts = [];
@@ -89,7 +100,7 @@ const rootScripts = readdirSync(root).filter(f => f.endsWith(".js"));
 const refCache = new Map();
 function refsAt(src) {
   if (!refCache.has(src)) {
-    try { refCache.set(src, versions(git(["show", REF + ":" + src]))); }
+    try { refCache.set(src, versions(git(["show", REF + ":" + PREFIX + src]))); }
     catch (e) { refCache.set(src, new Map()); }
   }
   return refCache.get(src);
@@ -125,7 +136,7 @@ if (existsSync(join(root, capFile))) {
   const ocrChanged = [...changed].filter(f => f.startsWith("ocr/") && f.endsWith(".js"));
   if (capNow && ocrChanged.length) {
     let capWas = null;
-    try { capWas = /VERSION = "(\d+)"/.exec(git(["show", REF + ":" + capFile])); }
+    try { capWas = /VERSION = "(\d+)"/.exec(git(["show", REF + ":" + PREFIX + capFile])); }
     catch (e) { capWas = null; }
     if (capWas && capWas[1] === capNow[1]) {
       missing.push({ path: ocrChanged.join(", "), v: capNow[1], where: capFile + " VERSION constant" });
@@ -161,25 +172,25 @@ if (upstream) {
   try { ahead = Number(git(["rev-list", "--count", upstream + "..HEAD"]).trim()); } catch (e) {}
   if (ahead > 0) {
     let upIndex = null, headIndex = null, headWorkerRefs = new Map(), upWorkerRefs = new Map();
-    try { upIndex = versions(git(["show", upstream + ":index.html"])); } catch (e) {}
-    try { headIndex = versions(git(["show", "HEAD:index.html"])); } catch (e) {}
+    try { upIndex = versions(git(["show", upstream + ":" + PREFIX + "index.html"])); } catch (e) {}
+    try { headIndex = versions(git(["show", "HEAD:" + PREFIX + "index.html"])); } catch (e) {}
     // Worker-side stamps: collect from every committed root script at both ends.
     let headTree = [];
-    try { headTree = git(["ls-tree", "--name-only", "HEAD"]).split("\n").filter(f => f.endsWith(".js")); } catch (e) {}
+    try { headTree = git(["ls-tree", "--name-only", "HEAD:" + PREFIX.replace(/\/$/, "")]).split("\n").filter(f => f.endsWith(".js")); } catch (e) {}
     for (const src of headTree) {
       try {
-        for (const [path, v] of versions(git(["show", "HEAD:" + src]))) {
+        for (const [path, v] of versions(git(["show", "HEAD:" + PREFIX + src]))) {
           if (path !== src) headWorkerRefs.set(src + "→" + path, v);
         }
       } catch (e) {}
       try {
-        for (const [path, v] of versions(git(["show", upstream + ":" + src]))) {
+        for (const [path, v] of versions(git(["show", upstream + ":" + PREFIX + src]))) {
           if (path !== src) upWorkerRefs.set(src + "→" + path, v);
         }
       } catch (e) {}
     }
     const committedChanged = new Set(
-      git(["diff", upstream, "HEAD", "--name-only"]).split("\n").map(x => x.trim()).filter(Boolean)
+      git(["diff", "--relative", upstream, "HEAD", "--name-only"]).split("\n").map(x => x.trim()).filter(Boolean)
     );
     if (upIndex && headIndex) {
       for (const [path, v] of headIndex) {

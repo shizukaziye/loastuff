@@ -53,7 +53,7 @@ Its output rewrites `data/leaderboard-seed.json` with all loadouts per character
   caps, real paths instead of overloaded query params.
 
 **Phase 3 — integration.** Script tags, cache-bust bumps, browser verification at desktop
-and 375px, both verify batteries green, then push to GitHub Pages and confirm live.
+and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) and confirm live.
 
 ## Standing rules for every agent
 
@@ -68,6 +68,15 @@ and 375px, both verify batteries green, then push to GitHub Pages and confirm li
    expected pushes to be happening — "have you not been pushing for me" — so
    the old do-not-push rule is dead. Run `npm run check` first; a push deploys
    the live site through Pages).
+   **Since 2026-09-22 this tool lives at `loastuff/loa-bracelet-calc/`** (the
+   loseii monorepo, live at www.loseii.com/loa-bracelet-calc/). That repo is
+   shared: a bot commits market refreshes every six hours and other sessions
+   push to it. So: `git pull --rebase origin main` before every push, stage
+   by explicit path (never `git add -A` — another session's uncommitted work
+   may be sitting in the clone), and verify a deploy only with throwaway
+   busters (`?cb=…`), never a pinned URL — the zone caches `.js` for four
+   hours and a stale edge node would cache the old file under the new pin.
+   The old standalone repo is a redirect stub, not a source.
 8. Never invent data. A missing character is missing.
 
 ## Decisions made on Shizu's behalf (flag at wake-up)
