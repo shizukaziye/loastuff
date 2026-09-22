@@ -50,11 +50,28 @@
   var listeners = [];
   function emit() { listeners.forEach(function (fn) { try { fn(); } catch (e) {} }); }
 
-  // The redirect URI must match a registered one EXACTLY, so derive it from the
-  // page we are on (origin + path, no query/hash) rather than hardcoding one that
-  // breaks on localhost.
+  // The redirect URI must match a registered one EXACTLY, trailing slash included:
+  // the tool's own folder, https://www.loseii.com/loa-bracelet-calc/ (or
+  // http://localhost:8080/ under `npm run serve`). It is read off this script's
+  // own address rather than the page's, because the page may sit on a tab path
+  // (/loa-bracelet-calc/advisor) that is not registered. A sign-in begun on any
+  // tab comes back to the tool's bare path. Query and hash never travel.
+  var SELF_SRC = (document.currentScript && document.currentScript.src) || "";
   function redirectUri() {
-    return location.origin + location.pathname;
+    var src = SELF_SRC.split(/[?#]/)[0];
+    if (src.indexOf(location.origin + "/") === 0) return src.replace(/[^\/]*$/, "");
+    return location.origin + location.pathname.replace(/[^\/]*$/, "");   // no script address: the page's folder
+  }
+
+  // A PRERENDER IS NOT A VISIT. Chrome may load this page in the background when
+  // a link to it is pointed at (speculation rules) and throw it away unseen, so
+  // nothing here calls lostark.bible or leaves for its consent screen until the
+  // page is really shown.
+  function whenShown() {
+    if (!document.prerendering) return Promise.resolve();
+    return new Promise(function (resolve) {
+      document.addEventListener("prerenderingchange", function () { resolve(); }, { once: true });
+    });
   }
 
   // ---- token storage ----
@@ -99,20 +116,22 @@
   // ---- step 1: send the user to the consent screen ----
   function login(scopes) {
     if (!CLIENT_ID) throw new Error("bible-oauth.js: CLIENT_ID is empty — register the app first.");
-    var verifier = randomString(64);
-    var state = randomString(16);
-    return challenge(verifier).then(function (chal) {
-      sessionStorage.setItem(PEND_KEY, JSON.stringify({ v: verifier, s: state, r: redirectUri() }));
-      var q = new URLSearchParams({
-        client_id: CLIENT_ID,
-        redirect_uri: redirectUri(),
-        response_type: "code",
-        scope: scopes || SCOPES,
-        state: state,
-        code_challenge: chal,
-        code_challenge_method: "S256"
+    return whenShown().then(function () {
+      var verifier = randomString(64);
+      var state = randomString(16);
+      return challenge(verifier).then(function (chal) {
+        sessionStorage.setItem(PEND_KEY, JSON.stringify({ v: verifier, s: state, r: redirectUri() }));
+        var q = new URLSearchParams({
+          client_id: CLIENT_ID,
+          redirect_uri: redirectUri(),
+          response_type: "code",
+          scope: scopes || SCOPES,
+          state: state,
+          code_challenge: chal,
+          code_challenge_method: "S256"
+        });
+        location.href = BASE + "/oauth/authorize?" + q.toString();
       });
-      location.href = BASE + "/oauth/authorize?" + q.toString();
     });
   }
 
@@ -169,19 +188,21 @@
 
   // ---- step 3: call the API ----
   function api(path) {
-    var tok = read();
-    if (!tok) return Promise.reject({ status: 401, error: "not_signed_in" });
-    return fetch(BASE + path, { headers: { Authorization: "Bearer " + tok.access_token } })
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          if (r.ok) return j;
-          // 401 means the token is dead (expired, revoked, or the app was disabled)
-          // — drop it so the UI falls back to the signed-out state instead of
-          // retrying forever.
-          if (r.status === 401) forget();
-          throw { status: r.status, error: j.error || ("http_" + r.status), description: j.error_description };
+    return whenShown().then(function () {
+      var tok = read();
+      if (!tok) throw { status: 401, error: "not_signed_in" };
+      return fetch(BASE + path, { headers: { Authorization: "Bearer " + tok.access_token } })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (r.ok) return j;
+            // 401 means the token is dead (expired, revoked, or the app was disabled)
+            // — drop it so the UI falls back to the signed-out state instead of
+            // retrying forever.
+            if (r.status === 401) forget();
+            throw { status: r.status, error: j.error || ("http_" + r.status), description: j.error_description };
+          });
         });
-      });
+    });
   }
 
   function logout() {

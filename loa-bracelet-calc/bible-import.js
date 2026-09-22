@@ -1475,6 +1475,27 @@
     runPull(!!(opts && opts.refresh));
   }
 
+  /**
+   * A /character answer already in hand, put on screen exactly as runPull() puts
+   * the Worker's answer there, minus the fetch. This is how a ?c= link opens the
+   * record the profile page left behind (index.html, bootCharacter). Returns
+   * false when the answer holds no bracelet, so the caller can fall back to
+   * loadCharacter() and a real lookup.
+   */
+  function loadRecord(d) {
+    var rec = (d && d.bracelet && d.bracelet.stats && d.bracelet.stats.length) ? fromWorkerRecord(d) : null;
+    if (!rec) return false;
+    selectMode("pull");
+    if ($("bi-region") && REGIONS.indexOf(rec.region) !== -1) $("bi-region").value = rec.region;
+    if ($("bi-name")) $("bi-name").value = rec.name || "";
+    try { localStorage.setItem(LAST_KEY, JSON.stringify({ region: rec.region, name: rec.name })); } catch (e) {}
+    state.error = null;
+    stopPoll(); clearRefreshBanner();
+    if (!showRecord(rec)) return false;
+    if (!maybeAutoRepullForProfile(rec)) setPullStatus("", "");   // the loaded line below is the confirmation
+    return true;
+  }
+
   function runPull(refresh) {
     var region = normRegion($("bi-region") && $("bi-region").value) || "NA";
     var name = (($("bi-name") && $("bi-name").value) || "").trim();
@@ -2051,6 +2072,9 @@
     // The one load entry point — a chip, the character banner and the console all
     // come through here, so every path lands in identical state.
     loadCharacter: loadCharacter,
+    // The same landing for a /character answer already in hand (a ?c= link that
+    // found the profile page's copy). False when it holds no bracelet.
+    loadRecord: loadRecord,
     /**
      * cb(message, kind) after every status line a pull writes; kind is "",
      * "working", "ok" or "err". Returns an unsubscribe. For anything that shows

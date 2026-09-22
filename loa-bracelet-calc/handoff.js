@@ -256,19 +256,29 @@
   var frag = fragment();
   if (frag !== null) { returnLeg(frag); return; }
 
-  // A forced trip that never came back: the tab was closed, or the old address
-  // answered with something we could not read.
-  if (forcePending()) { showNote(NOTE_DEAD); return; }
+  // A PRERENDER IS NOT A VISIT. Chrome may load this page in the background when
+  // a link to it is pointed at (speculation rules) and throw it away unseen. So
+  // the reachability probe, the bounce and every flag they write wait until the
+  // page is really shown. The return leg above needs no such wait: it only ever
+  // arrives as a real visit, sent back here by the old address.
+  if (document.prerendering) document.addEventListener("prerenderingchange", goOrStay, { once: true });
+  else goOrStay();
 
-  if (window.top !== window) return;                    // framed: never move somebody's frame
-  if (OLD.origin === location.origin) { lsSet(DONE, "1"); dropV1(); return; }  // the github.io mirror
-  if (lsGet(DONE)) return;
-  if (Date.now() > SUNSET) return;
+  function goOrStay() {
+    // A forced trip that never came back: the tab was closed, or the old address
+    // answered with something we could not read.
+    if (forcePending()) { showNote(NOTE_DEAD); return; }
 
-  var tries = parseInt(lsGet(TRIES) || "0", 10);
-  if (!(tries >= 0)) tries = 0;
-  if (tries >= MAX_TRIES) return;
-  if (!writable()) return;
+    if (window.top !== window) return;                    // framed: never move somebody's frame
+    if (OLD.origin === location.origin) { lsSet(DONE, "1"); dropV1(); return; }  // the github.io mirror
+    if (lsGet(DONE)) return;
+    if (Date.now() > SUNSET) return;
 
-  bounce(false);
+    var tries = parseInt(lsGet(TRIES) || "0", 10);
+    if (!(tries >= 0)) tries = 0;
+    if (tries >= MAX_TRIES) return;
+    if (!writable()) return;
+
+    bounce(false);
+  }
 })();

@@ -26,7 +26,9 @@
   Five tabs: "Grader" (#tab-grader, first/default), "Pipeline" (#tab-pipeline),
   "Advisor" (#tab-advisor), "Leaderboard" (#tab-leaderboard) and "Feedback"
   (#tab-feedback). The tab bar toggles .active on the panes and fires a
-  'tabselected' event so a pane can act on activation.
+  'tabselected' event so a pane can act on activation. Each tab also has its
+  own address (/loa-astrogem-calc/pipeline and so on): ROUTES in the inline
+  script below.
 
   Scripts load in two sets:
     EAGER (bottom of <body>, in order): model/astrogem.js (the deterministic core
@@ -44,6 +46,25 @@
   carries its own scoped <style> for module-specific bits.
 -->
 <link rel="stylesheet" href="styles.css?v=5">
+<!-- Pages this one links to are prerendered once a link to one is pointed at
+     (Chromium; "moderate" is a short hover or a press), so crossing to the hub,
+     the other tool or a character profile shows a finished page. Only the site's
+     own app pages: never a file, a download or a new-tab link. Other browsers
+     ignore this block and get a plain HTML prefetch instead (OTHER PAGES OF THE
+     SITE, in the inline script below). -->
+<script type="speculationrules">
+{
+  "prerender": [{
+    "source": "document",
+    "where": { "and": [
+      { "href_matches": ["/", "/loa-bracelet-calc/*", "/loa-astrogem-calc/*", "/NA/*", "/EU/*", "/CE/*"] },
+      { "not": { "href_matches": ["/*.js", "/*.css", "/*.json", "/*.png", "/*.svg", "/*.zip"] } },
+      { "not": { "selector_matches": "[download], [target=_blank]" } }
+    ]},
+    "eagerness": "moderate"
+  }]
+}
+</script>
 </head><body>
 <div class="wrap">
   <div class="appbar">
@@ -70,7 +91,8 @@
   <section id="tab-feedback" class="tabpane"></section>
 </div>
 
-<!-- Tab switching: toggle .active on the matching button + pane. -->
+<!-- Tab switching: toggle .active on the matching button + pane, and keep the
+     tab in the address bar (ROUTES below). -->
 <script>
 "use strict";
 // Heavy, rarely-used modules load on FIRST activation of their tab instead of on every visit:
@@ -90,7 +112,7 @@ var LAZY_TABS = {
     "advisor-setup.js?v=50", "advisor-window.js?v=64",
     "advisor.js?v=96"
   ],
-  leaderboard: ["leaderboard.js?v=50"],
+  leaderboard: ["leaderboard.js?v=51"],
   feedback: ["feedback.js?v=1"]
 };
 // The Grader's "From screenshot" mode reads the in-game astrogem list. Its
@@ -121,16 +143,227 @@ function ensureTabLoaded(name){
     try { document.dispatchEvent(new CustomEvent('tabselected', { detail: { tab: name } })); } catch (e) {}
   });
 }
-function selectTab(name){
+
+// ---- ROUTES ----------------------------------------------------------------
+// Each tab has its own address, /loa-astrogem-calc/<slug>. The Grader keeps the
+// bare tool path, so every link made before this still opens where it did.
+// _redirects answers each slug path with this page (a 200 rewrite). A slug has no
+// trailing slash, so the relative asset paths resolve exactly as they always have.
+// The part before the slug is read off the address, never written in here, so
+// www, a Pages preview and localhost all behave alike.
+var TAB_SLUGS = {
+  grader: 'grader', pipeline: 'pipeline', advisor: 'advisor',
+  leaderboard: 'leaderboard', feedback: 'feedback'
+};
+var DEFAULT_TAB = 'grader';
+var ROUTE_BASE = location.pathname.replace(/[^\/]*$/, '');   // "/loa-astrogem-calc/"
+var currentTab = DEFAULT_TAB;
+
+/** The tab an address names: its last segment, as a slug. Anything else is the Grader. */
+function tabFromPath(path){
+  var seg = String(path || '').replace(/^.*\//, '').toLowerCase();
+  for (var t in TAB_SLUGS) {
+    if (TAB_SLUGS.hasOwnProperty(t) && seg === TAB_SLUGS[t]) return t;
+  }
+  return DEFAULT_TAB;
+}
+/** Point the address at a tab, keeping the query and the hash. Never adds a duplicate entry. */
+function writeRoute(name, replace){
+  var href = ROUTE_BASE + (name === DEFAULT_TAB ? '' : TAB_SLUGS[name]) + location.search + location.hash;
+  if (!replace && href === location.pathname + location.search + location.hash) return;
+  try { history[replace ? 'replaceState' : 'pushState']({ tab: name }, '', href); } catch (e) {}
+}
+function paintTab(name){
   var tabs = document.querySelectorAll('.tab');
   for (var i=0;i<tabs.length;i++){ tabs[i].classList.toggle('active', tabs[i].dataset.tab===name); }
   var panes = document.querySelectorAll('.tabpane');
   for (var j=0;j<panes.length;j++){
     panes[j].classList.toggle('active', panes[j].id === ('tab-'+name));
   }
+}
+/** Show a tab: the class toggles, its scripts on first use, the event. Leaves the address alone. */
+function showTab(name){
+  currentTab = name;
+  paintTab(name);
   ensureTabLoaded(name);
   // Notify tab modules that lazy-load on activation (e.g. the Leaderboard fetch).
   try { document.dispatchEvent(new CustomEvent('tabselected', { detail: { tab: name } })); } catch (e) {}
+}
+/** A tab switch from anywhere (a tab button, a board row), and the address follows it. */
+function selectTab(name){
+  showTab(name);
+  if (TAB_SLUGS.hasOwnProperty(name)) writeRoute(name, false);
+}
+// Back and Forward: show the tab the address names, and write nothing.
+window.addEventListener('popstate', function(){
+  var t = tabFromPath(location.pathname);
+  if (t !== currentTab) showTab(t);
+});
+// Paint the addressed tab now, before the app scripts below have parsed, so a
+// deep link never flashes the Grader first. Its scripts and its event wait for
+// routeBoot(), when every module is listening.
+(function(){
+  var t = tabFromPath(location.pathname);
+  if (t !== DEFAULT_TAB) { currentTab = t; paintTab(t); }
+})();
+
+// ---- HOVER PREFETCH --------------------------------------------------------
+// Pointing at a tab, or tabbing to it, fetches its lazy scripts into the cache,
+// once, so the first click is as quick as the second. The URLs are LAZY_TABS'
+// own, so the <script> tags ensureTabLoaded adds later come straight from cache.
+var prefetched = {};
+function prefetchTab(name){
+  if (!LAZY_TABS[name] || prefetched[name] || lazyLoaded[name]) return;
+  prefetched[name] = true;
+  var cn = navigator.connection;
+  if (cn && cn.saveData) return;                   // the reader asked for less data
+  for (var i = 0; i < LAZY_TABS[name].length; i++) {
+    if (loadedScripts[LAZY_TABS[name][i]]) continue;   // already ran (the Grader's custom mode)
+    var l = document.createElement('link');
+    l.rel = 'prefetch';
+    l.href = LAZY_TABS[name][i];
+    document.head.appendChild(l);
+  }
+}
+(function(){
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('mouseenter', function(){ prefetchTab(this.dataset.tab); });
+    tabs[i].addEventListener('focus', function(){ prefetchTab(this.dataset.tab); });
+  }
+})();
+
+// ---- ?c=REGION:Name --------------------------------------------------------
+// Opens one character in the Grader: a profile page's "Open in Astrogem
+// Calculator", or any shared link. The tab stays whatever the path says. The
+// profile page may leave a record in localStorage; a copy under ten minutes old
+// that carries gems is shown at once, like a board row. Otherwise the name goes
+// through the Grade loadout lookup. Either way `c` then leaves the address, so a
+// reload does not look the character up again.
+var PROFILE_STASH = 'loseii.profile.record:';   // + "<REGION>|<Name>" -> {record, savedAt}
+var STASH_FRESH_MS = 10 * 60 * 1000;
+function charParam(){
+  var q = null;
+  try { q = new URLSearchParams(location.search).get('c'); } catch (e) {}
+  if (!q) return null;
+  var i = q.indexOf(':');
+  var region = (i > 0 ? q.slice(0, i) : 'NA').trim().toUpperCase();
+  var name = (i >= 0 ? q.slice(i + 1) : q).trim();
+  return name ? { region: region, name: name } : null;
+}
+function dropCharParam(){
+  try {
+    var qs = new URLSearchParams(location.search);
+    qs.delete('c');
+    var rest = qs.toString();
+    history.replaceState(history.state, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+  } catch (e) {}
+}
+/** The profile page's record for this character, if it is fresh. EU and CE are one region. */
+function freshStash(region, name){
+  var regs = [region], raw = null, i, k, id;
+  if (region === 'EU') regs.push('CE'); else if (region === 'CE') regs.push('EU');
+  try {
+    for (i = 0; i < regs.length && !raw; i++) raw = localStorage.getItem(PROFILE_STASH + regs[i] + '|' + name);
+    // The profile page may spell the name as its own address does, so match case-blind.
+    for (i = 0; i < localStorage.length && !raw; i++) {
+      k = localStorage.key(i);
+      if (!k || k.indexOf(PROFILE_STASH) !== 0) continue;
+      id = k.slice(PROFILE_STASH.length).split('|');
+      if (id.length === 2 && regs.indexOf(id[0].toUpperCase()) !== -1 &&
+          id[1].toLowerCase() === name.toLowerCase()) raw = localStorage.getItem(k);
+    }
+  } catch (e) { return null; }
+  var s = null;
+  try { s = JSON.parse(raw); } catch (e) {}
+  if (!s || !s.record) return null;
+  var age = Date.now() - (typeof s.savedAt === 'number' ? s.savedAt : Date.parse(s.savedAt));
+  return (age > -60000 && age < STASH_FRESH_MS) ? s.record : null;   // an unreadable savedAt is NaN and fails
+}
+/** The gem loadout inside a stashed record: the astrogem Worker's answer itself, or a record carrying one as `astrogem`. */
+function stashedGems(rec){
+  if (rec && Array.isArray(rec.gems) && rec.gems.length) return rec;
+  if (rec && rec.astrogem && Array.isArray(rec.astrogem.gems) && rec.astrogem.gems.length) return rec.astrogem;
+  return null;
+}
+function bootCharacter(){
+  var c = charParam();
+  if (!c) return;
+  // The Grader reads NA, EU (lostark.bible's CE) and KR. Any other region would
+  // fall back to whatever the region box last held, so it opens nothing.
+  if (!/^(NA|EU|CE|KR)$/.test(c.region)) { dropCharParam(); return; }
+  var tries = 0;
+  (function go(){
+    // grader.js defines the hook in its init, on DOMContentLoaded.
+    if (typeof window.graderOpenCharacter !== 'function') {
+      if (++tries < 100) { setTimeout(go, 50); return; }
+      dropCharParam();
+      return;
+    }
+    // A PRERENDER IS NOT A VISIT (see PRERENDER below). A stored loadout only
+    // draws, so it may show while the page is still hidden. A lookup can queue a
+    // pull on the Worker, so it waits until the page is shown.
+    var rec = stashedGems(freshStash(c.region, c.name));
+    if (rec) window.graderOpenCharacter(c.region, c.name, rec);
+    whenShown(function(){
+      if (!rec) window.graderOpenCharacter(c.region, c.name, null);
+      dropCharParam();
+    });
+  })();
+}
+
+// ---- PRERENDER -------------------------------------------------------------
+// Chromium may build this page in the background when a link to it is pointed at
+// (the speculation rules in <head>, on this site's other pages) and throw it away
+// unseen. Drawing is welcome then; anything that writes the reader's saved state,
+// queues work on a Worker or leaves the page waits for the page to be shown.
+// bible-oauth.js and grader.js's automatic re-pull hold their own side of this.
+function whenShown(fn){
+  if (document.prerendering) document.addEventListener('prerenderingchange', fn, { once: true });
+  else fn();
+}
+
+// ---- OTHER PAGES OF THE SITE ------------------------------------------------
+// The speculation rules prerender the site's other app pages in Chromium. Other
+// browsers ignore them, so there a hover or focus on such a link fetches the
+// page's HTML into the cache instead, once per address. Same rule as <head>: the
+// hub, both tools and the profiles, never a file, a download or a new-tab link.
+var SPECULATES = !!(window.HTMLScriptElement && HTMLScriptElement.supports &&
+  HTMLScriptElement.supports('speculationrules'));
+var APP_PATH = /^\/(?:$|loa-bracelet-calc\/|loa-astrogem-calc\/|(?:NA|EU|CE)\/)/;
+var FILE_PATH = /\.(?:js|css|json|png|svg|zip)$/i;
+var pagePrefetched = {};
+function prefetchPage(e){
+  var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+  if (!a || a.hasAttribute('download') || a.target === '_blank') return;
+  var u;
+  try { u = new URL(a.href, location.href); } catch (err) { return; }
+  if (u.origin !== location.origin || !APP_PATH.test(u.pathname) || FILE_PATH.test(u.pathname)) return;
+  var key = u.pathname + u.search;
+  if (key === location.pathname + location.search || pagePrefetched[key]) return;
+  pagePrefetched[key] = true;
+  var cn = navigator.connection;
+  if (cn && cn.saveData) return;                   // the reader asked for less data
+  var l = document.createElement('link');
+  l.rel = 'prefetch';
+  l.href = key;
+  document.head.appendChild(l);
+}
+if (!SPECULATES) {
+  document.addEventListener('mouseover', prefetchPage);
+  document.addEventListener('focusin', prefetchPage);
+}
+
+/**
+ * Called once, from the script at the end of <body>, after every module has
+ * initialised: activate the addressed tab exactly as a click would, settle the
+ * address in place, then open ?c=.
+ */
+function routeBoot(){
+  var t = tabFromPath(location.pathname);
+  if (t !== DEFAULT_TAB) showTab(t);
+  writeRoute(t, true);
+  bootCharacter();
 }
 </script>
 
@@ -145,10 +378,17 @@ function selectTab(name){
 <script src="tip.js?v=2"></script>
 <script src="loadout-econ.js?v=8"></script>
 <script src="bible-import.js?v=4"></script>
-<script src="bible-oauth.js?v=8"></script>
+<script src="bible-oauth.js?v=9"></script>
 <script src="gemlist.js?v=1"></script>
-<script src="grader.js?v=82"></script>
+<script src="grader.js?v=83"></script>
 <script src="pipeline.js?v=53"></script>
+<!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
+     listener runs after every module above has initialised, so a deep-linked
+     tab activates exactly as a click just after load would (see ROUTES). -->
+<script>
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", routeBoot);
+else routeBoot();
+</script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

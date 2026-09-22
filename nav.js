@@ -69,13 +69,22 @@
   }
   var here = keyOf(location.href);
 
+  // Is this page the item's tool? A tool owns its whole folder, so a tab path
+  // such as /loa-bracelet-calc/advisor still marks the Bracelet Calculator. An
+  // item at a site root matches that root only; otherwise a home entry would
+  // light up on every page of its host.
+  function isHere(url) {
+    var k = keyOf(url);
+    return k === here || (k.indexOf("/") !== -1 && here.indexOf(k + "/") === 0);
+  }
+
   var host = document.createElement("div");
   host.setAttribute("data-loseii-nav", "");
   var root = host.attachShadow({ mode: "open" });
 
   var groupsHTML = GROUPS.map(function (g) {
     var links = g.items.map(function (it) {
-      var active = keyOf(it.url) === here ? " active" : "";
+      var active = isHere(it.url) ? " active" : "";
       return '<a class="item' + active + '" href="' + it.url + '">' + it.name + "</a>";
     }).join("");
     return '<div class="group"><div class="ghead">' + g.label + "</div>" + links + "</div>";

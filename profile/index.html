@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Character profile — Loseii</title>
+<meta name="description" content="Lost Ark character profiles: bracelet and astrogem grades and ranks, the stats the calculators read, and one click into either calculator.">
+<meta name="theme-color" content="#0d1017">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Loseii">
+<meta property="og:title" content="Character profiles — Loseii">
+<meta property="og:description" content="Bracelet and astrogem grades and ranks for any NA or EU Lost Ark character.">
+<meta property="og:image" content="https://www.loseii.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3C/svg%3E">
+<!--
+  loseii character profiles. _redirects serves this one page for /NA/*, /EU/* and
+  /CE/* (and their lower-case forms); profile.js reads the region and the name
+  back out of the address. Served at /NA/Name, so EVERY asset path here is
+  absolute (/profile/..., /loa-bracelet-calc/...): a relative one would resolve
+  under /NA/.
+
+  Scripts (all deferred, in this order):
+    /loa-bracelet-calc/data/bracelet-data.js  the effect families: names and values
+    /loa-bracelet-calc/subrank.js             the bracelet board's letter ladders
+    /loa-bracelet-calc/tip.js                 the house tooltip for data-gloss
+    /profile/profile.js                       this page
+  profile.js starts /profile/ag-worker.js, which imports the astrogem calculator's
+  model, and loads the bracelet model only for a character the board lacks.
+
+  Deploy note: the loseii zone caches .js for 4 hours, so bump a file's ?v= here
+  (and ag-worker.js's in profile.js) whenever it changes, and bump the pins on
+  the tools' files if their index.html pins move.
+-->
+<link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
+<link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
+<link rel="stylesheet" href="/profile/profile.css?v=1">
+<!-- Chromium builds a hovered site page before the click (moderate = on hover or
+     press), so the next page opens already drawn. profile.js holds every side
+     effect until the page is shown. The favorite/recent chips are left out: they
+     switch characters in place, with no page load to save. -->
+<script type="speculationrules">
+{
+  "prerender": [{
+    "where": { "and": [
+      { "or": [
+        { "href_matches": "/" },
+        { "href_matches": "/profile/" },
+        { "href_matches": "/loa-bracelet-calc/*" },
+        { "href_matches": "/loa-astrogem-calc/*" },
+        { "href_matches": "/NA/*" },
+        { "href_matches": "/EU/*" },
+        { "href_matches": "/CE/*" }
+      ] },
+      { "not": { "href_matches": "/*.js" } },
+      { "not": { "href_matches": "/*.css" } },
+      { "not": { "href_matches": "/*.json" } },
+      { "not": { "href_matches": "/*.png" } },
+      { "not": { "href_matches": "/*.svg" } },
+      { "not": { "selector_matches": ".lp-chip" } }
+    ] },
+    "eagerness": "moderate"
+  }]
+}
+</script>
+<script>
+/* Before first paint: a character address shows the profile skeleton, anything
+   else shows the search on its own. Same name rule as profile.js. No network. */
+(function(){var d=document.documentElement,p=location.pathname,m=/^\/(?:NA|EU|CE|na|eu|ce)\/([^\/]+)/.exec(p),n="";
+if(m){try{n=decodeURIComponent(m[1]).replace(/\s+/g," ").trim()}catch(x){n=""}}
+var ok=(n&&n.length<=40&&!/[\/\\<>"?#%]/.test(n))||(/^\/profile\/?$/.test(p)&&/[?&]name=[^&]/.test(location.search));
+d.className+=ok?" lp-char":" lp-find";})();
+</script>
+</head>
+<body data-loseii-nav-offset>
+<div class="wrap">
+
+  <div class="lp-intro" id="lp-intro">
+    <h1>Character profiles</h1>
+    <p class="tag">Bracelet and astrogem grades, ranks and stats for any NA or EU character.</p>
+  </div>
+
+  <form class="lp-search" id="lp-search" role="search" autocomplete="off">
+    <label class="lp-vh" for="lp-region">Region</label>
+    <select class="lp-region" id="lp-region">
+      <option value="NA">NA</option>
+      <option value="EU">EU</option>
+    </select>
+    <label class="lp-vh" for="lp-q">Character name</label>
+    <input class="lp-q" id="lp-q" type="search" placeholder="Character name" maxlength="40" spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="search">
+    <button class="lp-go" type="submit">Search</button>
+  </form>
+  <div class="lp-quick" id="lp-quick" aria-label="Favorites and recent searches"></div>
+  <div class="lp-note" id="lp-note" role="status" style="display:none"></div>
+
+  <main id="lp-main">
+    <header class="panel lp-head" id="lp-head">
+      <div class="lp-icon" id="lp-icon"><span class="sk"></span></div>
+      <div class="lp-id">
+        <h1 class="lp-name" id="lp-name"><span class="sk" style="width:8em"></span></h1>
+        <script>
+        (function(){var m=/^\/(?:NA|EU|CE|na|eu|ce)\/([^\/?#]+)/.exec(location.pathname),e=document.getElementById("lp-name"),n;
+        if(!m||!e)return;try{n=decodeURIComponent(m[1]).replace(/\s+/g," ").trim()}catch(x){return}
+        if(n&&n.length<=40&&!/[\/\\<>"?#%]/.test(n)){if(!/[가-힣㄰-㆏]/.test(n))n=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();e.textContent=n;}})();
+        </script>
+        <div class="lp-sub" id="lp-sub"><span class="sk" style="width:14em"></span></div>
+        <div class="lp-pull">
+          <span class="lp-pulled" id="lp-pulled"><span class="sk" style="width:6.5em"></span></span>
+          <button class="lp-btn" id="lp-update" type="button" disabled data-gloss="Read this character's bracelet record again from lostark.bible. Astrogems are pulled from the Astrogem Calculator.">Update</button>
+          <span class="lp-progress" id="lp-progress" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <div class="lp-actions">
+        <button class="lp-btn lp-fav" id="lp-fav" type="button" aria-pressed="false">&#9734; Favorite</button>
+        <button class="lp-btn" id="lp-share" type="button">Share</button>
+      </div>
+    </header>
+
+    <div class="lp-strip">
+      <a class="panel lp-tile" id="lp-tile-br" href="/loa-bracelet-calc/leaderboard">
+        <div class="lp-thd"><span><span class="subh">Bracelet</span> <span class="lp-axis" id="lp-tile-br-axis"></span></span><span class="lp-go-board">Leaderboard &rarr;</span></div>
+        <div class="lp-tbody" id="lp-tile-br-body">
+          <span class="lp-badge big sk-badge sk"></span>
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
+          <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+        </div>
+      </a>
+      <a class="panel lp-tile" id="lp-tile-ag" href="/loa-astrogem-calc/leaderboard">
+        <div class="lp-thd"><span><span class="subh">Astrogems</span> <span class="lp-axis" id="lp-tile-ag-axis"></span></span><span class="lp-go-board">Leaderboard &rarr;</span></div>
+        <div class="lp-tbody" id="lp-tile-ag-body">
+          <span class="lp-badge big sk-badge sk"></span>
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
+          <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="lp-cards">
+      <section class="panel lp-card" id="lp-card-br" aria-labelledby="lp-br-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-br-h">Bracelet</h2><span id="lp-br-grade"></span></div>
+        <div class="lp-card-body" id="lp-br-body">
+          <div class="lp-lines">
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:11em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:14em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:9em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+          </div>
+          <div class="lp-kv">
+            <div><span class="k">Combat traits</span><span class="v"><span class="sk" style="width:10em"></span></span></div>
+            <div><span class="k">Damage</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+            <div><span class="k">Rolls left</span><span class="v"><span class="sk" style="width:1.5em"></span></span></div>
+            <div><span class="k">Loadout</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta" id="lp-open-br" href="/loa-bracelet-calc/">Open in Calculator</a>
+          <a class="lp-cta2" id="lp-open-adv" href="/loa-bracelet-calc/advisor">Lock advice</a>
+        </div>
+      </section>
+
+      <section class="panel lp-card" id="lp-card-ag" aria-labelledby="lp-ag-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-ag-h">Astrogems</h2></div>
+        <div class="lp-card-body" id="lp-ag-body">
+          <div class="lp-agtop"><span class="lp-badge sk-badge sk"></span><span class="lp-agq"><span class="sk" style="width:6em"></span></span><span class="lp-agd"><span class="sk" style="width:5.5em"></span></span></div>
+          <div class="lp-tiers"><span class="lp-tchip ancient"><span class="sk" style="width:5em"></span></span><span class="lp-tchip relic"><span class="sk" style="width:4em"></span></span><span class="lp-tchip legendary"><span class="sk" style="width:6em"></span></span></div>
+          <div class="lp-kv">
+            <div><span class="k">Gems</span><span class="v"><span class="sk" style="width:6em"></span></span></div>
+            <div><span class="k">Order / Chaos</span><span class="v"><span class="sk" style="width:3.5em"></span></span></div>
+            <div><span class="k">Board</span><span class="v"><span class="sk" style="width:8em"></span></span></div>
+            <div><span class="k">Pulled</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta" id="lp-open-ag" href="/loa-astrogem-calc/grader">Open in Astrogem Calculator</a>
+        </div>
+      </section>
+
+      <section class="panel lp-card lp-card-stats" id="lp-card-stats" aria-labelledby="lp-stats-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-stats-h" data-gloss="The character's own figures from lostark.bible: what the bracelet calculator fills its character panel with when you import this character. Hover a value for the detail.">What the calculators assume</h2><span class="lp-src" id="lp-stats-src"></span></div>
+        <div class="lp-stats" id="lp-stats-body">
+          <div class="lp-stat"><span class="k">Item level</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Combat power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Main stat</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Weapon power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Base attack power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Gems</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ability stone</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+          <div class="lp-stat"><span class="k">Karma</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ark passive</span><span class="v"><span class="sk" style="width:6em"></span></span></div>
+          <div class="lp-stat"><span class="k">Honing</span><span class="v"><span class="sk" style="width:8em"></span></span></div>
+          <div class="lp-stat"><span class="k">Accessories</span><span class="v"><span class="sk" style="width:8em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ark grid</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+        </div>
+      </section>
+    </div>
+
+    <details class="method">
+      <summary>How this page works out its numbers</summary>
+      <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board.</p>
+      <p><b>Bracelet rank.</b> The character&rsquo;s place on its region&rsquo;s board, in the board&rsquo;s own order. The DPS board ranks everyone by damage %, less support mains; the Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains. A support class shows on the board where its letter is better. Top X% is the place divided by the number on that board. The board rebuilds at most every 10 minutes; a character it has not picked up yet (a new pull, or one just updated) is scored here with the calculator&rsquo;s own model, and its place is marked &asymp; until the board catches up.</p>
+      <p><b>Astrogems.</b> Quality, letter and grid damage are the astrogem leaderboard&rsquo;s, from the astrogem calculator&rsquo;s model run on the character&rsquo;s gems. The rank is the place on the region&rsquo;s astrogem board, sorted by total grid damage (party damage on the Support board); that board rebuilds at most every 30 minutes. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
+      <p><b>Stats.</b> The raid loadout&rsquo;s figures as lostark.bible reports them, which the bracelet calculator imports into its character panel. Update reads the bracelet record again; astrogems are pulled from the Astrogem Calculator, which needs a lostark.bible sign-in.</p>
+      <p><b>Where the data comes from.</b> Public lostark.bible character pages, as their owners last synced them &mdash; it can be weeks behind the game. Raid statistics are never read. Not affiliated with Smilegate, Amazon Games or lostark.bible.</p>
+    </details>
+  </main>
+</div>
+
+<script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
+<script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
+<script src="/loa-bracelet-calc/tip.js?v=1" defer></script>
+<script src="/profile/profile.js?v=1" defer></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>
