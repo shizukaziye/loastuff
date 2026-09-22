@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+*.log
+.claude/
+__pycache__/
+*.pyc
+
+# local secrets — never commit
+.secrets/
+.bible-token
+.corpus/
+
+.admin-token
+worker/.wrangler/

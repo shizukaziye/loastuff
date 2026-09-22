@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bracelet Calculator</title>
+<meta name="description" content="Lost Ark T4 bracelet tools: score any bracelet in % damage, get the exact reroll and lock advice, and see what an unrolled bracelet is worth.">
+<meta name="theme-color" content="#0d1017">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Bracelet Calculator">
+<meta property="og:title" content="Bracelet Calculator — Lost Ark">
+<meta property="og:description" content="Score any T4 bracelet in % damage, get exact keep-or-replace and lock advice, and price an unrolled bracelet.">
+<meta property="og:url" content="https://www.loseii.com/loa-bracelet-calc/">
+<!--
+  App shell for the Lost Ark T4 bracelet tool. The math lives in
+  model/bracelet.js (window.Bracelet), a pure core the UI reads and never mutates.
+  The character + bracelet STATE lives in profile.js (window.Profile), which also
+  owns the control deck; every tab mounts that one deck and subscribes to it.
+
+  Five tabs: "Calculator" (#tab-calculator, first/default, built by app.js),
+  "Tier List" (#tab-tierlist), "Leaderboard" (#tab-leaderboard), "Method"
+  (#tab-method, method.js) and "Feedback" (#tab-feedback). The tab bar toggles
+  .active on the panes and fires a 'tabselected' event so a pane can act on
+  activation — the Calculator uses it to claim the deck back.
+
+  Scripts load in two sets:
+    EAGER (bottom of <body>, in order): data/bracelet-data.js and
+    data/gear-data.js (the official tables), model/bracelet.js (the core), tip.js
+    (the shared tooltip), favorites.js (the saved-character spine), profile.js
+    (state + control deck), then app.js (the Calculator tab).
+    LAZY (the LAZY_TABS map below): heavier per-tab modules load on FIRST
+    activation of their tab. A module that is not on disk yet fails its <script>
+    load, the loader skips it, and the pane keeps its placeholder.
+
+  The solver never runs on this thread: app.js spawns solver-worker.js, which
+  importScripts the same data + model files. Bump solver-worker.js's own ?v= on
+  those imports whenever the data or model changes, or the worker will keep
+  running yesterday's model out of cache.
+
+  Deploy note: bump a file's ?v= whenever you edit it — the loseii edge caches
+  JS for 4h and browsers cache-bust on that query.
+-->
+<link rel="stylesheet" href="styles.css?v=3">
+</head><body>
+<div class="wrap">
+  <div class="appbar">
+    <div>
+      <h1>Bracelet Calculator</h1>
+      <div class="tag">Lost Ark T4 bracelets — % damage scoring, exact reroll advice, and what one is worth.</div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tabbar" id="tabbar">
+    <button class="tab active" data-tab="calculator" onclick="selectTab('calculator')">Calculator</button>
+    <button class="tab" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
+    <button class="tab" data-tab="tierlist" onclick="selectTab('tierlist')">Tier List</button>
+    <button class="tab" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
+    <button class="tab" data-tab="method" onclick="selectTab('method')">Method</button>
+    <button class="tab" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
+  </div>
+
+  <!-- Tab panes -->
+  <section id="tab-calculator" class="tabpane active"></section>
+  <section id="tab-advisor" class="tabpane"></section>
+  <section id="tab-tierlist" class="tabpane">
+    <div class="placeholder"><b>Tier list</b>Not built yet. It will rank every effect family and every roll by the same % damage figure the Calculator reports, live against your own settings.</div>
+  </section>
+  <section id="tab-leaderboard" class="tabpane">
+    <div class="placeholder"><b>Leaderboard</b>Not built yet. It will rank bracelets by the same % damage figure the Calculator reports, scored on the default character.</div>
+  </section>
+  <section id="tab-method" class="tabpane"></section>
+  <section id="tab-feedback" class="tabpane">
+    <div class="placeholder"><b>Feedback</b>Not built yet. A wrong number, a missing effect or an idea will all land here.</div>
+  </section>
+</div>
+
+<!-- Tab switching: toggle .active on the matching button + pane. -->
+<script>
+"use strict";
+// Heavy, rarely-used modules load on FIRST activation of their tab instead of on
+// every visit. tierlist.js, leaderboard.js and feedback.js are registered before
+// they exist: a missing file fails its <script> and the loader skips it, so each
+// pane simply keeps the placeholder until the file lands.
+var LAZY_TABS = {
+  advisor: ['advisor-capture.js?v=2', 'advisor.js?v=23', 'advisor-glue.js?v=1'],
+  tierlist: ['tierlist.js?v=20'],
+  leaderboard: ['leaderboard.js?v=14'],
+  method: ['method.js?v=10'],
+  feedback: ['feedback.js?v=2']
+};
+var lazyLoaded = {};
+function loadScriptsSeq(list, done){
+  if (!list.length) { done(); return; }
+  var s = document.createElement('script');
+  s.src = list[0];
+  s.onload = function(){ loadScriptsSeq(list.slice(1), done); };
+  s.onerror = function(){ loadScriptsSeq(list.slice(1), done); }; // skip a failed script; modules degrade gracefully
+  document.body.appendChild(s);
+}
+function ensureTabLoaded(name){
+  if (!LAZY_TABS[name] || lazyLoaded[name]) return;
+  lazyLoaded[name] = true;
+  var pane = document.getElementById('tab-'+name);
+  if (pane && !pane.childNodes.length) pane.innerHTML = '<div style="padding:24px;opacity:.65">Loading…</div>'; // replaced by the module's init
+  loadScriptsSeq(LAZY_TABS[name], function(){
+    // re-announce the activation for anything keyed on the event (the modules just initialized)
+    try { document.dispatchEvent(new CustomEvent('tabselected', { detail: { tab: name } })); } catch (e) {}
+  });
+}
+function selectTab(name){
+  var tabs = document.querySelectorAll('.tab');
+  for (var i=0;i<tabs.length;i++){ tabs[i].classList.toggle('active', tabs[i].dataset.tab===name); }
+  var panes = document.querySelectorAll('.tabpane');
+  for (var j=0;j<panes.length;j++){
+    panes[j].classList.toggle('active', panes[j].id === ('tab-'+name));
+  }
+  ensureTabLoaded(name);
+  // Notify tab modules that lazy-load on activation.
+  try { document.dispatchEvent(new CustomEvent('tabselected', { detail: { tab: name } })); } catch (e) {}
+}
+</script>
+
+<!-- EAGER: the official tables, then the model core, then the shared spine.
+     Order matters — model/bracelet.js reads window.BraceletData and
+     window.BraceletGearData at parse time, and profile.js reads the model at
+     parse time to grade the families. app.js is last: it holds the state object
+     profile.js hands it. -->
+<!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
+<script src="data/bracelet-data.js?v=2"></script>
+<script src="data/gear-data.js?v=4"></script>
+<script src="model/bracelet.js?v=14"></script>
+<script src="tip.js?v=1"></script>
+<script src="favorites.js?v=1"></script>
+<!-- The shared character lookup + ★ strip. EAGER, though it mounts lazily: the
+     Advisor and the Tier List both mount it, and neither should have to know
+     whether the other has already loaded it. -->
+<script src="char-picker.js?v=4"></script>
+<script src="profile.js?v=22"></script>
+<script src="subrank.js?v=9"></script>
+<script src="app.js?v=47"></script>
+<!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
+     panel app.js has just built, and hands what it decodes to
+     window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
+<script src="bible-oauth.js?v=1"></script>
+<script src="bible-import.js?v=18"></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body></html>
