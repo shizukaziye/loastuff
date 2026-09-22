@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Character profile — Loseii</title>
+<meta name="description" content="Lost Ark character profiles: bracelet and astrogem grades and ranks, the stats the calculators read, and one click into either calculator.">
+<meta name="theme-color" content="#0d1017">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Loseii">
+<meta property="og:title" content="Character profiles — Loseii">
+<meta property="og:description" content="Bracelet and astrogem grades and ranks for any NA or EU Lost Ark character.">
+<meta property="og:image" content="https://www.loseii.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3C/svg%3E">
+<!--
+  loseii character profiles. _redirects serves this one page for /NA/*, /EU/* and
+  /CE/* (and their lower-case forms); profile.js reads the region and the name
+  back out of the address. Served at /NA/Name, so EVERY asset path here is
+  absolute (/profile/..., /loa-bracelet-calc/...): a relative one would resolve
+  under /NA/.
+
+  Scripts (all deferred, in this order):
+    /loa-bracelet-calc/data/bracelet-data.js  the effect families: names and values
+    /loa-bracelet-calc/subrank.js             the bracelet board's letter ladders
+    /loa-bracelet-calc/tip.js                 the house tooltip for data-gloss
+    /profile/profile.js                       this page
+  profile.js starts /profile/ag-worker.js, which imports the astrogem calculator's
+  model and loadout-econ.js, and loads the bracelet model only for a character
+  the board lacks. Once the bracelet and astrogem cards have painted it loads
+  /loa-gpd/lookup.js (the GPD chart's lookup, which fetches its own tables) for
+  the gold-per-1% card, after the bracelet model and model/astrogem.js at the
+  tools' own pins.
+
+  Deploy note: the loseii zone caches .js for 4 hours, so bump a file's ?v= here
+  (and ag-worker.js's in profile.js) whenever it changes, and bump the pins on
+  the tools' files if their index.html pins move. The bracelet leaderboard
+  prefetches profile.js and profile.css at these same pins: bump it with them.
+-->
+<link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
+<link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
+<link rel="stylesheet" href="/profile/profile.css?v=3">
+<!-- Chromium builds a hovered site page before the click (moderate = on hover or
+     press), so the next page opens already drawn. profile.js holds every side
+     effect until the page is shown. The favorite/recent chips are left out: they
+     switch characters in place, with no page load to save. -->
+<script type="speculationrules">
+{
+  "prerender": [{
+    "source": "document",
+    "where": { "and": [
+      { "href_matches": ["/", "/profile/", "/loa-bracelet-calc/*", "/loa-astrogem-calc/*", "/loa-gpd/*", "/NA/*", "/EU/*", "/CE/*"] },
+      { "not": { "href_matches": ["/*.js", "/*.css", "/*.json", "/*.png", "/*.svg", "/*.zip", "/*.md"] } },
+      { "not": { "selector_matches": ".lp-chip, [download], [target=_blank]" } }
+    ]},
+    "eagerness": "moderate"
+  }]
+}
+</script>
+<script>
+/* Before first paint: a character address shows the profile skeleton, anything
+   else shows the search on its own. Same name rule as profile.js. No network. */
+(function(){var d=document.documentElement,p=location.pathname,m=/^\/(?:NA|EU|CE|na|eu|ce)\/([^\/]+)/.exec(p),n="";
+if(m){try{n=decodeURIComponent(m[1]).replace(/\s+/g," ").trim()}catch(x){n=""}}
+var ok=(n&&n.length<=40&&!/[\/\\<>"?#%]/.test(n))||(/^\/profile\/?$/.test(p)&&/[?&]name=[^&]/.test(location.search));
+d.className+=ok?" lp-char":" lp-find";})();
+</script>
+</head>
+<body data-loseii-nav-offset>
+<div class="wrap">
+
+  <div class="lp-intro" id="lp-intro">
+    <h1>Character profiles</h1>
+    <p class="tag">Bracelet and astrogem grades, ranks and stats for any NA or EU character.</p>
+  </div>
+
+  <form class="lp-search" id="lp-search" role="search" autocomplete="off">
+    <label class="lp-vh" for="lp-region">Region</label>
+    <select class="lp-region" id="lp-region">
+      <option value="NA">NA</option>
+      <option value="EU">EU</option>
+    </select>
+    <label class="lp-vh" for="lp-q">Character name</label>
+    <input class="lp-q" id="lp-q" type="search" placeholder="Character name" maxlength="40" spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="search">
+    <button class="lp-go" type="submit">Search</button>
+  </form>
+  <div class="lp-quick" id="lp-quick" aria-label="Favorites and recent searches"></div>
+  <div class="lp-note" id="lp-note" role="status" style="display:none"></div>
+
+  <main id="lp-main">
+    <header class="panel lp-head" id="lp-head">
+      <div class="lp-icon" id="lp-icon"><span class="sk"></span></div>
+      <div class="lp-id">
+        <h1 class="lp-name" id="lp-name"><span class="sk" style="width:8em"></span></h1>
+        <script>
+        (function(){var m=/^\/(?:NA|EU|CE|na|eu|ce)\/([^\/?#]+)/.exec(location.pathname),e=document.getElementById("lp-name"),n;
+        if(!m||!e)return;try{n=decodeURIComponent(m[1]).replace(/\s+/g," ").trim()}catch(x){return}
+        if(n&&n.length<=40&&!/[\/\\<>"?#%]/.test(n)){if(!/[가-힣㄰-㆏]/.test(n))n=n.charAt(0).toUpperCase()+n.slice(1).toLowerCase();e.textContent=n;}})();
+        </script>
+        <div class="lp-sub" id="lp-sub"><span class="sk" style="width:14em"></span></div>
+        <div class="lp-pull">
+          <span class="lp-pulled" id="lp-pulled"><span class="sk" style="width:6.5em"></span></span>
+          <button class="lp-btn" id="lp-update" type="button" disabled data-gloss="Reads this character's bracelet record again from lostark.bible. Astrogems are pulled from the Astrogem Calculator.">Update</button>
+          <span class="lp-progress" id="lp-progress" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <div class="lp-actions">
+        <button class="lp-btn lp-fav" id="lp-fav" type="button" aria-pressed="false" data-gloss="Saves this character to the favorites the bracelet calculator keeps in this browser.">&#9734; Favorite</button>
+        <button class="lp-btn" id="lp-share" type="button" data-gloss="Copies this page's address.">Share</button>
+      </div>
+    </header>
+
+    <div class="lp-strip">
+      <div class="panel lp-tile" id="lp-tile-br">
+        <div class="lp-thd"><span class="lp-thl"><span class="subh" data-gloss="The bracelet leaderboard's reading of this character: its letter, 0–100 grade, damage and place.">Bracelet</span> <span class="lp-axis" id="lp-tile-br-axis"></span></span><a class="lp-go-board" href="/loa-bracelet-calc/leaderboard" data-gloss="Opens the bracelet leaderboard, the board this place comes from.">Leaderboard &rarr;</a></div>
+        <div class="lp-tbody" id="lp-tile-br-body">
+          <span class="lp-badge big sk-badge sk"></span>
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
+          <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+        </div>
+      </div>
+      <div class="panel lp-tile" id="lp-tile-ag">
+        <div class="lp-thd"><span class="lp-thl"><span class="subh" data-gloss="The astrogem leaderboard's reading of this character: its letter, quality, grid damage and place.">Astrogems</span> <span class="lp-axis" id="lp-tile-ag-axis"></span></span><a class="lp-go-board" href="/loa-astrogem-calc/leaderboard" data-gloss="Opens the astrogem leaderboard, the board this place comes from.">Leaderboard &rarr;</a></div>
+        <div class="lp-tbody" id="lp-tile-ag-body">
+          <span class="lp-badge big sk-badge sk"></span>
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
+          <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+        </div>
+      </div>
+      <div class="panel lp-tile" id="lp-tile-gpd">
+        <div class="lp-thd"><span class="lp-thl"><span class="subh" data-gloss="The GPD chart&rsquo;s pick for this character: the next step with the lowest gold per 1% damage, of the steps under 25M per 1%.">Cheapest next 1%</span> <span class="lp-axis" id="lp-tile-gpd-axis"></span></span><a class="lp-go-board" id="lp-go-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up.">GPD chart &rarr;</a></div>
+        <div class="lp-tbody lp-gbody" id="lp-tile-gpd-body">
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.8em"></span></div><div class="lp-tsub"><span class="sk" style="width:5.5em"></span></div></div>
+          <div class="lp-gstep"><div class="lp-gtext"><span class="sk" style="width:11em"></span></div><div class="lp-tsub"><span class="sk" style="width:9em"></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lp-cards">
+      <section class="panel lp-card" id="lp-card-br" aria-labelledby="lp-br-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-br-h" data-gloss="The bracelet the bracelet leaderboard ranks for this character, scored on the calculator's default character.">Bracelet</h2><span id="lp-br-grade"></span></div>
+        <div class="lp-card-body" id="lp-br-body">
+          <div class="lp-lines">
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:11em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:14em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+            <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:9em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
+          </div>
+          <div class="lp-kv">
+            <div><span class="k">Combat traits</span><span class="v"><span class="sk" style="width:9em"></span></span></div>
+            <div><span class="k">Damage</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+            <div><span class="k">Rolls left</span><span class="v"><span class="sk" style="width:1.5em"></span></span></div>
+            <div><span class="k">Loadout</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta" id="lp-open-br" href="/loa-bracelet-calc/" data-gloss="Opens the bracelet calculator with this bracelet loaded: its lines, score, worth and per-line breakdown.">Open in Calculator</a>
+          <a class="lp-cta2" id="lp-open-adv" href="/loa-bracelet-calc/advisor" data-gloss="Opens the bracelet advisor with this bracelet loaded: the locks it recommends for the rolls you have left.">Lock advice</a>
+        </div>
+      </section>
+
+      <section class="panel lp-card" id="lp-card-stats" aria-labelledby="lp-stats-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-stats-h" data-gloss="The character's own figures from lostark.bible: what the bracelet calculator fills its character panel with when you open this character. Hover a figure for how it is read.">What the calculators assume</h2><span class="lp-src" id="lp-stats-src"></span></div>
+        <div class="lp-stats" id="lp-stats-body">
+          <div class="lp-stat"><span class="k">Item level</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Combat power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Main stat</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Weapon power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Base attack power</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Gems</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ability stone</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+          <div class="lp-stat"><span class="k">Karma</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ark passive</span><span class="v"><span class="sk" style="width:6em"></span></span></div>
+          <div class="lp-stat"><span class="k">Honing</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+          <div class="lp-stat"><span class="k">Accessories</span><span class="v"><span class="sk" style="width:7em"></span></span></div>
+          <div class="lp-stat"><span class="k">Ark grid</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
+        </div>
+      </section>
+
+      <section class="panel lp-card lp-card-ag axis-dps" id="lp-card-ag" aria-labelledby="lp-ag-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-ag-h" data-gloss="The character's astrogems in their Ark Grid, graded by the astrogem calculator's own model: the same figures the Grader and the astrogem leaderboard show.">Astrogems</h2><span class="lp-src" id="lp-ag-src"></span></div>
+        <div class="lp-ag-body" id="lp-ag-body">
+          <div class="lp-agsum">
+            <div class="stat"><span class="k">Quality</span><span class="v"><span class="sk" style="width:4.5em"></span></span></div>
+            <div class="stat"><span class="k">Avg grade</span><span class="v"><span class="sk" style="width:4.5em"></span></span></div>
+            <div class="stat"><span class="k">Total % dmg</span><span class="v"><span class="sk" style="width:3.5em"></span></span></div>
+            <div class="stat"><span class="k">Board</span><span class="v"><span class="sk" style="width:7em"></span></span></div>
+            <div class="stat"><span class="k">Gems</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+            <div class="stat"><span class="k">Pulled</span><span class="v"><span class="sk" style="width:3.5em"></span></span></div>
+          </div>
+          <div class="lp-agrow">
+            <div class="lp-agbox lp-tw">
+              <table class="gr-ptab lp-coretab">
+                <thead><tr><th>Core</th><th class="r">Gems</th><th class="r">Points</th><th class="r">Order bonus</th><th class="r">Gem %</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr class="lp-subtot"><td><span class="sk" style="width:5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr class="lp-subtot"><td><span class="sk" style="width:5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="lp-agbox">
+              <table class="gr-ptab lp-breaktab">
+                <thead><tr><th>Grid damage from</th><th class="r">Levels</th><th class="r">% dmg</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td class="r"><span class="sk" style="width:1.4em"></span></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                  <tr class="lp-subtot"><td><span class="sk" style="width:4em"></span></td><td class="r"></td><td class="r"><span class="sk" style="width:2.6em"></span></td></tr>
+                </tbody>
+              </table>
+              <div class="lp-tiers"><span class="lp-tchip ancient"><span class="sk" style="width:5em"></span></span><span class="lp-tchip relic"><span class="sk" style="width:4em"></span></span><span class="lp-tchip legendary"><span class="sk" style="width:6em"></span></span></div>
+            </div>
+          </div>
+          <div class="lp-tw lp-gemwrap">
+            <table class="gr-ptab lp-gemtab">
+              <thead><tr><th class="r">#</th><th>Core</th><th class="r">Cost</th><th class="r">WP</th><th class="r">Points</th><th>Effect 1</th><th>Effect 2</th><th>Grade</th><th>Rank</th><th class="r">% dmg</th></tr></thead>
+              <tbody id="lp-gem-rows">
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                <tr><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:5.5em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td class="r"><span class="sk" style="width:1em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:3.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta" id="lp-open-ag" href="/loa-astrogem-calc/grader" data-gloss="Opens the astrogem Grader with this character's gems loaded.">Open in Astrogem Calculator</a>
+        </div>
+      </section>
+
+      <section class="panel lp-card lp-card-gpd" id="lp-card-gpd" aria-labelledby="lp-gpd-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-gpd-h" data-gloss="The GPD chart&rsquo;s own lookup, run on this page: where this character stands on each ladder and what the next step costs per 1% damage. Cheapest first; the lit row is the one to buy.">Gold per 1% damage</h2><span class="lp-src" id="lp-gpd-src"></span></div>
+        <div class="lp-gpd-body" id="lp-gpd-body">
+          <div class="lp-tw lp-gpdwrap">
+            <table class="gr-ptab lp-gpdtab">
+              <thead><tr><th data-gloss="The progression systems the GPD chart prices, one ladder each.">System</th><th data-gloss="Your rung on each ladder, read from the lostark.bible pull.">Yours</th><th data-gloss="The next rung up each ladder.">Next step</th><th class="r" data-gloss="What the next step costs per 1% more damage, at the chart&rsquo;s default prices. Only a step under 25M per 1% can be the pick.">Gold / 1%</th></tr></thead>
+              <tbody>
+                  <tr><td><span class="sk" style="width:8em"></span></td><td><span class="sk" style="width:4em"></span></td><td><span class="sk" style="width:9em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:8em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td><span class="sk" style="width:4.5em"></span></td><td><span class="sk" style="width:5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:9em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:3em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:4em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:10em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:10em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:3em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta2" id="lp-open-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up: every ladder, the gear list and the plan.">Open in GPD chart</a>
+        </div>
+      </section>
+    </div>
+
+    <details class="method">
+      <summary>How this page works out its numbers</summary>
+      <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board.</p>
+      <p><b>Bracelet rank.</b> The character&rsquo;s place on its region&rsquo;s board, in the board&rsquo;s own order. The DPS board ranks everyone by damage %, less support mains; the Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains. A support class shows on the board the Worker reads it on. Top X% is the place divided by the number on that board. The board rebuilds at most every 10 minutes; a character it has not picked up yet (a new pull, or one just updated) is scored here with the calculator&rsquo;s own model, and its place is marked &asymp; until the board catches up.</p>
+      <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The table, the average grade, the per-core figures and Total % dmg are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. The grid-damage split runs the model&rsquo;s own grid formula once per source with the others set to zero, so the parts add up to the total. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
+      <p><b>Gold per 1% damage.</b> The GPD chart&rsquo;s own lookup (<code>/loa-gpd/lookup.js</code>), run here on the same two lostark.bible answers the cards above use: each system&rsquo;s rung, and what the next step costs per 1% damage at the chart&rsquo;s default prices and switches (no flat line, high main stat). A support is graded on the support ladders, where gold per 1% counts the buff on all three dealers. Only a step under 25M per 1% can be the pick. It loads after the cards above, so it never holds them up.</p>
+      <p><b>Stats.</b> The raid loadout&rsquo;s figures as lostark.bible reports them, which the bracelet calculator imports into its character panel. Update reads the bracelet record again; astrogems are pulled from the Astrogem Calculator, which needs a lostark.bible sign-in.</p>
+      <p><b>Where the data comes from.</b> Public lostark.bible character pages, as their owners last synced them &mdash; it can be weeks behind the game. Raid statistics are never read. Not affiliated with Smilegate, Amazon Games or lostark.bible.</p>
+    </details>
+  </main>
+</div>
+
+<script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
+<script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
+<script src="/loa-bracelet-calc/tip.js?v=1" defer></script>
+<script src="/profile/profile.js?v=3" defer></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>

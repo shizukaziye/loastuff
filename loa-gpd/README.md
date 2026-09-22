@@ -24,7 +24,10 @@ Systems charted:
   priced tier by tier from 250k to 100M gold per 1%.
 
 A character lookup (lostark.bible) places one character on every ladder and
-names the cheapest next upgrade.
+names the cheapest next upgrade. That placement, and every row the chart draws,
+lives in `lookup.js`, which the loseii profile pages load too:
+`await GpdLookup.ready()`, then `GpdLookup.place({ record, astro, axis })`. An
+edit to it bumps its `?v=` pin on every page that loads it.
 
 Game tables come from Maxroll's planner feed and are re-baked by
 `python tools/fetch-game-data.py`, which cross-checks itself against bebkok's

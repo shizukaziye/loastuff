@@ -150,8 +150,16 @@ const ALLOW_ORIGINS = [
   "https://shizukaziye.github.io"
 ];
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+// Branch previews of the site (https://<branch>.loastuff.pages.dev) — the profile
+// prototype is presented from one before it reaches www (2026-09-22). A string
+// check, not a regex: an Origin has no path, so "starts with https://, ends with
+// .loastuff.pages.dev, nothing after the host" is the whole test.
+function previewOrigin(o) {
+  return typeof o === "string" && o.indexOf("https://") === 0 &&
+    o.slice(-19) === ".loastuff.pages.dev" && o.indexOf("/", 8) === -1;
+}
 function originAllowed(origin) {
-  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin);
+  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin) || previewOrigin(origin);
 }
 function corsHeaders(origin) {
   if (!origin || !originAllowed(origin)) return {};

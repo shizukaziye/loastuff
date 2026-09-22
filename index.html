@@ -16,6 +16,22 @@
 <meta property="og:image" content="https://www.loseii.com/og.png" />
 <meta name="twitter:card" content="summary_large_image" />
 
+<!-- Chromium builds a hovered site page before the click (moderate = on hover or
+     press), so the tools and profiles open already drawn. -->
+<script type="speculationrules">
+{
+  "prerender": [{
+    "source": "document",
+    "where": { "and": [
+      { "href_matches": ["/", "/profile/", "/loa-bracelet-calc/*", "/loa-astrogem-calc/*", "/loa-gpd/*", "/NA/*", "/EU/*", "/CE/*"] },
+      { "not": { "href_matches": ["/*.js", "/*.css", "/*.json", "/*.png", "/*.svg", "/*.zip", "/*.md"] } },
+      { "not": { "selector_matches": "[download], [target=_blank]" } }
+    ]},
+    "eagerness": "moderate"
+  }]
+}
+</script>
+
 <!-- Inline SVG favicon: a gold gem -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='none' stroke='%23a9802a' stroke-width='1.2'/%3E%3Cpath d='M3 12h26M16 3v26M9.5 7.5 16 12l6.5-4.5M3 12l13 4 13-4' fill='none' stroke='%23fff3d6' stroke-opacity='.5' stroke-width='.8'/%3E%3C/svg%3E" />
 
@@ -163,6 +179,27 @@
   .green{--accent:var(--green)}
   .purple{--accent:var(--purple)}
 
+  /* ---------- Find a character (a form in card clothing: no lift on hover) ---------- */
+  .find{cursor:default}
+  .find:hover{transform:none;background:var(--surface);border-color:var(--border);box-shadow:none}
+  .find:hover::before{transform:scaleX(0)}
+  .find-row{display:flex;gap:8px;margin-top:4px}
+  .find select,.find input{
+    height:42px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font:inherit;font-size:14px;padding:0 10px;outline:none;
+  }
+  .find select{flex:0 0 auto;width:66px;font-weight:700;color-scheme:dark;cursor:pointer}
+  .find input{flex:1 1 auto;min-width:0}
+  .find input::placeholder{color:var(--faint)}
+  .find input:focus,.find select:focus{border-color:var(--gold)}
+  .find button{
+    flex:0 0 auto;height:42px;padding:0 14px;border:none;border-radius:10px;cursor:pointer;
+    background:linear-gradient(180deg,#f4d79a,var(--gold));color:#0c0e12;font:inherit;font-size:14px;font-weight:700;
+  }
+  .find button:hover{filter:brightness(1.06)}
+  .find button:focus-visible{outline:2px solid #fff3d6;outline-offset:2px}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
   /* ---------- Footer ---------- */
   footer{
     margin-top:60px;padding-top:26px;border-top:1px solid var(--border);
@@ -187,7 +224,7 @@
     <h1>Loseii</h1>
     <p class="tagline">Everything I've built — calculators &amp; tools for Lost Ark, League, and personal finance, in one place. Bookmark it.</p>
     <div class="meta-row">
-      <span class="pill-stat"><span class="dot"></span>15 live tools</span>
+      <span class="pill-stat"><span class="dot"></span>16 live tools</span>
       <span class="pill-stat">Free &amp; in-browser</span>
       <span class="pill-stat">No login</span>
     </div>
@@ -206,6 +243,43 @@
       </a>
     </div>
   </header>
+
+  <!-- ============ Lost Ark — Characters ============ -->
+  <section class="section">
+    <div class="section-head"><h2>Lost Ark · Characters</h2><span class="rule"></span></div>
+    <div class="grid">
+
+      <!-- Opens /REGION/Name. Without script the form still lands: /profile/?region=&name=
+           is read by the profile page and moved to the same address. -->
+      <form class="card find" id="find" action="/profile/" method="get" role="search" autocomplete="off">
+        <div class="card-top">
+          <span class="tag">Search</span>
+        </div>
+        <h3>Find a character</h3>
+        <div class="find-row">
+          <label class="vh" for="find-region">Region</label>
+          <select id="find-region" name="region">
+            <option value="NA">NA</option>
+            <option value="EU">EU</option>
+          </select>
+          <label class="vh" for="find-name">Character name</label>
+          <input id="find-name" name="name" type="search" placeholder="Character name" maxlength="40" required spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="go">
+          <button type="submit">Go</button>
+        </div>
+      </form>
+
+      <a class="card blue" href="/profile/" rel="noopener">
+        <div class="card-top">
+          <span class="tag">Profiles</span>
+          <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </div>
+        <h3>Character profiles</h3>
+        <p>Any NA or EU character: bracelet and astrogem grades and board ranks, the stats the calculators read, and one click into either calculator.</p>
+        <div class="host">www.loseii.com/NA/Name</div>
+      </a>
+
+    </div>
+  </section>
 
   <!-- ============ Lost Ark — Calculators ============ -->
   <section class="section">
@@ -409,6 +483,31 @@
   </footer>
 
 </div>
+
+<!-- Find a character: straight to /REGION/Name, in the name spelling the profile
+     page settles on (Title case for Roman script). Starts on the region of the
+     last profile opened. -->
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("find");
+  if (!form) return;
+  var region = document.getElementById("find-region"), name = document.getElementById("find-name");
+  try {
+    var last = JSON.parse(localStorage.getItem("lp_recent") || "[]")[0];
+    if (last && (last.region === "NA" || last.region === "EU")) region.value = last.region;
+  } catch (e) {}
+  function open(e) {
+    var n = name.value.replace(/\s+/g, " ").trim();
+    if (!n || n.length > 40 || /[\/\\<>"?#%]/.test(n)) return;
+    e.preventDefault();
+    if (!/[가-힣㄰-㆏]/.test(n)) n = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+    location.href = "/" + (region.value === "EU" ? "EU" : "NA") + "/" + encodeURIComponent(n);
+  }
+  form.addEventListener("submit", open);
+  name.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing) open(e); });
+})();
+</script>
 
 <!-- Shared Loseii chrome — the two lines every page gets.
      nav.js  = fixed top navigation (wordmark + Tools menu)

@@ -253,6 +253,12 @@
   // combatPower (Worker not redeployed / parse failure) are cached:false, so they can
   // never re-trigger this — no loop. Returns true when a re-pull was kicked off.
   function maybeAutoRepullForCp(record) {
+    // A re-pull can queue work on the Worker, so a page Chrome is prerendering in
+    // the background (speculation rules) waits until it is really shown.
+    if (document.prerendering) {
+      document.addEventListener("prerenderingchange", function () { maybeAutoRepullForCp(record); }, { once: true });
+      return false;
+    }
     if (!record || record.cached !== true || record.combatPower != null) return false;
     if (record.source !== "lostark.bible") return false;           // KR / custom never have it
     if (!Array.isArray(record.gems) || !record.gems.length) return false;
@@ -2395,10 +2401,31 @@ presetToggleHtml(data) +
     // render a previously stored loadout WITHOUT re-fetching. charData is a Worker
     // record ({ region, name, gems, pulledAt, cached? }). The Re-pull button is shown
     // so the user can force a fresh pull of that same character.
-    window.graderShowLoadout = function (charData) {
+    window.graderShowLoadout = function (charData) { showStoredLoadout(charData, false); };
+
+    // ?c=REGION:Name (index.html's route boot: a profile page's link, or any
+    // shared one). Opens one character in the Grader WITHOUT moving the tab, since
+    // the address names the tab. With `record` (a stored answer that carries gems,
+    // e.g. the profile page's copy) it renders at once, as a board row does;
+    // without one it runs the Grade loadout lookup, as if the name had been typed.
+    window.graderOpenCharacter = function (region, name, record) {
+      var r = String(region || "NA").toUpperCase();
+      if (r === "CE") r = "EU";                        // lostark.bible's EU code; ours is EU
+      if (record) {
+        showStoredLoadout(Object.assign({}, record, { region: record.region || r, name: record.name || name }), true);
+        return;
+      }
+      if (!name) return;
+      selectMode("pull");
+      if ($("gr-region") && REGIONS.indexOf(r) !== -1) { $("gr-region").value = r; syncSourceUI(r); }
+      if ($("gr-name")) $("gr-name").value = name;
+      runPull(false);
+    };
+
+    function showStoredLoadout(charData, keepTab) {
       if (!charData) return;
       stopPoll(); clearRefreshBanner(); // cancel any running queue watch (mirrors runPull) so its finish can't clobber this loadout
-      if (typeof window.selectTab === "function") window.selectTab("grader");
+      if (!keepTab && typeof window.selectTab === "function") window.selectTab("grader");
       selectMode("pull");
       if (charData.region && $("gr-region")) {
         var r = String(charData.region).toUpperCase();
@@ -2415,7 +2442,7 @@ presetToggleHtml(data) +
       setPullStatus("Showing stored loadout for " + (charData.name || "") + ".", "");
       renderLoadout(charData);
       maybeAutoRepullForCp(charData);   // stored records may predate combatPower — self-heal
-    };
+    }
 
     // first paint: open in "Pull from lostark.bible" mode (the primary mode). Custom
     // mode is fully wired above (effect lists built), one toggle-click away.

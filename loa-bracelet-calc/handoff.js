@@ -216,6 +216,10 @@
    * browser error page in front of them, which is worse than not importing.
    */
   function bounce(force) {
+    if (!LOCAL && location.hostname !== "www.loseii.com") {   // same rule as goOrStay, for the link
+      if (force) showNote("The old address only hands data to www.loseii.com.");
+      return;
+    }
     var target = OLD.handoff + "?return=" + encodeURIComponent(location.href);
     if (typeof fetch !== "function") { miss(force); return; }   // no probe, no trip
     var spent = false, timer;
@@ -256,19 +260,34 @@
   var frag = fragment();
   if (frag !== null) { returnLeg(frag); return; }
 
-  // A forced trip that never came back: the tab was closed, or the old address
-  // answered with something we could not read.
-  if (forcePending()) { showNote(NOTE_DEAD); return; }
+  // A PRERENDER IS NOT A VISIT. Chrome may load this page in the background when
+  // a link to it is pointed at (speculation rules) and throw it away unseen. So
+  // the reachability probe, the bounce and every flag they write wait until the
+  // page is really shown. The return leg above needs no such wait: it only ever
+  // arrives as a real visit, sent back here by the old address.
+  if (document.prerendering) document.addEventListener("prerenderingchange", goOrStay, { once: true });
+  else goOrStay();
 
-  if (window.top !== window) return;                    // framed: never move somebody's frame
-  if (OLD.origin === location.origin) { lsSet(DONE, "1"); dropV1(); return; }  // the github.io mirror
-  if (lsGet(DONE)) return;
-  if (Date.now() > SUNSET) return;
+  function goOrStay() {
+    // A forced trip that never came back: the tab was closed, or the old address
+    // answered with something we could not read.
+    if (forcePending()) { showNote(NOTE_DEAD); return; }
 
-  var tries = parseInt(lsGet(TRIES) || "0", 10);
-  if (!(tries >= 0)) tries = 0;
-  if (tries >= MAX_TRIES) return;
-  if (!writable()) return;
+    if (window.top !== window) return;                    // framed: never move somebody's frame
+    // The automatic trip belongs to the production host only. On a branch
+    // preview (profile.loastuff.pages.dev) the old address refuses the return
+    // and forwards the visitor to www instead — seen 2026-09-22. Local dev keeps
+    // its own old side for testing; every other host marks itself done and stays.
+    if (!LOCAL && location.hostname !== "www.loseii.com") { lsSet(DONE, "1"); return; }
+    if (OLD.origin === location.origin) { lsSet(DONE, "1"); dropV1(); return; }  // the github.io mirror
+    if (lsGet(DONE)) return;
+    if (Date.now() > SUNSET) return;
 
-  bounce(false);
+    var tries = parseInt(lsGet(TRIES) || "0", 10);
+    if (!(tries >= 0)) tries = 0;
+    if (tries >= MAX_TRIES) return;
+    if (!writable()) return;
+
+    bounce(false);
+  }
 })();

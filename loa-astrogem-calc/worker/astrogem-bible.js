@@ -100,8 +100,16 @@ const ALLOW_ORIGINS = [
 // PUBLIC endpoints benefit: admin needs the X-Admin-Token header whatever the origin, and
 // everything a localhost page could read here is already public.
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+// Branch previews of the site (https://<branch>.loastuff.pages.dev) — the profile
+// prototype is presented from one before it reaches www (2026-09-22). A string
+// check, not a regex: an Origin has no path, so "starts with https://, ends with
+// .loastuff.pages.dev, nothing after the host" is the whole test.
+function previewOrigin(o) {
+  return typeof o === "string" && o.indexOf("https://") === 0 &&
+    o.slice(-19) === ".loastuff.pages.dev" && o.indexOf("/", 8) === -1;
+}
 function originAllowed(origin) {
-  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin);
+  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin) || previewOrigin(origin);
 }
 
 const BROWSER_UA =

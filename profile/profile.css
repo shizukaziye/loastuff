@@ -1,0 +1,270 @@
+/* profile.css — loseii character profiles (/<REGION>/<Name>).
+   The palette is the house block from loa-bracelet-calc/styles.css, copied, not
+   invented. The astrogem tables borrow the Grader's look (grader.js: gr-ptab,
+   gr-sum, rank-badge) so the two pages read as one site. Every box that data
+   lands in has a fixed height (or a min-height the skeleton already fills), so
+   nothing moves when the numbers arrive. */
+:root{
+  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
+  --dim:#97a0b4;--accent:#66c7ff;--high:#ffb86b;--mid:#c78cff;--low:#6ad4ff;
+  --none:#4f5666;--useless:#707788;--good:#6ee7a8;--bad:#ff7f7f;
+  --legendary:#ffb86b;--relic:#c78cff;--ancient:#6ad4ff;
+  /* the boards' two axis colours */
+  --dps:#e18ac0;--sup:#66c7ff;
+  --sk:#1e2331;--sk2:#282e3f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+/* The shared nav is 54px tall. The page reserves it up front (and tells nav.js so
+   with data-loseii-nav-offset on <body>) instead of letting nav.js push the page
+   down after first paint. */
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;padding-top:54px}
+a{color:var(--accent)}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 96px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.subh{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700;margin:0;line-height:16px}
+.tag{color:var(--dim);font-size:13px;margin:0}
+.lp-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.lp-dim{color:var(--dim)}
+
+/* ---- the two layouts: a character, or the search on its own ---- */
+.lp-intro{display:none;margin:6px 0 16px}
+.lp-intro h1{font-size:25px;margin:0 0 4px;letter-spacing:-.02em}
+.lp-find .lp-intro{display:block}
+.lp-find #lp-main{display:none}
+.lp-note{margin:0 0 14px;padding:10px 14px;border:1px solid #5a3a3a;border-radius:10px;background:#221619;color:#ffb3b3;font-size:13px}
+
+/* ---- search ---- */
+.lp-search{display:flex;gap:8px;height:40px}
+.lp-region,.lp-q{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;
+  font:inherit;font-size:14px;height:40px;padding:0 10px;outline:none}
+.lp-region{flex:0 0 auto;width:72px;font-weight:700;cursor:pointer;color-scheme:dark}
+.lp-q{flex:1 1 auto;min-width:0}
+.lp-q::placeholder{color:var(--dim)}
+.lp-region:focus,.lp-q:focus{border-color:var(--accent)}
+.lp-go{flex:0 0 auto;height:40px;padding:0 18px;border:none;border-radius:8px;background:var(--accent);color:#06121f;
+  font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.lp-go:hover{filter:brightness(1.08)}
+select{color-scheme:dark}
+option{background:var(--panel2);color:var(--text)}
+
+/* favourites + recents: one row, scrolls sideways inside itself, never the page */
+.lp-quick{display:flex;align-items:center;gap:6px;height:30px;margin:10px 0 14px;overflow-x:auto;overflow-y:hidden;
+  white-space:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.lp-quick::-webkit-scrollbar{display:none}
+.lp-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:99px;
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);text-decoration:none;font-size:12.5px;font-weight:600}
+.lp-chip:hover{border-color:var(--accent);color:var(--accent)}
+.lp-chip.here{border-color:var(--accent)}
+.lp-chip .lp-star{color:var(--high)}
+.lp-creg{color:var(--dim);font-size:10.5px;font-weight:700;letter-spacing:.04em}
+.lp-qempty{color:var(--dim);font-size:12px}
+
+/* ---- skeleton ---- */
+.sk{display:inline-block;height:.85em;vertical-align:middle;border-radius:4px;
+  background:linear-gradient(90deg,var(--sk) 25%,var(--sk2) 37%,var(--sk) 63%);background-size:400% 100%;
+  animation:lp-shimmer 1.4s ease infinite}
+@keyframes lp-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+/* ---- header ---- */
+.lp-head{display:grid;grid-template-columns:56px minmax(0,1fr) auto;column-gap:14px;align-items:center;height:104px}
+.lp-icon{width:56px;height:56px;border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.lp-icon img{width:38px;height:38px;object-fit:contain;filter:brightness(0) invert(.82)}
+.lp-icon .sk{width:56px;height:56px;border-radius:12px}
+.lp-id{min-width:0}
+.lp-name{font-size:26px;line-height:32px;height:32px;margin:0;letter-spacing:-.02em;font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-sub{font-size:13px;color:var(--dim);height:20px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-pull{display:flex;align-items:center;gap:8px;height:28px;margin-top:2px;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden}
+.lp-pulled{display:inline-block;flex:0 0 auto;width:7.6em;height:28px;line-height:28px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-pulled .lp-old{color:var(--high)}
+.lp-progress{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-progress.busy{color:var(--accent)}
+.lp-progress.err{color:var(--bad)}
+.lp-actions{display:flex;gap:8px;align-self:center}
+.lp-btn{height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);
+  font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.lp-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.lp-btn:disabled{opacity:.5;cursor:default}
+.lp-fav.on{color:var(--high);border-color:#6b5230}
+
+/* ---- rank strip ---- */
+.lp-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.lp-tile{height:104px}
+.lp-thd{display:flex;align-items:center;justify-content:space-between;height:16px}
+.lp-thl{display:inline-flex;align-items:center;gap:6px;height:16px;line-height:16px}
+.lp-thd .lp-axis{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);line-height:16px}
+.lp-go-board{font-size:11px;color:var(--dim);text-decoration:none}
+.lp-go-board:hover{color:var(--accent)}
+.lp-tbody{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:14px;align-items:center;height:56px;margin-top:6px}
+.lp-tmsg{grid-column:1/-1;color:var(--dim);font-size:13px;line-height:18px;overflow:hidden;max-height:54px}
+.lp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:22px;padding:0 6px;border-radius:6px;
+  font-weight:900;font-size:13px;line-height:1;letter-spacing:-.02em;vertical-align:middle}
+.lp-badge.big{min-width:56px;height:46px;border-radius:9px;font-size:22px;padding:0 8px}
+.lp-badge.sk-badge{background:var(--sk)}
+.lp-tnum{min-width:0}
+.lp-tscore{font-size:22px;font-weight:800;line-height:28px;font-variant-numeric:tabular-nums}
+.lp-tsub{font-size:12px;color:var(--dim);line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-trank{text-align:right;min-width:0}
+.lp-trk{font-size:15px;font-weight:700;line-height:28px;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* the GPD tile: the price on the left, the step it buys beside it (two lines at most) */
+.lp-gbody{grid-template-columns:auto minmax(0,1fr)}
+.lp-tscore.lp-tsm{font-size:15px}
+.lp-gstep{min-width:0}
+.lp-gtext{font-size:13.5px;font-weight:700;line-height:18px;height:36px;overflow:hidden;display:-webkit-box;
+  -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.lp-gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--none)}
+/* the perfect-bracelet rainbow, as the boards draw it */
+.rank-rainbow{background-size:400% 100% !important}
+@media (prefers-reduced-motion:no-preference){
+  .rank-rainbow{animation:rank-rainbow-slide 8s linear infinite}
+  @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
+}
+
+/* ---- cards: bracelet beside the stats; astrogems and gold per 1% across the page ---- */
+.lp-cards{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;margin-top:12px}
+.lp-card{display:flex;flex-direction:column;min-width:0}
+.lp-card-ag,.lp-card-gpd{grid-column:1/-1}
+.lp-card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px;margin-bottom:10px}
+.lp-card-ft{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:14px}
+.lp-cta,.lp-cta2{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:8px;font-size:13px;font-weight:700;
+  text-decoration:none;white-space:nowrap}
+.lp-cta{background:var(--accent);color:#06121f}
+.lp-cta:hover{filter:brightness(1.08)}
+.lp-cta2{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.lp-cta2:hover{border-color:var(--accent);color:var(--accent)}
+.lp-cmsg{color:var(--dim);font-size:13px;line-height:1.55;padding:6px 0}
+.lp-cmsg.err{color:var(--bad)}
+.lp-warn{margin-top:8px;color:var(--bad);font-size:12px}
+.lp-src{font-size:11px;color:var(--dim)}
+
+.lp-grade{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid var(--border)}
+.lp-grade.ancient{color:var(--ancient)}
+.lp-grade.relic{color:var(--relic)}
+
+/* effect lines: name · tier · value, one row each */
+.lp-lines{min-height:90px}
+.lp-line{display:grid;grid-template-columns:minmax(0,1fr) auto 112px;column-gap:10px;align-items:center;height:30px;
+  border-bottom:1px solid var(--border);font-size:13px}
+.lp-line:last-child{border-bottom:none}
+.lp-lname{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-lock{font-size:10px;opacity:.7}
+.lp-tier{font-size:11.5px;font-weight:800;letter-spacing:.02em;text-align:right}
+.lp-lval{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-line.unk .lp-lname{color:var(--bad)}
+
+/* label over value pairs */
+.lp-kv{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 14px;margin-top:12px}
+.lp-kv>div,.lp-stat{min-width:0}
+.lp-kv .k,.lp-stat .k,.lp-agsum .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);line-height:14px;font-weight:600}
+.lp-kv .v,.lp-stat .v{display:block;font-size:13.5px;line-height:20px;height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.lp-strong{font-weight:800;color:var(--text)}
+
+/* stats: two to a row beside the bracelet */
+.lp-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+.lp-stat{height:36px}
+
+/* ---- tooltips: the house .gloss + tip.js's #gm-tip ----
+   A glossed pair (label over value) underlines its label only; buttons, links and
+   badges carry their tooltip without the underline. */
+.gloss,[data-gloss]{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
+.lp-kv>[data-gloss],.lp-stat[data-gloss],.lp-agsum .stat[data-gloss],.lp-tile [data-gloss],button[data-gloss],a[data-gloss],
+.lp-badge[data-gloss],.rank-badge[data-gloss],.lp-tchip[data-gloss],.gr-ptab tr[data-gloss],.gr-ptab td[data-gloss]{text-decoration:none}
+.lp-kv>[data-gloss] .k,.lp-stat[data-gloss] .k,.lp-agsum .stat[data-gloss] .k,.gr-ptab th[data-gloss]{
+  text-decoration:underline dotted;text-decoration-color:var(--none);text-underline-offset:3px}
+#gm-tip{position:fixed;z-index:99999;max-width:290px;background:#10131c;border:1px solid var(--border);
+  color:var(--text);font-size:12px;line-height:1.45;padding:7px 10px;border-radius:7px;
+  box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
+#gm-tip.on{opacity:1;visibility:visible}
+
+/* ---- astrogems: the Grader's look ---- */
+.lp-card-ag.axis-dps{--axis:#e18ac0}
+.lp-card-ag.axis-support{--axis:#66c7ff}
+.lp-agsum{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-start;min-height:44px}
+.lp-agsum .stat{display:flex;flex-direction:column;min-width:0}
+.lp-agsum .stat .v{display:flex;align-items:center;gap:6px;height:24px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lp-agsum .stat .v.ax{color:var(--axis,var(--accent))}
+.rank-badge{display:inline-block;padding:2px 9px;border-radius:99px;font-weight:800;line-height:1.4;font-variant-numeric:tabular-nums;font-size:12px}
+.lp-agrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px;margin-top:14px}
+.lp-agbox{border:1px solid var(--border);border-radius:10px;background:var(--panel2);overflow:hidden}
+.lp-tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.gr-ptab{width:100%;border-collapse:collapse;font-size:12px}
+table.gr-ptab th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);font-weight:700;text-align:left;
+  padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;height:28px}
+table.gr-ptab th.r,table.gr-ptab td.r{text-align:right}
+table.gr-ptab td{padding:0 10px;border-bottom:1px solid var(--border);vertical-align:middle;height:30px;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.gr-ptab tr:last-child td{border-bottom:none}
+table.gr-ptab tr.lp-subtot td{background:var(--panel);font-weight:700}
+table.gr-ptab .ax{color:var(--axis,var(--accent));font-weight:700}
+.lp-tiers{display:flex;gap:6px;height:44px;align-items:center;padding:0 10px;border-top:1px solid var(--border);overflow:hidden}
+.lp-tchip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--border);
+  background:var(--panel);font-size:12px;font-weight:600;white-space:nowrap}
+.lp-tchip b{font-size:13px;font-variant-numeric:tabular-nums}
+.lp-tchip.ancient,.lp-gtier.ancient{color:var(--ancient)}
+.lp-tchip.relic,.lp-gtier.relic{color:var(--relic)}
+.lp-tchip.legendary,.lp-gtier.legendary{color:var(--legendary)}
+.lp-gemwrap{margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+table.lp-gemtab{min-width:720px}
+table.lp-gemtab .eff b{color:var(--text);font-weight:600}
+table.lp-gemtab .eff{color:var(--dim)}
+table.lp-gemtab .eff.off,table.lp-gemtab .eff.off b{color:#5e6a83}
+table.gr-ptab .ctype{color:var(--dim);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+table.lp-gemtab .gnum{color:var(--dim);margin-left:6px;font-size:11px}
+.lp-gtier{font-weight:700}
+.lp-gtier .c{color:var(--dim);font-weight:600;margin-left:4px}
+
+/* ---- the GPD card: one row per ladder, cheapest next step first ---- */
+.lp-gpdwrap{border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+table.lp-gpdtab{min-width:600px}
+table.lp-gpdtab td b{font-weight:700}
+.lp-gcut{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+table.lp-gpdtab tr.lp-gbest td{background:rgba(102,199,255,.08)}
+table.lp-gpdtab tr.lp-gbest td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+table.lp-gpdtab tr.lp-goff td{color:#5e6a83}
+table.lp-gpdtab tr.lp-goff .lp-gdot{background:#3a4152 !important}
+.lp-gtag{display:inline-block;margin-right:8px;padding:0 7px;border-radius:99px;background:var(--accent);color:#06121f;
+  font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:16px;vertical-align:1px}
+
+/* ---- the method block (the bracelet tool's) ---- */
+details.method{margin-top:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px 16px}
+details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
+details.method p{font-size:13px;color:var(--text);margin:0 0 10px;max-width:92ch}
+
+/* ---- narrower screens ---- */
+@media (max-width:1099px){
+  .lp-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #lp-tile-gpd{grid-column:1/-1}
+}
+@media (max-width:900px){
+  .lp-agrow{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .wrap{padding:16px 16px 90px}
+  .lp-strip,.lp-cards{grid-template-columns:minmax(0,1fr)}
+  .lp-card-ag,.lp-card-gpd{grid-column:auto}
+  /* header: icon and name on top, actions on a row of their own; still one fixed height */
+  .lp-head{grid-template-columns:48px minmax(0,1fr);grid-template-rows:auto 30px;row-gap:8px;height:auto;min-height:0;padding:12px 14px}
+  .lp-icon{width:48px;height:48px;align-self:start;margin-top:4px}
+  .lp-icon .sk{width:48px;height:48px}
+  .lp-icon img{width:32px;height:32px}
+  .lp-name{font-size:22px;line-height:28px;height:28px}
+  .lp-actions{grid-column:1/-1}
+  .lp-actions .lp-btn{flex:1 1 0}
+  .lp-line{grid-template-columns:minmax(0,1fr) auto 104px}
+  .lp-agsum{gap:10px 18px}
+}
+@media (max-width:420px){
+  .lp-go{padding:0 12px}
+  .lp-region{width:64px}
+  .lp-tbody{column-gap:10px}
+  .lp-badge.big{min-width:48px;height:42px;font-size:19px}
+  .lp-tscore{font-size:19px}
+  .lp-trk{font-size:13.5px}
+  .lp-line{grid-template-columns:minmax(0,1fr) auto 98px;column-gap:8px;font-size:12.5px}
+  .lp-tier{font-size:10.5px}
+  .lp-agsum .stat .v{font-size:14px}
+  table.gr-ptab th,table.gr-ptab td{padding-left:6px;padding-right:6px}
+  table.gr-ptab th{letter-spacing:.02em}
+}

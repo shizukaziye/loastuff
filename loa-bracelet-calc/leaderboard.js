@@ -208,10 +208,45 @@
     return isFinite(t) ? t : null;
   }
 
-  /** The character's page on lostark.bible. EU is CE there, as their URLs have it. */
-  function bibleUrl(region, name) {
-    var r = normRegion(region) === "EU" ? "CE" : (normRegion(region) || "NA");
-    return "https://lostark.bible/character/" + encodeURIComponent(r) + "/" + encodeURIComponent(name || "");
+  /**
+   * The character's loseii profile: /<REGION>/<Name> at the site root, the region
+   * as this row carries it (NA, EU) and the name URL-encoded. _redirects serves
+   * the profile app for /NA/*, /EU/* and /CE/*. The name used to open the
+   * character's lostark.bible page in a new tab.
+   *
+   * Null for a row with no region: "/" + "" + "/Name" would be "//Name", which a
+   * browser reads as a link to a host called Name.
+   */
+  function profileHref(region, name) {
+    var r = String(region || "").trim();
+    if (!r || !name) return null;
+    return "/" + encodeURIComponent(r) + "/" + encodeURIComponent(name);
+  }
+
+  /**
+   * The profile app's own files, fetched into the cache the first time a name is
+   * pointed at or tabbed to, so the click lands on a warm page. These pins must
+   * match the ones the profile page loads.
+   *
+   * THE RECORD IS NOT WARMED. GET /character answers with no Cache-Control, ETag
+   * or Last-Modified, so the browser may not reuse a copy fetched here and the
+   * profile page would fetch it again anyway: a warm-up would only double the
+   * Worker trips. Worth adding if that route ever gains a max-age.
+   */
+  var PROFILE_ASSETS = ["/profile/profile.js?v=3", "/profile/profile.css?v=3"];
+  var profileWarm = false;
+  function warmProfile(e) {
+    if (profileWarm) return;
+    if (!(e.target && e.target.closest && e.target.closest("a.lb-name"))) return;
+    profileWarm = true;
+    var cn = navigator.connection;
+    if (cn && cn.saveData) return;                     // the reader asked for less data
+    for (var i = 0; i < PROFILE_ASSETS.length; i++) {
+      var l = document.createElement("link");
+      l.rel = "prefetch";
+      l.href = PROFILE_ASSETS[i];
+      document.head.appendChild(l);
+    }
   }
 
   /**
@@ -962,13 +997,18 @@
       ? '<span class="lb-warn" data-gloss="' + esc(c._unmapped + " line" + (c._unmapped === 1 ? " uses a stat index" : "s use stat indices") +
           " the model does not map yet, so " + (c._unmapped === 1 ? "it scores" : "they score") + " zero. The real bracelet is worth more than this row says.") + '">&#9888;</span>'
       : '';
+    // The NAME opens the character's profile. stopPropagation keeps that click
+    // from also reaching the row, which loads the bracelet into the Calculator.
+    var href = profileHref(c.region, c.name);
+    var nameAttrs = ' class="lb-name" title="' + esc(c.name || "") + '"';
+    var name = href
+      ? '<a' + nameAttrs + ' href="' + esc(href) + '" onclick="event.stopPropagation()">' + esc(c.name || "—") + '</a>'
+      : '<span' + nameAttrs + '>' + esc(c.name || "—") + '</span>';
     return '<tr data-i="' + i + '">' +
       starCell(c, i) +
       '<td class="lb-rank">#' + rankNum + '</td>' +
       '<td class="lb-ilvl">' + (c.itemLevel ? nf(c.itemLevel) : '<span class="lb-dash">&mdash;</span>') + '</td>' +
-      '<td class="lb-char"><span class="lb-charwrap">' + classIconHtml(c["class"]) +
-        '<a class="lb-name" href="' + bibleUrl(c.region, c.name) + '" target="_blank" rel="noopener"' +
-        ' onclick="event.stopPropagation()" title="' + esc(c.name || "") + '">' + esc(c.name || "—") + '</a>' +
+      '<td class="lb-char"><span class="lb-charwrap">' + classIconHtml(c["class"]) + name +
         '<span class="lb-region">' + esc(c.region || "") + '</span>' + loadoutMarker(c) + warn + '</span></td>' +
       '<td class="lb-gradecell">' + gradeCell(c) + '</td>' +
       '<td class="lb-dmg">' + dmgCell(c) + '</td>' +
@@ -1069,7 +1109,7 @@
       '<div class="lb-tw"><table>' + colGroup() + headRow() +
       '<tbody id="lb-rows">' + rows + '</tbody></table></div>' +
       pagerHtml() +
-      '<div class="lb-hint">Click a row to load that bracelet into the Calculator' +
+      '<div class="lb-hint">Click a name for that character&rsquo;s profile, or anywhere else on the row to load the bracelet into the Calculator' +
       (Favs ? '; tap the &#9733; to pin it above.' : '.') + '</div>';
   }
 
@@ -1544,6 +1584,11 @@
     // A star toggled anywhere — this tab or the Calculator's profile header —
     // repaints the pinned section.
     if (Favs) Favs.onChange(function () { if (allChars.length) repaint(); });
+
+    // Pointing at a name, or tabbing to one, warms the profile page (warmProfile).
+    // Delegated, because every repaint replaces the rows.
+    el.addEventListener("mouseover", warmProfile);
+    el.addEventListener("focusin", warmProfile);
 
     document.addEventListener("tabselected", function (e) {
       if (e && e.detail && e.detail.tab === "leaderboard" && !loadedOnce) load(false);

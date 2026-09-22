@@ -1,2 +1,52 @@
 /astrogem-calculator/* /loa-astrogem-calc/:splat 301
 /astrogem-calculator /loa-astrogem-calc/ 301
+
+# Tool tabs as real URLs (Shizu, 2026-09-22). Each tab path serves its tool's one
+# page, which picks the tab out of the address. The target is the FOLDER, not
+# index.html: Pages strips "index.html" with a 308, so a rewrite to it answers
+# with a redirect to the bare folder and the tab is lost. No trailing slash on
+# the source, so the page's relative asset paths still resolve inside the tool.
+/loa-bracelet-calc/calculator /loa-bracelet-calc/ 200
+/loa-bracelet-calc/advisor /loa-bracelet-calc/ 200
+/loa-bracelet-calc/tier-list /loa-bracelet-calc/ 200
+/loa-bracelet-calc/leaderboard /loa-bracelet-calc/ 200
+/loa-bracelet-calc/method /loa-bracelet-calc/ 200
+/loa-bracelet-calc/feedback /loa-bracelet-calc/ 200
+/loa-astrogem-calc/grader /loa-astrogem-calc/ 200
+/loa-astrogem-calc/pipeline /loa-astrogem-calc/ 200
+/loa-astrogem-calc/advisor /loa-astrogem-calc/ 200
+/loa-astrogem-calc/leaderboard /loa-astrogem-calc/ 200
+/loa-astrogem-calc/feedback /loa-astrogem-calc/ 200
+
+# The same slugs typed with a trailing slash. Served as they are, the tool's
+# relative asset paths would resolve one folder too deep, so they move to the
+# exact address instead. Unknown slugs are left alone.
+/loa-bracelet-calc/calculator/ /loa-bracelet-calc/calculator 301
+/loa-bracelet-calc/advisor/ /loa-bracelet-calc/advisor 301
+/loa-bracelet-calc/tier-list/ /loa-bracelet-calc/tier-list 301
+/loa-bracelet-calc/leaderboard/ /loa-bracelet-calc/leaderboard 301
+/loa-bracelet-calc/method/ /loa-bracelet-calc/method 301
+/loa-bracelet-calc/feedback/ /loa-bracelet-calc/feedback 301
+/loa-astrogem-calc/grader/ /loa-astrogem-calc/grader 301
+/loa-astrogem-calc/pipeline/ /loa-astrogem-calc/pipeline 301
+/loa-astrogem-calc/advisor/ /loa-astrogem-calc/advisor 301
+/loa-astrogem-calc/leaderboard/ /loa-astrogem-calc/leaderboard 301
+/loa-astrogem-calc/feedback/ /loa-astrogem-calc/feedback 301
+
+# Character profiles live at /<REGION>/<Name> with no prefix (Shizu, 2026-09-22).
+# One static app under /profile/ serves every name and reads the region and name
+# back out of the address; its assets use absolute /profile/ paths for that
+# reason. Same folder-not-index.html rule as above: /profile/index.html would
+# loop through the 308.
+#   NA and CE are the only codes the bracelet-bible worker accepts
+#   (worker/bracelet.js validateNameRegion: "region must be NA or CE") and the only
+#   ones on its board (leaderboard-seed.json slot 0). EU is what every loseii page
+#   calls CE, so it routes too, and it is the spelling the app settles on.
+/NA/* /profile/ 200
+/EU/* /profile/ 200
+/CE/* /profile/ 200
+# Rule matching is case-sensitive, and a typed address is often lower case. The
+# app rewrites these (and CE) to the canonical /NA/Name or /EU/Name in place.
+/na/* /profile/ 200
+/eu/* /profile/ 200
+/ce/* /profile/ 200
