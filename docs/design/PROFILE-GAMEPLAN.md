@@ -84,6 +84,15 @@ gains the same parameter in Phase 1).
 `rawStats`/`profile`: item level, main stat, weapon power, attack power,
 crit/spec/swift, gems, karma. The "Import Character Stats" facts, visible.
 
+**Added after the first preview (Shizu, 2026-09-22):** a **GPD card** — the
+GPD chart's character lookup, on the profile: every system's current rung and
+its next step's gold per 1%, cheapest first, on the role's axis, with a third
+rank-strip tile ("Cheapest next 1%") and *Open in GPD chart* (`/loa-gpd/?c=`);
+the **astrogem card becomes a full section** — a per-gem table (core, order or
+chaos, willpower, effects with levels, grade, value) with a per-core summary,
+scored with the astrogem model, mirroring the grader's table; and **tooltips
+on every figure**: the figure states, the hover explains.
+
 **Not in v1** (v2 list): roster — the record holds none; history over time —
 needs per-pull snapshots in KV; compare two characters; per-character Discord
 embeds (needs a server render, see Phase 3).

@@ -21,22 +21,12 @@
 <script type="speculationrules">
 {
   "prerender": [{
+    "source": "document",
     "where": { "and": [
-      { "or": [
-        { "href_matches": "/" },
-        { "href_matches": "/profile/" },
-        { "href_matches": "/loa-bracelet-calc/*" },
-        { "href_matches": "/loa-astrogem-calc/*" },
-        { "href_matches": "/NA/*" },
-        { "href_matches": "/EU/*" },
-        { "href_matches": "/CE/*" }
-      ] },
-      { "not": { "href_matches": "/*.js" } },
-      { "not": { "href_matches": "/*.css" } },
-      { "not": { "href_matches": "/*.json" } },
-      { "not": { "href_matches": "/*.png" } },
-      { "not": { "href_matches": "/*.svg" } }
-    ] },
+      { "href_matches": ["/", "/profile/", "/loa-bracelet-calc/*", "/loa-astrogem-calc/*", "/loa-gpd/*", "/NA/*", "/EU/*", "/CE/*"] },
+      { "not": { "href_matches": ["/*.js", "/*.css", "/*.json", "/*.png", "/*.svg", "/*.zip", "/*.md"] } },
+      { "not": { "selector_matches": "[download], [target=_blank]" } }
+    ]},
     "eagerness": "moderate"
   }]
 }

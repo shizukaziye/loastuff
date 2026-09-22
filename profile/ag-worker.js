@@ -1,28 +1,29 @@
 /**
  * ag-worker.js — the profile page's astrogem arithmetic, off the main thread.
  *
- * Every number comes from the astrogem calculator's own model,
- * loa-astrogem-calc/model/astrogem.js, imported below at the pin that tool's
- * index.html uses. Nothing here re-derives a formula; the functions that turn a
- * gem list into a board row are copied from loa-astrogem-calc/leaderboard.js
- * line for line (validGemsOf, valueToGrade, the two axes, the board filters and
- * the sort), because a rank that disagreed with the board would be worse than
- * none.
+ * Every number comes from the astrogem calculator's own files, imported below
+ * at the pins its index.html uses: model/astrogem.js (the scoring) and
+ * loadout-econ.js (the grader's default DPS/Support axis). Nothing here
+ * re-derives a formula. What is written out here is only which model calls to
+ * make, copied from the two pages that make them:
  *
- * TWO JOBS
- *   score  one character's gems -> quality (the board's "Quality" 0-110), its
- *          letter, the grid's total damage, on both axes; plus how many gems
- *          sit at each in-game grade (Legendary / Relic / Ancient, from
- *          classifyTier(levelSum)).
- *   rank   where that character sits on the astrogem board of its region.
+ *   loa-astrogem-calc/leaderboard.js  validGemsOf, valueToGrade, the board's two
+ *       axes, its filters and its sort -> the board quality and the board rank.
+ *   loa-astrogem-calc/grader.js  gGrade / gRank / gRel and the core grouping ->
+ *       each gem's grade, letter and % damage, the per-core figures, the plain
+ *       average grade and the "Total % dmg" (gridDamage) the grader shows.
+ *
+ * THE GRID BREAKDOWN is the model's own gridDamage called on the same gems with
+ * everything but one part set to zero: one effect family's levels, or every
+ * core's points. The model adds those parts up in its total (a sum of
+ * 100·ln terms), so the parts sum to the total exactly, and no formula is copied.
  *
  * WHY A WORKER. The board is the ?list=1&fmt=2 snapshot: ~2.5 MB gzipped, 12 MB
  * of JSON, ~24,000 characters, all of which have to be scored to know one rank.
- * Parsing and scoring it costs ~0.3 s of CPU, which would freeze the page. It is
- * reduced here to a per-region INDEX — each board's names in board order and
- * each board's sort key — and the index is kept for 30 minutes in memory and in
- * the Cache API, since the board itself rebuilds at most every 30 minutes. A
- * second profile inside that window pays nothing.
+ * That costs ~0.3 s of CPU, which would freeze the page. It is reduced here to a
+ * per-region INDEX (each board's names in board order and each board's sort
+ * key), kept 30 minutes in memory and in the Cache API; the board itself
+ * rebuilds at most every 30 minutes.
  *
  * Messages in:  {id, type:"score", gems, cls}
  *               {id, type:"rank", region, name, cls, cur:{dmg,pdmg,supportMain}, maxAgeMs, offline}
@@ -34,9 +35,10 @@
  */
 "use strict";
 
-importScripts("/loa-astrogem-calc/model/astrogem.js?v=62");
+importScripts("/loa-astrogem-calc/model/astrogem.js?v=62", "/loa-astrogem-calc/loadout-econ.js?v=8");
 
 var A = self.Astrogem;
+var ECON = self.LoadoutEcon || null;
 var LIST_URL = "https://astrogem-bible.shizukaziye.workers.dev/?list=1&fmt=2";
 var CACHE_NAME = "loseii-profile-v1";
 var INDEX_TTL_MS = 30 * 60 * 1000;
@@ -86,32 +88,163 @@ function axes(valid, wantSupport) {
   return out;
 }
 
-// ---- job 1: one character ---------------------------------------------------
+// ---- copied from loa-astrogem-calc/grader.js --------------------------------
 
-function coreKey(g) {
-  if (g.coreBase != null) return g.coreBase;
-  return g.slot != null ? g.slot : 0;
+/** grader.js gGrade / gRank on one axis. */
+function gemGrade(cfg, axis) { return axis === "support" && A.supportGrade ? A.supportGrade(cfg) : A.grade(cfg); }
+function gemLetter(cfg, axis) { return axis === "support" && A.supportRank ? A.supportRank(cfg) : A.gemRank(cfg); }
+function avgLetter(g, axis) { return axis === "support" ? supRank(g) : A.rankFromGrade(g); }
+/**
+ * grader.js gRel: a gem's % damage ABOVE the neutral baseline gem (order 4.25,
+ * no effects). DPS: gemDamage minus orderScore(4.25). Support: supportDamage at
+ * the gem's own core's order value, minus 4.25 points of it.
+ */
+function gemRel(cfg, axis) {
+  if (axis === "support") {
+    var ov = A.supportOrderValueForCore ? A.supportOrderValueForCore(A.coreKeyOf ? A.coreKeyOf(cfg) : cfg.coreBase) : null;
+    if (A.supportDamage && ov != null) return A.supportDamage(cfg, ov) - 4.25 * ov;
+    return A.supportRelValue(cfg);
+  }
+  if (A.gemDamage && A.orderScore) return A.gemDamage(cfg) - A.orderScore(4.25);
+  return A.relDamage(cfg);
 }
+/** grader.js offRole: an effect this axis scores at zero while the other axis does not. */
+function offRole(name, axis) {
+  var sup = A.supportEffectScore(name, 1) > 0, dps = A.effectScore(name, 1) > 0;
+  return axis === "support" ? (dps && !sup) : sup;
+}
+/** grader.js gemsByCoreHtml: cores keyed by slot, typed by the majority of their gems. */
+function coreKey(g) { return g.slot || ("Core " + (g.coreBase || "?")); }
+function coreTypeOf(list) {
+  var o = 0, c = 0;
+  list.forEach(function (x) { if (x.gemType === "order") o++; else if (x.gemType === "chaos") c++; });
+  if (o === c) return /chaos/i.test(list[0] && list[0].slot || "") ? "chaos" : "order";
+  return o >= c ? "order" : "chaos";
+}
+/** The grader's default axis for a loadout: support iff a support class with support-heavy gems. */
+function defaultAxis(gems, cls) {
+  if (!(A.supportGrade) || !ECON || !ECON.defaultModeFor) return "dps";
+  return ECON.defaultModeFor({ "class": cls, gems: gems }) === "support" ? "support" : "dps";
+}
+
+// ---- the grid breakdown ------------------------------------------------------
+
+/** The same gems with every effect level but `keep`'s set to zero, and the order points kept or zeroed. */
+function only(gems, keep, keepOrder) {
+  return gems.map(function (g) {
+    return {
+      slot: g.slot, coreBase: g.coreBase, baseCost: g.baseCost, gemType: g.gemType,
+      willpowerLevel: g.willpowerLevel, orderLevel: keepOrder ? g.orderLevel : 0,
+      effect1: g.effect1, effect1Level: (keep && g.effect1 === keep) ? g.effect1Level : 0,
+      effect2: g.effect2, effect2Level: (keep && g.effect2 === keep) ? g.effect2Level : 0
+    };
+  });
+}
+var DPS_FAMILIES = ["Attack Power", "Additional Damage", "Boss Damage"];
+var SUP_FAMILIES = ["Ally Attack Enh.", "Ally Damage Enh.", "Brand Power"];
+
+/** Where each letter starts on an axis, read off the model's own letter function. */
+var LADDERS = {};
+function ladder(axis) {
+  if (LADDERS[axis]) return LADDERS[axis];
+  var fn = axis === "support" ? supRank : A.rankFromGrade, out = [], prev = null;
+  for (var t = 0; t <= 1100; t++) {
+    var g = t / 10, k = fn(g);
+    if (k !== prev) { out.push([k, g]); prev = k; }
+  }
+  return (LADDERS[axis] = out.reverse());   // best first
+}
+
+// ---- job 1: one character ---------------------------------------------------
 
 function scoreOne(gems, cls) {
   gems = Array.isArray(gems) ? gems : [];
   var valid = validGemsOf(gems);
-  var tiers = { legendary: 0, relic: 0, ancient: 0 }, cores = {}, nCores = 0, order = 0, chaos = 0;
-  for (var i = 0; i < gems.length; i++) {
+  var tiers = { legendary: 0, relic: 0, ancient: 0 }, seenCores = {}, nCores = 0, order = 0, chaos = 0, i;
+  for (i = 0; i < gems.length; i++) {
     var g = gems[i];
     tiers[A.classifyTier(A.levelSum(g))]++;
-    var k = coreKey(g);
-    if (!cores[k]) { cores[k] = 1; nCores++; }
+    var k = A.coreKeyOf ? A.coreKeyOf(g) : (g.coreBase || g.slot);
+    if (!seenCores[k]) { seenCores[k] = 1; nCores++; }
     if (g.gemType === "chaos") chaos++; else order++;
   }
   var res = { gems: gems.length, valid: valid.length, tiers: tiers, cores: nCores, order: order, chaos: chaos,
-    dps: null, sup: null, supportClass: !!SUPPORT_CLASSES[cls], supportMain: false };
+    dps: null, sup: null, supportClass: !!SUPPORT_CLASSES[cls], supportMain: false,
+    axis: defaultAxis(gems, cls), table: null,
+    tierBounds: A.TIER_BOUNDS, ladders: { dps: ladder("dps"), support: ladder("support") } };
   if (!valid.length) return res;
+
+  // the board's quality, on both axes
   var ax = axes(valid, true);
   var dCol = A.gradeColor(ax.avg), sCol = A.gradeColor(ax.savg);
   res.dps = { quality: ax.avg, letter: A.rankFromGrade(ax.avg), dmg: ax.dmg, bg: dCol.bg, fg: dCol.fg };
   res.sup = { quality: ax.savg, letter: supRank(ax.savg), dmg: ax.pdmg, bg: sCol.bg, fg: sCol.fg };
   res.supportMain = !!(SUPPORT_CLASSES[cls] && isSupportMain({ avg: ax.avg, savg: ax.savg }));
+
+  // the grader's view, on the grader's default axis
+  var axis = res.axis, rows = [], sumGrade = 0;
+  for (i = 0; i < gems.length; i++) {
+    var c = gems[i], v = A.validateConfig(c);
+    var row = {
+      core: coreKey(c), type: c.gemType === "chaos" ? "chaos" : "order",
+      cost: c.baseCost, wp: c.willpowerLevel, pts: c.orderLevel,
+      e1: c.effect1, l1: c.effect1Level, e2: c.effect2, l2: c.effect2Level,
+      off1: offRole(c.effect1, axis), off2: offRole(c.effect2, axis),
+      sum: A.levelSum(c), tier: A.classifyTier(A.levelSum(c)),
+      valid: !!v.valid, err: v.valid ? null : (v.error || "invalid")
+    };
+    if (v.valid) {
+      var gg = gemGrade(c, axis), perfect = !!(A.isPerfectConfig && A.isPerfectConfig(c, axis));
+      var col = A.gradeColor(gg, perfect);
+      row.grade = gg; row.rank = gemLetter(c, axis); row.bg = col.bg; row.fg = col.fg; row.cls = col.cls || "";
+      row.perfect = perfect; row.rel = gemRel(c, axis);
+      sumGrade += gg;
+    }
+    rows.push(row);
+  }
+  // best first: grade, then % damage; unreadable gems last
+  rows.sort(function (x, y) {
+    if (x.valid !== y.valid) return x.valid ? -1 : 1;
+    if (!x.valid) return 0;
+    return (y.grade - x.grade) || (y.rel - x.rel);
+  });
+
+  // per core, in the grader's order: grouped by slot, order cores then chaos cores
+  var groups = {}, keys = [];
+  gems.forEach(function (x) { var key = coreKey(x); if (!groups[key]) { groups[key] = []; keys.push(key); } groups[key].push(x); });
+  var cores = [], sections = { order: null, chaos: null };
+  ["order", "chaos"].forEach(function (type) {
+    var sec = { cores: 0, gems: 0, pts: 0, orderDmg: 0, rel: 0 };
+    keys.forEach(function (key) {
+      var list = groups[key];
+      if (coreTypeOf(list) !== type) return;
+      var ok = validGemsOf(list), pts = 0, rel = 0;
+      ok.forEach(function (x) { pts += x.orderLevel || 0; rel += gemRel(x, axis); });
+      var od = ok.length ? A.gridDamage(only(ok, null, true), axis) : 0;
+      cores.push({ key: key, type: type, gems: list.length, pts: pts, orderDmg: od, rel: rel });
+      sec.cores++; sec.gems += list.length; sec.pts += pts; sec.orderDmg += od; sec.rel += rel;
+    });
+    if (sec.cores) sections[type] = sec;
+  });
+
+  // the grid total and its parts
+  var fams = axis === "support" ? SUP_FAMILIES : DPS_FAMILIES, parts = [], allPts = 0;
+  fams.forEach(function (f) {
+    var lv = 0;
+    valid.forEach(function (x) {
+      if (x.effect1 === f) lv += x.effect1Level || 0;
+      if (x.effect2 === f) lv += x.effect2Level || 0;
+    });
+    parts.push({ name: f, levels: lv, dmg: A.gridDamage(only(valid, f, false), axis) });
+  });
+  valid.forEach(function (x) { allPts += x.orderLevel || 0; });
+  var coresDmg = A.gridDamage(only(valid, null, true), axis);
+  var avg = sumGrade / valid.length, avgCol = A.gradeColor(avg);
+  res.table = {
+    axis: axis, rows: rows, cores: cores, sections: sections,
+    parts: parts, coresDmg: coresDmg, corePoints: allPts, total: A.gridDamage(valid, axis),
+    avgGrade: avg, avgRank: avgLetter(avg, axis), avgBg: avgCol.bg, avgFg: avgCol.fg
+  };
   return res;
 }
 
@@ -120,7 +253,7 @@ function scoreOne(gems, cls) {
 /**
  * The snapshot -> {NA:index, EU:index}. The board's own order of operations:
  * decode every row, score both axes, then per board filter and sort. The sort
- * is Array.prototype.sort, stable, over rows in payload order — the board's
+ * is Array.prototype.sort, stable, over rows in payload order: the board's
  * exact tie-break (the snapshot holds ~250 exact ties per region).
  */
 function buildIndexes(data, fetchedAt) {

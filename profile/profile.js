@@ -61,7 +61,7 @@
 
   var BR_API = "https://bracelet-bible.shizukaziye.workers.dev";
   var AG_API = "https://astrogem-bible.shizukaziye.workers.dev";
-  var AG_WORKER = "/profile/ag-worker.js?v=1";
+  var AG_WORKER = "/profile/ag-worker.js?v=2";
   // The bracelet calculator's own model, for a character the board does not hold
   // yet. subrank.js is loaded again AFTER the model: it captures window.Bracelet
   // when it runs, and the copy index.html loaded ran before the model existed.
@@ -84,7 +84,7 @@
   var K_FAVS = "bc_favs";                     // the bracelet tool's favourites, same shape
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 1;
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 2;
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -627,6 +627,59 @@
     };
   }
 
+  // ------------------------------------------------------------------ tooltip text
+  // House rule (loa-bracelet-calc/docs/design/copy-rules.md): the figure states,
+  // the tooltip explains, in one or two plain sentences. Every sentence below is
+  // built from the same data the figure comes from, so it cannot drift from it.
+
+  /** ' data-gloss="…"' for an element, or nothing for an empty text. */
+  function gl(text) { return text ? ' data-gloss="' + esc(text) + '"' : ""; }
+  function setGloss(id, text) {
+    var el = $(id);
+    if (!el) return;
+    if (text) el.setAttribute("data-gloss", text); else el.removeAttribute("data-gloss");
+  }
+  function trimNum(x) { return String(Math.round(x * 10) / 10); }
+  /** Where a ladder's letters start, best first: "S+ from 100.1, S from 95, A from 80, … F below 30". */
+  // The main cuts, plus the letter the reader holds, so its own band is named.
+  function ladderWords(cuts, letter) {
+    var show = { "S+": 1, "S": 1, "A": 1, "B": 1, "C": 1, "D": 1 }, parts = [], dLow = null;
+    if (letter && letter.charAt(0) !== "F") show[letter] = 1;   // F's band is the "F below" clause
+    (cuts || []).forEach(function (c) {
+      if (show[c[0]]) parts.push(c[0] + " from " + trimNum(c[1]));
+      if (c[0] === "D-") dLow = c[1];
+    });
+    if (dLow != null) parts.push("F below " + trimNum(dLow));
+    return parts.join(", ");
+  }
+  /** The bracelet board's cuts for a role, read from subrank.js. */
+  function brCuts(axis) {
+    var SR = window.Subrank;
+    if (!SR || !SR.bandsFor) return [];
+    return SR.bandsFor(axis === "support" ? "support" : "dps")
+      .filter(function (b) { return isFinite(b.min); })
+      .map(function (b) { return [b.key, b.min]; });
+  }
+  /** A combat trait's roll band on this grade, from the official table. */
+  function traitBand(grade) {
+    var D = window.BraceletData, b = D && D.TRAITS && D.TRAITS.bands, g = grade === "relic" ? "relic" : "ancient";
+    if (!b || !b.length) return null;
+    return [b[0][g][0], b[b.length - 1][g][1]];
+  }
+  /** "2 or 3": how many rerollable lines this grade grants, from the official table. */
+  function grantedWords(grade) {
+    var D = window.BraceletData, c = D && D.LINE_COUNTS && D.LINE_COUNTS.granted && D.LINE_COUNTS.granted[grade === "relic" ? "relic" : "ancient"];
+    return c ? Object.keys(c).join(" or ") : "";
+  }
+  /** A family's label with its placeholders filled: "Crit Rate +4.2%; on crit, damage +1.5%". */
+  function fillLabel(label, vals) {
+    return String(label).replace(/([+−-]?)\s*\b([AXB])(%|s)?(?=[\s;,)]|$)/g, function (m, sign, letter, unit) {
+      var v = vals[letter === "B" ? 1 : 0];
+      if (v == null) return m;
+      return (/^\s/.test(m) ? " " : "") + (sign || "") + commas(String(v)) + (unit || "");
+    });
+  }
+
   // ------------------------------------------------------------------ bracelet: parts
 
   /** "Crit Damage +X%" -> "Crit Damage"; the numbers go in their own column. */
@@ -654,15 +707,29 @@
   function lineView(line, grade) {
     var D = window.BraceletData;
     if (line.cat === "basic") {
-      return { name: line.family === "mainStat" ? "Str / Dex / Int" : "Vitality", value: "+" + nf(line.value), fixed: !!line.fixed };
+      var ms = line.family === "mainStat";
+      return { name: ms ? "Str / Dex / Int" : "Vitality", value: "+" + nf(line.value), fixed: !!line.fixed,
+        full: ms ? "A main-stat line: real damage, but a small share of what an effect line gives." :
+          "A vitality line. The model scores it at zero damage.",
+        valueGloss: "+" + nf(line.value) + (ms ? " strength, dexterity or intelligence." : " vitality.") };
     }
     if (line.cat === "trait") {
-      return { name: (TRAIT_LABEL[line.family] || "Combat trait") + " (trait line)", value: "+" + nf(line.value), fixed: !!line.fixed };
+      return { name: (TRAIT_LABEL[line.family] || "Combat trait") + " (trait line)", value: "+" + nf(line.value), fixed: !!line.fixed,
+        full: "A combat trait in a rerollable slot. The model scores it at zero: only the two traits the bracelet came with count.",
+        valueGloss: "+" + nf(line.value) + " " + (TRAIT_LABEL[line.family] || "trait") + " points, scored at zero." };
     }
     var fam = (D && D.SPECIAL_BY_ID) ? (D.SPECIAL_BY_ID[line.family] || D.SPECIAL_BY_KEY[line.family]) : null;
-    if (!fam) return { name: "Unmapped effect", value: "", unk: true, fixed: !!line.fixed };
-    var vals = (fam.values[grade] && fam.values[grade][line.tier]) || [];
-    return { name: famName(fam.label), full: fam.label, tier: line.tier, value: famValues(fam.label, vals), fixed: !!line.fixed };
+    if (!fam) return { name: "Unmapped effect", value: "", unk: true, fixed: !!line.fixed,
+      full: "This line uses a stat index the model does not map yet, so it scores zero." };
+    var byTier = fam.values[grade] || {}, vals = byTier[line.tier] || [];
+    var steps = TIERS.map(function (t) { return TIER_WORD[t] + " " + famValues(fam.label, byTier[t] || []); }).join(", ");
+    return {
+      name: famName(fam.label), full: fam.label + ".", tier: line.tier, fixed: !!line.fixed,
+      value: famValues(fam.label, vals),
+      tierGloss: "The rarity this line rolled at. On " + (grade === "relic" ? "a Relic" : "an Ancient") +
+        " bracelet this family gives " + steps + ".",
+      valueGloss: fillLabel(fam.label, vals) + "."
+    };
   }
 
   /** Which loadout the board ranks, in words, plus the record's loadout for its roll counts. */
@@ -672,9 +739,10 @@
       return { label: lo.items[lo.best].label,
         note: lo.distinct + " different bracelets across " + lo.items.length + " loadouts; the board ranks the best one." };
     }
-    if (los.length >= 2) return { label: "All loadouts", note: "Every lostark.bible loadout wears this bracelet." };
-    if (los.length === 1) return { label: los[0].label || loadoutLabel(los[0].classification), note: "" };
-    return { label: "—", note: "" };
+    if (los.length >= 2) return { label: "All loadouts", note: "Every lostark.bible loadout on the record wears this bracelet." };
+    if (los.length === 1) return { label: los[0].label || loadoutLabel(los[0].classification),
+      note: "The only lostark.bible loadout on the record." };
+    return { label: "—", note: "The record names no loadout." };
   }
   function rollsOf(rec, label) {
     if (!rec) return null;
@@ -688,12 +756,19 @@
     var axis = x.role === "support" ? "support" : "dps";
     var reading = axis === "support" ? x.sup : x.dps;
     var lo = loadoutInfo(x.lo, rec);
+    var band = traitBand(x.grade), aGrade = x.grade === "relic" ? "a Relic" : "an Ancient";
+    var traits = x.traits.map(function (t) {
+      return { label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
+    });
     return {
       st: "ok", onBoard: onBoard, grade: x.grade, axis: axis, pct: reading ? reading.pct : null,
       lines: x.lines.map(function (l) { return lineView(l, x.grade); }),
-      traits: x.traits.map(function (t) {
-        return { label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
-      }),
+      traits: traits,
+      traitsGloss: traits.length ? traits.map(function (t) { return t.label + " " + nf(t.value); }).join(" and ") +
+        ": the combat traits the bracelet came with." +
+        (band ? " On " + aGrade + " bracelet each rolls " + band[0] + " to " + band[1] + ", and higher is better." : "") : "",
+      gradeGloss: "The bracelet's grade. " + (x.grade === "relic" ? "A Relic" : "An Ancient") + " bracelet rolls combat traits from " +
+        (band ? band[0] + " to " + band[1] : "its band") + " and grants " + grantedWords(x.grade) + " lines to reroll.",
       unmapped: x.unmapped || 0, loadout: lo.label, loadoutNote: lo.note, rolls: rollsOf(rec, lo.label)
     };
   }
@@ -772,17 +847,27 @@
     var lo = raidLoadout(rec), pr = (lo && lo.profile) || rec.profile;
     if (!pr) return { st: "none", msg: "This record carries no character stats. Update pulls them." };
     var raw = pr.raw || {}, rows = [], k;
-    function row(label, value, gloss) { rows.push([label, value == null || value === "" ? "—" : value, gloss || ""]); }
+    var loName = lo ? (lo.label || loadoutLabel(lo.classification)) : "chosen";
+    var missing = "lostark.bible did not report this for the loadout.";
+    function row(label, value, gloss) {
+      var none = value == null || value === "";
+      rows.push([label, none ? "—" : value, none ? missing : gloss]);
+    }
 
     var ilvl = isNum(pr.itemLevel) ? pr.itemLevel : rec.itemLevel;
-    row("Item level", isNum(ilvl) ? nf(Math.floor(ilvl * 100) / 100, 2) : null);
+    row("Item level", isNum(ilvl) ? nf(Math.floor(ilvl * 100) / 100, 2) : null,
+      "Item level of the " + loName + " loadout on lostark.bible.");
     row("Combat power", isNum(pr.combatPower) ? nf(pr.combatPower, 2) : null,
-      raw.combatPowerSource ? "As lostark.bible reports it (" + raw.combatPowerSource.replace(/([A-Z])/g, " $1").toLowerCase() + ")." : "");
+      "lostark.bible's combat power for this loadout" +
+      (raw.combatPowerSource ? " (its " + raw.combatPowerSource.replace(/([A-Z])/g, " $1").toLowerCase() + ")." : "."));
     row("Main stat", isNum(raw.mainStatTotal) ? nf(raw.mainStatTotal) : null,
-      isNum(pr.accessoryMainStat) ? "The five accessories carry " + nf(pr.accessoryMainStat) + " of it." : "");
-    row("Weapon power", isNum(raw.weaponPowerTotal) ? nf(raw.weaponPowerTotal) : null);
+      "Strength, dexterity or intelligence in total." +
+      (isNum(pr.accessoryMainStat) ? " The five accessories carry " + nf(pr.accessoryMainStat) + " of it." : ""));
+    row("Weapon power", isNum(raw.weaponPowerTotal) ? nf(raw.weaponPowerTotal) : null,
+      "Total weapon power, as lostark.bible reports it for this loadout.");
     row("Base attack power", isNum(raw.baseAttackPower) ? nf(raw.baseAttackPower) : null,
-      isNum(pr.apPct) ? "Gems and the ability stone add " + fx(pr.apPct, 1) + "% attack power on top." : "");
+      "Attack power before the gem and stone bonus." +
+      (isNum(pr.apPct) ? " Gems and the ability stone add " + fx(pr.apPct, 1) + "% on top." : ""));
 
     var gemTxt = null, gemGloss = "";
     if (Array.isArray(pr.gemLevels) && pr.gemLevels.length) {
@@ -791,14 +876,17 @@
       var parts = [];
       Object.keys(byLv).sort(function (a, b) { return b - a; }).forEach(function (lv) { parts.push(byLv[lv] + " × lv" + lv); });
       gemTxt = parts.join(", ");
-      gemGloss = isNum(pr.apPct) ? "Attack power from gems and stone: +" + fx(pr.apPct, 1) + "%." : "";
+      gemGloss = "Skill gem levels. With the ability stone they add " + (isNum(pr.apPct) ? fx(pr.apPct, 1) + "%" : "their share of") +
+        " attack power; higher levels add more.";
     } else if (raw.gemsAssumed) {
       gemTxt = "not readable";
-      gemGloss = "The page carries no readable gems; the calculator assumes " + raw.gemsAssumed + ".";
+      gemGloss = "The page carries no readable gems, so the calculator assumes " + raw.gemsAssumed + ".";
     }
     row("Gems", gemTxt, gemGloss);
     row("Ability stone", Array.isArray(raw.stoneNodes) && raw.stoneNodes.length ? raw.stoneNodes.join(" / ") : null,
-      pr.stone97 != null ? (pr.stone97 ? "Its engraving levels total 5 or more: +1.5% attack power." : "Its engraving levels fall short of 5.") : "");
+      "The stone's engraving nodes, highest first, the malus included." +
+      (pr.stone97 != null ? (pr.stone97 ? " The two combat engravings total 5 or more, which adds 1.5% attack power." :
+        " The two combat engravings total less than 5, so the stone adds no attack power.") : ""));
 
     var km = raw.karma || {};
     row("Karma", km.evolution != null ? [km.evolution, km.enlightenment, km.leap].join(" / ") : null,
@@ -807,7 +895,7 @@
     var ap = pr.apPoints || {};
     row("Ark passive", ap.evolution != null ? [ap.evolution, ap.enlightenment, ap.leap].join(" / ") : null,
       ap.evolution != null ? "Evolution " + ap.evolution + " · Enlightenment " + ap.enlightenment + " · Leap " + ap.leap +
-        " points." + (pr.master != null ? (pr.master ? " Master node on." : " No Master node.") : "") : "");
+        " points." + (pr.master != null ? (pr.master ? " The Master node is on." : " No Master node.") : "") : "");
 
     var hon = pr.honing || {}, pieces = ["weapon", "head", "shoulder", "chest", "pants", "gloves"], armor = [];
     for (k = 1; k < pieces.length; k++) if (isNum(hon[pieces[k]])) armor.push(hon[pieces[k]]);
@@ -822,7 +910,7 @@
     pieces.forEach(function (p) {
       if (isNum(hon[p])) honGloss.push(p.charAt(0).toUpperCase() + p.slice(1) + " +" + hon[p] + (isNum(adv[p]) ? " (advanced " + adv[p] + ")" : ""));
     });
-    row("Honing", honTxt, honGloss.join(" · "));
+    row("Honing", honTxt, "Weapon / armour honing. " + honGloss.join(" · ") + ".");
 
     var acc = [];
     if (isNum(pr.neckAddDmg)) acc.push("+" + pr.neckAddDmg + "%");
@@ -836,9 +924,10 @@
 
     var cores = raw.arkGridCores;
     row("Ark grid", Array.isArray(cores) && cores.length ? cores.length + " cores" : null,
-      Array.isArray(cores) && cores.length ? "Core points: " + cores.map(function (c) { return c.points; }).join(", ") + "." : "");
+      Array.isArray(cores) && cores.length ? "The Ark Grid's cores and each one's points: " +
+        cores.map(function (c) { return c.points; }).join(", ") + ". The astrogem section below grades their gems." : "");
 
-    return { st: "ok", loadout: lo ? (lo.label || loadoutLabel(lo.classification)) : "", rows: rows };
+    return { st: "ok", loadout: lo ? loName : "", rows: rows };
   }
 
   // ------------------------------------------------------------------ astrogem worker
@@ -875,20 +964,19 @@
     });
   }
   /** A support class sits on the board whose letter is better; the DPS one on a tie. */
-  function agAxis(res) {
-    if (!res.supportClass || !res.sup) return "dps";
-    if (res.supportMain) return "support";
-    return AG_ORD[res.sup.letter] > AG_ORD[res.dps.letter] ? "support" : "dps";
-  }
+  function agAxis(res) { return res.axis === "support" ? "support" : "dps"; }
   function agPart(res, rec) {
     if (!res.gems) return { st: "none", msg: "No astrogems on this character." };
     if (!res.valid) return { st: "none", msg: "None of the " + res.gems + " gems could be read." };
+    // The axis the Grader opens this character on (LoadoutEcon.defaultModeFor):
+    // Support for a support class whose gems carry mostly support effects.
     var axis = agAxis(res), a = axis === "support" ? res.sup : res.dps;
     return {
       st: "ok", axis: axis, quality: a.quality, letter: a.letter, bg: a.bg, fg: a.fg, dmg: a.dmg,
       gems: res.gems, valid: res.valid, cores: res.cores, order: res.order, chaos: res.chaos, tiers: res.tiers,
       pulledAt: isNum(rec.pulledAt) ? rec.pulledAt : null, stale: !!rec.stale, supportMain: !!res.supportMain,
-      dps: res.dps, sup: res.supportClass ? res.sup : null
+      dps: res.dps, sup: res.supportClass ? res.sup : null,
+      table: res.table, ladders: res.ladders, tierBounds: res.tierBounds
     };
   }
 
@@ -966,16 +1054,19 @@
     setHtml("lp-icon", h.st === "loading" ? SKEL["lp-icon"] :
       (file ? '<img src="' + ICONS + encodeURIComponent(file) + '.svg" width="38" height="38" alt="' + esc(h.cls || "") +
         '" onerror="this.style.display=\'none\'">' : ""));
-    var sub;
+    var sub, regionHtml = '<span' + gl(REGION_GLOSS[ctx.region] || ctx.region) + ">" + ctx.region + "</span>";
     if (h.st === "ok") {
-      var bits = ['<span data-gloss="' + esc(REGION_GLOSS[ctx.region] || ctx.region) + '">' + ctx.region + "</span>"];
-      if (isNum(h.ilvl)) bits.push(nf(Math.floor(h.ilvl * 100) / 100, 2));
-      if (h.cls) bits.push(esc(CLASS_LABEL[h.cls] || h.cls));
+      var bits = [regionHtml];
+      if (isNum(h.ilvl)) bits.push('<span' + gl("Item level on lostark.bible, as the owner last synced it.") + ">" +
+        nf(Math.floor(h.ilvl * 100) / 100, 2) + "</span>");
+      if (h.cls) bits.push('<span' + gl(isSupportCls(h.cls) ?
+        "A support class: the bracelet and astrogem boards can read it as a support." :
+        "A damage-dealer class: the boards read it as a damage dealer.") + ">" + esc(CLASS_LABEL[h.cls] || h.cls) + "</span>");
       sub = bits.join(" · ");
     } else if (h.st === "loading") {
-      sub = ctx.region + ' · <span class="sk" style="width:11em"></span>';
+      sub = regionHtml + ' · <span class="sk" style="width:11em"></span>';
     } else {
-      sub = ctx.region;
+      sub = regionHtml;
     }
     setHtml("lp-sub", sub);
     renderPulled(ctx);
@@ -986,12 +1077,13 @@
     var h = ctx.model.head, html;
     if (h.st === "ok" && h.pulledAt) {
       var stale = now() - h.pulledAt >= STALE_MS;
-      html = '<span data-gloss="' + esc("Read from lostark.bible " + new Date(h.pulledAt).toLocaleString() +
-        (stale ? ". Over a week old: Update reads it again." : ".")) + '"' + (stale ? ' class="lp-old"' : "") + ">Pulled " + ageLabel(h.pulledAt) + "</span>";
+      html = '<span' + gl("Read from lostark.bible on " + new Date(h.pulledAt).toLocaleString() + "." +
+        (stale ? " Over a week old: Update reads it again." : " The page can lag the game by whatever the owner has not synced.")) +
+        (stale ? ' class="lp-old"' : "") + ">Pulled " + ageLabel(h.pulledAt) + "</span>";
     } else if (h.st === "loading") {
       html = SKEL["lp-pulled"];
     } else {
-      html = "Not pulled";
+      html = '<span' + gl("There is no bracelet record for this character yet.") + ">Not pulled</span>";
     }
     setHtml("lp-pulled", html);
   }
@@ -1006,6 +1098,11 @@
     var label = busy ? (ctx.watch && !ctx.watch.update ? "Pulling…" : "Updating…") :
       (wait > 0 ? "Update " + inLabel(wait) : "Update");
     if (btn.textContent !== label) btn.textContent = label;
+    btn.setAttribute("data-gloss", busy
+      ? "Waiting for lostark.bible: the bracelet service reads one character page at a time, so a queue can form."
+      : wait > 0
+        ? "Pulled " + ageLabel(h.pulledAt) + ". Update opens " + inLabel(wait) + ", five minutes after the last pull, so repeat clicks do not use up lookups."
+        : "Reads this character's bracelet record again from lostark.bible. Astrogems are pulled from the Astrogem Calculator.");
   }
   function renderFav(ctx) {
     var btn = $("lp-fav");
@@ -1029,49 +1126,84 @@
     var r = ctx.model.brRank;
     if (!r || r.st === "loading") return SKEL["lp-tile-br-body"];
     if (r.st !== "ok") return '<div class="lp-tmsg">' + esc(r.msg || "No bracelet rank.") + "</div>";
-    var sup = r.axis === "support";
-    var gloss = "Bracelet grade " + (isNum(r.score) ? fx(r.score, 1) : "—") + " out of 100, " + (sup ? "on the support ladder" : "on the damage-dealer ladder") +
-      ": the bracelet leaderboard's own number and letter." + (r.estimated ? " Scored here; the board has not picked up this pull yet." : "");
+    var sup = r.axis === "support", board = sup ? "Support" : "DPS", relic = ctx.model.br && ctx.model.br.grade === "relic";
+    var badgeGloss = r.key + " on the " + (sup ? "support ladder, cut so each letter is as rare as on the damage-dealer one: " :
+      "damage-dealer ladder, which bands the 0–100 grade: ") + ladderWords(brCuts(r.axis), r.key) + "." +
+      (r.perfect ? " The rainbow marks the best bracelet the game can roll." : "");
+    var scoreGloss = "The whole bracelet on a 0–100 scale: 0 is the worst drop the game gives, and 100 is the three best effect families at Epic with both traits at " +
+      (relic ? "92" : "110") + ". Better lines or traits raise it, and it can pass 100.";
+    var pctGloss = sup ? "What one damage dealer next to this support gains from the bracelet. The Support board ranks on this." :
+      "What the whole bracelet adds to damage on the calculator's default character. The board ranks on this.";
+    // Two sentences at most: where the place comes from, then the other board.
+    var rankGloss = !r.rank ? "The board did not answer, so this pull has no place yet." :
+      (r.stale ? (r.estimated ? "Where this pull would place on" : "Place on") + " the " + r.region + " " + board +
+          " board's copy from " + ageLabel(r.builtAt) + ", since the board did not answer."
+        : r.estimated ? "Where this pull would place: the board, rebuilt every 10 minutes, has not picked it up yet."
+        : "Place on the " + r.region + " " + board + " board, which ranks by " + (sup ? "what one damage dealer gains." : "damage %.")) +
+      (r.other ? " Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " + (r.other.axis === "support" ? "Support" : "DPS") +
+        " board, " + r.other.key + (isNum(r.other.pct) ? " at " + fx(r.other.pct, 2) + "%" : "") + "." : "");
+    var topGloss = r.rank ? "#" + nf(r.rank) + " divided by " + nf(r.count) + ": the share of the board at or above this bracelet." : "";
     var rankTxt = r.rank ? (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region : "Rank unavailable";
-    var sub2 = r.rank ? topPct(r.rank, r.count) + " · " + (sup ? "Support" : "DPS") + " board" : (sup ? "Support" : "DPS") + " board";
-    var other = r.other ? "Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " + (r.other.axis === "support" ? "Support" : "DPS") +
-      " board, " + r.other.key + (isNum(r.other.pct) ? " at " + fx(r.other.pct, 2) + "%" : "") + "." : "";
-    return badgeHtml(r.key, r.bg, r.fg, r.cls, gloss, true) +
-      '<div class="lp-tnum"><div class="lp-tscore">' + (isNum(r.score) ? fx(r.score, 1) : "—") + "</div>" +
-      '<div class="lp-tsub">' + (isNum(r.pct) ? fx(r.pct, 2) + "%" : "—") + (sup ? " per dealer" : " damage") + "</div></div>" +
-      '<div class="lp-trank"' + (other || r.stale ? ' data-gloss="' + esc((other + (r.stale ? " Board copy from " + ageLabel(r.builtAt) + "; the board did not answer." : "")).trim()) + '"' : "") + ">" +
-      '<div class="lp-trk">' + rankTxt + "</div>" +
-      '<div class="lp-tsub">' + esc(sub2) + "</div></div>";
+    var sub2 = r.rank ? topPct(r.rank, r.count) + " · " + board + " board" : board + " board";
+    return badgeHtml(r.key, r.bg, r.fg, r.cls, badgeGloss, true) +
+      '<div class="lp-tnum"><div class="lp-tscore"' + gl(scoreGloss) + ">" + (isNum(r.score) ? fx(r.score, 1) : "—") + "</div>" +
+      '<div class="lp-tsub"' + gl(pctGloss) + ">" + (isNum(r.pct) ? fx(r.pct, 2) + "%" : "—") + (sup ? " per dealer" : " damage") + "</div></div>" +
+      '<div class="lp-trank"><div class="lp-trk"' + gl(rankGloss) + ">" + rankTxt + "</div>" +
+      '<div class="lp-tsub"' + gl(topGloss) + ">" + esc(sub2) + "</div></div>";
   }
   function agTileHtml(ctx) {
     var a = ctx.model.ag, r = ctx.model.agRank;
     if (!a || a.st === "loading") return SKEL["lp-tile-ag-body"];
     if (a.st !== "ok") return '<div class="lp-tmsg">' + esc(a.msg || "No astrogem data.") + "</div>";
     var sup = a.axis === "support";
-    var gloss = "Quality " + fx(a.quality, 1) + ": the astrogem leaderboard's own grade and letter" + (sup ? ", read as a support." : ".");
+    var badgeGloss = a.letter + " on the astrogem " + (sup ? "support" : "damage-dealer") + " ladder: " +
+      ladderWords(a.ladders && a.ladders[sup ? "support" : "dps"], a.letter) + ".";
     var rankBlock;
     if (!r || r.st === "loading") {
       rankBlock = '<div class="lp-trk"><span class="sk" style="width:7.5em"></span></div><div class="lp-tsub"><span class="sk" style="width:6em"></span></div>';
     } else if (r.st !== "ok") {
-      rankBlock = '<div class="lp-trk lp-dim">Rank unavailable</div><div class="lp-tsub">' + esc(r.msg || "") + "</div>";
+      rankBlock = '<div class="lp-trk lp-dim"' + gl("The astrogem board could not be read just now.") + ">Rank unavailable</div>" +
+        '<div class="lp-tsub">' + esc(r.msg || "") + "</div>";
     } else {
-      rankBlock = '<div class="lp-trk">' + (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region + "</div>" +
-        '<div class="lp-tsub">' + topPct(r.rank, r.count) + " · " + (sup ? "Support" : "DPS") + " board</div>";
+      var rb = r.axis === "support" ? "Support" : "DPS";
+      rankBlock = '<div class="lp-trk"' + gl(agRankGloss(r)) + ">" + (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region + "</div>" +
+        '<div class="lp-tsub"' + gl("#" + nf(r.rank) + " divided by " + nf(r.count) + ": the share of the board at or above this grid.") + ">" +
+        topPct(r.rank, r.count) + " · " + rb + " board</div>";
     }
-    var rankGloss = r && r.st === "ok" ? ((r.other ? "Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " +
-      (r.other.axis === "support" ? "Support" : "DPS") + " board. " : "") +
-      "Board built " + ageLabel(r.builtAt) + (r.estimated ? "; this character is not on it yet, so the place is estimated." : ".")) : "";
-    return badgeHtml(a.letter, a.bg, a.fg, "", gloss, true) +
-      '<div class="lp-tnum"><div class="lp-tscore">' + fx(a.quality, 1) + "</div>" +
-      '<div class="lp-tsub">' + fx(a.dmg, 2) + "%" + (sup ? " party dmg" : " grid dmg") + "</div></div>" +
-      '<div class="lp-trank"' + (rankGloss ? ' data-gloss="' + esc(rankGloss) + '"' : "") + ">" + rankBlock + "</div>";
+    return badgeHtml(a.letter, a.bg, a.fg, "", badgeGloss, true) +
+      '<div class="lp-tnum"><div class="lp-tscore"' + gl(agQualityGloss()) + ">" + fx(a.quality, 1) + "</div>" +
+      '<div class="lp-tsub"' + gl(agDmgGloss(sup)) + ">" + fx(a.dmg, 2) + "%" + (sup ? " party dmg" : " grid dmg") + "</div></div>" +
+      '<div class="lp-trank">' + rankBlock + "</div>";
+  }
+  // The quality sentence, then a second one: the ladder when the caller has it,
+  // else the fact that a gem's core does not move it. Two sentences, never three.
+  function agQualityGloss(second) {
+    return "The astrogem leaderboard's quality: a geometric mean of the gems' values on the grade scale, where a perfect Ark Grid layout averages 100. " +
+      (second || "Moving a gem to another core does not change it.");
+  }
+  function agDmgGloss(sup) {
+    return sup ? "The party-damage buff this grid gives one ally. The Support board ranks on this." :
+      "What the whole grid adds over no grid. The DPS board ranks on this.";
+  }
+  function agRankGloss(r) {
+    var rb = r.axis === "support" ? "Support" : "DPS";
+    return (r.estimated ? "Where this grid would place: the board, rebuilt at most every 30 minutes, does not hold it yet."
+        : "Place on the " + r.region + " " + rb + " board (built " + ageLabel(r.builtAt) + "), which ranks by " + (r.axis === "support" ? "party damage." : "total grid damage.")) +
+      (r.other ? " Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " + (r.other.axis === "support" ? "Support" : "DPS") + " board." : "");
   }
   function renderStrip(ctx) {
     setHtml("lp-tile-br-body", brTileHtml(ctx));
     setHtml("lp-tile-ag-body", agTileHtml(ctx));
     var br = ctx.model.brRank, ag = ctx.model.ag;
-    setText("lp-tile-br-axis", br && br.st === "ok" ? (br.axis === "support" ? "Support" : "DPS") : "");
-    setText("lp-tile-ag-axis", ag && ag.st === "ok" ? (ag.axis === "support" ? "Support" : "DPS") : "");
+    var brOk = br && br.st === "ok", agOk = ag && ag.st === "ok";
+    setText("lp-tile-br-axis", brOk ? (br.axis === "support" ? "Support" : "DPS") : "");
+    setGloss("lp-tile-br-axis", brOk ? (br.axis === "support"
+      ? "Read as a support. The Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains from the bracelet."
+      : "Read as a damage dealer. The DPS board ranks characters by what the bracelet adds to their own damage.") : "");
+    setText("lp-tile-ag-axis", agOk ? (ag.axis === "support" ? "Support" : "DPS") : "");
+    setGloss("lp-tile-ag-axis", agOk ? (ag.axis === "support"
+      ? "Graded as a support, the way the Grader opens this character: a support class whose gems carry mostly support effects."
+      : "Graded as a damage dealer, the way the Grader opens this character.") : "");
   }
 
   function renderBracelet(ctx) {
@@ -1086,64 +1218,179 @@
       setHtml("lp-br-grade", "");
       return;
     }
+    var sup = b.axis === "support";
     var h = '<div class="lp-lines">';
     b.lines.forEach(function (l) {
-      var tier = l.tier ? '<span class="lp-tier" style="color:' + TIER_COLOR[l.tier] + '">' + TIER_WORD[l.tier] + "</span>" : '<span class="lp-tier"></span>';
+      var nameGloss = (l.full || "") + (l.fixed ? " This line is locked." : "");
+      var tier = l.tier ? '<span class="lp-tier" style="color:' + TIER_COLOR[l.tier] + '"' + gl(l.tierGloss) + ">" + TIER_WORD[l.tier] + "</span>"
+        : '<span class="lp-tier"></span>';
       h += '<div class="lp-line' + (l.unk ? " unk" : "") + '">' +
-        '<span class="lp-lname"' + (l.full || l.fixed || l.unk ? ' data-gloss="' + esc((l.full ? l.full + "." : "") +
-          (l.unk ? "This line uses a stat index the model does not map yet, so it scores zero." : "") + (l.fixed ? " Locked." : "")) + '"' : "") + ">" +
-        esc(l.name) + (l.fixed ? ' <span class="lp-lock" aria-label="locked">&#128274;</span>' : "") + "</span>" +
-        tier + '<span class="lp-lval">' + esc(l.value) + "</span></div>";
+        '<span class="lp-lname"' + gl(nameGloss) + ">" + esc(l.name) +
+        (l.fixed ? ' <span class="lp-lock" aria-label="locked">&#128274;</span>' : "") + "</span>" +
+        tier + '<span class="lp-lval"' + gl(l.valueGloss) + ">" + esc(l.value) + "</span></div>";
     });
     if (!b.lines.length) h += '<div class="lp-line"><span class="lp-lname lp-dim">No effect lines</span><span></span><span></span></div>';
     h += "</div>";
     var traits = b.traits.length ? b.traits.map(function (t) { return esc(t.short || t.label) + " " + nf(t.value); }).join(" · ") : "—";
-    var traitsGloss = b.traits.map(function (t) { return t.label + " " + nf(t.value); }).join(" · ");
     var rolls = b.rolls ? String(b.rolls.base + b.rolls.ticket) : "—";
-    var sup = b.axis === "support";
     h += '<div class="lp-kv">' +
-      '<div><span class="k">Combat traits</span><span class="v"' + (traitsGloss ? ' data-gloss="' + esc(traitsGloss) + '"' : "") + ">" + traits + "</span></div>" +
-      '<div><span class="k">' + (sup ? "Per dealer" : "Damage") + '</span><span class="v lp-strong"' +
-        ' data-gloss="' + esc(sup ? "What one damage dealer next to this support gains from the bracelet, on the default support." :
-          "What the whole bracelet is worth in % damage on the calculator's default character. The board ranks on it.") + '">' +
-        (isNum(b.pct) ? fx(b.pct, 2) + "%" : "—") + "</span></div>" +
-      '<div><span class="k">Rolls left</span><span class="v"' + (b.rolls ? ' data-gloss="' + esc(b.rolls.base + " regular + " + b.rolls.ticket +
-        " ticket, as lostark.bible reports them. The calculator reads them the same way.") + '"' : "") + ">" + rolls + "</span></div>" +
-      '<div><span class="k">Loadout</span><span class="v"' + (b.loadoutNote ? ' data-gloss="' + esc(b.loadoutNote) + '"' : "") + ">" +
-        esc(b.loadout || "—") + "</span></div>" +
+      '<div' + gl(b.traitsGloss || "The record lists no combat traits for this bracelet.") + '><span class="k">Combat traits</span><span class="v">' + traits + "</span></div>" +
+      '<div' + gl(sup ? "What one damage dealer next to this support gains from the bracelet, on the default support. The Support board ranks on it." :
+        "What the whole bracelet adds to damage on the calculator's default character. The board ranks on it.") +
+        '><span class="k">' + (sup ? "Per dealer" : "Damage") + '</span><span class="v lp-strong">' + (isNum(b.pct) ? fx(b.pct, 2) + "%" : "—") + "</span></div>" +
+      '<div' + gl(b.rolls ? b.rolls.base + " regular and " + b.rolls.ticket + " ticket rerolls, as lostark.bible reports them. The calculator reads them the same way."
+        : "lostark.bible does not report the rerolls for this bracelet.") + '><span class="k">Rolls left</span><span class="v">' + rolls + "</span></div>" +
+      '<div' + gl(b.loadoutNote || "") + '><span class="k">Loadout</span><span class="v">' + esc(b.loadout || "—") + "</span></div>" +
       "</div>";
     if (b.unmapped) h += '<div class="lp-warn">' + b.unmapped + " line" + (b.unmapped === 1 ? " uses" : "s use") + " a stat index the model does not map yet.</div>";
     setHtml("lp-br-body", h);
-    setHtml("lp-br-grade", '<span class="lp-grade ' + b.grade + '">' + (b.grade === "relic" ? "Relic" : "Ancient") + "</span>");
+    setHtml("lp-br-grade", '<span class="lp-grade ' + b.grade + '"' + gl(b.gradeGloss) + ">" + (b.grade === "relic" ? "Relic" : "Ancient") + "</span>");
   }
 
   function renderAstro(ctx) {
-    var a = ctx.model.ag, r = ctx.model.agRank;
-    if (!a || a.st === "loading") { setHtml("lp-ag-body", SKEL["lp-ag-body"]); return; }
-    if (a.st !== "ok") {
+    var a = ctx.model.ag, r = ctx.model.agRank, card = $("lp-card-ag");
+    var sup = !!(a && a.st === "ok" && a.axis === "support");
+    if (card) { card.classList.toggle("axis-support", sup); card.classList.toggle("axis-dps", !sup); }
+    if (!a || a.st === "loading") { setHtml("lp-ag-body", SKEL["lp-ag-body"]); setText("lp-ag-src", ""); return; }
+    if (a.st !== "ok" || !a.table) {
       setHtml("lp-ag-body", '<div class="lp-cmsg' + (a.st === "error" ? " err" : "") + '">' + esc(a.msg || "No astrogem data.") + "</div>");
+      setText("lp-ag-src", "");
       return;
     }
-    var sup = a.axis === "support";
-    var rankTxt = !r || r.st === "loading" ? '<span class="sk" style="width:8em"></span>' :
-      (r.st === "ok" ? (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region : '<span class="lp-dim">' + esc(r.msg || "unavailable") + "</span>");
-    var h = '<div class="lp-agtop">' + badgeHtml(a.letter, a.bg, a.fg, "", "", false) +
-      '<span class="lp-agq"><b>' + fx(a.quality, 1) + '</b> quality</span>' +
-      '<span class="lp-agd" data-gloss="' + esc(sup ? "The party-damage buff this grid gives, per ally: the Support board ranks on it." :
-        "Total % damage the grid adds over no grid: the DPS board ranks on it.") + '">' + fx(a.dmg, 2) + "%" + (sup ? " party" : " damage") + "</span></div>";
-    h += '<div class="lp-tiers">' +
-      '<span class="lp-tchip ancient"><b>' + a.tiers.ancient + "</b> Ancient</span>" +
-      '<span class="lp-tchip relic"><b>' + a.tiers.relic + "</b> Relic</span>" +
-      '<span class="lp-tchip legendary"><b>' + a.tiers.legendary + "</b> Legendary</span></div>";
-    h += '<div class="lp-kv">' +
-      '<div><span class="k">Gems</span><span class="v"' + (a.valid < a.gems ? ' data-gloss="' + esc((a.gems - a.valid) + " could not be read and are left out of the grade.") + '"' : "") + ">" +
-        a.gems + " in " + a.cores + " cores</span></div>" +
-      '<div><span class="k">Order / Chaos</span><span class="v">' + a.order + " / " + a.chaos + "</span></div>" +
-      '<div><span class="k">Board</span><span class="v">' + rankTxt + "</span></div>" +
-      '<div><span class="k">Pulled</span><span class="v"' + (a.stale ? ' data-gloss="Over a week old. The Astrogem Calculator pulls it again."' : "") + ">" +
-        (a.pulledAt ? ageLabel(a.pulledAt) : "—") + "</span></div>" +
+    var t = a.table, axisWord = sup ? "support" : "damage-dealer";
+    setText("lp-ag-src", "Raid loadout · " + (sup ? "Support" : "DPS") + " axis");
+    setGloss("lp-ag-src", "The raid preset's gems, graded on the " + axisWord + " axis: the preset and axis the Grader opens this character on.");
+    function stat(k, v, gloss, cls) {
+      return '<div class="stat"' + gl(gloss) + '><span class="k">' + k + '</span><span class="v' + (cls ? " " + cls : "") + '">' + v + "</span></div>";
+    }
+    function badge(key, bg, fg, cls) {
+      return '<span class="rank-badge' + (cls ? " " + cls : "") + '" style="background:' + esc(bg) + ";color:" + esc(fg) + '">' + esc(key) + "</span>";
+    }
+    function th(label, gloss, right) { return "<th" + (right ? ' class="r"' : "") + gl(gloss) + ">" + label + "</th>"; }
+    var rankTxt, rankGloss;
+    if (!r || r.st === "loading") { rankTxt = '<span class="sk" style="width:7em"></span>'; rankGloss = ""; }
+    else if (r.st !== "ok") { rankTxt = '<span class="lp-dim">unavailable</span>'; rankGloss = "The astrogem board could not be read just now."; }
+    else { rankTxt = (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region; rankGloss = agRankGloss(r); }
+    var bounds = a.tierBounds || {};
+    function tierName(k) { return k === "ancient" ? "Ancient" : k === "relic" ? "Relic" : "Legendary"; }
+    function tierGloss(k) {
+      var b = bounds[k];
+      return tierName(k) + ": the gem's four levels (willpower, points and both effects) add up to " + (b ? b.min + " to " + b.max : "this band") + ".";
+    }
+
+    var h = '<div class="lp-agsum">' +
+      stat("Quality", badge(a.letter, a.bg, a.fg) + fx(a.quality, 1), agQualityGloss(a.letter + " on its ladder: " +
+        ladderWords(a.ladders && a.ladders[sup ? "support" : "dps"], a.letter) + ".")) +
+      stat("Avg grade", badge(t.avgRank, t.avgBg, t.avgFg) + fx(t.avgGrade, 1),
+        "The Grader's average: the plain mean of the gem grades in the table, on the " + axisWord + " axis. It sits a little apart from Quality, which averages the gems' values another way.") +
+      stat("Total % dmg", fx(t.total, 2) + "%", sup
+        ? "The party-damage buff this grid gives one ally, as the Grader shows it. The Support board ranks on it."
+        : "What the whole grid adds over no grid, as the Grader shows it: effect levels pool into stat buckets, and each core's points past 17 add damage. The DPS board ranks on it.", "ax") +
+      stat("Board", rankTxt, rankGloss) +
+      stat("Gems", a.gems + " in " + a.cores + " cores", a.order + " Order and " + a.chaos + " Chaos gems in " + a.cores + " cores, from the raid loadout." +
+        (a.valid < a.gems ? " " + (a.gems - a.valid) + " could not be read and are left out." : "")) +
+      stat("Pulled", a.pulledAt ? ageLabel(a.pulledAt) : "—", "When the astrogem service last read this character from lostark.bible." +
+        (a.stale ? " Over a week old: the Astrogem Calculator pulls it again." : "")) +
       "</div>";
+
+    // per core, then Order vs Chaos
+    var ch = '<table class="gr-ptab lp-coretab"><thead><tr>' +
+      th("Core", "An Ark Grid core: Order or Chaos, and its slot.") +
+      th("Gems", "Gems in the core.", true) +
+      th("Points", "The core's order or chaos points, added over its gems.", true) +
+      th("Order bonus", "What the core's points add to the grid total. Only points past 17 count.", true) +
+      th("Gem %", "The Grader's figure for the core: its gems' own % damage added up.", true) +
+      "</tr></thead><tbody>";
+    ["order", "chaos"].forEach(function (type) {
+      var word = type === "chaos" ? "Chaos" : "Order";
+      t.cores.forEach(function (c) {
+        if (c.type !== type) return;
+        ch += "<tr" + gl(String(c.key) + ": " + c.gems + " gems with " + c.pts + " points in all. In the grid total the points add " +
+          fx(c.orderDmg, 2) + "%; the gems' own figures add up to " + fx(c.rel, 2) + "%.") + "><td>" + coreCell(c.key) + '</td><td class="r">' + c.gems + '</td><td class="r">' + c.pts + '</td>' +
+          '<td class="r ax">' + fx(c.orderDmg, 2) + '%</td><td class="r">' + fx(c.rel, 2) + "%</td></tr>";
+      });
+      var sc = t.sections && t.sections[type];
+      if (sc) ch += '<tr class="lp-subtot"' + gl("All " + word + " cores together: " + sc.gems + " gems, " + sc.pts + " points.") + "><td>" + word + ' total</td><td class="r">' +
+        sc.gems + '</td><td class="r">' + sc.pts + '</td><td class="r ax">' + fx(sc.orderDmg, 2) + '%</td><td class="r">' + fx(sc.rel, 2) + "%</td></tr>";
+    });
+    ch += "</tbody></table>";
+
+    // the grid total, split by source, and the gem grades
+    var bh = '<table class="gr-ptab lp-breaktab"><thead><tr>' +
+      th("Grid damage from", "The grid total split by source: the model's own grid formula, run once per source with the rest set to zero. The parts add up to the total.") +
+      th("Levels", "Effect levels summed over every gem; for the cores, their points.", true) +
+      th("% dmg", sup ? "What each source adds to the party buff for one ally." : "What each source adds to the character's damage.", true) +
+      "</tr></thead><tbody>";
+    t.parts.forEach(function (p) {
+      bh += "<tr" + gl(EFFECT_GLOSS[p.name] || "") + "><td>" + esc(p.name) + '</td><td class="r">' + p.levels + '</td><td class="r ax">' + fx(p.dmg, 2) + "%</td></tr>";
+    });
+    bh += "<tr" + gl("Each core's points past 17 add damage, and the six cores' shares multiply.") + '><td>Order &amp; chaos points</td><td class="r">' +
+      t.corePoints + '</td><td class="r ax">' + fx(t.coresDmg, 2) + "%</td></tr>" +
+      '<tr class="lp-subtot"' + gl("The grid's whole figure, the Grader's Total % dmg.") + '><td>Total</td><td class="r"></td><td class="r ax">' +
+      fx(t.total, 2) + "%</td></tr></tbody></table>" +
+      '<div class="lp-tiers">' + ["ancient", "relic", "legendary"].map(function (k) {
+        return '<span class="lp-tchip ' + k + '"' + gl(tierGloss(k)) + "><b>" + (a.tiers[k] || 0) + "</b> " + tierName(k) + "</span>";
+      }).join("") + "</div>";
+
+    // every gem, best first
+    var gh = '<table class="gr-ptab lp-gemtab"><thead><tr>' +
+      th("#", "The gem's place in this list, best grade first.", true) +
+      th("Core", "The core the gem sits in.") +
+      th("Cost", "The gem's base willpower cost, 8, 9 or 10. The cost decides which effects the gem can roll.", true) +
+      th("WP", "Willpower level, 1 to 5. Each level cuts the gem's willpower cost by one.", true) +
+      th("Points", "Order points on an Order gem, chaos points on a Chaos gem, 1 to 5.", true) +
+      th("Effect 1", "The gem's first side effect and its level, 1 to 5. A dimmed effect does nothing on this axis.") +
+      th("Effect 2", "The gem's second side effect and its level, 1 to 5.") +
+      th("Grade", "The game's grade: the gem's four levels added up, shown beside it. Legendary " +
+        (bounds.legendary ? bounds.legendary.min + " to " + bounds.legendary.max : "") + ", Relic " +
+        (bounds.relic ? bounds.relic.min + " to " + bounds.relic.max : "") + ", Ancient " +
+        (bounds.ancient ? bounds.ancient.min + " to " + bounds.ancient.max : "") + ".") +
+      th("Rank", "The gem's grade on the Grader's " + axisWord + " scale, and its letter. It weighs the effects, the points and the willpower; a perfect gem scores about 100.") +
+      th("% dmg", "What the gem adds on its own, above a plain gem with 4.25 points and no effects. These do not add up to the grid total, which pools the effects first.", true) +
+      "</tr></thead><tbody>";
+    t.rows.forEach(function (g, i) {
+      var tierCell = '<td><span class="lp-gtier ' + g.tier + '">' + tierName(g.tier) + '<span class="c">' + g.sum + "</span></span></td>";
+      if (!g.valid) {
+        gh += "<tr" + gl("This gem could not be read: " + (g.err || "invalid") + ".") + '><td class="r lp-dim">—</td><td>' + coreCell(g.core) + "</td>" +
+          '<td class="r">' + (g.cost == null ? "?" : g.cost) + '</td><td class="r">' + (g.wp == null ? "?" : g.wp) + '</td><td class="r">' + (g.pts == null ? "?" : g.pts) + "</td>" +
+          effCell(g.e1, g.l1, false, axisWord) + effCell(g.e2, g.l2, false, axisWord) + tierCell +
+          '<td class="lp-dim">unreadable</td><td class="r lp-dim">—</td></tr>';
+        return;
+      }
+      gh += "<tr" + gl(String(g.core) + ": a " + g.cost + "-cost " + (g.type === "chaos" ? "Chaos" : "Order") + " gem with willpower " + g.wp + " and " +
+          g.pts + " points, " + (g.e1 || "?") + " " + g.l1 + " and " + (g.e2 || "?") + " " + g.l2 + ". Its levels add up to " + g.sum + ", so it is " +
+          tierName(g.tier) + "; it grades " + fx(g.grade, 1) + " (" + g.rank + ") and adds " + fx(g.rel, 3) + "% on its own.") +
+        '><td class="r lp-dim">' + (i + 1) + "</td><td>" + coreCell(g.core) + "</td>" +
+        '<td class="r">' + g.cost + '</td><td class="r">' + g.wp + '</td><td class="r">' + g.pts + "</td>" +
+        effCell(g.e1, g.l1, g.off1, axisWord) + effCell(g.e2, g.l2, g.off2, axisWord) + tierCell +
+        "<td>" + badge(g.rank, g.bg, g.fg, g.cls) + '<span class="gnum">' + fx(g.grade, 0) + "</span></td>" +
+        '<td class="r ax">' + fx(g.rel, 3) + "%</td></tr>";
+    });
+    gh += "</tbody></table>";
+
+    h += '<div class="lp-agrow"><div class="lp-agbox lp-tw">' + ch + '</div><div class="lp-agbox">' + bh + "</div></div>" +
+      '<div class="lp-tw lp-gemwrap">' + gh + "</div>";
     setHtml("lp-ag-body", h);
+  }
+  // grader.js's short effect names, and what one level of each does in the grid total
+  var EFFECT_ABBR = { "Attack Power": "ATK Power", "Additional Damage": "Additional Dmg", "Boss Damage": "Boss Dmg",
+    "Ally Attack Enh.": "Ally Atk", "Ally Damage Enh.": "Ally Dmg", "Brand Power": "Brand" };
+  var EFFECT_GLOSS = {
+    "Attack Power": "Attack Power levels pool into one bucket over the character's other attack power, so each level adds a little less than the last.",
+    "Additional Damage": "Additional Damage levels pool into one bucket over the character's other additional damage, so each level adds a little less than the last.",
+    "Boss Damage": "Boss Damage levels pool into one bucket, so each level adds a little less than the last.",
+    "Ally Attack Enh.": "Every Ally Attack Enh. level adds the same share of party buff.",
+    "Ally Damage Enh.": "Every Ally Damage Enh. level adds the same share of party buff.",
+    "Brand Power": "Every Brand Power level adds the same share of party buff."
+  };
+  function coreCell(key) {
+    var m = /^(order|chaos)\s+(.*)$/i.exec(String(key || ""));
+    return m ? '<span class="ctype">' + esc(m[1]) + "</span> " + esc(m[2]) : esc(key || "Core");
+  }
+  function effCell(name, lv, off, axisWord) {
+    var t = "<b>" + esc(EFFECT_ABBR[name] || name || "?") + "</b> " + (lv != null ? lv : "?");
+    return off ? '<td class="eff off"' + gl((name || "This effect") + " scores nothing on the " + axisWord + " axis.") + ">" + t + "</td>"
+      : '<td class="eff">' + t + "</td>";
   }
 
   function renderStats(ctx) {
@@ -1156,11 +1403,11 @@
     }
     var h = "";
     s.rows.forEach(function (r) {
-      h += '<div class="lp-stat"><span class="k">' + esc(r[0]) + '</span><span class="v"' +
-        (r[2] ? ' data-gloss="' + esc(r[2]) + '"' : "") + ">" + esc(r[1]) + "</span></div>";
+      h += '<div class="lp-stat"' + gl(r[2]) + '><span class="k">' + esc(r[0]) + '</span><span class="v">' + esc(r[1]) + "</span></div>";
     });
     setHtml("lp-stats-body", h);
     setText("lp-stats-src", s.loadout ? s.loadout + " loadout" : "");
+    setGloss("lp-stats-src", s.loadout ? "The lostark.bible loadout these figures come from: the one the bracelet calculator opens on." : "");
   }
 
   function renderLinks(ctx) {
@@ -1169,6 +1416,7 @@
     set("lp-open-br", "/loa-bracelet-calc/?" + c);
     set("lp-open-adv", "/loa-bracelet-calc/advisor?" + c);
     set("lp-open-ag", "/loa-astrogem-calc/grader?" + c);
+    set("lp-open-gpd", "/loa-gpd/?" + c);
   }
 
   function renderAll(ctx) {
@@ -1411,13 +1659,15 @@
     }).then(function (res) {
       if (!isLive(ctx)) return;
       var sup = ctx.model.ag.axis === "support";
-      var place = sup ? res.sup : res.dps, other = sup ? res.dps : res.sup;
+      var place = sup ? res.sup : res.dps, other = sup ? res.dps : res.sup, used = sup ? "support" : "dps";
+      // Not on the board of its own axis (a support main is dropped from DPS): show the other one.
+      if (!place && other) { place = other; other = null; used = sup ? "dps" : "support"; }
       if (!place) {
         ctx.model.agRank = { st: "none", msg: "Not on the board" };
       } else {
-        ctx.model.agRank = { st: "ok", axis: sup ? "support" : "dps", rank: place.rank, count: place.count, estimated: place.estimated,
+        ctx.model.agRank = { st: "ok", axis: used, rank: place.rank, count: place.count, estimated: place.estimated,
           region: res.region, builtAt: res.builtAt, stale: res.stale,
-          other: (other && !other.estimated) ? { axis: sup ? "dps" : "support", rank: other.rank, count: other.count } : null };
+          other: (other && !other.estimated) ? { axis: used === "support" ? "dps" : "support", rank: other.rank, count: other.count } : null };
       }
       if (perfNav && res.timings) perfNav.agBoard = res.timings;
       if (perfNav) perfNav.agBoardSource = res.source;
