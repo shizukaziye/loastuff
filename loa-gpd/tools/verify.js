@@ -93,5 +93,18 @@ check("families 17 and 19 identical at low", Bracelet.SUPPORT_LINE[17][0], Brace
 check("families 17 and 19 identical at mid", Bracelet.SUPPORT_LINE[17][1], Bracelet.SUPPORT_LINE[19][1]);
 check("beating the anchor is S+", Bracelet.rank(100) === "S+" ? 1 : 0, 1);
 
+// ---- lookup.js loads the same model files the chart does -------------------
+// On a page that is not the chart (a profile), lookup.js fetches the four model
+// files itself, with pins of its own. They must be the chart's pins, or after a
+// model edit that page runs the old file for as long as the zone caches it.
+console.log("lookup.js — model pins match index.html's script tags");
+var Lookup = require(path.join(root, "lookup.js"));
+var page = require("fs").readFileSync(path.join(root, "index.html"), "utf8");
+Lookup.MODELS.forEach(function (m) {
+  var file = m[0].replace(/\?.*$/, ""), pin = (m[0].match(/\?v=(.*)$/) || [])[1];
+  var tag = page.match(new RegExp("src='" + file.replace(/[.\/]/g, "\\$&") + "\\?v=([^']*)'"));
+  check(file + " pin", tag ? tag[1] : "no tag", pin);
+});
+
 console.log(fails ? "\n" + fails + " FAILED" : "\nall checks pass");
 process.exit(fails ? 1 : 0);
