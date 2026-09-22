@@ -157,7 +157,23 @@ the branch only — Cloudflare Pages deploys it as a preview at
    shell that keeps every tool alive stays an option if the remaining wish is
    "the calculator is exactly where I left it when I come back".
 
-## 8. Risks
+## 8. Debts to settle before v2
+
+- The profile's astrogem worker repeats two one-line mixes of model functions
+  that grader.js also spells out (for example gem damage minus the order
+  score at 4.25). Not copied code, but a second place that must move when the
+  grader's formula moves — the astrogem model should export a per-gem value
+  and a grid summary so both call one function.
+- The GPD module (`loa-gpd/lookup.js`) keeps the chart's caches on the context
+  it is handed and fills the lookup record in place; the chart relied on both.
+  Pure would be nicer; identical output came first.
+- The astrogem model's comment puts the DPS S+ cut at 96.7 while its function
+  gives 96.1; the pages use the function. Fix the comment or the cut.
+- Per-line bracelet damage is not shown on the profile: the board row has
+  none and the record's stored figure comes from an older model. Either the
+  worker stores it at the current model or the profile scores the lines.
+
+## 9. Risks
 
 - Rewrite-versus-asset precedence (Phase 0 answers it before anything is
   built on it).

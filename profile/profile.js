@@ -24,6 +24,11 @@
  *               loa-astrogem-calc/leaderboard.js does.
  *   stats       the record's `profile` block for the raid loadout — the block
  *               the bracelet calculator imports into its deck.
+ *   gold per 1% the GPD chart's own lookup, loa-gpd/lookup.js: GpdLookup.place()
+ *               on the two answers above, on the role the astrogem section
+ *               graded (the chart's rule), default switches. Loaded after the
+ *               bracelet and astrogem cards have painted; the third rank tile
+ *               is its cheapest step.
  *
  * SPEED (docs/design/PROFILE-GAMEPLAN.md §2)
  *   - the skeleton is static HTML at its final size, painted before any script;
@@ -69,6 +74,12 @@
     "/loa-bracelet-calc/model/bracelet.js?v=14",
     "/loa-bracelet-calc/subrank.js?v=9"];
   var ICONS = "/loa-bracelet-calc/assets/class-icons/";
+  // The GPD chart's lookup. It is heavy (its models, eight tables and the
+  // accessory lattice), so it loads after the bracelet and astrogem cards have
+  // painted. lookup.js fetches all of that itself; the two scripts it would also
+  // fetch from www, this page loads first from the tools' own pins (loadGpd).
+  var GPD_LIB = "/loa-gpd/lookup.js?v=1";
+  var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
   var REGION_GLOSS = { NA: "North America", EU: "Europe Central (lostark.bible calls it CE)" };
@@ -983,10 +994,13 @@
   // ------------------------------------------------------------------ the character model
 
   var PARTS = ["head", "br", "brRank", "ag", "agRank", "stats"];
+  // What is saved and restored. The GPD part is not in PARTS: it loads after the
+  // cards, and "complete" keeps timing the six parts it always has.
+  var KEPT = PARTS.concat(["gpd"]);
 
   function emptyModel(region, name) {
     var m = { v: VIEW_V, region: region, name: name };
-    PARTS.forEach(function (k) { m[k] = { st: "loading" }; });
+    KEPT.forEach(function (k) { m[k] = { st: "loading" }; });
     return m;
   }
   /** Only settled parts are kept; a part that was loading or failing starts over. */
@@ -997,7 +1011,7 @@
       return;
     }
     var out = { v: VIEW_V, region: ctx.region, name: ctx.name };
-    PARTS.forEach(function (k) {
+    KEPT.forEach(function (k) {
       var p = ctx.model[k];
       if (p && (p.st === "ok" || p.st === "none")) out[k] = p;
     });
@@ -1008,6 +1022,8 @@
   function settle(ctx, keys) {
     if (!isLive(ctx)) return;
     keys.forEach(function (k) { ctx.fresh[k] = true; });
+    // The GPD card reads both records, so it starts once both cards have painted.
+    if (!ctx.gpdArmed && ctx.fresh.br && ctx.fresh.ag) { ctx.gpdArmed = true; queueGpd(ctx); }
     for (var i = 0; i < PARTS.length; i++) if (!ctx.fresh[PARTS[i]]) return;
     mark("complete");
   }
@@ -1200,6 +1216,10 @@
     setGloss("lp-tile-br-axis", brOk ? (br.axis === "support"
       ? "Read as a support. The Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains from the bracelet."
       : "Read as a damage dealer. The DPS board ranks characters by what the bracelet adds to their own damage.") : "");
+    setHtml("lp-tile-gpd-body", gpdTileHtml(ctx));
+    var gp = ctx.model.gpd, gpOk = gp && gp.st === "ok";
+    setText("lp-tile-gpd-axis", gpOk ? (gp.axis === "support" ? "Support" : "DPS") : "");
+    setGloss("lp-tile-gpd-axis", gpOk ? gpdAxisWords(gp.axis) : "");
     setText("lp-tile-ag-axis", agOk ? (ag.axis === "support" ? "Support" : "DPS") : "");
     setGloss("lp-tile-ag-axis", agOk ? (ag.axis === "support"
       ? "Graded as a support, the way the Grader opens this character: a support class whose gems carry mostly support effects."
@@ -1410,6 +1430,261 @@
     setGloss("lp-stats-src", s.loadout ? "The lostark.bible loadout these figures come from: the one the bracelet calculator opens on." : "");
   }
 
+  // ------------------------------------------------------------------ gold per 1% damage (the GPD chart's lookup)
+
+  // What each ladder is, in the chart's own terms (loa-gpd/README.md).
+  var GPD_SYSTEM = {
+    armor: "All five armour pieces honed together on the T4 Upper normal track, +11 to +25.",
+    weapon: "The weapon honed on its own on the T4 Upper normal track, +11 to +25.",
+    gems: "Levelling the whole skill gem set, one level at a time; your lowest gem sets the rung.",
+    karma: "Karmic Enlightenment, from level 21 to 30.",
+    neck: "Necklaces from the accessory calculator's price lattice, from the growth shop piece up.",
+    ring: "Rings from the accessory calculator's price lattice, from the growth shop piece up; the weaker of your two sets the rung.",
+    earring: "Earrings from the accessory calculator's price lattice, from the growth shop piece up; the weaker of your two sets the rung.",
+    bracelet: "The bracelet calculator's F to S+ ladder, priced by rolling bracelets until one reads the letter.",
+    arkgridEpic: "The ark grid filled from epic astrogems, priced along a simulated account's build.",
+    arkgridRare: "The ark grid filled from rare astrogems, priced along a simulated account's build.",
+    stone: "Faceting Ancient ability stones, from 7-7 up to 9-7."
+  };
+  // What would move a step's price (the ark grid and the accessories say it in their own sentence).
+  var GPD_MOVER = {
+    armor: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
+    weapon: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
+    gems: "The level-8 gem's price moves it; the chart takes 420k.",
+    karma: "It is 900 gold a try with the Destiny Stones taken as owned, so no market price moves it.",
+    bracelet: "Bracelet and pheon prices move it, and so do the odds of rolling this letter.",
+    stone: "Stone and pheon prices move it.",
+    acc: "Accessory prices move it, and so do the chart's switches: only pieces with no flat line and a high main stat count here."
+  };
+  var GPD_ACC = { neck: "necklace", ring: "ring", earring: "earring" };
+  var GPD_HEAD = "";   // the table's header row, glosses and all, read off the skeleton at boot
+
+  function gpdCap(t) { t = String(t || ""); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function gpdPct(x) { return isNum(x) ? (Math.abs(x) < 0.1 ? fx(x, 3) : fx(x, 2)) + "%" : "?"; }
+  function gpdAxisWords(axis) {
+    return axis === "support"
+      ? "Graded on the support ladders: damage is what the support hands the party, and gold per 1% counts all three dealers."
+      : "Graded on the DPS ladders: damage is the character's own.";
+  }
+  /** "high/low · wpn high flat · low stat", in words. */
+  function gpdAccWords(k, label) {
+    var p = String(label || "").split(" · ");
+    if (p.length !== 3) return "The next " + GPD_ACC[k] + " to buy: " + label + ".";
+    var prims = p[0].indexOf("/") >= 0 ? "primary lines at " + p[0] : "a primary line at " + p[0];
+    var f = p[1], m, flat;
+    if (f === "no flat") flat = "no flat line";
+    else if ((m = f.match(/^(atk|wpn) (\w+) flat$/))) flat = "a " + m[2] + " " + (m[1] === "atk" ? "Attack Power+" : "Weapon Power+") + " line";
+    else if ((m = f.match(/^(\w+) flat$/))) flat = "a " + m[1] + " Weapon Power+ line";
+    else flat = f;
+    return "The next " + GPD_ACC[k] + " to buy: " + prims + ", " + flat + ", " + p[2].replace(/ stat$/, " main stat") + ".";
+  }
+  /** What the rung you stand on is, as the lookup read it. */
+  function gpdYoursGloss(r) {
+    if (r.why) return gpdCap(r.why) + ".";
+    return "Read from the pull: " + r.seen + (r.detail ? " — " + r.detail : "") + "." +
+      (r.under ? " That is under the ladder's first rung, so the next step is its first." : "");
+  }
+  /** What the next rung means. */
+  function gpdNextGloss(r) {
+    var n = r.next;
+    if (!n) return "Nothing left on this ladder: no rung above yours.";
+    if (GPD_ACC[r.k]) return gpdAccWords(r.k, n.to);
+    if (r.k === "bracelet" && n.min) return n.to + " takes at least " + n.min + ".";
+    return (n.min ? gpdCap(n.min) : n.to) + (n.note ? " (" + n.note + ")" : "") + ".";
+  }
+  /** How the step is priced, and what would move it. */
+  function gpdPriceGloss(r, axis) {
+    var n = r.next;
+    if (!n) return "No rung above yours, so nothing to price.";
+    var on = axis === "support" ? " on each of three dealers" : "";
+    if (n.gpd == null) return "This step adds no damage on these ladders, so it has no price per 1%.";
+    if (n.pd != null) return n.poolTxt + " gold of cutting and fusing buys " + gpdPct(n.pd) + " more damage" + on +
+      " over this stretch of a simulated account's build, and every rung in it shares that rate. The raw astrogems count as free.";
+    if (GPD_ACC[r.k]) {
+      if (n.gpd === 0) return "The new " + GPD_ACC[r.k] + " sells for no more than yours is worth, so the swap costs only the pheons and the listing floor.";
+      return n.goldTxt + " gold, the new " + GPD_ACC[r.k] + "'s price less what yours is worth, buys " + gpdPct(n.dmg) +
+        " more damage" + on + ". " + GPD_MOVER.acc;
+    }
+    if (n.gpd === 0) return "It sits under the market floor, so it costs only the pheons and the listing floor.";
+    return n.goldTxt + " gold buys " + gpdPct(n.dmg) + " more damage" + on + (n.buy ? ": " + n.buy : "") + "." +
+      (GPD_MOVER[r.k] ? " " + GPD_MOVER[r.k] : "");
+  }
+  function gpdRow(g, key) {
+    for (var i = 0; i < g.rows.length; i++) if (g.rows[i].k === key) return g.rows[i];
+    return null;
+  }
+
+  /** The role this page already knows: the astrogem section's axis (the chart's
+   *  own rule, a support class with a support gem set), else the class alone. */
+  function gpdAxis(ctx) {
+    var a = ctx.model.ag;
+    if (a && a.st === "ok" && (a.axis === "support" || a.axis === "dps")) return a.axis;
+    var cls = (ctx.brRec && ctx.brRec["class"]) || (ctx.agRec && ctx.agRec["class"]) || "";
+    return isSupportCls(cls) ? "support" : "dps";
+  }
+
+  /** GpdLookup.place()'s answer, cut down to what the card and the tile draw
+   *  (it is saved with the rest of the character), cheapest next step first. */
+  function gpdPart(pos, L, axis) {
+    var rows = pos.list.map(function (e, i) {
+      var graded = e.seen != null && !e.why, S = L.SERIES && L.SERIES[e.key];
+      var r = { k: e.key, label: e.label, color: (S && S.color) || "", i: i,
+        yours: (pos.labels && pos.labels[e.key]) || L.NOT_READ,
+        seen: graded ? String(e.seen) : null, detail: graded ? (e.detail || null) : null,
+        why: graded ? null : (e.why || "not in the pull"), under: graded && e.owned < 0 && !e.ownRung, next: null };
+      var n = graded ? e.next : null;
+      if (n) {
+        var pooled = n.poolD > 0 && isNum(n.poolG);
+        r.next = { to: String(n.to || n.label || ""), min: n.minimum || null, note: n.note || null, buy: n.buy || null,
+          gpd: isNum(n.gpd) ? n.gpd : null, dmg: isNum(n.damage) ? n.damage : null,
+          price: L.fmtGpd(n.gpd), goldTxt: L.fmtGold(n.gold),
+          pd: pooled ? n.poolD : null, poolTxt: pooled ? L.fmtGold(n.poolG) : null };
+      }
+      return r;
+    });
+    // the chart's gear-list order: priced steps cheapest first, then ladders with
+    // nothing left, then the systems the pull could not read
+    function band(r) { return r.why ? 3 : !r.next ? 2 : r.next.gpd == null ? 1 : 0; }
+    rows.sort(function (a, b) {
+      return (band(a) - band(b)) || (band(a) === 0 ? a.next.gpd - b.next.gpd : 0) || (a.i - b.i);
+    });
+    var low = null;
+    rows.forEach(function (r) {
+      if (r.next && r.next.gpd != null && (!low || r.next.gpd < low.next.gpd)) low = r;
+      delete r.i;
+    });
+    return { st: "ok", axis: axis, role: pos.role || null, best: pos.bestKey || null,
+      low: !pos.bestKey && low ? low.k : null,
+      cheap: pos.cheapest ? { text: pos.cheapest.text, price: pos.cheapest.price } : null, rows: rows };
+  }
+
+  var gpdLib = null;   // one load per page: { L: GpdLookup, st: ready()'s answer }
+  function loadAstrogemModel() { return window.Astrogem ? Promise.resolve() : loadScripts([AG_MODEL_JS]); }
+  function loadGpd() {
+    if (gpdLib) return gpdLib;
+    var lib = (window.GpdLookup ? Promise.resolve() : loadScripts([GPD_LIB])).then(function () {
+      var L = window.GpdLookup;
+      if (!L || !L.ready || !L.place) throw new Error("lookup.js did not load");
+      // the bulk (the chart's four models and its tables) starts at once
+      try { L.loadModels(); L.loadData(); } catch (e) {}
+      return L;
+    });
+    // lookup.js would fetch the bracelet scorer and the astrogem model from www.
+    // These are the same files at the tools' own pins (the astrogem worker has
+    // already fetched its copy), and taking the scorer from here keeps subrank.js
+    // from being run a second time under another address.
+    var mine = Promise.all([loadBraceletModel().then(null, function () {}), loadAstrogemModel().then(null, function () {})]);
+    var p = Promise.all([lib, mine]).then(function (a) {
+      return a[0].ready().then(function (st) { return { L: a[0], st: st }; });
+    });
+    gpdLib = p;
+    // anything that failed is asked for again next time; ready() refetches only that
+    p.then(function (g) { if (!(g.st.ok && g.st.astrogem && g.st.bracelet) && gpdLib === p) gpdLib = null; },
+      function () { if (gpdLib === p) gpdLib = null; });
+    return p;
+  }
+  /** Place the character straight after the paint that put the cards up. Not
+   *  requestIdleCallback: the skeletons' shimmer keeps the page from ever idling,
+   *  so it would wait out its whole timeout. A hidden tab paints no frames, hence
+   *  the timer beside the frame. */
+  function queueGpd(ctx) {
+    if (!ctx.gpdArmed || ctx.gpdQueued || !isLive(ctx)) return;
+    ctx.gpdQueued = true;
+    var done = false;
+    var go = function () { if (done) return; done = true; ctx.gpdQueued = false; runGpd(ctx); };
+    if (window.requestAnimationFrame) requestAnimationFrame(function () { setTimeout(go, 0); });
+    setTimeout(go, 250);
+  }
+  function runGpd(ctx) {
+    if (!isLive(ctx)) return;
+    var nav = perfNav, t0 = pnow();
+    mark("gpd-start");
+    loadGpd().then(function (g) {
+      if (!isLive(ctx)) return;
+      var loadMs = pnow() - t0;
+      mark("gpd-ready");
+      if (!g.st.ok) { gpdFailed(ctx, "The GPD chart's tables did not load. Reload the page to try again."); return; }
+      var axis = gpdAxis(ctx), pos = null, c0 = pnow();
+      try { pos = g.L.place({ record: ctx.brRec, astro: ctx.agRec, axis: axis }); }
+      catch (e) { gpdFailed(ctx, "The GPD lookup could not read this character."); return; }
+      var computeMs = pnow() - c0;
+      ctx.model.gpd = pos ? gpdPart(pos, g.L, axis)
+        : { st: "none", msg: "No lostark.bible pull to place on the GPD ladders yet." };
+      renderGpd(ctx);
+      renderStrip(ctx);
+      mark("gpd");
+      if (nav) (nav.gpd = nav.gpd || []).push({ loadMs: Math.round(loadMs), computeMs: Math.round(computeMs * 10) / 10 });
+      persist(ctx);
+    }, function () {
+      if (!isLive(ctx)) return;
+      gpdFailed(ctx, "The GPD chart did not load. Reload the page to try again.");
+    });
+  }
+  function gpdFailed(ctx, msg) {
+    if (ctx.model.gpd && ctx.model.gpd.st === "ok") return;   // keep the saved copy
+    ctx.model.gpd = { st: "error", msg: msg };
+    renderGpd(ctx);
+    renderStrip(ctx);
+  }
+
+  function gpdTileHtml(ctx) {
+    var g = ctx.model.gpd;
+    if (!g || g.st === "loading") return SKEL["lp-tile-gpd-body"];
+    if (g.st !== "ok") return '<div class="lp-tmsg">' + esc(g.msg || "No GPD reading.") + "</div>";
+    var per = "per 1% " + (g.axis === "support" ? "party " : "") + "dmg";
+    var best = g.best ? gpdRow(g, g.best) : null;
+    if (best && best.next) {
+      var n = best.next;
+      return '<div class="lp-tnum"' + gl(gpdPriceGloss(best, g.axis)) + '><div class="lp-tscore' + (n.price.length > 6 ? " lp-tsm" : "") + '">' +
+          esc(n.price) + '</div><div class="lp-tsub">' + per + "</div></div>" +
+        '<div class="lp-gstep"><div class="lp-gtext"' + gl(gpdNextGloss(best)) + '><span class="lp-gdot" style="background:' + esc(best.color) + '"></span>' +
+          esc(best.label + " → " + n.to) + "</div>" +
+        '<div class="lp-tsub"' + gl(gpdYoursGloss(best)) + ">yours: " + esc(best.yours) + "</div></div>";
+    }
+    var low = g.low ? gpdRow(g, g.low) : null;
+    if (!low || !low.next) {
+      return '<div class="lp-tnum"' + gl("No ladder the lookup can read has a next step, so there is nothing to price.") +
+          '><div class="lp-tscore lp-dim">—</div><div class="lp-tsub">' + per + "</div></div>" +
+        '<div class="lp-gstep"><div class="lp-gtext"' + gl("No ladder the lookup can read has a rung above this character's.") + ">Nothing left to buy</div>" +
+        '<div class="lp-tsub">every read ladder is at its top</div></div>';
+    }
+    return '<div class="lp-tnum"' + gl(gpdPriceGloss(low, g.axis)) + '><div class="lp-tscore lp-dim' + (low.next.price.length > 6 ? " lp-tsm" : "") + '">' +
+        esc(low.next.price) + '</div><div class="lp-tsub">' + per + "</div></div>" +
+      '<div class="lp-gstep"><div class="lp-gtext"' + gl("Every next step left costs more than 25M per 1% damage, so the chart names no pick.") + ">Nothing under 25M/1%</div>" +
+      '<div class="lp-tsub"' + gl(gpdNextGloss(low)) + ">cheapest left: " + esc(low.label + " → " + low.next.to) + "</div></div>";
+  }
+
+  function renderGpd(ctx) {
+    var g = ctx.model.gpd;
+    if (!g || g.st === "loading") { setHtml("lp-gpd-body", SKEL["lp-gpd-body"]); setText("lp-gpd-src", ""); setGloss("lp-gpd-src", ""); return; }
+    if (g.st !== "ok") {
+      setHtml("lp-gpd-body", '<div class="lp-cmsg' + (g.st === "error" ? " err" : "") + '">' + esc(g.msg || "No GPD reading.") + "</div>");
+      setText("lp-gpd-src", "");
+      setGloss("lp-gpd-src", "");
+      return;
+    }
+    var h = "";
+    g.rows.forEach(function (r) {
+      var sys = "<td" + gl(GPD_SYSTEM[r.k] || r.label) + '><span class="lp-gdot" style="background:' + esc(r.color) + '"></span>' + esc(r.label) + "</td>";
+      if (r.why) {
+        var why = gpdYoursGloss(r);
+        h += '<tr class="lp-goff">' + sys + "<td" + gl(why) + ">" + esc(r.yours) + '</td><td colspan="2"' + gl(why) + '><span class="lp-gcut">' +
+          esc(r.why) + "</span></td></tr>";
+        return;
+      }
+      var n = r.next, best = r.k === g.best;
+      h += "<tr" + (best ? ' class="lp-gbest"' : "") + ">" + sys +
+        "<td" + gl(gpdYoursGloss(r)) + '><span class="lp-gcut">' + esc(r.yours) + "</span></td>" +
+        (n ? "<td" + gl(gpdNextGloss(r)) + '><span class="lp-gcut"><b>' + esc(n.to) + "</b></span></td>" +
+            '<td class="r"' + gl(gpdPriceGloss(r, g.axis)) + ">" + (best ? '<span class="lp-gtag">cheapest</span>' : "") + "<b>" + esc(n.price) + "</b></td>"
+          : '<td class="lp-dim"' + gl(gpdNextGloss(r)) + '>nothing left</td><td class="r lp-dim"' + gl(gpdPriceGloss(r, g.axis)) + ">—</td>") +
+        "</tr>";
+    });
+    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>");
+    setText("lp-gpd-src", g.axis === "support" ? "Support ladders" : "DPS ladders");
+    setGloss("lp-gpd-src", gpdAxisWords(g.axis));
+  }
+
   function renderLinks(ctx) {
     var c = cParam(ctx.region, ctx.name);
     var set = function (id, href) { var el = $(id); if (el) el.setAttribute("href", href); };
@@ -1417,6 +1692,7 @@
     set("lp-open-adv", "/loa-bracelet-calc/advisor?" + c);
     set("lp-open-ag", "/loa-astrogem-calc/grader?" + c);
     set("lp-open-gpd", "/loa-gpd/?" + c);
+    set("lp-go-gpd", "/loa-gpd/?" + c);
   }
 
   function renderAll(ctx) {
@@ -1425,6 +1701,7 @@
     renderBracelet(ctx);
     renderAstro(ctx);
     renderStats(ctx);
+    renderGpd(ctx);
     renderLinks(ctx);
     if (ctx.progress) setProgress(ctx, ctx.progress.text, ctx.progress.kind);
   }
@@ -1516,6 +1793,7 @@
     settle(ctx, ["head", "stats"]);
     deriveBracelet(ctx);
     persist(ctx);
+    queueGpd(ctx);   // a no-op until the first placement has been asked for
   }
 
   /**
@@ -1639,6 +1917,7 @@
       persist(ctx);
       mark("astrogem");
       settle(ctx, ["ag"]);
+      queueGpd(ctx);
       if (ctx.model.ag.st === "ok") rankAstro(ctx);
       else { ctx.model.agRank = { st: "none", msg: "No gems" }; renderStrip(ctx); settle(ctx, ["agRank"]); }
     }, function (err) {
@@ -1839,7 +2118,8 @@
       gen: gen, region: region, name: name, key: region + "|" + name,
       model: emptyModel(region, name), aborts: [], timers: [],
       brRec: null, agRec: null, board: null, boardErr: null, boardSlow: false,
-      watch: null, updating: false, brDone: false, progress: null, scoreToken: null, fresh: {}
+      watch: null, updating: false, brDone: false, progress: null, scoreToken: null, fresh: {},
+      gpdArmed: false, gpdQueued: false
     };
     cur = ctx;
     document.title = name + " (" + region + ") — Loseii";
@@ -1848,7 +2128,7 @@
 
     var saved = restore(ctx.key);
     if (saved) {
-      PARTS.forEach(function (k) {
+      KEPT.forEach(function (k) {
         var p = saved.model[k];
         if (p && (p.st === "ok" || p.st === "none")) ctx.model[k] = p;
       });
@@ -1940,7 +2220,10 @@
   function capture(id) { var el = $(id); SKEL[id] = el ? el.innerHTML : ""; }
 
   function boot() {
-    ["lp-icon", "lp-pulled", "lp-tile-br-body", "lp-tile-ag-body", "lp-br-body", "lp-ag-body", "lp-stats-body"].forEach(capture);
+    ["lp-icon", "lp-pulled", "lp-tile-br-body", "lp-tile-ag-body", "lp-tile-gpd-body", "lp-br-body", "lp-ag-body",
+      "lp-stats-body", "lp-gpd-body"].forEach(capture);
+    var gth = $("lp-gpd-body") && $("lp-gpd-body").querySelector("thead");
+    GPD_HEAD = gth ? gth.outerHTML : "";
 
     var form = $("lp-search"), q = $("lp-q");
     var submit = function () {

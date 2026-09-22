@@ -26,7 +26,10 @@
     /profile/profile.js                       this page
   profile.js starts /profile/ag-worker.js, which imports the astrogem calculator's
   model and loadout-econ.js, and loads the bracelet model only for a character
-  the board lacks.
+  the board lacks. Once the bracelet and astrogem cards have painted it loads
+  /loa-gpd/lookup.js (the GPD chart's lookup, which fetches its own tables) for
+  the gold-per-1% card, after the bracelet model and model/astrogem.js at the
+  tools' own pins.
 
   Deploy note: the loseii zone caches .js for 4 hours, so bump a file's ?v= here
   (and ag-worker.js's in profile.js) whenever it changes, and bump the pins on
@@ -35,7 +38,7 @@
 -->
 <link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
 <link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
-<link rel="stylesheet" href="/profile/profile.css?v=2">
+<link rel="stylesheet" href="/profile/profile.css?v=3">
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
      press), so the next page opens already drawn. profile.js holds every side
      effect until the page is shown. The favorite/recent chips are left out: they
@@ -123,6 +126,13 @@ d.className+=ok?" lp-char":" lp-find";})();
           <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
         </div>
       </div>
+      <div class="panel lp-tile" id="lp-tile-gpd">
+        <div class="lp-thd"><span class="lp-thl"><span class="subh" data-gloss="The GPD chart&rsquo;s pick for this character: the next step with the lowest gold per 1% damage, of the steps under 25M per 1%.">Cheapest next 1%</span> <span class="lp-axis" id="lp-tile-gpd-axis"></span></span><a class="lp-go-board" id="lp-go-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up.">GPD chart &rarr;</a></div>
+        <div class="lp-tbody lp-gbody" id="lp-tile-gpd-body">
+          <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.8em"></span></div><div class="lp-tsub"><span class="sk" style="width:5.5em"></span></div></div>
+          <div class="lp-gstep"><div class="lp-gtext"><span class="sk" style="width:11em"></span></div><div class="lp-tsub"><span class="sk" style="width:9em"></span></div></div>
+        </div>
+      </div>
     </div>
 
     <div class="lp-cards">
@@ -162,9 +172,6 @@ d.className+=ok?" lp-char":" lp-find";})();
           <div class="lp-stat"><span class="k">Honing</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
           <div class="lp-stat"><span class="k">Accessories</span><span class="v"><span class="sk" style="width:7em"></span></span></div>
           <div class="lp-stat"><span class="k">Ark grid</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
-        </div>
-        <div class="lp-card-ft">
-          <a class="lp-cta2" id="lp-open-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up. It names the cheapest next upgrade in gold per 1% damage.">Open in GPD chart</a>
         </div>
       </section>
 
@@ -245,6 +252,33 @@ d.className+=ok?" lp-char":" lp-find";})();
           <a class="lp-cta" id="lp-open-ag" href="/loa-astrogem-calc/grader" data-gloss="Opens the astrogem Grader with this character's gems loaded.">Open in Astrogem Calculator</a>
         </div>
       </section>
+
+      <section class="panel lp-card lp-card-gpd" id="lp-card-gpd" aria-labelledby="lp-gpd-h">
+        <div class="lp-card-hd"><h2 class="subh" id="lp-gpd-h" data-gloss="The GPD chart&rsquo;s own lookup, run on this page: where this character stands on each ladder and what the next step costs per 1% damage. Cheapest first; the lit row is the one to buy.">Gold per 1% damage</h2><span class="lp-src" id="lp-gpd-src"></span></div>
+        <div class="lp-gpd-body" id="lp-gpd-body">
+          <div class="lp-tw lp-gpdwrap">
+            <table class="gr-ptab lp-gpdtab">
+              <thead><tr><th data-gloss="The progression systems the GPD chart prices, one ladder each.">System</th><th data-gloss="Your rung on each ladder, read from the lostark.bible pull.">Yours</th><th data-gloss="The next rung up each ladder.">Next step</th><th class="r" data-gloss="What the next step costs per 1% more damage, at the chart&rsquo;s default prices. Only a step under 25M per 1% can be the pick.">Gold / 1%</th></tr></thead>
+              <tbody>
+                  <tr><td><span class="sk" style="width:8em"></span></td><td><span class="sk" style="width:4em"></span></td><td><span class="sk" style="width:9em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:8em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td><span class="sk" style="width:4.5em"></span></td><td><span class="sk" style="width:5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:9em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:3em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:6em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:4em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5em"></span></td><td><span class="sk" style="width:11em"></span></td><td><span class="sk" style="width:12em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:5.5em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:10em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:10em"></span></td><td><span class="sk" style="width:2em"></span></td><td><span class="sk" style="width:2.5em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+                  <tr><td><span class="sk" style="width:7em"></span></td><td><span class="sk" style="width:3em"></span></td><td><span class="sk" style="width:3em"></span></td><td class="r"><span class="sk" style="width:3em"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="lp-card-ft">
+          <a class="lp-cta2" id="lp-open-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up: every ladder, the gear list and the plan.">Open in GPD chart</a>
+        </div>
+      </section>
     </div>
 
     <details class="method">
@@ -252,6 +286,7 @@ d.className+=ok?" lp-char":" lp-find";})();
       <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board.</p>
       <p><b>Bracelet rank.</b> The character&rsquo;s place on its region&rsquo;s board, in the board&rsquo;s own order. The DPS board ranks everyone by damage %, less support mains; the Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains. A support class shows on the board the Worker reads it on. Top X% is the place divided by the number on that board. The board rebuilds at most every 10 minutes; a character it has not picked up yet (a new pull, or one just updated) is scored here with the calculator&rsquo;s own model, and its place is marked &asymp; until the board catches up.</p>
       <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The table, the average grade, the per-core figures and Total % dmg are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. The grid-damage split runs the model&rsquo;s own grid formula once per source with the others set to zero, so the parts add up to the total. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
+      <p><b>Gold per 1% damage.</b> The GPD chart&rsquo;s own lookup (<code>/loa-gpd/lookup.js</code>), run here on the same two lostark.bible answers the cards above use: each system&rsquo;s rung, and what the next step costs per 1% damage at the chart&rsquo;s default prices and switches (no flat line, high main stat). A support is graded on the support ladders, where gold per 1% counts the buff on all three dealers. Only a step under 25M per 1% can be the pick. It loads after the cards above, so it never holds them up.</p>
       <p><b>Stats.</b> The raid loadout&rsquo;s figures as lostark.bible reports them, which the bracelet calculator imports into its character panel. Update reads the bracelet record again; astrogems are pulled from the Astrogem Calculator, which needs a lostark.bible sign-in.</p>
       <p><b>Where the data comes from.</b> Public lostark.bible character pages, as their owners last synced them &mdash; it can be weeks behind the game. Raid statistics are never read. Not affiliated with Smilegate, Amazon Games or lostark.bible.</p>
     </details>
@@ -261,7 +296,7 @@ d.className+=ok?" lp-char":" lp-find";})();
 <script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
 <script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
 <script src="/loa-bracelet-calc/tip.js?v=1" defer></script>
-<script src="/profile/profile.js?v=2" defer></script>
+<script src="/profile/profile.js?v=3" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

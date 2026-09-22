@@ -91,7 +91,7 @@ option{background:var(--panel2);color:var(--text)}
 .lp-fav.on{color:var(--high);border-color:#6b5230}
 
 /* ---- rank strip ---- */
-.lp-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.lp-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
 .lp-tile{height:104px}
 .lp-thd{display:flex;align-items:center;justify-content:space-between;height:16px}
 .lp-thl{display:inline-flex;align-items:center;gap:6px;height:16px;line-height:16px}
@@ -109,6 +109,13 @@ option{background:var(--panel2);color:var(--text)}
 .lp-tsub{font-size:12px;color:var(--dim);line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-trank{text-align:right;min-width:0}
 .lp-trk{font-size:15px;font-weight:700;line-height:28px;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* the GPD tile: the price on the left, the step it buys beside it (two lines at most) */
+.lp-gbody{grid-template-columns:auto minmax(0,1fr)}
+.lp-tscore.lp-tsm{font-size:15px}
+.lp-gstep{min-width:0}
+.lp-gtext{font-size:13.5px;font-weight:700;line-height:18px;height:36px;overflow:hidden;display:-webkit-box;
+  -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.lp-gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--none)}
 /* the perfect-bracelet rainbow, as the boards draw it */
 .rank-rainbow{background-size:400% 100% !important}
 @media (prefers-reduced-motion:no-preference){
@@ -116,10 +123,10 @@ option{background:var(--panel2);color:var(--text)}
   @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
 }
 
-/* ---- cards: bracelet beside the stats, astrogems across the page ---- */
+/* ---- cards: bracelet beside the stats; astrogems and gold per 1% across the page ---- */
 .lp-cards{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;margin-top:12px}
 .lp-card{display:flex;flex-direction:column;min-width:0}
-.lp-card-ag{grid-column:1/-1}
+.lp-card-ag,.lp-card-gpd{grid-column:1/-1}
 .lp-card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px;margin-bottom:10px}
 .lp-card-ft{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:14px}
 .lp-cta,.lp-cta2{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:8px;font-size:13px;font-weight:700;
@@ -208,19 +215,35 @@ table.lp-gemtab .gnum{color:var(--dim);margin-left:6px;font-size:11px}
 .lp-gtier{font-weight:700}
 .lp-gtier .c{color:var(--dim);font-weight:600;margin-left:4px}
 
+/* ---- the GPD card: one row per ladder, cheapest next step first ---- */
+.lp-gpdwrap{border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+table.lp-gpdtab{min-width:600px}
+table.lp-gpdtab td b{font-weight:700}
+.lp-gcut{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+table.lp-gpdtab tr.lp-gbest td{background:rgba(102,199,255,.08)}
+table.lp-gpdtab tr.lp-gbest td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+table.lp-gpdtab tr.lp-goff td{color:#5e6a83}
+table.lp-gpdtab tr.lp-goff .lp-gdot{background:#3a4152 !important}
+.lp-gtag{display:inline-block;margin-right:8px;padding:0 7px;border-radius:99px;background:var(--accent);color:#06121f;
+  font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:16px;vertical-align:1px}
+
 /* ---- the method block (the bracelet tool's) ---- */
 details.method{margin-top:22px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px 16px}
 details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
 details.method p{font-size:13px;color:var(--text);margin:0 0 10px;max-width:92ch}
 
 /* ---- narrower screens ---- */
+@media (max-width:1099px){
+  .lp-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #lp-tile-gpd{grid-column:1/-1}
+}
 @media (max-width:900px){
   .lp-agrow{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:760px){
   .wrap{padding:16px 16px 90px}
   .lp-strip,.lp-cards{grid-template-columns:minmax(0,1fr)}
-  .lp-card-ag{grid-column:auto}
+  .lp-card-ag,.lp-card-gpd{grid-column:auto}
   /* header: icon and name on top, actions on a row of their own; still one fixed height */
   .lp-head{grid-template-columns:48px minmax(0,1fr);grid-template-rows:auto 30px;row-gap:8px;height:auto;min-height:0;padding:12px 14px}
   .lp-icon{width:48px;height:48px;align-self:start;margin-top:4px}
