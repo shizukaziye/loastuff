@@ -75,10 +75,12 @@
 </div>
 
 <!-- One-time carry-over of saved data from the tool's old address
-     (shizukaziye.github.io). FIRST script in the body on purpose: a successful
-     import reloads the page once, and the earlier that happens the less work is
-     thrown away. Silent, self-limiting, and gone for good once it has run. -->
-<script src="handoff.js?v=1"></script>
+     (shizukaziye.github.io). FIRST script in the body on purpose: the data comes
+     back in the URL fragment and is written BEFORE any app script parses, so
+     nothing boots on defaults and nothing of the user's is overwritten. Silent,
+     self-limiting, one round trip per browser, and gone for good once it has
+     run. -->
+<script src="handoff.js?v=2"></script>
 
 <!-- Tab switching: toggle .active on the matching button + pane. -->
 <script>
@@ -141,7 +143,7 @@ function selectTab(name){
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
 <script src="char-picker.js?v=4"></script>
-<script src="profile.js?v=22"></script>
+<script src="profile.js?v=23"></script>
 <script src="subrank.js?v=9"></script>
 <script src="app.js?v=47"></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet

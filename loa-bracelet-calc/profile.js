@@ -706,6 +706,19 @@
   var RESET_GLOSS = "Puts every setting back to the calculator's defaults. Your role, the character, " +
     "the bracelet, the gold rate and the baseline are left alone.";
 
+  // ONE-TIME, for the move off shizukaziye.github.io: the way back for anyone
+  // the automatic carry-over could not help — someone who opened this site
+  // before it shipped, or whose profile was already here and rightly left
+  // alone. Only the link lives here. handoff.js catches the click on
+  // [data-bchandoff], asks first, and owns the whole round trip; delete the two
+  // together once the move is old news.
+  var HANDOFF_LINK = '<button type="button" data-bchandoff="1" data-gloss="' +
+    'Fetches the profile, favorites and roll history saved at the old address (shizukaziye.github.io) ' +
+    'and puts them here, over what this site has. It asks first."' +
+    ' style="background:none;border:none;padding:0;font:inherit;font-size:11px;color:var(--dim);' +
+    'text-decoration:underline;text-underline-offset:3px;white-space:normal;cursor:pointer;flex:0 1 auto"' +
+    '>Used the old address? Bring your saved profiles over.</button>';
+
   function charControlsHtml() {
     var loaded = hasCharacter();
     var who = loaded ? esc(S.char.name) : "", can = loaded && canImportStats();
@@ -716,7 +729,7 @@
         ' data-gloss="No character is loaded. Look one up above and this fills the panel with their own honing,' +
         ' accessories, gems, karma and the rest.">Import Character Stats</button>' +
         '<button type="button" class="mbtn" data-bcreset="defaults" data-gloss="' + esc(RESET_GLOSS) +
-        '">Reset to Default</button></div>';
+        '">Reset to Default</button>' + HANDOFF_LINK + '</div>';
     }
     h += '<button type="button" class="mbtn"' + (can ? "" : ' aria-disabled="true"') +
       ' data-bcimport="1" data-gloss="' + (can
@@ -728,6 +741,7 @@
       '">Import Character Stats</button>';
     h += '<button type="button" class="mbtn" data-bcreset="defaults" data-gloss="' + esc(RESET_GLOSS) +
       '">Reset to Default</button>';
+    h += HANDOFF_LINK;
     return h + "</div>";
   }
 
