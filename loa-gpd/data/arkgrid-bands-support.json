@@ -1,0 +1,362 @@
+[
+ {
+  "rank": "S+",
+  "cut": 94.6,
+  "cores": 20,
+  "damage": 3.6798928145442704,
+  "nodes": [
+   [
+    "ally atk",
+    101
+   ],
+   [
+    "brand",
+    66
+   ],
+   [
+    "ally dmg",
+    43
+   ]
+  ]
+ },
+ {
+  "rank": "S",
+  "cut": 93.3,
+  "cores": 20,
+  "damage": 3.5684457691842066,
+  "nodes": [
+   [
+    "ally atk",
+    98
+   ],
+   [
+    "brand",
+    64
+   ],
+   [
+    "ally dmg",
+    42
+   ]
+  ]
+ },
+ {
+  "rank": "S-",
+  "cut": 90,
+  "cores": 19,
+  "damage": 3.2855375038909136,
+  "nodes": [
+   [
+    "ally atk",
+    90
+   ],
+   [
+    "brand",
+    60
+   ],
+   [
+    "ally dmg",
+    41
+   ]
+  ]
+ },
+ {
+  "rank": "A+",
+  "cut": 86.7,
+  "cores": 19,
+  "damage": 3.0026231726955936,
+  "nodes": [
+   [
+    "ally atk",
+    82
+   ],
+   [
+    "brand",
+    57
+   ],
+   [
+    "ally dmg",
+    39
+   ]
+  ]
+ },
+ {
+  "rank": "A",
+  "cut": 83.3,
+  "cores": 19,
+  "damage": 2.7111293342497276,
+  "nodes": [
+   [
+    "ally atk",
+    74
+   ],
+   [
+    "brand",
+    53
+   ],
+   [
+    "ally dmg",
+    37
+   ]
+  ]
+ },
+ {
+  "rank": "A-",
+  "cut": 80,
+  "cores": 18,
+  "damage": 2.4282026836814685,
+  "nodes": [
+   [
+    "ally atk",
+    66
+   ],
+   [
+    "brand",
+    49
+   ],
+   [
+    "ally dmg",
+    36
+   ]
+  ]
+ },
+ {
+  "rank": "B+",
+  "cut": 76.7,
+  "cores": 18,
+  "damage": 2.145269963512785,
+  "nodes": [
+   [
+    "ally atk",
+    58
+   ],
+   [
+    "brand",
+    45
+   ],
+   [
+    "ally dmg",
+    34
+   ]
+  ]
+ },
+ {
+  "rank": "B",
+  "cut": 73.3,
+  "cores": 17,
+  "damage": 1.8537571749831083,
+  "nodes": [
+   [
+    "ally atk",
+    49
+   ],
+   [
+    "brand",
+    42
+   ],
+   [
+    "ally dmg",
+    32
+   ]
+  ]
+ },
+ {
+  "rank": "B-",
+  "cut": 70,
+  "cores": 17,
+  "damage": 1.577097484260108,
+  "nodes": [
+   [
+    "ally atk",
+    41
+   ],
+   [
+    "brand",
+    38
+   ],
+   [
+    "ally dmg",
+    31
+   ]
+  ]
+ },
+ {
+  "rank": "C+",
+  "cut": 66.7,
+  "cores": 17,
+  "damage": 1.3545147969945344,
+  "nodes": [
+   [
+    "ally atk",
+    33
+   ],
+   [
+    "brand",
+    34
+   ],
+   [
+    "ally dmg",
+    29
+   ]
+  ]
+ },
+ {
+  "rank": "C",
+  "cut": 63.3,
+  "cores": 16,
+  "damage": 1.1251871798118211,
+  "nodes": [
+   [
+    "ally atk",
+    25
+   ],
+   [
+    "brand",
+    30
+   ],
+   [
+    "ally dmg",
+    27
+   ]
+  ]
+ },
+ {
+  "rank": "C-",
+  "cut": 60,
+  "cores": 16,
+  "damage": 0.9026044925462474,
+  "nodes": [
+   [
+    "ally atk",
+    17
+   ],
+   [
+    "brand",
+    27
+   ],
+   [
+    "ally dmg",
+    26
+   ]
+  ]
+ },
+ {
+  "rank": "D+",
+  "cut": 56.7,
+  "cores": 15,
+  "damage": 0.6800218052806736,
+  "nodes": [
+   [
+    "ally atk",
+    9
+   ],
+   [
+    "brand",
+    23
+   ],
+   [
+    "ally dmg",
+    24
+   ]
+  ]
+ },
+ {
+  "rank": "D",
+  "cut": 53.3,
+  "cores": 15,
+  "damage": 0.4506941880979606,
+  "nodes": [
+   [
+    "ally atk",
+    1
+   ],
+   [
+    "brand",
+    19
+   ],
+   [
+    "ally dmg",
+    22
+   ]
+  ]
+ },
+ {
+  "rank": "D-",
+  "cut": 50,
+  "cores": 15,
+  "damage": 0.37118115335449464,
+  "nodes": [
+   [
+    "ally atk",
+    0
+   ],
+   [
+    "brand",
+    15
+   ],
+   [
+    "ally dmg",
+    21
+   ]
+  ]
+ },
+ {
+  "rank": "F+",
+  "cut": 33.3,
+  "cores": 13,
+  "damage": 0.08948021875211996,
+  "nodes": [
+   [
+    "ally atk",
+    0
+   ],
+   [
+    "brand",
+    0
+   ],
+   [
+    "ally dmg",
+    13
+   ]
+  ]
+ },
+ {
+  "rank": "F",
+  "cut": 16.7,
+  "cores": 11,
+  "damage": 0.030832285893284708,
+  "nodes": [
+   [
+    "ally atk",
+    0
+   ],
+   [
+    "brand",
+    0
+   ],
+   [
+    "ally dmg",
+    4
+   ]
+  ]
+ },
+ {
+  "rank": "F-",
+  "cut": 0,
+  "cores": 9,
+  "damage": 0,
+  "nodes": [
+   [
+    "ally atk",
+    0
+   ],
+   [
+    "brand",
+    0
+   ],
+   [
+    "ally dmg",
+    0
+   ]
+  ]
+ }
+]

@@ -1,0 +1,266 @@
+{
+ "1": {
+  "med": "atk+move spd",
+  "tiers": {
+   "blue": "Attack and Movement Speed +4%.",
+   "epic": "Attack and Movement Speed +5%.",
+   "LEG": "Attack and Movement Speed +6%."
+  }
+ },
+ "2": {
+  "med": "dmg to lower",
+  "tiers": {
+   "blue": "Damage to Challenge or lower foes +4%.",
+   "epic": "Damage to Challenge or lower foes +5%.",
+   "LEG": "Damage to Challenge or lower foes +6%."
+  }
+ },
+ "3": {
+  "med": "less dmg taken",
+  "tiers": {
+   "blue": "Damage received from Challenge or lower foes -6%.",
+   "epic": "Damage received from Challenge or lower foes -8%.",
+   "LEG": "Damage received from Challenge or lower foes -10%."
+  }
+ },
+ "4": {
+  "med": "phys def",
+  "tiers": {
+   "blue": "Physical Defense +5,000.",
+   "epic": "Physical Defense +6,000.",
+   "LEG": "Physical Defense +7,000."
+  }
+ },
+ "5": {
+  "med": "magic def",
+  "tiers": {
+   "blue": "Magic Defense +5,000.",
+   "epic": "Magic Defense +6,000.",
+   "LEG": "Magic Defense +7,000."
+  }
+ },
+ "6": {
+  "med": "max hp",
+  "tiers": {
+   "blue": "Max HP +11,200.",
+   "epic": "Max HP +14,000.",
+   "LEG": "Max HP +16,800."
+  }
+ },
+ "7": {
+  "med": "hp regen",
+  "tiers": {
+   "blue": "Combat HP Recovery +100.",
+   "epic": "Combat HP Recovery +130.",
+   "LEG": "Combat HP Recovery +160."
+  }
+ },
+ "8": {
+  "med": "resource regen",
+  "tiers": {
+   "blue": "Natural Resource Recovery +8%.",
+   "epic": "Natural Resource Recovery +10%.",
+   "LEG": "Natural Resource Recovery +12%."
+  }
+ },
+ "9": {
+  "med": "move cooldown",
+  "tiers": {
+   "blue": "Movement Skill & Stand-up Skill Cooldown -8%.",
+   "epic": "Movement Skill & Stand-up Skill Cooldown -10%.",
+   "LEG": "Movement Skill & Stand-up Skill Cooldown -12%."
+  }
+ },
+ "10": {
+  "med": "push immunity",
+  "tiers": {
+   "blue": "When hit by an attack, gain Push Immunity for 80s. This effect disappears after being hit once (80s cooldown).",
+   "epic": "When hit by an attack, gain Push Immunity for 70s. This effect disappears after being hit once (70s cooldown).",
+   "LEG": "When hit by an attack, gain Push Immunity for 60s. This effect disappears after being hit once (60s cooldown)."
+  }
+ },
+ "11": {
+  "med": "crit rate+",
+  "tiers": {
+   "blue": "Crit Rate +3.4%. On successful Crit Hit, Damage +1.5%.",
+   "epic": "Crit Rate +4.2%. On successful Crit Hit, Damage +1.5%.",
+   "LEG": "Crit Rate +5%. On successful Crit Hit, Damage +1.5%."
+  }
+ },
+ "12": {
+  "med": "crit dmg+",
+  "tiers": {
+   "blue": "Critical Hit Damage +6.8%. On successful Crit Hit, Damage +1.5%.",
+   "epic": "Critical Hit Damage +8.4%. On successful Crit Hit, Damage +1.5%.",
+   "LEG": "Critical Hit Damage +10%. On successful Crit Hit, Damage +1.5%."
+  }
+ },
+ "13": {
+  "med": "dmg+stagger",
+  "tiers": {
+   "blue": "Damage +2%. Damage against Staggered foes +4%.",
+   "epic": "Damage +2.5%. Damage against Staggered foes +4.5%.",
+   "LEG": "Damage +3%. Damage against Staggered foes +5%."
+  }
+ },
+ "14": {
+  "med": "add dmg+demon",
+  "tiers": {
+   "blue": "Additional Damage +2.5%. Damage against Demon & Arch-Demon enemies +2.5%.",
+   "epic": "Additional Damage +3%. Damage against Demon & Arch-Demon enemies +2.5%.",
+   "LEG": "Additional Damage +3.5%. Damage against Demon & Arch-Demon enemies +2.5%."
+  }
+ },
+ "15": {
+  "med": "dmg, +cd",
+  "tiers": {
+   "blue": "Damage +4.5%, but Skill Cooldown +2%.",
+   "epic": "Damage +5%, but Skill Cooldown +2%.",
+   "LEG": "Damage +5.5%, but Skill Cooldown +2%."
+  }
+ },
+ "16": {
+  "med": "def shred",
+  "tiers": {
+   "blue": "On successful hit, enemy defense -1.8%. This effect can only be applied once per party. Attack Power buff efficiency +2%.",
+   "epic": "On successful hit, enemy defense -2.1%. This effect can only be applied once per party. Attack Power buff efficiency +2.5%.",
+   "LEG": "On successful hit, enemy defense -2.5%. This effect can only be applied once per party. Attack Power buff efficiency +3%."
+  }
+ },
+ "17": {
+  "med": "crit shred",
+  "tiers": {
+   "blue": "On successful hit, enemy crit resistance -1.8%. This effect can only be applied once per party. Attack Power buff efficiency +2%.",
+   "epic": "On successful hit, enemy crit resistance -2.1%. This effect can only be applied once per party. Attack Power buff efficiency +2.5%.",
+   "LEG": "On successful hit, enemy crit resistance -2.5%. This effect can only be applied once per party. Attack Power buff efficiency +3%."
+  }
+ },
+ "18": {
+  "med": "shield dmg+",
+  "tiers": {
+   "blue": "Upon granting allies a Shield, HP Regen, or Incoming Damage Reduction effect, they gain Damage +0.9%. Attack Power buff efficiency +2%.",
+   "epic": "Upon granting allies a Shield, HP Regen, or Incoming Damage Reduction effect, they gain Damage +1.1%. Attack Power buff efficiency +2.5%.",
+   "LEG": "Upon granting allies a Shield, HP Regen, or Incoming Damage Reduction effect, they gain Damage +1.3%. Attack Power buff efficiency +3%."
+  }
+ },
+ "19": {
+  "med": "cdmg shred",
+  "tiers": {
+   "blue": "On successful hit, enemy critical hit resistance -3.6%. This effect can only be applied once per party. Attack Power buff efficiency +2%.",
+   "epic": "On successful hit, enemy critical hit resistance -4.2%. This effect can only be applied once per party. Attack Power buff efficiency +2.5%.",
+   "LEG": "On successful hit, enemy critical hit resistance -4.8%. This effect can only be applied once per party. Attack Power buff efficiency +3%."
+  }
+ },
+ "20": {
+  "med": "wp x6 stack",
+  "tiers": {
+   "blue": "On successful hit, Weapon Power +1,160 and Attack and Movement Speed +1% every 1s (max 6 stacks, 10s duration).",
+   "epic": "On successful hit, Weapon Power +1,320 and Attack and Movement Speed +1% every 1s (max 6 stacks, 10s duration).",
+   "LEG": "On successful hit, Weapon Power +1,480 and Attack and Movement Speed +1% every 1s (max 6 stacks, 10s duration)."
+  }
+ },
+ "21": {
+  "med": "wp hp>50%",
+  "tiers": {
+   "blue": "Weapon Power +7,200. When your HP is above 50%, on successful hit Weapon Power +2,000 for 5s.",
+   "epic": "Weapon Power +8,100. When your HP is above 50%, on successful hit Weapon Power +2,200 for 5s.",
+   "LEG": "Weapon Power +9,000. When your HP is above 50%, on successful hit Weapon Power +2,400 for 5s."
+  }
+ },
+ "22": {
+  "med": "wp x30 stack",
+  "tiers": {
+   "blue": "Weapon Power +6,900. On successful hit, Weapon Power +130 every 30s (max 30 stacks, 120s duration).",
+   "epic": "Weapon Power +7,800. On successful hit, Weapon Power +140 every 30s (max 30 stacks, 120s duration).",
+   "LEG": "Weapon Power +8,700. On successful hit, Weapon Power +150 every 30s (max 30 stacks, 120s duration)."
+  }
+ },
+ "23": {
+  "med": "damage",
+  "tiers": {
+   "blue": "Damage +2%.",
+   "epic": "Damage +2.5%.",
+   "LEG": "Damage +3%."
+  }
+ },
+ "24": {
+  "med": "add damage",
+  "tiers": {
+   "blue": "Additional Damage +3%.",
+   "epic": "Additional Damage +3.5%.",
+   "LEG": "Additional Damage +4%."
+  }
+ },
+ "25": {
+  "med": "back atk",
+  "tiers": {
+   "blue": "Back Attack Damage +2.5%.",
+   "epic": "Back Attack Damage +3%.",
+   "LEG": "Back Attack Damage +3.5%."
+  }
+ },
+ "26": {
+  "med": "front atk",
+  "tiers": {
+   "blue": "Front Attack Damage +2.5%.",
+   "epic": "Front Attack Damage +3%.",
+   "LEG": "Front Attack Damage +3.5%."
+  }
+ },
+ "27": {
+  "med": "non-directional",
+  "tiers": {
+   "blue": "Non-Directional Attack Damage +2.5% (does not apply to Awakening skills).",
+   "epic": "Non-Directional Attack Damage +3% (does not apply to Awakening skills).",
+   "LEG": "Non-Directional Attack Damage +3.5% (does not apply to Awakening skills)."
+  }
+ },
+ "28": {
+  "med": "heal+shield eff",
+  "tiers": {
+   "blue": "HP Recovery and Shield effects' efficiency on party members +2.5%.",
+   "epic": "HP Recovery and Shield effects' efficiency on party members +3%.",
+   "LEG": "HP Recovery and Shield effects' efficiency on party members +3.5%."
+  }
+ },
+ "29": {
+  "med": "ally atk buff",
+  "tiers": {
+   "blue": "Attack Power buff efficiency +4%.",
+   "epic": "Attack Power buff efficiency +5%.",
+   "LEG": "Attack Power buff efficiency +6%."
+  }
+ },
+ "30": {
+  "med": "identity buff",
+  "tiers": {
+   "blue": "Identity buff efficiency on party members +6%.",
+   "epic": "Identity buff efficiency on party members +7.5%.",
+   "LEG": "Identity buff efficiency on party members +9%."
+  }
+ },
+ "31": {
+  "med": "crit rate",
+  "tiers": {
+   "blue": "Crit Rate +3.4%.",
+   "epic": "Crit Rate +4.2%.",
+   "LEG": "Crit Rate +5%."
+  }
+ },
+ "32": {
+  "med": "crit dmg",
+  "tiers": {
+   "blue": "Critical Hit Damage +6.8%.",
+   "epic": "Critical Hit Damage +8.4%.",
+   "LEG": "Critical Hit Damage +10%."
+  }
+ },
+ "33": {
+  "med": "weapon power",
+  "tiers": {
+   "blue": "Weapon Power +7,200.",
+   "epic": "Weapon Power +8,100.",
+   "LEG": "Weapon Power +9,000."
+  }
+ }
+}

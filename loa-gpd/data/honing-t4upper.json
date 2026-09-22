@@ -1,0 +1,1880 @@
+{
+ "armor": {
+  "mainStat": {
+   "hands": {
+    "0": {
+     "base": 86421,
+     "extra": 0,
+     "ilvl": 1675
+    },
+    "1": {
+     "base": 88684,
+     "extra": 1170,
+     "ilvl": 1680
+    },
+    "2": {
+     "base": 91026,
+     "extra": 2380,
+     "ilvl": 1685
+    },
+    "3": {
+     "base": 93450,
+     "extra": 3630,
+     "ilvl": 1690
+    },
+    "4": {
+     "base": 95959,
+     "extra": 4922,
+     "ilvl": 1695
+    },
+    "5": {
+     "base": 98556,
+     "extra": 6257,
+     "ilvl": 1700
+    },
+    "6": {
+     "base": 101244,
+     "extra": 7637,
+     "ilvl": 1705
+    },
+    "7": {
+     "base": 104025,
+     "extra": 9063,
+     "ilvl": 1710
+    },
+    "8": {
+     "base": 106905,
+     "extra": 10537,
+     "ilvl": 1715
+    },
+    "9": {
+     "base": 109885,
+     "extra": 12061,
+     "ilvl": 1720
+    },
+    "10": {
+     "base": 112969,
+     "extra": 13635,
+     "ilvl": 1725
+    },
+    "11": {
+     "base": 116161,
+     "extra": 15262,
+     "ilvl": 1730
+    },
+    "12": {
+     "base": 119465,
+     "extra": 16944,
+     "ilvl": 1735
+    },
+    "13": {
+     "base": 122885,
+     "extra": 18759,
+     "ilvl": 1740
+    },
+    "14": {
+     "base": 126425,
+     "extra": 20637,
+     "ilvl": 1745
+    },
+    "15": {
+     "base": 130087,
+     "extra": 22581,
+     "ilvl": 1750
+    },
+    "16": {
+     "base": 133879,
+     "extra": 24593,
+     "ilvl": 1755
+    },
+    "17": {
+     "base": 137229,
+     "extra": 26676,
+     "ilvl": 1760
+    },
+    "18": {
+     "base": 140662,
+     "extra": 28831,
+     "ilvl": 1765
+    },
+    "19": {
+     "base": 144180,
+     "extra": 31062,
+     "ilvl": 1770
+    },
+    "20": {
+     "base": 147786,
+     "extra": 33370,
+     "ilvl": 1775
+    },
+    "21": {
+     "base": 151483,
+     "extra": 35760,
+     "ilvl": 1780
+    },
+    "22": {
+     "base": 155271,
+     "extra": 38233,
+     "ilvl": 1785
+    },
+    "23": {
+     "base": 159155,
+     "extra": 40793,
+     "ilvl": 1790
+    },
+    "24": {
+     "base": 163136,
+     "extra": 43442,
+     "ilvl": 1795
+    },
+    "25": {
+     "base": 167216,
+     "extra": 46185,
+     "ilvl": 1800
+    }
+   },
+   "head": {
+    "0": {
+     "base": 72017,
+     "extra": 0,
+     "ilvl": 1675
+    },
+    "1": {
+     "base": 73903,
+     "extra": 975,
+     "ilvl": 1680
+    },
+    "2": {
+     "base": 75855,
+     "extra": 1983,
+     "ilvl": 1685
+    },
+    "3": {
+     "base": 77875,
+     "extra": 3025,
+     "ilvl": 1690
+    },
+    "4": {
+     "base": 79965,
+     "extra": 4101,
+     "ilvl": 1695
+    },
+    "5": {
+     "base": 82129,
+     "extra": 5214,
+     "ilvl": 1700
+    },
+    "6": {
+     "base": 84369,
+     "extra": 6364,
+     "ilvl": 1705
+    },
+    "7": {
+     "base": 86688,
+     "extra": 7553,
+     "ilvl": 1710
+    },
+    "8": {
+     "base": 89087,
+     "extra": 8781,
+     "ilvl": 1715
+    },
+    "9": {
+     "base": 91570,
+     "extra": 10051,
+     "ilvl": 1720
+    },
+    "10": {
+     "base": 94140,
+     "extra": 11363,
+     "ilvl": 1725
+    },
+    "11": {
+     "base": 96801,
+     "extra": 12719,
+     "ilvl": 1730
+    },
+    "12": {
+     "base": 99554,
+     "extra": 14120,
+     "ilvl": 1735
+    },
+    "13": {
+     "base": 102404,
+     "extra": 15633,
+     "ilvl": 1740
+    },
+    "14": {
+     "base": 105353,
+     "extra": 17198,
+     "ilvl": 1745
+    },
+    "15": {
+     "base": 108406,
+     "extra": 18818,
+     "ilvl": 1750
+    },
+    "16": {
+     "base": 111565,
+     "extra": 20494,
+     "ilvl": 1755
+    },
+    "17": {
+     "base": 114358,
+     "extra": 22230,
+     "ilvl": 1760
+    },
+    "18": {
+     "base": 117218,
+     "extra": 24026,
+     "ilvl": 1765
+    },
+    "19": {
+     "base": 120150,
+     "extra": 25885,
+     "ilvl": 1770
+    },
+    "20": {
+     "base": 123155,
+     "extra": 27809,
+     "ilvl": 1775
+    },
+    "21": {
+     "base": 126236,
+     "extra": 29800,
+     "ilvl": 1780
+    },
+    "22": {
+     "base": 129393,
+     "extra": 31861,
+     "ilvl": 1785
+    },
+    "23": {
+     "base": 132629,
+     "extra": 33994,
+     "ilvl": 1790
+    },
+    "24": {
+     "base": 135946,
+     "extra": 36202,
+     "ilvl": 1795
+    },
+    "25": {
+     "base": 139346,
+     "extra": 38487,
+     "ilvl": 1800
+    }
+   },
+   "legs": {
+    "0": {
+     "base": 62242,
+     "extra": 0,
+     "ilvl": 1675
+    },
+    "1": {
+     "base": 63872,
+     "extra": 843,
+     "ilvl": 1680
+    },
+    "2": {
+     "base": 65559,
+     "extra": 1714,
+     "ilvl": 1685
+    },
+    "3": {
+     "base": 67306,
+     "extra": 2615,
+     "ilvl": 1690
+    },
+    "4": {
+     "base": 69113,
+     "extra": 3545,
+     "ilvl": 1695
+    },
+    "5": {
+     "base": 70983,
+     "extra": 4507,
+     "ilvl": 1700
+    },
+    "6": {
+     "base": 72919,
+     "extra": 5501,
+     "ilvl": 1705
+    },
+    "7": {
+     "base": 74922,
+     "extra": 6528,
+     "ilvl": 1710
+    },
+    "8": {
+     "base": 76996,
+     "extra": 7590,
+     "ilvl": 1715
+    },
+    "9": {
+     "base": 79142,
+     "extra": 8687,
+     "ilvl": 1720
+    },
+    "10": {
+     "base": 81364,
+     "extra": 9821,
+     "ilvl": 1725
+    },
+    "11": {
+     "base": 83664,
+     "extra": 10993,
+     "ilvl": 1730
+    },
+    "12": {
+     "base": 86043,
+     "extra": 12204,
+     "ilvl": 1735
+    },
+    "13": {
+     "base": 88506,
+     "extra": 13511,
+     "ilvl": 1740
+    },
+    "14": {
+     "base": 91056,
+     "extra": 14864,
+     "ilvl": 1745
+    },
+    "15": {
+     "base": 93693,
+     "extra": 16264,
+     "ilvl": 1750
+    },
+    "16": {
+     "base": 96424,
+     "extra": 17713,
+     "ilvl": 1755
+    },
+    "17": {
+     "base": 98838,
+     "extra": 19213,
+     "ilvl": 1760
+    },
+    "18": {
+     "base": 101310,
+     "extra": 20765,
+     "ilvl": 1765
+    },
+    "19": {
+     "base": 103844,
+     "extra": 22372,
+     "ilvl": 1770
+    },
+    "20": {
+     "base": 106441,
+     "extra": 24035,
+     "ilvl": 1775
+    },
+    "21": {
+     "base": 109104,
+     "extra": 25756,
+     "ilvl": 1780
+    },
+    "22": {
+     "base": 111833,
+     "extra": 27537,
+     "ilvl": 1785
+    },
+    "23": {
+     "base": 114630,
+     "extra": 29381,
+     "ilvl": 1790
+    },
+    "24": {
+     "base": 117497,
+     "extra": 31289,
+     "ilvl": 1795
+    },
+    "25": {
+     "base": 120435,
+     "extra": 33264,
+     "ilvl": 1800
+    }
+   },
+   "shoulders": {
+    "0": {
+     "base": 76646,
+     "extra": 0,
+     "ilvl": 1675
+    },
+    "1": {
+     "base": 78654,
+     "extra": 1038,
+     "ilvl": 1680
+    },
+    "2": {
+     "base": 80731,
+     "extra": 2111,
+     "ilvl": 1685
+    },
+    "3": {
+     "base": 82881,
+     "extra": 3219,
+     "ilvl": 1690
+    },
+    "4": {
+     "base": 85106,
+     "extra": 4365,
+     "ilvl": 1695
+    },
+    "5": {
+     "base": 87410,
+     "extra": 5549,
+     "ilvl": 1700
+    },
+    "6": {
+     "base": 89793,
+     "extra": 6773,
+     "ilvl": 1705
+    },
+    "7": {
+     "base": 92261,
+     "extra": 8038,
+     "ilvl": 1710
+    },
+    "8": {
+     "base": 94815,
+     "extra": 9346,
+     "ilvl": 1715
+    },
+    "9": {
+     "base": 97457,
+     "extra": 10697,
+     "ilvl": 1720
+    },
+    "10": {
+     "base": 100193,
+     "extra": 12093,
+     "ilvl": 1725
+    },
+    "11": {
+     "base": 103023,
+     "extra": 13537,
+     "ilvl": 1730
+    },
+    "12": {
+     "base": 105954,
+     "extra": 15028,
+     "ilvl": 1735
+    },
+    "13": {
+     "base": 108987,
+     "extra": 16638,
+     "ilvl": 1740
+    },
+    "14": {
+     "base": 112126,
+     "extra": 18304,
+     "ilvl": 1745
+    },
+    "15": {
+     "base": 115375,
+     "extra": 20028,
+     "ilvl": 1750
+    },
+    "16": {
+     "base": 118738,
+     "extra": 21812,
+     "ilvl": 1755
+    },
+    "17": {
+     "base": 121709,
+     "extra": 23659,
+     "ilvl": 1760
+    },
+    "18": {
+     "base": 124754,
+     "extra": 25571,
+     "ilvl": 1765
+    },
+    "19": {
+     "base": 127874,
+     "extra": 27549,
+     "ilvl": 1770
+    },
+    "20": {
+     "base": 131072,
+     "extra": 29597,
+     "ilvl": 1775
+    },
+    "21": {
+     "base": 134351,
+     "extra": 31716,
+     "ilvl": 1780
+    },
+    "22": {
+     "base": 137711,
+     "extra": 33910,
+     "ilvl": 1785
+    },
+    "23": {
+     "base": 141155,
+     "extra": 36180,
+     "ilvl": 1790
+    },
+    "24": {
+     "base": 144686,
+     "extra": 38530,
+     "ilvl": 1795
+    },
+    "25": {
+     "base": 148304,
+     "extra": 40962,
+     "ilvl": 1800
+    }
+   },
+   "torso": {
+    "0": {
+     "base": 57614,
+     "extra": 0,
+     "ilvl": 1675
+    },
+    "1": {
+     "base": 59123,
+     "extra": 780,
+     "ilvl": 1680
+    },
+    "2": {
+     "base": 60684,
+     "extra": 1587,
+     "ilvl": 1685
+    },
+    "3": {
+     "base": 62300,
+     "extra": 2420,
+     "ilvl": 1690
+    },
+    "4": {
+     "base": 63973,
+     "extra": 3281,
+     "ilvl": 1695
+    },
+    "5": {
+     "base": 65704,
+     "extra": 4171,
+     "ilvl": 1700
+    },
+    "6": {
+     "base": 67497,
+     "extra": 5091,
+     "ilvl": 1705
+    },
+    "7": {
+     "base": 69351,
+     "extra": 6042,
+     "ilvl": 1710
+    },
+    "8": {
+     "base": 71270,
+     "extra": 7025,
+     "ilvl": 1715
+    },
+    "9": {
+     "base": 73257,
+     "extra": 8041,
+     "ilvl": 1720
+    },
+    "10": {
+     "base": 75313,
+     "extra": 9090,
+     "ilvl": 1725
+    },
+    "11": {
+     "base": 77441,
+     "extra": 10175,
+     "ilvl": 1730
+    },
+    "12": {
+     "base": 79644,
+     "extra": 11296,
+     "ilvl": 1735
+    },
+    "13": {
+     "base": 81924,
+     "extra": 12506,
+     "ilvl": 1740
+    },
+    "14": {
+     "base": 84283,
+     "extra": 13758,
+     "ilvl": 1745
+    },
+    "15": {
+     "base": 86725,
+     "extra": 15054,
+     "ilvl": 1750
+    },
+    "16": {
+     "base": 89253,
+     "extra": 16396,
+     "ilvl": 1755
+    },
+    "17": {
+     "base": 91486,
+     "extra": 17784,
+     "ilvl": 1760
+    },
+    "18": {
+     "base": 93775,
+     "extra": 19221,
+     "ilvl": 1765
+    },
+    "19": {
+     "base": 96120,
+     "extra": 20708,
+     "ilvl": 1770
+    },
+    "20": {
+     "base": 98524,
+     "extra": 22247,
+     "ilvl": 1775
+    },
+    "21": {
+     "base": 100989,
+     "extra": 23840,
+     "ilvl": 1780
+    },
+    "22": {
+     "base": 103514,
+     "extra": 25489,
+     "ilvl": 1785
+    },
+    "23": {
+     "base": 106103,
+     "extra": 27196,
+     "ilvl": 1790
+    },
+    "24": {
+     "base": 108757,
+     "extra": 28962,
+     "ilvl": 1795
+    },
+    "25": {
+     "base": 111477,
+     "extra": 30790,
+     "ilvl": 1800
+    }
+   }
+  },
+  "recipe": {
+   "1": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 850,
+    "juice": {
+     "id": "66111132",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102107": 230,
+     "66110226": 5,
+     "6861013": 3
+    },
+    "shards": 5400,
+    "silver": 12000,
+    "success": 6000
+   },
+   "2": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 900,
+    "juice": {
+     "id": "66111132",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102107": 300,
+     "66110226": 6,
+     "6861013": 3
+    },
+    "shards": 5580,
+    "silver": 12000,
+    "success": 6000
+   },
+   "3": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 950,
+    "juice": {
+     "id": "66111132",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102107": 370,
+     "66110226": 6,
+     "6861013": 3
+    },
+    "shards": 5760,
+    "silver": 12000,
+    "success": 6000
+   },
+   "4": {
+    "artisanThreshold": 21500,
+    "failBonus": 450,
+    "failMax": 4500,
+    "gold": 1050,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 225
+    },
+    "juiceMax": 4500,
+    "mats": {
+     "66102107": 440,
+     "66110226": 7,
+     "6861013": 5
+    },
+    "shards": 5940,
+    "silver": 12000,
+    "success": 4500
+   },
+   "5": {
+    "artisanThreshold": 21500,
+    "failBonus": 450,
+    "failMax": 4500,
+    "gold": 1150,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 225
+    },
+    "juiceMax": 4500,
+    "mats": {
+     "66102107": 510,
+     "66110226": 7,
+     "6861013": 5
+    },
+    "shards": 6300,
+    "silver": 12000,
+    "success": 4500
+   },
+   "6": {
+    "artisanThreshold": 21500,
+    "failBonus": 300,
+    "failMax": 3000,
+    "gold": 1250,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 150
+    },
+    "juiceMax": 3000,
+    "mats": {
+     "66102107": 550,
+     "66110226": 7,
+     "6861013": 5
+    },
+    "shards": 6660,
+    "silver": 12000,
+    "success": 3000
+   },
+   "7": {
+    "artisanThreshold": 21500,
+    "failBonus": 300,
+    "failMax": 3000,
+    "gold": 1400,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 150
+    },
+    "juiceMax": 3000,
+    "mats": {
+     "66102107": 620,
+     "66110226": 8,
+     "6861013": 7
+    },
+    "shards": 7020,
+    "silver": 13200,
+    "success": 3000
+   },
+   "8": {
+    "artisanThreshold": 21500,
+    "failBonus": 150,
+    "failMax": 1500,
+    "gold": 1550,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 75
+    },
+    "juiceMax": 1500,
+    "mats": {
+     "66102107": 690,
+     "66110226": 8,
+     "6861013": 7
+    },
+    "shards": 7560,
+    "silver": 13200,
+    "success": 1500
+   },
+   "9": {
+    "artisanThreshold": 21500,
+    "failBonus": 150,
+    "failMax": 1500,
+    "gold": 1750,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 75
+    },
+    "juiceMax": 1500,
+    "mats": {
+     "66102107": 730,
+     "66110226": 9,
+     "6861013": 9
+    },
+    "shards": 7920,
+    "silver": 13200,
+    "success": 1500
+   },
+   "10": {
+    "artisanThreshold": 21500,
+    "failBonus": 100,
+    "failMax": 1000,
+    "gold": 1950,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 50
+    },
+    "juiceMax": 1000,
+    "mats": {
+     "66102107": 810,
+     "66110226": 9,
+     "6861013": 9
+    },
+    "shards": 8470,
+    "silver": 13200,
+    "success": 1000
+   },
+   "11": {
+    "artisanThreshold": 21500,
+    "failBonus": 100,
+    "failMax": 1000,
+    "gold": 2200,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 50
+    },
+    "juiceMax": 1000,
+    "mats": {
+     "66102107": 890,
+     "66110226": 9,
+     "6861013": 11
+    },
+    "shards": 9020,
+    "silver": 13200,
+    "success": 1000
+   },
+   "12": {
+    "artisanThreshold": 21500,
+    "failBonus": 50,
+    "failMax": 500,
+    "gold": 2450,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 25
+    },
+    "juiceMax": 500,
+    "mats": {
+     "66102107": 930,
+     "66110226": 11,
+     "6861013": 11
+    },
+    "shards": 9570,
+    "silver": 13200,
+    "success": 500
+   },
+   "13": {
+    "artisanThreshold": 21500,
+    "failBonus": 50,
+    "failMax": 500,
+    "gold": 2700,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 25
+    },
+    "juiceMax": 500,
+    "mats": {
+     "66102107": 1030,
+     "66110226": 12,
+     "6861013": 12
+    },
+    "shards": 10540,
+    "silver": 13200,
+    "success": 500
+   },
+   "14": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 2950,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102107": 1120,
+     "66110226": 13,
+     "6861013": 13
+    },
+    "shards": 11520,
+    "silver": 13200,
+    "success": 400
+   },
+   "15": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 3250,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102107": 1240,
+     "66110226": 14,
+     "6861013": 15
+    },
+    "shards": 12690,
+    "silver": 13200,
+    "success": 400
+   },
+   "16": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 3500,
+    "juice": {
+     "id": "66111132",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102107": 1330,
+     "66110226": 15,
+     "6861013": 16
+    },
+    "shards": 13670,
+    "silver": 13200,
+    "success": 400
+   },
+   "17": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 3800,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102107": 1450,
+     "66110226": 17,
+     "6861013": 17
+    },
+    "shards": 14840,
+    "silver": 15600,
+    "success": 300
+   },
+   "18": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 4100,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102107": 1560,
+     "66110226": 18,
+     "6861013": 19
+    },
+    "shards": 16010,
+    "silver": 15600,
+    "success": 300
+   },
+   "19": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 4450,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102107": 1700,
+     "66110226": 20,
+     "6861013": 20
+    },
+    "shards": 17380,
+    "silver": 15600,
+    "success": 300
+   },
+   "20": {
+    "artisanThreshold": 21500,
+    "failBonus": 15,
+    "failMax": 150,
+    "gold": 4750,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 6
+    },
+    "juiceMax": 150,
+    "mats": {
+     "66102107": 1810,
+     "66110226": 21,
+     "6861013": 22
+    },
+    "shards": 18550,
+    "silver": 21600,
+    "success": 150
+   },
+   "21": {
+    "artisanThreshold": 21500,
+    "failBonus": 15,
+    "failMax": 150,
+    "gold": 5100,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 6
+    },
+    "juiceMax": 150,
+    "mats": {
+     "66102107": 1950,
+     "66110226": 23,
+     "6861013": 23
+    },
+    "shards": 19920,
+    "silver": 21600,
+    "success": 150
+   },
+   "22": {
+    "artisanThreshold": 21500,
+    "failBonus": 10,
+    "failMax": 100,
+    "gold": 5450,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 4
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102107": 2080,
+     "66110226": 24,
+     "6861013": 25
+    },
+    "shards": 21280,
+    "silver": 28800,
+    "success": 100
+   },
+   "23": {
+    "artisanThreshold": 21500,
+    "failBonus": 10,
+    "failMax": 100,
+    "gold": 5750,
+    "juice": {
+     "id": "66111132",
+     "max": 25,
+     "rate": 4
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102107": 2200,
+     "66110226": 26,
+     "6861013": 26
+    },
+    "shards": 22460,
+    "silver": 28800,
+    "success": 100
+   },
+   "24": {
+    "artisanThreshold": 21500,
+    "failBonus": 5,
+    "failMax": 50,
+    "gold": 6100,
+    "juice": {
+     "id": "66111132",
+     "max": 50,
+     "rate": 2
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102107": 2330,
+     "66110226": 27,
+     "6861013": 28
+    },
+    "shards": 23820,
+    "silver": 36000,
+    "success": 50
+   },
+   "25": {
+    "artisanThreshold": 21500,
+    "failBonus": 5,
+    "failMax": 50,
+    "gold": 6400,
+    "juice": {
+     "id": "66111132",
+     "max": 50,
+     "rate": 2
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102107": 2450,
+     "66110226": 29,
+     "6861013": 30
+    },
+    "shards": 25000,
+    "silver": 36000,
+    "success": 50
+   }
+  },
+  "slots": [
+   "head",
+   "shoulders",
+   "torso",
+   "legs",
+   "hands"
+  ]
+ },
+ "baseIlvl": 1675,
+ "ilvlPerLevel": 5,
+ "materials": [
+  {
+   "id": "66130141",
+   "kind": "shard_pouch",
+   "name": "Destiny Shard Pouch (S)",
+   "shards": 1000,
+   "unit": 1
+  },
+  {
+   "id": "66130142",
+   "kind": "shard_pouch",
+   "name": "Destiny Shard Pouch (M)",
+   "shards": 2000,
+   "unit": 1
+  },
+  {
+   "id": "66130143",
+   "kind": "shard_pouch",
+   "name": "Destiny Shard Pouch (L)",
+   "shards": 3000,
+   "unit": 1
+  },
+  {
+   "id": "6861013",
+   "kind": "mat",
+   "name": "Superior Abidos Fusion Material",
+   "unit": 1
+  },
+  {
+   "id": "66102007",
+   "kind": "mat",
+   "name": "Destiny Crystallized Destruction Stone",
+   "unit": 100
+  },
+  {
+   "id": "66102107",
+   "kind": "mat",
+   "name": "Destiny Crystallized Guardian Stone",
+   "unit": 100
+  },
+  {
+   "id": "66110226",
+   "kind": "mat",
+   "name": "Great Destiny Leapstone",
+   "unit": 1
+  },
+  {
+   "id": "66111131",
+   "kind": "juice",
+   "name": "Lava's Breath",
+   "slot": "weapon",
+   "unit": 1
+  },
+  {
+   "id": "66111132",
+   "kind": "juice",
+   "name": "Glacier's Breath",
+   "slot": "armor",
+   "unit": 1
+  }
+ ],
+ "source": {
+  "feed": "https://assets-ng.maxroll.gg/laplanner",
+  "mode": "T4 Upper (1675) \u2014 normal honing",
+  "patch": "July 2026 (per maxroll's upgrade calculator)",
+  "set": "Destined Tremor"
+ },
+ "weapon": {
+  "recipe": {
+   "1": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 1550,
+    "juice": {
+     "id": "66111131",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102007": 440,
+     "66110226": 8,
+     "6861013": 7
+    },
+    "shards": 8990,
+    "silver": 20000,
+    "success": 6000
+   },
+   "2": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 1600,
+    "juice": {
+     "id": "66111131",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102007": 570,
+     "66110226": 9,
+     "6861013": 7
+    },
+    "shards": 9290,
+    "silver": 20000,
+    "success": 6000
+   },
+   "3": {
+    "artisanThreshold": 21500,
+    "failBonus": 600,
+    "failMax": 6000,
+    "gold": 1650,
+    "juice": {
+     "id": "66111131",
+     "max": 16,
+     "rate": 250
+    },
+    "juiceMax": 4000,
+    "mats": {
+     "66102007": 700,
+     "66110226": 10,
+     "6861013": 7
+    },
+    "shards": 9590,
+    "silver": 20000,
+    "success": 6000
+   },
+   "4": {
+    "artisanThreshold": 21500,
+    "failBonus": 450,
+    "failMax": 4500,
+    "gold": 1800,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 225
+    },
+    "juiceMax": 4500,
+    "mats": {
+     "66102007": 830,
+     "66110226": 11,
+     "6861013": 9
+    },
+    "shards": 9890,
+    "silver": 20000,
+    "success": 4500
+   },
+   "5": {
+    "artisanThreshold": 21500,
+    "failBonus": 450,
+    "failMax": 4500,
+    "gold": 1950,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 225
+    },
+    "juiceMax": 4500,
+    "mats": {
+     "66102007": 960,
+     "66110226": 11,
+     "6861013": 9
+    },
+    "shards": 10490,
+    "silver": 20000,
+    "success": 4500
+   },
+   "6": {
+    "artisanThreshold": 21500,
+    "failBonus": 300,
+    "failMax": 3000,
+    "gold": 2150,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 150
+    },
+    "juiceMax": 3000,
+    "mats": {
+     "66102007": 1030,
+     "66110226": 11,
+     "6861013": 9
+    },
+    "shards": 11090,
+    "silver": 20000,
+    "success": 3000
+   },
+   "7": {
+    "artisanThreshold": 21500,
+    "failBonus": 300,
+    "failMax": 3000,
+    "gold": 2350,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 150
+    },
+    "juiceMax": 3000,
+    "mats": {
+     "66102007": 1160,
+     "66110226": 12,
+     "6861013": 12
+    },
+    "shards": 11690,
+    "silver": 22000,
+    "success": 3000
+   },
+   "8": {
+    "artisanThreshold": 21500,
+    "failBonus": 150,
+    "failMax": 1500,
+    "gold": 2600,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 75
+    },
+    "juiceMax": 1500,
+    "mats": {
+     "66102007": 1290,
+     "66110226": 12,
+     "6861013": 12
+    },
+    "shards": 12590,
+    "silver": 22000,
+    "success": 1500
+   },
+   "9": {
+    "artisanThreshold": 21500,
+    "failBonus": 150,
+    "failMax": 1500,
+    "gold": 2900,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 75
+    },
+    "juiceMax": 1500,
+    "mats": {
+     "66102007": 1360,
+     "66110226": 14,
+     "6861013": 15
+    },
+    "shards": 13190,
+    "silver": 22000,
+    "success": 1500
+   },
+   "10": {
+    "artisanThreshold": 21500,
+    "failBonus": 100,
+    "failMax": 1000,
+    "gold": 3250,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 50
+    },
+    "juiceMax": 1000,
+    "mats": {
+     "66102007": 1490,
+     "66110226": 14,
+     "6861013": 15
+    },
+    "shards": 14090,
+    "silver": 22000,
+    "success": 1000
+   },
+   "11": {
+    "artisanThreshold": 21500,
+    "failBonus": 100,
+    "failMax": 1000,
+    "gold": 3650,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 50
+    },
+    "juiceMax": 1000,
+    "mats": {
+     "66102007": 1630,
+     "66110226": 14,
+     "6861013": 18
+    },
+    "shards": 14990,
+    "silver": 22000,
+    "success": 1000
+   },
+   "12": {
+    "artisanThreshold": 21500,
+    "failBonus": 50,
+    "failMax": 500,
+    "gold": 4050,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 25
+    },
+    "juiceMax": 500,
+    "mats": {
+     "66102007": 1700,
+     "66110226": 17,
+     "6861013": 18
+    },
+    "shards": 15890,
+    "silver": 22000,
+    "success": 500
+   },
+   "13": {
+    "artisanThreshold": 21500,
+    "failBonus": 50,
+    "failMax": 500,
+    "gold": 4500,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 25
+    },
+    "juiceMax": 500,
+    "mats": {
+     "66102007": 1890,
+     "66110226": 19,
+     "6861013": 21
+    },
+    "shards": 17660,
+    "silver": 22000,
+    "success": 500
+   },
+   "14": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 4950,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102007": 2080,
+     "66110226": 21,
+     "6861013": 23
+    },
+    "shards": 19420,
+    "silver": 22000,
+    "success": 400
+   },
+   "15": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 5400,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102007": 2270,
+     "66110226": 23,
+     "6861013": 25
+    },
+    "shards": 21190,
+    "silver": 22000,
+    "success": 400
+   },
+   "16": {
+    "artisanThreshold": 21500,
+    "failBonus": 40,
+    "failMax": 400,
+    "gold": 5850,
+    "juice": {
+     "id": "66111131",
+     "max": 20,
+     "rate": 20
+    },
+    "juiceMax": 400,
+    "mats": {
+     "66102007": 2460,
+     "66110226": 25,
+     "6861013": 27
+    },
+    "shards": 22960,
+    "silver": 22000,
+    "success": 400
+   },
+   "17": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 6400,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102007": 2690,
+     "66110226": 28,
+     "6861013": 29
+    },
+    "shards": 25120,
+    "silver": 26000,
+    "success": 300
+   },
+   "18": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 6900,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102007": 2900,
+     "66110226": 30,
+     "6861013": 32
+    },
+    "shards": 27080,
+    "silver": 26000,
+    "success": 300
+   },
+   "19": {
+    "artisanThreshold": 21500,
+    "failBonus": 30,
+    "failMax": 300,
+    "gold": 7400,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 12
+    },
+    "juiceMax": 300,
+    "mats": {
+     "66102007": 3110,
+     "66110226": 32,
+     "6861013": 34
+    },
+    "shards": 29040,
+    "silver": 26000,
+    "success": 300
+   },
+   "20": {
+    "artisanThreshold": 21500,
+    "failBonus": 15,
+    "failMax": 150,
+    "gold": 7950,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 6
+    },
+    "juiceMax": 150,
+    "mats": {
+     "66102007": 3340,
+     "66110226": 34,
+     "6861013": 37
+    },
+    "shards": 31200,
+    "silver": 36000,
+    "success": 150
+   },
+   "21": {
+    "artisanThreshold": 21500,
+    "failBonus": 15,
+    "failMax": 150,
+    "gold": 8500,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 6
+    },
+    "juiceMax": 150,
+    "mats": {
+     "66102007": 3570,
+     "66110226": 37,
+     "6861013": 39
+    },
+    "shards": 33360,
+    "silver": 36000,
+    "success": 150
+   },
+   "22": {
+    "artisanThreshold": 21500,
+    "failBonus": 10,
+    "failMax": 100,
+    "gold": 9050,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 4
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102007": 3800,
+     "66110226": 39,
+     "6861013": 42
+    },
+    "shards": 35520,
+    "silver": 48000,
+    "success": 100
+   },
+   "23": {
+    "artisanThreshold": 21500,
+    "failBonus": 10,
+    "failMax": 100,
+    "gold": 9600,
+    "juice": {
+     "id": "66111131",
+     "max": 25,
+     "rate": 4
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102007": 4030,
+     "66110226": 42,
+     "6861013": 44
+    },
+    "shards": 37680,
+    "silver": 48000,
+    "success": 100
+   },
+   "24": {
+    "artisanThreshold": 21500,
+    "failBonus": 5,
+    "failMax": 50,
+    "gold": 10150,
+    "juice": {
+     "id": "66111131",
+     "max": 50,
+     "rate": 2
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102007": 4260,
+     "66110226": 44,
+     "6861013": 47
+    },
+    "shards": 39840,
+    "silver": 60000,
+    "success": 50
+   },
+   "25": {
+    "artisanThreshold": 21500,
+    "failBonus": 5,
+    "failMax": 50,
+    "gold": 10700,
+    "juice": {
+     "id": "66111131",
+     "max": 50,
+     "rate": 2
+    },
+    "juiceMax": 100,
+    "mats": {
+     "66102007": 4500,
+     "66110226": 47,
+     "6861013": 50
+    },
+    "shards": 42000,
+    "silver": 60000,
+    "success": 50
+   }
+  },
+  "weaponPower": {
+   "0": {
+    "base": 124793,
+    "extra": 0,
+    "ilvl": 1675
+   },
+   "1": {
+    "base": 128059,
+    "extra": 1689,
+    "ilvl": 1680
+   },
+   "2": {
+    "base": 131439,
+    "extra": 3434,
+    "ilvl": 1685
+   },
+   "3": {
+    "base": 134936,
+    "extra": 5237,
+    "ilvl": 1690
+   },
+   "4": {
+    "base": 138556,
+    "extra": 7101,
+    "ilvl": 1695
+   },
+   "5": {
+    "base": 142303,
+    "extra": 9028,
+    "ilvl": 1700
+   },
+   "6": {
+    "base": 146182,
+    "extra": 11019,
+    "ilvl": 1705
+   },
+   "7": {
+    "base": 150196,
+    "extra": 13077,
+    "ilvl": 1710
+   },
+   "8": {
+    "base": 154350,
+    "extra": 15204,
+    "ilvl": 1715
+   },
+   "9": {
+    "base": 158649,
+    "extra": 17402,
+    "ilvl": 1720
+   },
+   "10": {
+    "base": 163099,
+    "extra": 19674,
+    "ilvl": 1725
+   },
+   "11": {
+    "base": 167706,
+    "extra": 22022,
+    "ilvl": 1730
+   },
+   "12": {
+    "base": 172473,
+    "extra": 24449,
+    "ilvl": 1735
+   },
+   "13": {
+    "base": 177406,
+    "extra": 27067,
+    "ilvl": 1740
+   },
+   "14": {
+    "base": 182514,
+    "extra": 29777,
+    "ilvl": 1745
+   },
+   "15": {
+    "base": 187799,
+    "extra": 32582,
+    "ilvl": 1750
+   },
+   "16": {
+    "base": 193270,
+    "extra": 35485,
+    "ilvl": 1755
+   },
+   "17": {
+    "base": 198101,
+    "extra": 38489,
+    "ilvl": 1760
+   },
+   "18": {
+    "base": 203054,
+    "extra": 41599,
+    "ilvl": 1765
+   },
+   "19": {
+    "base": 208130,
+    "extra": 44818,
+    "ilvl": 1770
+   },
+   "20": {
+    "base": 213333,
+    "extra": 48149,
+    "ilvl": 1775
+   },
+   "21": {
+    "base": 218667,
+    "extra": 51597,
+    "ilvl": 1780
+   },
+   "22": {
+    "base": 224133,
+    "extra": 55165,
+    "ilvl": 1785
+   },
+   "23": {
+    "base": 229737,
+    "extra": 58859,
+    "ilvl": 1790
+   },
+   "24": {
+    "base": 235480,
+    "extra": 62682,
+    "ilvl": 1795
+   },
+   "25": {
+    "base": 241367,
+    "extra": 66638,
+    "ilvl": 1800
+   }
+  }
+ }
+}

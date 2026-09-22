@@ -1,0 +1,855 @@
+{
+ "note": "Rows the page cannot compute live. Gold and damage per step; damage is percent of ONE dealer's damage, the page applies the party multiplier on the gold axis.  Support damage is per dealer throughout: the chart reports what one dealer gains from the support, with no party multiplier anywhere. Accessory rows are not baked: the page builds them live from accessory-scores.json / accessory-configs.json (support) and accessory-configs-dps.json (DPS) for the flat-line and main-stat families the switches tick.",
+ "rows": [
+  {
+   "series": "stone",
+   "label": "7-7 → 9-7",
+   "gold": 14167000,
+   "damage": 0.4582,
+   "detail": "704 stones at 9 pheons each, P(activation level 5+) = 0.13793%",
+   "buy": "704 uncut Ancient stones at 9 pheons each — 6,336 pheons",
+   "odds": "0.13793% of facets reach activation level 5 or more, so 725 stones for one and 704 above a 7-7. Faceting is one shot: a failed stone is powder",
+   "minimum": "any 9-7, 10-6, 9-9 or 10-10 — combined activation level 5 or more",
+   "from": "7-7",
+   "to": "9-7",
+   "mats": [
+    [
+     "uncut Ancient stones",
+     704,
+     0
+    ],
+    [
+     "pheons, 9 a stone",
+     6336,
+     14172631.578947365
+    ]
+   ]
+  },
+  {
+   "series": "arkgrid",
+   "label": "ungraded → C-",
+   "gold": 589992,
+   "damage": 0.9026,
+   "detail": "all twenty-four gems, the first gem worth socketing",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at C-",
+   "from": "ungraded",
+   "to": "C-",
+   "grid": {
+    "cores": 16,
+    "nodes": [
+     [
+      "ally atk",
+      17
+     ],
+     [
+      "brand",
+      27
+     ],
+     [
+      "ally dmg",
+      26
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C- → C",
+   "gold": 80208,
+   "damage": 0.22258,
+   "detail": "all twenty-four gems, epic cuts at 60:30:10, duds fused",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at C",
+   "from": "C-",
+   "to": "C",
+   "grid": {
+    "cores": 16,
+    "nodes": [
+     [
+      "ally atk",
+      25
+     ],
+     [
+      "brand",
+      30
+     ],
+     [
+      "ally dmg",
+      27
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C → C+",
+   "gold": 124008,
+   "damage": 0.22933,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at C+",
+   "from": "C",
+   "to": "C+",
+   "grid": {
+    "cores": 17,
+    "nodes": [
+     [
+      "ally atk",
+      33
+     ],
+     [
+      "brand",
+      34
+     ],
+     [
+      "ally dmg",
+      29
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "C+ → B-",
+   "gold": 165120,
+   "damage": 0.22258,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at B-",
+   "from": "C+",
+   "to": "B-",
+   "grid": {
+    "cores": 17,
+    "nodes": [
+     [
+      "ally atk",
+      41
+     ],
+     [
+      "brand",
+      38
+     ],
+     [
+      "ally dmg",
+      31
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B- → B",
+   "gold": 273840,
+   "damage": 0.27666,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at B",
+   "from": "B-",
+   "to": "B",
+   "grid": {
+    "cores": 17,
+    "nodes": [
+     [
+      "ally atk",
+      49
+     ],
+     [
+      "brand",
+      42
+     ],
+     [
+      "ally dmg",
+      32
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B → B+",
+   "gold": 376008,
+   "damage": 0.29151,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at B+",
+   "from": "B",
+   "to": "B+",
+   "grid": {
+    "cores": 18,
+    "nodes": [
+     [
+      "ally atk",
+      58
+     ],
+     [
+      "brand",
+      45
+     ],
+     [
+      "ally dmg",
+      34
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "B+ → A-",
+   "gold": 503904,
+   "damage": 0.28293,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at A-",
+   "from": "B+",
+   "to": "A-",
+   "grid": {
+    "cores": 18,
+    "nodes": [
+     [
+      "ally atk",
+      66
+     ],
+     [
+      "brand",
+      49
+     ],
+     [
+      "ally dmg",
+      36
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A- → A",
+   "gold": 1007952,
+   "damage": 0.28293,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at A",
+   "from": "A-",
+   "to": "A",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "ally atk",
+      74
+     ],
+     [
+      "brand",
+      53
+     ],
+     [
+      "ally dmg",
+      37
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A → A+",
+   "gold": 2930208,
+   "damage": 0.29149,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at A+",
+   "from": "A",
+   "to": "A+",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "ally atk",
+      82
+     ],
+     [
+      "brand",
+      57
+     ],
+     [
+      "ally dmg",
+      39
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "A+ → S-",
+   "gold": 9903576,
+   "damage": 0.28291,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at S-",
+   "from": "A+",
+   "to": "S-",
+   "grid": {
+    "cores": 19,
+    "nodes": [
+     [
+      "ally atk",
+      90
+     ],
+     [
+      "brand",
+      60
+     ],
+     [
+      "ally dmg",
+      41
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "S- → S",
+   "gold": 31384440,
+   "damage": 0.28291,
+   "detail": "all twenty-four gems",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at S",
+   "from": "S-",
+   "to": "S",
+   "grid": {
+    "cores": 20,
+    "nodes": [
+     [
+      "ally atk",
+      98
+     ],
+     [
+      "brand",
+      64
+     ],
+     [
+      "ally dmg",
+      42
+     ]
+    ]
+   }
+  },
+  {
+   "series": "arkgrid",
+   "label": "S → S+",
+   "gold": 20816448,
+   "damage": 0.11145,
+   "detail": "all twenty-four gems; the S to S+ band is only 1.3 points wide",
+   "buy": "epic astrogems cut at a 60:30:10 cost mix, duds fused — twenty-four gems for the whole grid",
+   "odds": "average over 300,000 simulated cuts, support axis",
+   "minimum": "twenty-four gems at S+",
+   "from": "S",
+   "to": "S+",
+   "grid": {
+    "cores": 20,
+    "nodes": [
+     [
+      "ally atk",
+      101
+     ],
+     [
+      "brand",
+      66
+     ],
+     [
+      "ally dmg",
+      43
+     ]
+    ]
+   }
+  },
+  {
+   "series": "gems",
+   "label": "all lv7 → lv8",
+   "gold": 3080000,
+   "damage": 1.06286,
+   "from": "level 7",
+   "to": "level 8",
+   "buy": "11 gems from level 7 to 8 — two more level-7 gems each, 280,000g a gem",
+   "odds": "no chance involved: three of a level make one of the next",
+   "minimum": "every gem at level 8 — 1639 swiftness drops to 1563, so 76 points move into spec"
+  },
+  {
+   "series": "gems",
+   "label": "all lv8 → lv9",
+   "gold": 9240000,
+   "damage": 1.08653,
+   "from": "level 8",
+   "to": "level 9",
+   "buy": "11 gems from level 8 to 9 — two more level-8 gems each, 840,000g a gem",
+   "odds": "no chance involved: three of a level make one of the next",
+   "minimum": "every gem at level 9 — 1563 swiftness drops to 1484, so 79 points move into spec"
+  },
+  {
+   "series": "gems",
+   "label": "all lv9 → lv10",
+   "gold": 27720000,
+   "damage": 1.11176,
+   "from": "level 9",
+   "to": "level 10",
+   "buy": "11 gems from level 9 to 10 — two more level-9 gems each, 2,520,000g a gem",
+   "odds": "no chance involved: three of a level make one of the next",
+   "minimum": "every gem at level 10 — 1484 swiftness drops to 1400, so 84 points move into spec"
+  },
+  {
+   "series": "bracelet",
+   "label": "C → C+",
+   "from": "F",
+   "to": "C+",
+   "gold": 195518,
+   "damage": 2.09561,
+   "total": 240562,
+   "hit": {
+    "stats": "90/90",
+    "lines": [
+     {
+      "name": "shield dmg+",
+      "id": 18,
+      "tier": "epic"
+     },
+     {
+      "name": "wp x30 stack",
+      "id": 22,
+      "tier": "blue"
+     },
+     {
+      "name": "dmg+stagger",
+      "id": 13,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "90/90 with shield dmg+ epic, wp x30 stack blue, dmg+stagger blue",
+   "mats": [
+    [
+     "cut 90/90 bracelets",
+     5,
+     22781.22759026834
+    ],
+    [
+     "pheons",
+     100,
+     217780.89636225617
+    ]
+   ],
+   "buy": "90/90 unrolled bracelets, about 4,680 each",
+   "odds": "1 in 5 rolled 90/90 bracelets reaches C+",
+   "totalDamage": 2.6941
+  },
+  {
+   "series": "bracelet",
+   "label": "C+ → B-",
+   "from": "C+",
+   "to": "B-",
+   "gold": 111781,
+   "damage": 0.28162,
+   "total": 352343,
+   "hit": {
+    "stats": "90/90",
+    "lines": [
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "LEG"
+     },
+     {
+      "name": "heal+shield eff",
+      "id": 28,
+      "tier": "blue"
+     },
+     {
+      "name": "push immunity",
+      "id": 10,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "90/90 with def shred LEG, heal+shield eff blue, push immunity epic",
+   "mats": [
+    [
+     "cut 90/90 bracelets",
+     7,
+     33366.88525763066
+    ],
+    [
+     "pheons",
+     140,
+     318976.2338938892
+    ]
+   ],
+   "buy": "90/90 unrolled bracelets, about 4,680 each",
+   "odds": "1 in 7 rolled 90/90 bracelets reaches B-",
+   "totalDamage": 2.9757
+  },
+  {
+   "series": "bracelet",
+   "label": "B- → B",
+   "from": "B-",
+   "to": "B",
+   "gold": 269411,
+   "damage": 0.34474,
+   "total": 621754,
+   "hit": {
+    "stats": "90/90",
+    "lines": [
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "epic"
+     },
+     {
+      "name": "ally atk buff",
+      "id": 29,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "90/90 with def shred epic, ally atk buff epic",
+   "mats": [
+    [
+     "cut 90/90 bracelets",
+     13,
+     58880.08807190602
+    ],
+    [
+     "pheons",
+     260,
+     562873.8972638147
+    ]
+   ],
+   "buy": "90/90 unrolled bracelets, about 4,680 each",
+   "odds": "1 in 13 rolled 90/90 bracelets reaches B",
+   "totalDamage": 3.3205
+  },
+  {
+   "series": "bracelet",
+   "label": "B → B+",
+   "from": "B",
+   "to": "B+",
+   "gold": 1023975,
+   "damage": 0.41022,
+   "total": 1645729,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "blue"
+     },
+     {
+      "name": "ally atk buff",
+      "id": 29,
+      "tier": "epic"
+     },
+     {
+      "name": "weapon power",
+      "id": 33,
+      "tier": "LEG"
+     }
+    ]
+   },
+   "minimum": "100/100 with def shred blue, ally atk buff epic, weapon power LEG",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     26,
+     477339.81880812184
+    ],
+    [
+     "pheons",
+     520,
+     1168389.1624803205
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 26 rolled 100/100 bracelets reaches B+",
+   "totalDamage": 3.7307
+  },
+  {
+   "series": "bracelet",
+   "label": "B+ → A-",
+   "from": "B+",
+   "to": "A-",
+   "gold": 2916306,
+   "damage": 0.43513,
+   "total": 4562035,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "blue"
+     },
+     {
+      "name": "shield dmg+",
+      "id": 18,
+      "tier": "blue"
+     },
+     {
+      "name": "wp hp>50%",
+      "id": 21,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 with cdmg shred blue, shield dmg+ blue, wp hp>50% epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     72,
+     1323207.4498492046
+    ],
+    [
+     "pheons",
+     1440,
+     3238827.315888543
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 72 rolled 100/100 bracelets reaches A-",
+   "totalDamage": 4.1658
+  },
+  {
+   "series": "bracelet",
+   "label": "A- → A",
+   "from": "A-",
+   "to": "A",
+   "gold": 9866418,
+   "damage": 0.43211,
+   "total": 14428453,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "blue"
+     },
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "blue"
+     },
+     {
+      "name": "ally atk buff",
+      "id": 29,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 with cdmg shred blue, def shred blue, ally atk buff blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     229,
+     4184938.9640399436
+    ],
+    [
+     "pheons",
+     4580,
+     10243514.449380968
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 229 rolled 100/100 bracelets reaches A",
+   "totalDamage": 4.5979
+  },
+  {
+   "series": "bracelet",
+   "label": "A → A+",
+   "from": "A",
+   "to": "A+",
+   "gold": 29189820,
+   "damage": 0.39273,
+   "total": 43618273,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "epic"
+     },
+     {
+      "name": "identity buff",
+      "id": 30,
+      "tier": "LEG"
+     },
+     {
+      "name": "shield dmg+",
+      "id": 18,
+      "tier": "blue"
+     }
+    ]
+   },
+   "minimum": "100/100 with crit shred epic, identity buff LEG, shield dmg+ blue",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     692,
+     12651377.551188588
+    ],
+    [
+     "pheons",
+     13840,
+     30966895.78121584
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 692 rolled 100/100 bracelets reaches A+",
+   "totalDamage": 4.9907
+  },
+  {
+   "series": "bracelet",
+   "label": "A+ → S-",
+   "from": "A+",
+   "to": "S-",
+   "gold": 137456053,
+   "damage": 0.41777,
+   "total": 181074326,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "blue"
+     },
+     {
+      "name": "shield dmg+",
+      "id": 18,
+      "tier": "blue"
+     },
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 with cdmg shred blue, shield dmg+ blue, crit shred epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     2874,
+     52520182.286256075
+    ],
+    [
+     "pheons",
+     57480,
+     128554143.98064125
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 2,874 rolled 100/100 bracelets reaches S-",
+   "totalDamage": 5.4084
+  },
+  {
+   "series": "bracelet",
+   "label": "S- → S",
+   "from": "S-",
+   "to": "S",
+   "gold": 880957116,
+   "damage": 0.49254,
+   "total": 1062031442,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "LEG"
+     },
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "LEG"
+     },
+     {
+      "name": "ally atk buff",
+      "id": 29,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 with cdmg shred LEG, def shred LEG, ally atk buff epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     16854,
+     308039720.82500756
+    ],
+    [
+     "pheons",
+     337080,
+     753991720.8752217
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 16,854 rolled 100/100 bracelets reaches S",
+   "totalDamage": 5.901
+  },
+  {
+   "series": "bracelet",
+   "label": "S → S+",
+   "from": "S",
+   "to": "S+",
+   "gold": 8390048389,
+   "damage": 0.55666,
+   "total": 9452079831,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "epic"
+     },
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "epic"
+     },
+     {
+      "name": "def shred",
+      "id": 16,
+      "tier": "LEG"
+     }
+    ]
+   },
+   "minimum": "100/100 with cdmg shred epic, crit shred epic, def shred LEG",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     150000,
+     2741553515.342567
+    ],
+    [
+     "pheons",
+     3000000,
+     6710526315.789473
+    ]
+   ],
+   "buy": "100/100 unrolled bracelets, about 18,277 each",
+   "odds": "1 in 150,000 rolled 100/100 bracelets reaches S+",
+   "totalDamage": 6.4576
+  }
+ ]
+}

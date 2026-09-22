@@ -30,6 +30,7 @@
         { name: "Bracelet Calculator",  url: "https://www.loseii.com/loa-bracelet-calc/" },
         { name: "Crafting Profit",      url: "https://www.loseii.com/loa-crafting-calculator/" },
         { name: "Deal Finder",          url: "https://www.loseii.com/loa-deal-finder/" },
+        { name: "GPD Chart",            url: "https://www.loseii.com/loa-gpd/" },
         { name: "Hell Key Calculator",  url: "https://www.loseii.com/loa-hell-key-calc/" },
         { name: "LOA ON Bingo",         url: "https://loa-on-bingo.shizukaziye.workers.dev/" },
         { name: "LOA ON 2026 Summer",   url: "https://www.loseii.com/loa-on-2026-summer/" }

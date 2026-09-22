@@ -1,0 +1,4 @@
+tools/.cache/
+node_modules/
+.claude/
+data/cells/

@@ -25,6 +25,7 @@ Cloudflare Pages deploys `main` on every push. The custom domain is `www.loseii.
 - [Astrogem Calculator](https://www.loseii.com/loa-astrogem-calc/) — cut/fuse/throw pipeline tables, screenshot advisor, leaderboard
 - [Stronghold Crafting Profit](https://www.loseii.com/loa-crafting-calculator/) — every craft ranked by net gold, gold/hr, ROI
 - [Deal Finder](https://www.loseii.com/loa-deal-finder/) — market items ranked vs a robust 14-day fair price
+- [GPD Chart](https://www.loseii.com/loa-gpd/) — every progression system priced per 1% damage on one scale, support and DPS, with a character lookup
 - [Hell Key Calculator](https://www.loseii.com/loa-hell-key-calc/) — Paradise Hell key EV, middle-jump strategy, altar verdict, season projection
 - [LOA ON Bingo](https://loa-on-bingo.shizukaziye.workers.dev/) — live multiplayer watch-party bingo (own repo)
 - [LOA ON 2026 Summer](https://www.loseii.com/loa-on-2026-summer/) — showcase recap

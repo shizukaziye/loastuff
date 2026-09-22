@@ -1,0 +1,1334 @@
+{
+ "axis": "support",
+ "rarity": "epic",
+ "model": "account",
+ "draw": "dd",
+ "maxGpd": 100000000,
+ "slots": 24,
+ "cutsPerWeek": 9,
+ "turns": 9,
+ "rerolls": 3,
+ "n": 6000,
+ "sig": "12u9hug",
+ "note": "Priced by the account simulator: cut with the advisor at your weakest slot's grade and your budget, socket what beats the pack, willpower-legal cores only. Gold covers cutting and fusing; the raw astrogem is free. The band ladder (docs/research/ark-grid.md) is the uniformity-cost reference, not the price.",
+ "rows": [
+  {
+   "from": "ungraded",
+   "to": "B-",
+   "note": "mean 72",
+   "gold": 754322,
+   "damage": 1.5035,
+   "poolG": 754322,
+   "poolD": 1.5035,
+   "total": 754322,
+   "totalDamage": 1.5035,
+   "gems": 43,
+   "weeks": 4.777777777777778,
+   "grid": {
+    "cores": 17,
+    "coresPer": [
+     17,
+     17,
+     16,
+     17,
+     17,
+     16
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      35
+     ],
+     [
+      "brand",
+      35
+     ],
+     [
+      "ally dmg",
+      35
+     ]
+    ]
+   },
+   "meanGrade": 72.2,
+   "weakest": 55.3,
+   "weakBand": "D",
+   "minimum": "all 24 slots filled, gems averaging B-",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "B-",
+   "to": "B",
+   "note": "mean 73",
+   "gold": 79718,
+   "damage": 0.0738,
+   "poolG": 79718,
+   "poolD": 0.0738,
+   "total": 834040,
+   "totalDamage": 1.5773,
+   "gems": 3,
+   "weeks": 0.3333333333333333,
+   "grid": {
+    "cores": 17,
+    "coresPer": [
+     17,
+     17,
+     16,
+     17,
+     17,
+     16
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      35
+     ],
+     [
+      "brand",
+      35
+     ],
+     [
+      "ally dmg",
+      35
+     ]
+    ]
+   },
+   "meanGrade": 73.3,
+   "weakest": 56.4,
+   "weakBand": "D",
+   "minimum": "all 24 slots filled, gems averaging B",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "B",
+   "to": "B+",
+   "note": "mean 77",
+   "gold": 586213,
+   "damage": 0.2518,
+   "poolG": 586213,
+   "poolD": 0.2518,
+   "total": 1420253,
+   "totalDamage": 1.8291,
+   "gems": 15,
+   "weeks": 1.6666666666666667,
+   "grid": {
+    "cores": 18,
+    "coresPer": [
+     18,
+     18,
+     18,
+     18,
+     18,
+     18
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      40
+     ],
+     [
+      "brand",
+      40
+     ],
+     [
+      "ally dmg",
+      40
+     ]
+    ]
+   },
+   "meanGrade": 76.7,
+   "weakest": 62.6,
+   "weakBand": "C-",
+   "minimum": "all 24 slots filled, gems averaging B+",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "B+",
+   "to": "A-",
+   "note": "mean 80",
+   "gold": 1158074,
+   "damage": 0.231,
+   "poolG": 1158074,
+   "poolD": 0.231,
+   "total": 2578327,
+   "totalDamage": 2.0601,
+   "gems": 48,
+   "weeks": 5.333333333333333,
+   "grid": {
+    "cores": 18,
+    "coresPer": [
+     19,
+     19,
+     18,
+     19,
+     19,
+     18
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      45
+     ],
+     [
+      "brand",
+      45
+     ],
+     [
+      "ally dmg",
+      45
+     ]
+    ]
+   },
+   "meanGrade": 80,
+   "weakest": 69.3,
+   "weakBand": "C+",
+   "minimum": "all 24 slots filled, gems averaging A-",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "A-",
+   "to": "A",
+   "note": "mean 83",
+   "gold": 2417442,
+   "damage": 0.2238,
+   "poolG": 2417442,
+   "poolD": 0.2238,
+   "total": 4995769,
+   "totalDamage": 2.2839,
+   "gems": 105,
+   "weeks": 11.666666666666666,
+   "grid": {
+    "cores": 19,
+    "coresPer": [
+     19,
+     19,
+     18,
+     19,
+     19,
+     18
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      50
+     ],
+     [
+      "brand",
+      50
+     ],
+     [
+      "ally dmg",
+      50
+     ]
+    ]
+   },
+   "meanGrade": 83.3,
+   "weakest": 73.6,
+   "weakBand": "B",
+   "minimum": "all 24 slots filled, gems averaging A",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "A",
+   "to": "A+",
+   "note": "mean 87",
+   "gold": 5782983,
+   "damage": 0.2486,
+   "poolG": 5782983,
+   "poolD": 0.2486,
+   "total": 10778752,
+   "totalDamage": 2.5325,
+   "gems": 182,
+   "weeks": 20.22222222222222,
+   "grid": {
+    "cores": 19,
+    "coresPer": [
+     19,
+     19,
+     19,
+     19,
+     19,
+     19
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      55
+     ],
+     [
+      "brand",
+      55
+     ],
+     [
+      "ally dmg",
+      55
+     ]
+    ]
+   },
+   "meanGrade": 86.7,
+   "weakest": 80,
+   "weakBand": "B+",
+   "minimum": "all 24 slots filled, gems averaging A+",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  },
+  {
+   "from": "A+",
+   "to": "S-",
+   "note": "mean 90",
+   "gold": 15281113,
+   "damage": 0.3049,
+   "poolG": 15281113,
+   "poolD": 0.3049,
+   "total": 26059865,
+   "totalDamage": 2.8374,
+   "gems": 444,
+   "weeks": 49.333333333333336,
+   "grid": {
+    "cores": 19,
+    "coresPer": [
+     20,
+     20,
+     19,
+     20,
+     20,
+     19
+    ],
+    "nodes": [
+     [
+      "ally atk",
+      60
+     ],
+     [
+      "brand",
+      60
+     ],
+     [
+      "ally dmg",
+      60
+     ]
+    ]
+   },
+   "meanGrade": 90,
+   "weakest": 85.4,
+   "weakBand": "A",
+   "minimum": "all 24 slots filled, gems averaging S-",
+   "buy": "epic astrogems at 9 turns and 3 rerolls, duds fused, advisor tracking your weakest slot"
+  }
+ ],
+ "tiers": [
+  {
+   "gpd": 250000,
+   "gold": 754322,
+   "gems": 43,
+   "weeks": 4.733777777777778,
+   "damage": 1.5035,
+   "mean": 72.2,
+   "meanBand": "B-",
+   "weakest": 55.3,
+   "weakBand": "D",
+   "cores": 17,
+   "capped": true,
+   "perCore": [
+    17,
+    17,
+    16,
+    17,
+    17,
+    16
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     35
+    ],
+    [
+     "brand",
+     35
+    ],
+    [
+     "ally dmg",
+     35
+    ]
+   ]
+  },
+  {
+   "gpd": 300566,
+   "gold": 824893,
+   "gems": 45,
+   "weeks": 4.978588888888889,
+   "damage": 1.5506,
+   "mean": 72.9,
+   "meanBand": "B-",
+   "weakest": 56.4,
+   "weakBand": "D",
+   "cores": 17,
+   "capped": true,
+   "perCore": [
+    17,
+    17,
+    16,
+    17,
+    17,
+    16
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     35
+    ],
+    [
+     "brand",
+     35
+    ],
+    [
+     "ally dmg",
+     35
+    ]
+   ]
+  },
+  {
+   "gpd": 361360,
+   "gold": 911130,
+   "gems": 47,
+   "weeks": 5.255733333333334,
+   "damage": 1.6106,
+   "mean": 73.8,
+   "meanBand": "B",
+   "weakest": 57.7,
+   "weakBand": "D+",
+   "cores": 17,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    17,
+    18,
+    18,
+    17
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     35
+    ],
+    [
+     "brand",
+     35
+    ],
+    [
+     "ally dmg",
+     35
+    ]
+   ]
+  },
+  {
+   "gpd": 434450,
+   "gold": 1005479,
+   "gems": 51,
+   "weeks": 5.6327444444444446,
+   "damage": 1.6653,
+   "mean": 74.5,
+   "meanBand": "B",
+   "weakest": 59,
+   "weakBand": "D+",
+   "cores": 17,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    17,
+    18,
+    18,
+    17
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 522324,
+   "gold": 1103546,
+   "gems": 52,
+   "weeks": 5.8110888888888885,
+   "damage": 1.7028,
+   "mean": 75,
+   "meanBand": "B",
+   "weakest": 59.8,
+   "weakBand": "D+",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    17,
+    18,
+    18,
+    17
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 627972,
+   "gold": 1226682,
+   "gems": 56,
+   "weeks": 6.205444444444444,
+   "damage": 1.7544,
+   "mean": 75.7,
+   "meanBand": "B",
+   "weakest": 61.2,
+   "weakBand": "C-",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    17,
+    18,
+    18,
+    17
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 754988,
+   "gold": 1374784,
+   "gems": 60,
+   "weeks": 6.714088888888889,
+   "damage": 1.8141,
+   "mean": 76.5,
+   "meanBand": "B",
+   "weakest": 62.6,
+   "weakBand": "C-",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 907695,
+   "gold": 1498949,
+   "gems": 63,
+   "weeks": 7.020444444444444,
+   "damage": 1.8516,
+   "mean": 77,
+   "meanBand": "B+",
+   "weakest": 63.5,
+   "weakBand": "C",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 1091290,
+   "gold": 1619508,
+   "gems": 67,
+   "weeks": 7.462822222222223,
+   "damage": 1.8759,
+   "mean": 77.3,
+   "meanBand": "B+",
+   "weakest": 64.3,
+   "weakBand": "C",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 1312019,
+   "gold": 1759244,
+   "gems": 70,
+   "weeks": 7.750322222222222,
+   "damage": 1.9102,
+   "mean": 77.8,
+   "meanBand": "B+",
+   "weakest": 65.1,
+   "weakBand": "C",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     40
+    ],
+    [
+     "brand",
+     40
+    ],
+    [
+     "ally dmg",
+     40
+    ]
+   ]
+  },
+  {
+   "gpd": 1577393,
+   "gold": 1890639,
+   "gems": 73,
+   "weeks": 8.106666666666666,
+   "damage": 1.9368,
+   "mean": 78.2,
+   "meanBand": "B+",
+   "weakest": 65.7,
+   "weakBand": "C",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 1896444,
+   "gold": 2017445,
+   "gems": 78,
+   "weeks": 8.706055555555556,
+   "damage": 1.9517,
+   "mean": 78.4,
+   "meanBand": "B+",
+   "weakest": 66.2,
+   "weakBand": "C",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 2280027,
+   "gold": 2241405,
+   "gems": 86,
+   "weeks": 9.558811111111112,
+   "damage": 1.9854,
+   "mean": 78.9,
+   "meanBand": "B+",
+   "weakest": 67,
+   "weakBand": "C+",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 2741195,
+   "gold": 2484469,
+   "gems": 94,
+   "weeks": 10.447233333333333,
+   "damage": 2.0127,
+   "mean": 79.3,
+   "meanBand": "B+",
+   "weakest": 67.8,
+   "weakBand": "C+",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 3295642,
+   "gold": 3032934,
+   "gems": 113,
+   "weeks": 12.591077777777777,
+   "damage": 2.0736,
+   "mean": 80.2,
+   "meanBand": "A-",
+   "weakest": 69.3,
+   "weakBand": "C+",
+   "cores": 18,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 3962233,
+   "gold": 3811221,
+   "gems": 139,
+   "weeks": 15.43638888888889,
+   "damage": 2.1429,
+   "mean": 81.3,
+   "meanBand": "A-",
+   "weakest": 71.1,
+   "weakBand": "B-",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     45
+    ],
+    [
+     "brand",
+     45
+    ],
+    [
+     "ally dmg",
+     45
+    ]
+   ]
+  },
+  {
+   "gpd": 4763652,
+   "gold": 5158047,
+   "gems": 191,
+   "weeks": 21.18138888888889,
+   "damage": 2.2433,
+   "mean": 82.7,
+   "meanBand": "A-",
+   "weakest": 73.6,
+   "weakBand": "B",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     50
+    ],
+    [
+     "brand",
+     50
+    ],
+    [
+     "ally dmg",
+     50
+    ]
+   ]
+  },
+  {
+   "gpd": 5727169,
+   "gold": 6617869,
+   "gems": 237,
+   "weeks": 26.284166666666668,
+   "damage": 2.3245,
+   "mean": 83.9,
+   "meanBand": "A",
+   "weakest": 75.8,
+   "weakBand": "B",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    18,
+    19,
+    19,
+    18
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     50
+    ],
+    [
+     "brand",
+     50
+    ],
+    [
+     "ally dmg",
+     50
+    ]
+   ]
+  },
+  {
+   "gpd": 6885572,
+   "gold": 8717634,
+   "gems": 311,
+   "weeks": 34.5773,
+   "damage": 2.4366,
+   "mean": 85.4,
+   "meanBand": "A",
+   "weakest": 78.4,
+   "weakBand": "B+",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    19,
+    19,
+    19,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     50
+    ],
+    [
+     "brand",
+     50
+    ],
+    [
+     "ally dmg",
+     50
+    ]
+   ]
+  },
+  {
+   "gpd": 8278278,
+   "gold": 10637801,
+   "gems": 381,
+   "weeks": 42.297888888888885,
+   "damage": 2.5099,
+   "mean": 86.4,
+   "meanBand": "A",
+   "weakest": 80,
+   "weakBand": "B+",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    19,
+    19,
+    19,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     55
+    ],
+    [
+     "brand",
+     55
+    ],
+    [
+     "ally dmg",
+     55
+    ]
+   ]
+  },
+  {
+   "gpd": 9952679,
+   "gold": 12362125,
+   "gems": 416,
+   "weeks": 46.2641,
+   "damage": 2.5626,
+   "mean": 87.1,
+   "meanBand": "A+",
+   "weakest": 81.1,
+   "weakBand": "A-",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    19,
+    19,
+    19,
+    19,
+    19,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     55
+    ],
+    [
+     "brand",
+     55
+    ],
+    [
+     "ally dmg",
+     55
+    ]
+   ]
+  },
+  {
+   "gpd": 11965752,
+   "gold": 15208293,
+   "gems": 518,
+   "weeks": 57.54501111111111,
+   "damage": 2.6428,
+   "mean": 88,
+   "meanBand": "A+",
+   "weakest": 82.3,
+   "weakBand": "A-",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     55
+    ],
+    [
+     "brand",
+     55
+    ],
+    [
+     "ally dmg",
+     55
+    ]
+   ]
+  },
+  {
+   "gpd": 14385998,
+   "gold": 18432119,
+   "gems": 638,
+   "weeks": 70.8586,
+   "damage": 2.7291,
+   "mean": 88.9,
+   "meanBand": "A+",
+   "weakest": 83.6,
+   "weakBand": "A",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     60
+    ],
+    [
+     "brand",
+     60
+    ],
+    [
+     "ally dmg",
+     60
+    ]
+   ]
+  },
+  {
+   "gpd": 17295774,
+   "gold": 20981182,
+   "gems": 707,
+   "weeks": 78.53166666666667,
+   "damage": 2.769,
+   "mean": 89.3,
+   "meanBand": "A+",
+   "weakest": 84.2,
+   "weakBand": "A",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     60
+    ],
+    [
+     "brand",
+     60
+    ],
+    [
+     "ally dmg",
+     60
+    ]
+   ]
+  },
+  {
+   "gpd": 20794094,
+   "gold": 23602927,
+   "gems": 759,
+   "weeks": 84.35015555555555,
+   "damage": 2.8042,
+   "mean": 89.7,
+   "meanBand": "A+",
+   "weakest": 84.5,
+   "weakBand": "A",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     60
+    ],
+    [
+     "brand",
+     60
+    ],
+    [
+     "ally dmg",
+     60
+    ]
+   ]
+  },
+  {
+   "gpd": 25000000,
+   "gold": 27336464,
+   "gems": 894,
+   "weeks": 99.33875555555557,
+   "damage": 2.8596,
+   "mean": 90.2,
+   "meanBand": "S-",
+   "weakest": 85.4,
+   "weakBand": "A",
+   "cores": 19,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     60
+    ],
+    [
+     "brand",
+     60
+    ],
+    [
+     "ally dmg",
+     60
+    ]
+   ]
+  },
+  {
+   "gpd": 40000000,
+   "gold": 36638385,
+   "gems": 1173,
+   "weeks": 130.3611888888889,
+   "damage": 2.9435,
+   "mean": 91.1,
+   "meanBand": "S-",
+   "weakest": 86.8,
+   "weakBand": "A+",
+   "cores": 20,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    19,
+    20,
+    20,
+    19
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     65
+    ],
+    [
+     "brand",
+     65
+    ],
+    [
+     "ally dmg",
+     65
+    ]
+   ]
+  },
+  {
+   "gpd": 63000000,
+   "gold": 51732802,
+   "gems": 1607,
+   "weeks": 178.57569999999998,
+   "damage": 3.0304,
+   "mean": 91.9,
+   "meanBand": "S-",
+   "weakest": 88.1,
+   "weakBand": "A+",
+   "cores": 20,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    20,
+    20,
+    20,
+    20
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     65
+    ],
+    [
+     "brand",
+     65
+    ],
+    [
+     "ally dmg",
+     65
+    ]
+   ]
+  },
+  {
+   "gpd": 100000000,
+   "gold": 76059749,
+   "gems": 2290,
+   "weeks": 254.48132222222225,
+   "damage": 3.1224,
+   "mean": 92.9,
+   "meanBand": "S-",
+   "weakest": 89.4,
+   "weakBand": "A+",
+   "cores": 20,
+   "capped": true,
+   "perCore": [
+    20,
+    20,
+    20,
+    20,
+    20,
+    20
+   ],
+   "nodes": [
+    [
+     "ally atk",
+     70
+    ],
+    [
+     "brand",
+     70
+    ],
+    [
+     "ally dmg",
+     70
+    ]
+   ]
+  }
+ ]
+}

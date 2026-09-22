@@ -1,0 +1,8568 @@
+{
+"neck": [
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.25901,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.27036,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.28172,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.29305,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.30439,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.26912,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.28049,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.29184,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.30317,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.31452,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.2839,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.29527,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.30663,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.31797,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.32932,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.30877,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.32015,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.33152,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.34286,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.35422,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.36691,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.37827,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.38962,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.40095,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.41229,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.37703,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.38839,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.39975,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.41108,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.42242,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.39181,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.40318,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.41454,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.42587,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.43722,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.41668,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.42805,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.43942,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.45077,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.46212,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.50163,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.51299,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.52434,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.53567,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.54701,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.51175,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.52311,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.53447,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.5458,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.55714,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.52653,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.5379,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.54926,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.56059,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.57194,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.5514,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.56277,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.57414,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.58549,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.59684,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.66306,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.67442,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.68577,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.6971,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.70844,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.67318,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.68454,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.69589,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.70722,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.71857,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.68795,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.69932,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.71068,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.72202,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.73337,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.71282,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.7242,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.73557,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.74691,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.75827,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.44691,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.45827,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.46962,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.48095,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.49229,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.45703,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.46839,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.47975,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.49108,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.50242,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.47181,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.48317,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.49453,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.50587,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.51722,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.49668,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.50805,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.51942,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.53076,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.54212,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.55482,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.56617,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.57753,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.58886,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.6002,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.56493,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.5763,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.58765,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.59898,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.61033,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.57971,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.59108,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.60244,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.61378,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.62513,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.60458,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.61596,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.62733,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.63867,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.65003,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.68954,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.70089,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.71225,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.72358,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.73492,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.69965,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.71102,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.72237,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.7337,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.74505,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.71443,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.7258,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.73716,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.7485,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.75985,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.7393,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.75068,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.76204,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.77339,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.78475,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.85096,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.86232,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.87367,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.885,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.89634,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.86108,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.87244,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.8838,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.89513,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.90647,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.87586,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.88722,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.89858,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.90992,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.92127,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.90073,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.9121,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.92347,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.93481,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.94617,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.67803,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.68939,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.70074,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.71207,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.72341,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.68815,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.69951,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.71086,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.7222,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.73354,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.70293,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.71429,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.72565,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.73699,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.74834,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.72779,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.73917,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.75054,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.76188,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.77324,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.78593,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.79729,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.80864,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.81997,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.83131,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.79605,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.80741,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.81877,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.8301,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.84144,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.81083,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.8222,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.83356,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.8449,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.85624,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.8357,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.84707,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.85844,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.86979,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.88114,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.92065,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.93201,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.94336,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.95469,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 0.96603,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.93077,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.94213,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.95349,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.96482,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.97616,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.94555,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.95692,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.96828,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 0.97961,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 0.99096,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.97042,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.98179,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.99316,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.00451,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.01586,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 1.08208,
+"gold": 31083
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 1.09344,
+"gold": 43642
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.10479,
+"gold": 58283
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 1.11612,
+"gold": 76122
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 1.12746,
+"gold": 97150
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.0922,
+"gold": 42211
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.10356,
+"gold": 56610
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.11491,
+"gold": 74088
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.12625,
+"gold": 94861
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.13759,
+"gold": 118216
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.10698,
+"gold": 61425
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.11834,
+"gold": 80178
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.1297,
+"gold": 101789
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.14104,
+"gold": 125523
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.15239,
+"gold": 149692
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.13184,
+"gold": 106230
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.14322,
+"gold": 130156
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.15459,
+"gold": 154403
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.16593,
+"gold": 178760
+},
+{
+"slot": "neck",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.17729,
+"gold": 203187
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 0.9564,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 0.96776,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.97911,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 0.99044,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 1.00178,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.96652,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.97788,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 0.98924,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.00057,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.01191,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 0.9813,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 0.99267,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.00403,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.01536,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.02671,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.00617,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.01754,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.02891,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.04026,
+"gold": 0
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.05161,
+"gold": 2799
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 1.06431,
+"gold": 13962
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 1.07567,
+"gold": 24606
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.08702,
+"gold": 36268
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 1.09835,
+"gold": 49576
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 1.10969,
+"gold": 65350
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.07443,
+"gold": 23438
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.08579,
+"gold": 34970
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.09714,
+"gold": 48112
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.10848,
+"gold": 63587
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.11982,
+"gold": 82881
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.08921,
+"gold": 38774
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.10057,
+"gold": 52572
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.11193,
+"gold": 69091
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.12327,
+"gold": 89291
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.13462,
+"gold": 111992
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.11407,
+"gold": 72680
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.12545,
+"gold": 93369
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.13682,
+"gold": 116598
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.14816,
+"gold": 140681
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.15952,
+"gold": 164979
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 1.19903,
+"gold": 250000
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 1.21039,
+"gold": 277308
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.22174,
+"gold": 308762
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 1.23307,
+"gold": 346486
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 1.24441,
+"gold": 394994
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.20915,
+"gold": 274298
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.22051,
+"gold": 305313
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.23186,
+"gold": 342410
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.2432,
+"gold": 389687
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.25454,
+"gold": 458831
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.22393,
+"gold": 315986
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.23529,
+"gold": 355893
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.24665,
+"gold": 408894
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.25799,
+"gold": 481664
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.26934,
+"gold": 558672
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.24879,
+"gold": 422408
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.26017,
+"gold": 496389
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.27154,
+"gold": 573945
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.28288,
+"gold": 653143
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.29424,
+"gold": 732836
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 15178,
+"Q": 1.36045,
+"gold": 1200000
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 15848,
+"Q": 1.37181,
+"gold": 1292054
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.38316,
+"gold": 1403073
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 17187,
+"Q": 1.39449,
+"gold": 1547582
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 17857,
+"Q": 1.40583,
+"gold": 1770567
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.37057,
+"gold": 1281881
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.38193,
+"gold": 1390846
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.39329,
+"gold": 1531824
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.40462,
+"gold": 1745579
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.41596,
+"gold": 2378460
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.38535,
+"gold": 1430624
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.39672,
+"gold": 1590330
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.40808,
+"gold": 1905294
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.41941,
+"gold": 2585517
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.43076,
+"gold": 3266383
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 15178,
+"Q": 1.41022,
+"gold": 2033768
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 15848,
+"Q": 1.42159,
+"gold": 2716243
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 16518,
+"Q": 1.43296,
+"gold": 3398341
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 17187,
+"Q": 1.44431,
+"gold": 4079047
+},
+{
+"slot": "neck",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 17857,
+"Q": 1.45566,
+"gold": 4760395
+}
+],
+"earring": [
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 11806,
+"Q": 0.20175,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 12327,
+"Q": 0.2106,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.21946,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 13368,
+"Q": 0.22829,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 13889,
+"Q": 0.23714,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.21185,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.22071,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.22956,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.2384,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.24725,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.2266,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.23547,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.24433,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.25317,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.26202,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.25143,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.2603,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.26917,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.27801,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.28687,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 11806,
+"Q": 0.30512,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 12327,
+"Q": 0.314,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.32288,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 13368,
+"Q": 0.33174,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 13889,
+"Q": 0.34062,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.31517,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.32406,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.33294,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.3418,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.35068,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.32985,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.33874,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.34763,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.3565,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.36537,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.35456,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.36345,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.37235,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.38122,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.3901,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 11806,
+"Q": 0.43362,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 12327,
+"Q": 0.44253,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.45144,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 13368,
+"Q": 0.46034,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 13889,
+"Q": 0.46924,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.4436,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.45252,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.46144,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.47033,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.47924,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.4582,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.46712,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.47604,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.48493,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.49385,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.48275,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.49167,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.5006,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.5095,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.51842,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 11806,
+"Q": 0.58676,
+"gold": 0
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 12327,
+"Q": 0.59572,
+"gold": 3399
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.60467,
+"gold": 66953
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 13368,
+"Q": 0.6136,
+"gold": 130609
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 13889,
+"Q": 0.62254,
+"gold": 194765
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.59668,
+"gold": 10217
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.60564,
+"gold": 73841
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.61459,
+"gold": 137706
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.62352,
+"gold": 201870
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.63247,
+"gold": 267024
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.61116,
+"gold": 113231
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.62012,
+"gold": 177400
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.62908,
+"gold": 242319
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.63802,
+"gold": 307750
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.64697,
+"gold": 373826
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 11806,
+"Q": 0.63553,
+"gold": 289507
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 12327,
+"Q": 0.6445,
+"gold": 355596
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 12848,
+"Q": 0.65346,
+"gold": 422358
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 13368,
+"Q": 0.66241,
+"gold": 489479
+},
+{
+"slot": "earring",
+"prim": [
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 13889,
+"Q": 0.67136,
+"gold": 557258
+}
+],
+"ring": [
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.18739,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.19562,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.20385,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.21207,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.22029,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.19749,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.20572,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.21396,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.22217,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.2304,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.21224,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.22048,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.22871,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.23693,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.24516,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.23705,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.2453,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.25354,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.26176,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.27,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.39497,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.40326,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.41154,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.4198,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.42807,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.40513,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.41342,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.4217,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.42996,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.43824,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.41997,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.42826,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.43654,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.44481,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.45309,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.44493,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.45323,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.46152,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.46979,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.47808,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.6481,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.65645,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.66479,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.67311,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.68144,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.65834,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.66668,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.67502,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.68334,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.69168,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.67328,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.68163,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.68997,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.6983,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.70664,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.69842,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.70678,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.71513,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.72346,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.7318,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.95407,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.96249,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.9709,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.97929,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.98769,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.96439,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.97281,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.98122,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.98961,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.99802,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.97946,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.98788,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.9963,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.0047,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.01311,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.00482,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.01325,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.02167,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.03007,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+null,
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.03849,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.45845,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.46668,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.47492,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.48313,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.49135,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.46855,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.47678,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.48502,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.49323,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.50146,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.4833,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.49154,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.49977,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.50799,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.51622,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.50811,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.51636,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.5246,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.53283,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.54106,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.66604,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.67432,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.6826,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.69086,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.69913,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.67619,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.68448,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.69276,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.70102,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.7093,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.69103,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.69932,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.7076,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.71587,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.72415,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.71599,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.72429,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.73258,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.74085,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.74914,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.91917,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.92751,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.93585,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.94417,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.9525,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.9294,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.93774,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.94608,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.9544,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.96274,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.94434,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.95269,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.96103,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.96936,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.9777,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.96948,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.97784,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.98619,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.99452,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.00286,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.22513,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.23355,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.24196,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.25035,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.25875,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.23545,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.24387,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.25228,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.26068,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.26908,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.25053,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.25895,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.26736,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.27576,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.28417,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.27588,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.28431,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.29273,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.30114,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"low",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.30955,
+"gold": 1601
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 0.79625,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 0.80448,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.81271,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 0.82092,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 0.82915,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.80634,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.81458,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.82282,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.83103,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.83926,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.82109,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.82933,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.83757,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.84579,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.85402,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 0.84591,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 0.85416,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 0.8624,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 0.87062,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 0.87886,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.00383,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.01212,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.0204,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.02865,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.03693,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.01399,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.02228,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.03056,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.03882,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.0471,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.02883,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.03712,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.0454,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.05367,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.06195,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.05379,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.06209,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.07038,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.07865,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.08693,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.25696,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.26531,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.27364,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.28196,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.2903,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.26719,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.27554,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.28388,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.2922,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.30054,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.28214,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.29049,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.29883,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.30716,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.31549,
+"gold": 6770
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.30728,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.31563,
+"gold": 6893
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.32399,
+"gold": 14202
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.33232,
+"gold": 21501
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.34066,
+"gold": 28821
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.56293,
+"gold": 289532
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.57135,
+"gold": 301742
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.57976,
+"gold": 314757
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.58815,
+"gold": 328718
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.59655,
+"gold": 343936
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.57325,
+"gold": 304675
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.58167,
+"gold": 317920
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.59008,
+"gold": 332198
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.59847,
+"gold": 347743
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.60688,
+"gold": 364560
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.58832,
+"gold": 329031
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.59674,
+"gold": 344312
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.60516,
+"gold": 361107
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.61356,
+"gold": 378069
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.62197,
+"gold": 395174
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.61368,
+"gold": 378325
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.62211,
+"gold": 395464
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.63053,
+"gold": 412680
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.63893,
+"gold": 429870
+},
+{
+"slot": "ring",
+"prim": [
+"mid",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.64735,
+"gold": 447106
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.2001,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.20834,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.21657,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.22478,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.233,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.2102,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.21844,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.22667,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.23488,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.24311,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.22495,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.23319,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.24143,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.24964,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.25787,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.24977,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.25801,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.26626,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.27448,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+null
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.28271,
+"gold": 0
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.40769,
+"gold": 87688
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.41597,
+"gold": 95411
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.42425,
+"gold": 103694
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.43251,
+"gold": 112646
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.44078,
+"gold": 122505
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.41785,
+"gold": 97277
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.42613,
+"gold": 105720
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.43441,
+"gold": 114899
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.44268,
+"gold": 125004
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.45095,
+"gold": 136053
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.43268,
+"gold": 112849
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.44097,
+"gold": 122752
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.44926,
+"gold": 133783
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.45752,
+"gold": 144945
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.4658,
+"gold": 156212
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.45765,
+"gold": 145113
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.46594,
+"gold": 156403
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.47423,
+"gold": 167753
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.4825,
+"gold": 179087
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"low"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.49079,
+"gold": 190453
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.66082,
+"gold": 474718
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.66916,
+"gold": 493679
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.6775,
+"gold": 515293
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.68582,
+"gold": 540763
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 1.69415,
+"gold": 572942
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.67105,
+"gold": 498526
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.67939,
+"gold": 521021
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.68774,
+"gold": 548036
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.69606,
+"gold": 583149
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.70439,
+"gold": 629736
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.68599,
+"gold": 541414
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.69434,
+"gold": 573939
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.70269,
+"gold": 620061
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.71101,
+"gold": 668807
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.71935,
+"gold": 719258
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.71114,
+"gold": 669559
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.71949,
+"gold": 720128
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.72784,
+"gold": 771972
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 1.73617,
+"gold": 823946
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"mid"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 1.74452,
+"gold": 876268
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "min",
+"msVal": 10962,
+"Q": 1.96679,
+"gold": 2276999
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "low",
+"msVal": 11446,
+"Q": 1.9752,
+"gold": 2337372
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.98361,
+"gold": 2409165
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "high",
+"msVal": 12413,
+"Q": 1.992,
+"gold": 2500181
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": null,
+"ms": "max",
+"msVal": 12897,
+"Q": 2.00041,
+"gold": 2635511
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.97711,
+"gold": 2353417
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "low",
+"msVal": 11446,
+"Q": 1.98552,
+"gold": 2429509
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "mid",
+"msVal": 11930,
+"Q": 1.99394,
+"gold": 2530272
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "high",
+"msVal": 12413,
+"Q": 2.00233,
+"gold": 2713306
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "low",
+"ms": "max",
+"msVal": 12897,
+"Q": 2.01074,
+"gold": 3140577
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "min",
+"msVal": 10962,
+"Q": 1.99218,
+"gold": 2502850
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "low",
+"msVal": 11446,
+"Q": 2.0006,
+"gold": 2642713
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "mid",
+"msVal": 11930,
+"Q": 2.00901,
+"gold": 3044689
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "high",
+"msVal": 12413,
+"Q": 2.01741,
+"gold": 3541111
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "mid",
+"ms": "max",
+"msVal": 12897,
+"Q": 2.02582,
+"gold": 4045720
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "min",
+"msVal": 10962,
+"Q": 2.01754,
+"gold": 3548668
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "low",
+"msVal": 11446,
+"Q": 2.02596,
+"gold": 4054241
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "mid",
+"msVal": 11930,
+"Q": 2.03439,
+"gold": 4559612
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "high",
+"msVal": 12413,
+"Q": 2.04279,
+"gold": 5063736
+},
+{
+"slot": "ring",
+"prim": [
+"high",
+"high"
+],
+"flat": "high",
+"ms": "max",
+"msVal": 12897,
+"Q": 2.0512,
+"gold": 5568700
+}
+]
+}

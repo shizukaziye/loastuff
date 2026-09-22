@@ -13,3 +13,6 @@
 # a pin bump, so always revalidate.
 /loa-bracelet-calc/data/*
   Cache-Control: no-cache
+# GPD chart data (sweep results, lattices) is re-baked without a pin bump too.
+/loa-gpd/data/*
+  Cache-Control: no-cache
