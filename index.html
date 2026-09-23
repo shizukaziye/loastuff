@@ -94,6 +94,33 @@
   }
   .dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80aa}
 
+  /* ---------- Hero search: the home page's first action (Shizu, 2026-09-22) ---------- */
+  .hero-find{max-width:640px;margin:28px auto 0;text-align:left}
+  .hero-find .find-label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 8px 2px}
+  .hero-find .find-row{display:flex;gap:8px;margin-top:0}
+  .hero-find select,.hero-find input{
+    height:50px;background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    color:var(--text);font:inherit;font-size:16px;padding:0 14px;outline:none;
+  }
+  .hero-find select{flex:0 0 auto;width:78px;font-weight:700;color-scheme:dark;cursor:pointer}
+  .hero-find input{flex:1 1 auto;min-width:0}
+  .hero-find input::placeholder{color:var(--faint)}
+  .hero-find input:focus,.hero-find select:focus{border-color:var(--gold)}
+  .hero-find button{
+    flex:0 0 auto;height:50px;padding:0 18px;border:none;border-radius:12px;cursor:pointer;
+    background:linear-gradient(180deg,#f4d79a,var(--gold));color:#0c0e12;font:inherit;font-size:15px;font-weight:700;
+  }
+  .hero-find button:hover{filter:brightness(1.06)}
+  .hero-find button:focus-visible{outline:2px solid #fff3d6;outline-offset:2px}
+  .find-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+  .find-chips:empty{display:none}
+  .find-chips .lbl{color:var(--faint);align-self:center;margin-right:2px}
+  .find-chips a{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);
+    border-radius:999px;padding:4px 11px;color:var(--muted);text-decoration:none}
+  .find-chips a:hover{color:var(--text);border-color:var(--gold-dim)}
+  .find-chips a .rg{font-size:11px;color:var(--faint)}
+  @media (max-width:480px){.hero-find select{width:64px;padding:0 8px}.hero-find button{padding:0 12px}}
+
   /* ---------- Connect row (channels + support) ---------- */
   .connect{
     margin-top:28px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
@@ -223,6 +250,23 @@
     <div class="eyebrow">Lose is Improve</div>
     <h1>Loseii</h1>
     <p class="tagline">Everything I've built — calculators &amp; tools for Lost Ark, League, and personal finance, in one place. Bookmark it.</p>
+    <!-- The home page's first action (Shizu, 2026-09-22: "not easy for ppl to access the
+         profiles"). Opens /REGION/Name; without script the form still lands on
+         /profile/?region=&name=, which the profile page moves to the same address. -->
+    <form class="hero-find" id="find" action="/profile/" method="get" role="search" autocomplete="off">
+      <div class="find-label">Look up a character</div>
+      <div class="find-row">
+        <label class="vh" for="find-region">Region</label>
+        <select id="find-region" name="region">
+          <option value="NA">NA</option>
+          <option value="EU">EU</option>
+        </select>
+        <label class="vh" for="find-name">Character name</label>
+        <input id="find-name" name="name" type="search" placeholder="Character name — bracelet, astrogems, cheapest next upgrade" maxlength="40" required spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="go">
+        <button type="submit">Search</button>
+      </div>
+      <div class="find-chips" id="find-chips"></div>
+    </form>
     <div class="meta-row">
       <span class="pill-stat"><span class="dot"></span>16 live tools</span>
       <span class="pill-stat">Free &amp; in-browser</span>
@@ -248,25 +292,6 @@
   <section class="section">
     <div class="section-head"><h2>Lost Ark · Characters</h2><span class="rule"></span></div>
     <div class="grid">
-
-      <!-- Opens /REGION/Name. Without script the form still lands: /profile/?region=&name=
-           is read by the profile page and moved to the same address. -->
-      <form class="card find" id="find" action="/profile/" method="get" role="search" autocomplete="off">
-        <div class="card-top">
-          <span class="tag">Search</span>
-        </div>
-        <h3>Find a character</h3>
-        <div class="find-row">
-          <label class="vh" for="find-region">Region</label>
-          <select id="find-region" name="region">
-            <option value="NA">NA</option>
-            <option value="EU">EU</option>
-          </select>
-          <label class="vh" for="find-name">Character name</label>
-          <input id="find-name" name="name" type="search" placeholder="Character name" maxlength="40" required spellcheck="false" autocapitalize="off" autocorrect="off" enterkeyhint="go">
-          <button type="submit">Go</button>
-        </div>
-      </form>
 
       <a class="card blue" href="/profile/" rel="noopener">
         <div class="card-top">
@@ -512,6 +537,36 @@
 <!-- Shared Loseii chrome — the two lines every page gets.
      nav.js  = fixed top navigation (wordmark + Tools menu)
      social-bar.js = floating Twitch / YouTube / Ko-fi bar -->
+<script>
+// The visitor's own characters, one tap away: the bracelet tool's favorites
+// (bc_favs) first, then the profile page's recents (lp_recent) — same origin,
+// same storage. Nothing renders when there are none.
+(function () {
+  var host = document.getElementById("find-chips");
+  if (!host) return;
+  function read(k) { try { var v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+  function reg(r) { r = String(r || "").toUpperCase(); return r === "CE" ? "EU" : r; }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var seen = {}, out = [];
+  function add(list, star) {
+    for (var i = 0; i < list.length && out.length < 8; i++) {
+      var e = list[i]; if (!e || !e.name) continue;
+      var k = reg(e.region) + "|" + String(e.name).toLowerCase();
+      if (seen[k] || !reg(e.region)) continue;
+      seen[k] = 1; out.push({ region: reg(e.region), name: e.name, star: star });
+    }
+  }
+  add(read("bc_favs"), true); add(read("lp_recent"), false);
+  if (!out.length) return;
+  var h = '<span class="lbl">Yours</span>';
+  for (var j = 0; j < out.length; j++) {
+    var c = out[j];
+    h += '<a href="/' + encodeURIComponent(c.region) + '/' + encodeURIComponent(c.name) + '">' +
+      (c.star ? "★ " : "") + esc(c.name) + '<span class="rg">' + esc(c.region) + "</span></a>";
+  }
+  host.innerHTML = h;
+})();
+</script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

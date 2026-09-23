@@ -25,6 +25,7 @@
     {
       label: "Lost Ark",
       items: [
+        { name: "Character Profiles",   url: "https://www.loseii.com/#find" },
         { name: "Accessory Calculator", url: "https://www.loseii.com/lost-ark-accessories/" },
         { name: "Astrogem Calculator",  url: "https://www.loseii.com/loa-astrogem-calc/" },
         { name: "Bracelet Calculator",  url: "https://www.loseii.com/loa-bracelet-calc/" },
