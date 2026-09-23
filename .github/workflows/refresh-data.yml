@@ -2,6 +2,7 @@ name: Refresh baked market data
 
 # The deal finder bakes its market data into loa-deal-finder/index.html, and the
 # crafting calculator bakes a price snapshot into loa-crafting-calculator/index.html.
+# The hell key calculator and the GPD chart each bake a prices.js beside their page.
 # These used to run in the standalone repos; now that both tools live in this
 # monorepo, the refresh runs here and commits back (which redeploys via Pages).
 on:
@@ -37,16 +38,20 @@ jobs:
         working-directory: loa-hell-key-calc
         run: python3 fetch_prices.py
 
+      - name: Refresh GPD chart material prices (prices.js)
+        working-directory: loa-gpd
+        run: python3 fetch_prices.py
+
       - name: Commit refreshed data if changed
         run: |
-          if git diff --quiet -- loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js; then
+          if git diff --quiet -- loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js loa-gpd/prices.js; then
             echo "No data changes."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js
-          git commit -m "Auto-refresh baked market data (deal finder + crafting + hell keys)"
+          git add loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js loa-gpd/prices.js
+          git commit -m "Auto-refresh baked market data (deal finder + crafting + hell keys + GPD)"
           # A push can race a manual push to main (it has: run 2026-07-22 08:31
           # failed non-fast-forward and that refresh was lost). Rebase and retry.
           for i in 1 2 3; do

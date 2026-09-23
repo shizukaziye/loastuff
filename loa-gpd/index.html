@@ -48,7 +48,7 @@
 
 <div class='inputs' id='matPanel'>
   <div class='ihdr'><span class='tgl' id='matToggle'><span id='mat-caret'>▾</span> Material prices</span>
-    <span class='note' style='margin:0'>untick anything you already have bound</span></div>
+    <span class='note' style='margin:0'>untick anything you already have bound<span id='matDate'></span></span></div>
   <div class='mats' id='matGrid'></div>
 </div>
 
@@ -119,7 +119,10 @@
 <script src='model/honing.js?v=20260922a'></script>
 <script src='model/karma.js?v=20260922a'></script>
 <script src='model/gems.js?v=20260922a'></script>
-<script src='lookup.js?v=1'></script>
+<!-- live NA market prices for the material panel; unpinned, the 6-hour refresh
+     (fetch_prices.py in refresh-data.yml) rewrites it in place -->
+<script src='prices.js'></script>
+<script src='lookup.js?v=2'></script>
 <script src='https://www.loseii.com/loa-astrogem-calc/model/astrogem.js' defer></script>
 <script src='bible-oauth.js?v=20260922a'></script>
 <script>
@@ -392,6 +395,10 @@
     grid.innerHTML = "";
     var d0 = L.defaults(data);
     state.prices = d0.prices; state.enabled = d0.enabled;
+    // the date of the baked market prices the defaults come from, if any
+    var pi = L.priceInfo(), md = el("matDate");
+    md.textContent = pi && pi.date ? " · NA market " + pi.date : "";
+    md.title = pi ? "Defaults are the NA East market's 14-day average (outliers trimmed), refreshed every 6 hours" : "";
     L.materials(data).forEach(function (m) {
       var on = m.on, price = m.price;
       var row = document.createElement("div");

@@ -8,7 +8,7 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=1"></script>
+ *   <script src="/loa-gpd/lookup.js?v=2"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
@@ -17,7 +17,8 @@
  * ready() fetches everything place() needs and nothing else: the four model
  * files and the baked tables beside this file (/loa-gpd/model, /loa-gpd/data,
  * with the pins the chart uses), the astrogem model and the bracelet
- * calculator's scorer. A host page loads nothing first.
+ * calculator's scorer, and the baked market prices (prices.js) when the page
+ * has not loaded them. A host page loads nothing first.
  *
  * Every function below takes the state it reads. A "context" is an object
  * shaped like the chart's own state (the chart passes that object itself):
@@ -103,14 +104,23 @@
 
   // ---- the material panel's defaults -------------------------------------
   // In the market's own units — the grid shows "/100" where the board sells in
-  // hundreds. Guardian (blue) stones default to 300 a hundred, not 30 (Shizu,
-  // 2026-08-26). Order is data.materials' order and stays that way.
+  // hundreds. The live NA East prices in prices.js (window.GPD_PRICES, gold per
+  // ONE unit, re-baked every 6 hours by fetch_prices.py) win; MAT_PRICE is the
+  // hand-set fallback for a material the feed did not price. Guardian (blue)
+  // stones fall back to 300 a hundred, not 30 (Shizu, 2026-08-26). Order is
+  // data.materials' order and stays that way.
   var MAT_PRICE = { "6861013": 125, "66102007": 1800, "66102107": 300,
                     "66110226": 25, "66111131": 300, "66111132": 150 };
   // short names, and only the small shard bag stands for all three pouches
   var MAT_NAME = { "66130141": "Shards", "6861013": "Fusions", "66102007": "Red Stones",
                    "66102107": "Blue Stones", "66110226": "Leapstones",
                    "66111131": "Lava's", "66111132": "Glacier's" };
+  // the market feed's name for each material prices.js carries
+  var MAT_SLUG = { "6861013": "superior-abidos-fusion-material",
+                   "66102007": "destiny-crystallized-destruction-stone",
+                   "66102107": "destiny-crystallized-guardian-stone",
+                   "66110226": "great-destiny-leapstone",
+                   "66111131": "lavas-breath", "66111132": "glaciers-breath" };
   // the level-8 gem is an auction-house item, not a market-board one, so no
   // feed prices it: every gem step reprices from this (baked at 420k)
   var GEM8_PRICE = 420000;
@@ -118,13 +128,34 @@
   var ACC_STAT_OPTS = ["min", "low", "mid", "high", "max"];
   var ACC_FILTER = { flat: ["no"], stat: ["high"] };
 
+  /** prices.js's answer: { date, region, perUnit: { slug: gold per ONE unit } }
+   *  or null when the page has not loaded it (or it failed). */
+  function feed() {
+    var p = root.GPD_PRICES;
+    return p && typeof p === "object" && p.perUnit && typeof p.perUnit === "object" ? p : null;
+  }
+  /** Where the default prices came from: { date, region } of the live feed,
+   *  or null when every default is the hand-set one. */
+  function priceInfo() {
+    var p = feed();
+    if (!p) return null;
+    for (var id in MAT_SLUG) if (p.perUnit[MAT_SLUG[id]] > 0) return { date: p.date || null, region: p.region || null };
+    return null;
+  }
+  /** A material's default in market units: the feed's price times the unit,
+   *  whole gold (a hundred blue stones at 2.8 each is 280), else MAT_PRICE. */
+  function matPrice(m) {
+    var p = feed(), v = p && MAT_SLUG[m.id] ? +p.perUnit[MAT_SLUG[m.id]] : NaN;
+    if (v > 0 && isFinite(v)) return Math.max(1, Math.round(v * (m.unit || 1)));
+    return MAT_PRICE[m.id] || 0;
+  }
   /** The materials the panel lists, in data order, with default prices in
    *  market units. A material it does not list is free and unticked. */
   function materials(honing) {
     return (honing && honing.materials || []).filter(function (m) { return MAT_NAME[m.id]; })
       .map(function (m) {
         return { id: m.id, name: MAT_NAME[m.id], fullName: m.name, kind: m.kind, unit: m.unit,
-                 price: MAT_PRICE[m.id] || 0, on: m.kind !== "shard_pouch" };
+                 price: matPrice(m), on: m.kind !== "shard_pouch" };
       });
   }
   /** The chart's switches and prices before anyone touches them. */
@@ -1115,6 +1146,16 @@
       .then(function (ok) { return ok.every(Boolean); });
   }
   function loadAstrogem() { return need("Astrogem", ASTROGEM_JS); }
+  /** prices.js from beside this file, unless the page loaded it already. It is
+   *  a nicety: a failure resolves too, and the defaults fall back to MAT_PRICE.
+   *  Unpinned on purpose: the 6-hour refresh rewrites it without a pin bump. */
+  var _prices = null;
+  function loadPrices() {
+    if (feed() || !root.document) return Promise.resolve(!!feed());
+    if (!_prices) _prices = loadScript(BASE + "prices.js")
+      .then(function () { return !!feed(); }, function () { _prices = null; return false; });
+    return _prices;
+  }
 
   // ---- the bracelet calculator's model, fetched when a character is ----------
   // subrank.js keeps the Bracelet it finds when it runs, so a copy that ran
@@ -1207,13 +1248,14 @@
   var _data = null;
   function loadData() {
     if (_data) return _data;
+    var prices = loadPrices();               // never holds the tables up or fails them
     _data = Promise.all(DATA_FILES.map(function (f) { return grab(BASE + "data/" + f); })
-                          .concat([lkLoadLattice(DATA)]))
+                          .concat([lkLoadLattice(DATA), prices]))
       .then(function (all) {
         var got = {};
         DATA_FILES.forEach(function (f, i) { got[f] = all[i]; });
         absorb(DATA, got);
-        var ok = all.every(Boolean);
+        var ok = all.slice(0, DATA_FILES.length + 1).every(Boolean);
         if (!ok) _data = null;               // a table that failed is fetched again next time
         return ok;
       });
@@ -1298,6 +1340,7 @@
     version: VERSION,
     // loading
     ready: ready, loadData: loadData, loadModels: loadModels, loadAstrogem: loadAstrogem,
+    loadPrices: loadPrices, priceInfo: priceInfo,
     loadBraceletScorer: lkLoadBraceletModel, loadLattice: lkLoadLattice,
     absorb: absorb, grab: grab, use: use, data: function () { return DATA; },
     // the one call
@@ -1310,7 +1353,7 @@
     // the tables of names
     SERIES: SERIES, RARITY_OF: RARITY_OF, NOT_READ: NOT_READ, ACC_FLAT_OPTS: ACC_FLAT_OPTS,
     ACC_STAT_OPTS: ACC_STAT_OPTS, DATA_FILES: DATA_FILES, MODELS: MODELS, BC_BASE: BC_BASE,
-    BC_PIN: BC_PIN, ASTROGEM_JS: ASTROGEM_JS
+    BC_PIN: BC_PIN, ASTROGEM_JS: ASTROGEM_JS, MAT_SLUG: MAT_SLUG
   };
   return api;
 });

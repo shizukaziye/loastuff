@@ -233,7 +233,7 @@
    * profile page would fetch it again anyway: a warm-up would only double the
    * Worker trips. Worth adding if that route ever gains a max-age.
    */
-  var PROFILE_ASSETS = ["/profile/profile.js?v=3", "/profile/profile.css?v=3"];
+  var PROFILE_ASSETS = ["/profile/profile.js?v=4", "/profile/profile.css?v=3"];
   var profileWarm = false;
   function warmProfile(e) {
     if (profileWarm) return;
