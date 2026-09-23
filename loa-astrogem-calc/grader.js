@@ -1429,7 +1429,17 @@
     }).catch(function () {});
   }
 
+  // The small "Profile →" link to a character's loseii profile (index.html,
+  // LoseiiBack). KR has no profile, so it gets none.
+  function profileLink(data) {
+    var LB = window.LoseiiBack;
+    return LB && LB.link ? LB.link(data.region, data.name) : "";
+  }
+
   function renderLoadout(data) {
+    // The page's "Back to <Name>'s profile" bar (index.html, LoseiiBack) stands only
+    // while the Grader shows the character the visitor came from.
+    if (window.LoseiiBack) window.LoseiiBack.held(data.region, data.name);
     applyAxisTheme();
     var out = $("gr-result");
     var gems = activeGems(data);
@@ -1491,7 +1501,7 @@ presetToggleHtml(data) +
 '    <div class="gr-id">' +
 '      <div class="gr-name"><a class="bible-link" href="' + bibleUrl(data.region, data.name) + '" target="_blank" rel="noopener">' + esc(data.name || "") + '</a>' +
        cacheNoteHtml(data) + '<span class="gr-star-note" id="gr-fav-note" style="display:none"></span></div>' +
-'      <div class="gr-meta">' + metaChips + '</div>' +
+'      <div class="gr-meta">' + metaChips + profileLink(data) + '</div>' +
 '    </div>' +
 '  </div>' +
 '  <div class="gr-sum">' +

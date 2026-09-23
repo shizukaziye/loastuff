@@ -27,7 +27,7 @@
  *   gold per 1% the GPD chart's own lookup, loa-gpd/lookup.js: GpdLookup.place()
  *               on the two answers above, on the role the astrogem section
  *               graded (the chart's rule), default switches. Loaded after the
- *               bracelet and astrogem cards have painted; the third rank tile
+ *               bracelet and astrogem overviews have painted; the third rank tile
  *               is its cheapest step.
  *
  * SPEED (docs/design/PROFILE-GAMEPLAN.md §2)
@@ -762,7 +762,7 @@
     if (!br || (br.numRerolls == null && br.numTicketRerolls == null)) return null;
     return { base: br.numRerolls || 0, ticket: br.numTicketRerolls || 0 };
   }
-  /** A board row, or scoreRecord()'s copy of one -> the bracelet card. */
+  /** A board row, or scoreRecord()'s copy of one -> the bracelet overview. */
   function brPart(x, rec, onBoard) {
     var axis = x.role === "support" ? "support" : "dps";
     var reading = axis === "support" ? x.sup : x.dps;
@@ -1022,7 +1022,7 @@
   function settle(ctx, keys) {
     if (!isLive(ctx)) return;
     keys.forEach(function (k) { ctx.fresh[k] = true; });
-    // The GPD card reads both records, so it starts once both cards have painted.
+    // The GPD overview reads both records, so it starts once both of theirs have painted.
     if (!ctx.gpdArmed && ctx.fresh.br && ctx.fresh.ag) { ctx.gpdArmed = true; queueGpd(ctx); }
     for (var i = 0; i < PARTS.length; i++) if (!ctx.fresh[PARTS[i]]) return;
     mark("complete");
@@ -1138,42 +1138,62 @@
     el.title = text || "";
   }
 
+  /** The bracelet board's reading, in words and glosses, for the tile and the overview's headline. */
+  function brBits(ctx) {
+    var r = ctx.model.brRank;
+    if (!r || r.st !== "ok") return null;
+    var sup = r.axis === "support", board = sup ? "Support" : "DPS", relic = ctx.model.br && ctx.model.br.grade === "relic";
+    return {
+      sup: sup, board: board,
+      badgeGloss: r.key + " on the " + (sup ? "support ladder, cut so each letter is as rare as on the damage-dealer one: " :
+        "damage-dealer ladder, which bands the 0–100 grade: ") + ladderWords(brCuts(r.axis), r.key) + "." +
+        (r.perfect ? " The rainbow marks the best bracelet the game can roll." : ""),
+      scoreGloss: "The whole bracelet on a 0–100 scale: 0 is the worst drop the game gives, and 100 is the three best effect families at Epic with both traits at " +
+        (relic ? "92" : "110") + ". Better lines or traits raise it, and it can pass 100.",
+      pctGloss: sup ? "What one damage dealer next to this support gains from the bracelet. The Support board ranks on this." :
+        "What the whole bracelet adds to damage on the calculator's default character. The board ranks on this.",
+      // Two sentences at most: where the place comes from, then the other board.
+      rankGloss: !r.rank ? "The board did not answer, so this pull has no place yet." :
+        (r.stale ? (r.estimated ? "Where this pull would place on" : "Place on") + " the " + r.region + " " + board +
+            " board's copy from " + ageLabel(r.builtAt) + ", since the board did not answer."
+          : r.estimated ? "Where this pull would place: the board, rebuilt every 10 minutes, has not picked it up yet."
+          : "Place on the " + r.region + " " + board + " board, which ranks by " + (sup ? "what one damage dealer gains." : "damage %.")) +
+        (r.other ? " Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " + (r.other.axis === "support" ? "Support" : "DPS") +
+          " board, " + r.other.key + (isNum(r.other.pct) ? " at " + fx(r.other.pct, 2) + "%" : "") + "." : ""),
+      topGloss: r.rank ? "#" + nf(r.rank) + " divided by " + nf(r.count) + ": the share of the board at or above this bracelet." : "",
+      score: isNum(r.score) ? fx(r.score, 1) : "—",
+      pct: (isNum(r.pct) ? fx(r.pct, 2) + "%" : "—") + (sup ? " per dealer" : " damage"),
+      rankTxt: r.rank ? (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region : "Rank unavailable",
+      sub2: r.rank ? topPct(r.rank, r.count) + " · " + board + " board" : board + " board"
+    };
+  }
   function brTileHtml(ctx) {
     var r = ctx.model.brRank;
     if (!r || r.st === "loading") return SKEL["lp-tile-br-body"];
     if (r.st !== "ok") return '<div class="lp-tmsg">' + esc(r.msg || "No bracelet rank.") + "</div>";
-    var sup = r.axis === "support", board = sup ? "Support" : "DPS", relic = ctx.model.br && ctx.model.br.grade === "relic";
-    var badgeGloss = r.key + " on the " + (sup ? "support ladder, cut so each letter is as rare as on the damage-dealer one: " :
-      "damage-dealer ladder, which bands the 0–100 grade: ") + ladderWords(brCuts(r.axis), r.key) + "." +
-      (r.perfect ? " The rainbow marks the best bracelet the game can roll." : "");
-    var scoreGloss = "The whole bracelet on a 0–100 scale: 0 is the worst drop the game gives, and 100 is the three best effect families at Epic with both traits at " +
-      (relic ? "92" : "110") + ". Better lines or traits raise it, and it can pass 100.";
-    var pctGloss = sup ? "What one damage dealer next to this support gains from the bracelet. The Support board ranks on this." :
-      "What the whole bracelet adds to damage on the calculator's default character. The board ranks on this.";
-    // Two sentences at most: where the place comes from, then the other board.
-    var rankGloss = !r.rank ? "The board did not answer, so this pull has no place yet." :
-      (r.stale ? (r.estimated ? "Where this pull would place on" : "Place on") + " the " + r.region + " " + board +
-          " board's copy from " + ageLabel(r.builtAt) + ", since the board did not answer."
-        : r.estimated ? "Where this pull would place: the board, rebuilt every 10 minutes, has not picked it up yet."
-        : "Place on the " + r.region + " " + board + " board, which ranks by " + (sup ? "what one damage dealer gains." : "damage %.")) +
-      (r.other ? " Also #" + nf(r.other.rank) + " of " + nf(r.other.count) + " on the " + (r.other.axis === "support" ? "Support" : "DPS") +
-        " board, " + r.other.key + (isNum(r.other.pct) ? " at " + fx(r.other.pct, 2) + "%" : "") + "." : "");
-    var topGloss = r.rank ? "#" + nf(r.rank) + " divided by " + nf(r.count) + ": the share of the board at or above this bracelet." : "";
-    var rankTxt = r.rank ? (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region : "Rank unavailable";
-    var sub2 = r.rank ? topPct(r.rank, r.count) + " · " + board + " board" : board + " board";
-    return badgeHtml(r.key, r.bg, r.fg, r.cls, badgeGloss, true) +
-      '<div class="lp-tnum"><div class="lp-tscore"' + gl(scoreGloss) + ">" + (isNum(r.score) ? fx(r.score, 1) : "—") + "</div>" +
-      '<div class="lp-tsub"' + gl(pctGloss) + ">" + (isNum(r.pct) ? fx(r.pct, 2) + "%" : "—") + (sup ? " per dealer" : " damage") + "</div></div>" +
-      '<div class="lp-trank"><div class="lp-trk"' + gl(rankGloss) + ">" + rankTxt + "</div>" +
-      '<div class="lp-tsub"' + gl(topGloss) + ">" + esc(sub2) + "</div></div>";
+    var b = brBits(ctx);
+    return badgeHtml(r.key, r.bg, r.fg, r.cls, b.badgeGloss, true) +
+      '<div class="lp-tnum"><div class="lp-tscore"' + gl(b.scoreGloss) + ">" + b.score + "</div>" +
+      '<div class="lp-tsub"' + gl(b.pctGloss) + ">" + b.pct + "</div></div>" +
+      '<div class="lp-trank"><div class="lp-trk"' + gl(b.rankGloss) + ">" + b.rankTxt + "</div>" +
+      '<div class="lp-tsub"' + gl(b.topGloss) + ">" + esc(b.sub2) + "</div></div>";
+  }
+  /** The bracelet overview's headline: letter · grade · damage · place. */
+  function brFigHtml(ctx) {
+    var r = ctx.model.brRank;
+    if (!r || r.st === "loading") return SKEL["lp-br-fig"];
+    if (r.st !== "ok") return '<span class="lp-fx lp-dim">' + esc(r.msg || "No bracelet rank.") + "</span>";
+    var b = brBits(ctx);
+    return badgeHtml(r.key, r.bg, r.fg, r.cls, b.badgeGloss, false) +
+      '<span class="lp-fx"><span' + gl(b.scoreGloss) + ">" + b.score + '</span> · <span' + gl(b.pctGloss) + ">" + b.pct +
+      '</span> · <span' + gl(b.rankGloss) + ">" + b.rankTxt + "</span></span>";
   }
   function agTileHtml(ctx) {
     var a = ctx.model.ag, r = ctx.model.agRank;
     if (!a || a.st === "loading") return SKEL["lp-tile-ag-body"];
     if (a.st !== "ok") return '<div class="lp-tmsg">' + esc(a.msg || "No astrogem data.") + "</div>";
     var sup = a.axis === "support";
-    var badgeGloss = a.letter + " on the astrogem " + (sup ? "support" : "damage-dealer") + " ladder: " +
-      ladderWords(a.ladders && a.ladders[sup ? "support" : "dps"], a.letter) + ".";
+    var badgeGloss = agBadgeGloss(a);
     var rankBlock;
     if (!r || r.st === "loading") {
       rankBlock = '<div class="lp-trk"><span class="sk" style="width:7.5em"></span></div><div class="lp-tsub"><span class="sk" style="width:6em"></span></div>';
@@ -1190,6 +1210,24 @@
       '<div class="lp-tnum"><div class="lp-tscore"' + gl(agQualityGloss()) + ">" + fx(a.quality, 1) + "</div>" +
       '<div class="lp-tsub"' + gl(agDmgGloss(sup)) + ">" + fx(a.dmg, 2) + "%" + (sup ? " party dmg" : " grid dmg") + "</div></div>" +
       '<div class="lp-trank">' + rankBlock + "</div>";
+  }
+  function agBadgeGloss(a) {
+    var sup = a.axis === "support";
+    return a.letter + " on the astrogem " + (sup ? "support" : "damage-dealer") + " ladder: " +
+      ladderWords(a.ladders && a.ladders[sup ? "support" : "dps"], a.letter) + ".";
+  }
+  /** The astrogem overview's headline: letter · quality · grid damage · place. */
+  function agFigHtml(ctx) {
+    var a = ctx.model.ag, r = ctx.model.agRank;
+    if (!a || a.st === "loading") return SKEL["lp-ag-fig"];
+    if (a.st !== "ok") return '<span class="lp-fx lp-dim">' + esc(a.msg || "No astrogem data.") + "</span>";
+    var sup = a.axis === "support", place;
+    if (!r || r.st === "loading") place = '<span class="sk" style="width:7.5em"></span>';
+    else if (r.st !== "ok") place = '<span class="lp-dim"' + gl("The astrogem board could not be read just now.") + ">rank unavailable</span>";
+    else place = "<span" + gl(agRankGloss(r)) + ">" + (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region + "</span>";
+    return badgeHtml(a.letter, a.bg, a.fg, "", agBadgeGloss(a), false) +
+      '<span class="lp-fx"><span' + gl(agQualityGloss()) + ">" + fx(a.quality, 1) + " quality</span> · <span" + gl(agDmgGloss(sup)) + ">" +
+      fx(a.dmg, 2) + "%" + (sup ? " party dmg" : " grid dmg") + "</span> · " + place + "</span>";
   }
   // The quality sentence, then a second one: the ladder when the caller has it,
   // else the fact that a gem's core does not move it. Two sentences, never three.
@@ -1224,6 +1262,10 @@
     setGloss("lp-tile-ag-axis", agOk ? (ag.axis === "support"
       ? "Graded as a support, the way the Grader opens this character: a support class whose gems carry mostly support effects."
       : "Graded as a damage dealer, the way the Grader opens this character.") : "");
+    // the overviews' headlines read the same parts as the tiles
+    setHtml("lp-br-fig", brFigHtml(ctx));
+    setHtml("lp-ag-fig", agFigHtml(ctx));
+    setHtml("lp-gpd-fig", gpdFigHtml(ctx));
   }
 
   function renderBracelet(ctx) {
@@ -1268,166 +1310,64 @@
   }
 
   function renderAstro(ctx) {
-    var a = ctx.model.ag, r = ctx.model.agRank, card = $("lp-card-ag");
+    var a = ctx.model.ag, card = $("lp-ov-ag");
     var sup = !!(a && a.st === "ok" && a.axis === "support");
     if (card) { card.classList.toggle("axis-support", sup); card.classList.toggle("axis-dps", !sup); }
-    if (!a || a.st === "loading") { setHtml("lp-ag-body", SKEL["lp-ag-body"]); setText("lp-ag-src", ""); return; }
+    if (!a || a.st === "loading") { setHtml("lp-ag-body", SKEL["lp-ag-body"]); setText("lp-ag-src", ""); setGloss("lp-ag-src", ""); return; }
     if (a.st !== "ok" || !a.table) {
       setHtml("lp-ag-body", '<div class="lp-cmsg' + (a.st === "error" ? " err" : "") + '">' + esc(a.msg || "No astrogem data.") + "</div>");
       setText("lp-ag-src", "");
+      setGloss("lp-ag-src", "");
       return;
     }
     var t = a.table, axisWord = sup ? "support" : "damage-dealer";
     setText("lp-ag-src", "Raid loadout · " + (sup ? "Support" : "DPS") + " axis");
     setGloss("lp-ag-src", "The raid preset's gems, graded on the " + axisWord + " axis: the preset and axis the Grader opens this character on.");
-    function stat(k, v, gloss, cls) {
-      return '<div class="stat"' + gl(gloss) + '><span class="k">' + k + '</span><span class="v' + (cls ? " " + cls : "") + '">' + v + "</span></div>";
-    }
-    function badge(key, bg, fg, cls) {
-      return '<span class="rank-badge' + (cls ? " " + cls : "") + '" style="background:' + esc(bg) + ";color:" + esc(fg) + '">' + esc(key) + "</span>";
-    }
-    function th(label, gloss, right) { return "<th" + (right ? ' class="r"' : "") + gl(gloss) + ">" + label + "</th>"; }
-    var rankTxt, rankGloss;
-    if (!r || r.st === "loading") { rankTxt = '<span class="sk" style="width:7em"></span>'; rankGloss = ""; }
-    else if (r.st !== "ok") { rankTxt = '<span class="lp-dim">unavailable</span>'; rankGloss = "The astrogem board could not be read just now."; }
-    else { rankTxt = (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region; rankGloss = agRankGloss(r); }
     var bounds = a.tierBounds || {};
     function tierName(k) { return k === "ancient" ? "Ancient" : k === "relic" ? "Relic" : "Legendary"; }
     function tierGloss(k) {
       var b = bounds[k];
       return tierName(k) + ": the gem's four levels (willpower, points and both effects) add up to " + (b ? b.min + " to " + b.max : "this band") + ".";
     }
-
-    var h = '<div class="lp-agsum">' +
-      stat("Quality", badge(a.letter, a.bg, a.fg) + fx(a.quality, 1), agQualityGloss(a.letter + " on its ladder: " +
-        ladderWords(a.ladders && a.ladders[sup ? "support" : "dps"], a.letter) + ".")) +
-      stat("Avg grade", badge(t.avgRank, t.avgBg, t.avgFg) + fx(t.avgGrade, 1),
-        "The Grader's average: the plain mean of the gem grades in the table, on the " + axisWord + " axis. It sits a little apart from Quality, which averages the gems' values another way.") +
-      stat("Total % dmg", fx(t.total, 2) + "%", sup
-        ? "The party-damage buff this grid gives one ally, as the Grader shows it. The Support board ranks on it."
-        : "What the whole grid adds over no grid, as the Grader shows it: effect levels pool into stat buckets, and each core's points past 17 add damage. The DPS board ranks on it.", "ax") +
-      stat("Board", rankTxt, rankGloss) +
-      stat("Gems", a.gems + " in " + a.cores + " cores", a.order + " Order and " + a.chaos + " Chaos gems in " + a.cores + " cores, from the raid loadout." +
-        (a.valid < a.gems ? " " + (a.gems - a.valid) + " could not be read and are left out." : "")) +
-      stat("Pulled", a.pulledAt ? ageLabel(a.pulledAt) : "—", "When the astrogem service last read this character from lostark.bible." +
-        (a.stale ? " Over a week old: the Astrogem Calculator pulls it again." : "")) +
-      "</div>";
-
-    // per core, then Order vs Chaos
-    var ch = '<table class="gr-ptab lp-coretab"><thead><tr>' +
-      th("Core", "An Ark Grid core: Order or Chaos, and its slot.") +
-      th("Gems", "Gems in the core.", true) +
-      th("Points", "The core's order or chaos points, added over its gems.", true) +
-      th("Order bonus", "What the core's points add to the grid total. Only points past 17 count.", true) +
-      th("Gem %", "The Grader's figure for the core: its gems' own % damage added up.", true) +
-      "</tr></thead><tbody>";
-    ["order", "chaos"].forEach(function (type) {
-      var word = type === "chaos" ? "Chaos" : "Order";
-      t.cores.forEach(function (c) {
-        if (c.type !== type) return;
-        ch += "<tr" + gl(String(c.key) + ": " + c.gems + " gems with " + c.pts + " points in all. In the grid total the points add " +
-          fx(c.orderDmg, 2) + "%; the gems' own figures add up to " + fx(c.rel, 2) + "%.") + "><td>" + coreCell(c.key) + '</td><td class="r">' + c.gems + '</td><td class="r">' + c.pts + '</td>' +
-          '<td class="r ax">' + fx(c.orderDmg, 2) + '%</td><td class="r">' + fx(c.rel, 2) + "%</td></tr>";
-      });
-      var sc = t.sections && t.sections[type];
-      if (sc) ch += '<tr class="lp-subtot"' + gl("All " + word + " cores together: " + sc.gems + " gems, " + sc.pts + " points.") + "><td>" + word + ' total</td><td class="r">' +
-        sc.gems + '</td><td class="r">' + sc.pts + '</td><td class="r ax">' + fx(sc.orderDmg, 2) + '%</td><td class="r">' + fx(sc.rel, 2) + "%</td></tr>";
-    });
-    ch += "</tbody></table>";
-
-    // the grid total, split by source, and the gem grades
-    var bh = '<table class="gr-ptab lp-breaktab"><thead><tr>' +
-      th("Grid damage from", "The grid total split by source: the model's own grid formula, run once per source with the rest set to zero. The parts add up to the total.") +
-      th("Levels", "Effect levels summed over every gem; for the cores, their points.", true) +
-      th("% dmg", sup ? "What each source adds to the party buff for one ally." : "What each source adds to the character's damage.", true) +
-      "</tr></thead><tbody>";
-    t.parts.forEach(function (p) {
-      bh += "<tr" + gl(EFFECT_GLOSS[p.name] || "") + "><td>" + esc(p.name) + '</td><td class="r">' + p.levels + '</td><td class="r ax">' + fx(p.dmg, 2) + "%</td></tr>";
-    });
-    bh += "<tr" + gl("Each core's points past 17 add damage, and the six cores' shares multiply.") + '><td>Order &amp; chaos points</td><td class="r">' +
-      t.corePoints + '</td><td class="r ax">' + fx(t.coresDmg, 2) + "%</td></tr>" +
-      '<tr class="lp-subtot"' + gl("The grid's whole figure, the Grader's Total % dmg.") + '><td>Total</td><td class="r"></td><td class="r ax">' +
-      fx(t.total, 2) + "%</td></tr></tbody></table>" +
-      '<div class="lp-tiers">' + ["ancient", "relic", "legendary"].map(function (k) {
+    // Order and Chaos, as the Grader heads its two sections
+    function sec(type) {
+      var sc = t.sections && t.sections[type], word = type === "chaos" ? "Chaos" : "Order";
+      if (!sc) return '<div class="lp-sec"><span class="ctype">' + word + '</span><span class="lp-sx lp-dim">no ' + word + " cores</span></div>";
+      return '<div class="lp-sec"' + gl("All " + word + " cores together, as the Grader heads them: " + sc.cores + " cores, " + sc.gems + " gems and " + sc.pts +
+          " points. The gems' own figures add up to " + fx(sc.rel, 2) + "%, and the points past 17 add " + fx(sc.orderDmg, 2) + "% to the grid total.") + ">" +
+        '<span class="ctype">' + word + '</span><span class="lp-sx"><b class="ax">' + fx(sc.rel, 2) + "% dmg</b> · " + sc.pts + " points · " +
+        sc.gems + " gems · " + sc.cores + " cores</span></div>";
+    }
+    var h = '<div class="lp-agsec">' + sec("order") + sec("chaos") + "</div>" +
+      '<div class="lp-agfoot"><div class="lp-agtiers">' + ["ancient", "relic", "legendary"].map(function (k) {
         return '<span class="lp-tchip ' + k + '"' + gl(tierGloss(k)) + "><b>" + (a.tiers[k] || 0) + "</b> " + tierName(k) + "</span>";
-      }).join("") + "</div>";
-
-    // every gem, best first
-    var gh = '<table class="gr-ptab lp-gemtab"><thead><tr>' +
-      th("#", "The gem's place in this list, best grade first.", true) +
-      th("Core", "The core the gem sits in.") +
-      th("Cost", "The gem's base willpower cost, 8, 9 or 10. The cost decides which effects the gem can roll.", true) +
-      th("WP", "Willpower level, 1 to 5. Each level cuts the gem's willpower cost by one.", true) +
-      th("Points", "Order points on an Order gem, chaos points on a Chaos gem, 1 to 5.", true) +
-      th("Effect 1", "The gem's first side effect and its level, 1 to 5. A dimmed effect does nothing on this axis.") +
-      th("Effect 2", "The gem's second side effect and its level, 1 to 5.") +
-      th("Grade", "The game's grade: the gem's four levels added up, shown beside it. Legendary " +
-        (bounds.legendary ? bounds.legendary.min + " to " + bounds.legendary.max : "") + ", Relic " +
-        (bounds.relic ? bounds.relic.min + " to " + bounds.relic.max : "") + ", Ancient " +
-        (bounds.ancient ? bounds.ancient.min + " to " + bounds.ancient.max : "") + ".") +
-      th("Rank", "The gem's grade on the Grader's " + axisWord + " scale, and its letter. It weighs the effects, the points and the willpower; a perfect gem scores about 100.") +
-      th("% dmg", "What the gem adds on its own, above a plain gem with 4.25 points and no effects. These do not add up to the grid total, which pools the effects first.", true) +
-      "</tr></thead><tbody>";
-    t.rows.forEach(function (g, i) {
-      var tierCell = '<td><span class="lp-gtier ' + g.tier + '">' + tierName(g.tier) + '<span class="c">' + g.sum + "</span></span></td>";
-      if (!g.valid) {
-        gh += "<tr" + gl("This gem could not be read: " + (g.err || "invalid") + ".") + '><td class="r lp-dim">—</td><td>' + coreCell(g.core) + "</td>" +
-          '<td class="r">' + (g.cost == null ? "?" : g.cost) + '</td><td class="r">' + (g.wp == null ? "?" : g.wp) + '</td><td class="r">' + (g.pts == null ? "?" : g.pts) + "</td>" +
-          effCell(g.e1, g.l1, false, axisWord) + effCell(g.e2, g.l2, false, axisWord) + tierCell +
-          '<td class="lp-dim">unreadable</td><td class="r lp-dim">—</td></tr>';
-        return;
-      }
-      gh += "<tr" + gl(String(g.core) + ": a " + g.cost + "-cost " + (g.type === "chaos" ? "Chaos" : "Order") + " gem with willpower " + g.wp + " and " +
-          g.pts + " points, " + (g.e1 || "?") + " " + g.l1 + " and " + (g.e2 || "?") + " " + g.l2 + ". Its levels add up to " + g.sum + ", so it is " +
-          tierName(g.tier) + "; it grades " + fx(g.grade, 1) + " (" + g.rank + ") and adds " + fx(g.rel, 3) + "% on its own.") +
-        '><td class="r lp-dim">' + (i + 1) + "</td><td>" + coreCell(g.core) + "</td>" +
-        '<td class="r">' + g.cost + '</td><td class="r">' + g.wp + '</td><td class="r">' + g.pts + "</td>" +
-        effCell(g.e1, g.l1, g.off1, axisWord) + effCell(g.e2, g.l2, g.off2, axisWord) + tierCell +
-        "<td>" + badge(g.rank, g.bg, g.fg, g.cls) + '<span class="gnum">' + fx(g.grade, 0) + "</span></td>" +
-        '<td class="r ax">' + fx(g.rel, 3) + "%</td></tr>";
-    });
-    gh += "</tbody></table>";
-
-    h += '<div class="lp-agrow"><div class="lp-agbox lp-tw">' + ch + '</div><div class="lp-agbox">' + bh + "</div></div>" +
-      '<div class="lp-tw lp-gemwrap">' + gh + "</div>";
+      }).join("") + "</div>" +
+      '<div class="lp-agmeta"><span' + gl("The Grader's average: the plain mean of the gem grades, on the " + axisWord +
+        " axis. It sits a little apart from Quality, which averages the gems' values another way.") + ">Avg grade <b>" + fx(t.avgGrade, 1) + "</b> " + esc(t.avgRank) + "</span>" +
+      '<span class="lp-sep"> · </span><span' + gl(a.order + " Order and " + a.chaos + " Chaos gems in " + a.cores + " cores, from the raid loadout." +
+        (a.valid < a.gems ? " " + (a.gems - a.valid) + " could not be read and are left out." : "")) + ">" + a.gems + " gems</span>" +
+      '<span class="lp-sep"> · </span><span' + gl("When the astrogem service last read this character from lostark.bible." +
+        (a.stale ? " Over a week old: the Astrogem Calculator pulls it again." : "")) + ">pulled " + (a.pulledAt ? ageLabel(a.pulledAt) : "—") + "</span></div></div>";
     setHtml("lp-ag-body", h);
   }
-  // grader.js's short effect names, and what one level of each does in the grid total
-  var EFFECT_ABBR = { "Attack Power": "ATK Power", "Additional Damage": "Additional Dmg", "Boss Damage": "Boss Dmg",
-    "Ally Attack Enh.": "Ally Atk", "Ally Damage Enh.": "Ally Dmg", "Brand Power": "Brand" };
-  var EFFECT_GLOSS = {
-    "Attack Power": "Attack Power levels pool into one bucket over the character's other attack power, so each level adds a little less than the last.",
-    "Additional Damage": "Additional Damage levels pool into one bucket over the character's other additional damage, so each level adds a little less than the last.",
-    "Boss Damage": "Boss Damage levels pool into one bucket, so each level adds a little less than the last.",
-    "Ally Attack Enh.": "Every Ally Attack Enh. level adds the same share of party buff.",
-    "Ally Damage Enh.": "Every Ally Damage Enh. level adds the same share of party buff.",
-    "Brand Power": "Every Brand Power level adds the same share of party buff."
-  };
-  function coreCell(key) {
-    var m = /^(order|chaos)\s+(.*)$/i.exec(String(key || ""));
-    return m ? '<span class="ctype">' + esc(m[1]) + "</span> " + esc(m[2]) : esc(key || "Core");
-  }
-  function effCell(name, lv, off, axisWord) {
-    var t = "<b>" + esc(EFFECT_ABBR[name] || name || "?") + "</b> " + (lv != null ? lv : "?");
-    return off ? '<td class="eff off"' + gl((name || "This effect") + " scores nothing on the " + axisWord + " axis.") + ">" + t + "</td>"
-      : '<td class="eff">' + t + "</td>";
-  }
 
+  /** One line under the bracelet: the raid loadout's figures the calculators start from. */
+  var ASSUME = [["Item level", "ilvl"], ["Weapon power", "weapon power"], ["Main stat", "main stat"],
+    ["Crit", "crit"], ["Specialization", "spec"], ["Swiftness", "swift"]];
   function renderStats(ctx) {
     var s = ctx.model.stats;
-    if (!s || s.st === "loading") { setHtml("lp-stats-body", SKEL["lp-stats-body"]); setText("lp-stats-src", ""); return; }
-    if (s.st !== "ok") {
-      setHtml("lp-stats-body", '<div class="lp-cmsg' + (s.st === "error" ? " err" : "") + '">' + esc(s.msg || "No stats.") + "</div>");
-      setText("lp-stats-src", "");
-      return;
-    }
-    var h = "";
-    s.rows.forEach(function (r) {
-      h += '<div class="lp-stat"' + gl(r[2]) + '><span class="k">' + esc(r[0]) + '</span><span class="v">' + esc(r[1]) + "</span></div>";
+    if (!s || s.st === "loading") { setHtml("lp-stats-line", SKEL["lp-stats-line"]); return; }
+    if (s.st !== "ok") { setHtml("lp-stats-line", '<span class="lp-dim">' + esc(s.msg || "No stats.") + "</span>"); return; }
+    var byLabel = {}, parts = [];
+    s.rows.forEach(function (r) { byLabel[r[0]] = r; });
+    ASSUME.forEach(function (w) {
+      var r = byLabel[w[0]];
+      if (r && r[1] !== "—") parts.push("<span" + gl(r[2]) + "><b>" + esc(r[1]) + "</b> " + w[1] + "</span>");
     });
-    setHtml("lp-stats-body", h);
-    setText("lp-stats-src", s.loadout ? s.loadout + " loadout" : "");
-    setGloss("lp-stats-src", s.loadout ? "The lostark.bible loadout these figures come from: the one the bracelet calculator opens on." : "");
+    var sep = '<span class="lp-sep">·</span>';
+    setHtml("lp-stats-line", (parts.length ? parts.join(sep) : '<span class="lp-dim">lostark.bible reported none of these.</span>') +
+      (s.loadout ? sep + '<span class="lp-dim"' + gl("The lostark.bible loadout these figures come from: the one the bracelet calculator opens on.") + ">" +
+        esc(s.loadout) + " loadout</span>" : ""));
   }
 
   // ------------------------------------------------------------------ gold per 1% damage (the GPD chart's lookup)
@@ -1523,7 +1463,7 @@
     return isSupportCls(cls) ? "support" : "dps";
   }
 
-  /** GpdLookup.place()'s answer, cut down to what the card and the tile draw
+  /** GpdLookup.place()'s answer, cut down to what the overview and the tile draw
    *  (it is saved with the rest of the character), cheapest next step first. */
   function gpdPart(pos, L, axis) {
     var rows = pos.list.map(function (e, i) {
@@ -1583,7 +1523,7 @@
       function () { if (gpdLib === p) gpdLib = null; });
     return p;
   }
-  /** Place the character straight after the paint that put the cards up. Not
+  /** Place the character straight after the paint that put the overviews up. Not
    *  requestIdleCallback: the skeletons' shimmer keeps the page from ever idling,
    *  so it would wait out its whole timeout. A hidden tab paints no frames, hence
    *  the timer beside the frame. */
@@ -1654,6 +1594,21 @@
       '<div class="lp-tsub"' + gl(gpdNextGloss(low)) + ">cheapest left: " + esc(low.label + " → " + low.next.to) + "</div></div>";
   }
 
+  /** The gold-per-1% overview's headline: the pick and its price. */
+  function gpdFigHtml(ctx) {
+    var g = ctx.model.gpd;
+    if (!g || g.st === "loading") return SKEL["lp-gpd-fig"];
+    if (g.st !== "ok") return '<span class="lp-fx lp-dim">' + esc(g.msg || "No GPD reading.") + "</span>";
+    var best = g.best ? gpdRow(g, g.best) : null;
+    if (best && best.next) {
+      return '<span class="lp-gdot" style="background:' + esc(best.color) + '"></span><span class="lp-fx"><span' + gl(gpdNextGloss(best)) + ">" +
+        esc(best.label + " → " + best.next.to) + "</span> at <span" + gl(gpdPriceGloss(best, g.axis)) + ">" + esc(best.next.price) + "/1%</span></span>";
+    }
+    var low = g.low ? gpdRow(g, g.low) : null;
+    return '<span class="lp-fx"><span' + gl("Every next step left costs more than 25M per 1% damage, so the chart names no pick.") + ">Nothing under 25M/1%</span>" +
+      (low && low.next ? " · <span" + gl(gpdPriceGloss(low, g.axis)) + ">cheapest left: " + esc(low.label + " → " + low.next.to + " at " + low.next.price + "/1%") + "</span>" : "") +
+      "</span>";
+  }
   function renderGpd(ctx) {
     var g = ctx.model.gpd;
     if (!g || g.st === "loading") { setHtml("lp-gpd-body", SKEL["lp-gpd-body"]); setText("lp-gpd-src", ""); setGloss("lp-gpd-src", ""); return; }
@@ -1663,24 +1618,26 @@
       setGloss("lp-gpd-src", "");
       return;
     }
+    // the rows are cheapest first already (gpdPart): the pick, then the next two
+    var priced = g.rows.filter(function (r) { return !r.why && r.next && r.next.gpd != null; }).slice(0, 3);
     var h = "";
-    g.rows.forEach(function (r) {
-      var sys = "<td" + gl(GPD_SYSTEM[r.k] || r.label) + '><span class="lp-gdot" style="background:' + esc(r.color) + '"></span>' + esc(r.label) + "</td>";
-      if (r.why) {
-        var why = gpdYoursGloss(r);
-        h += '<tr class="lp-goff">' + sys + "<td" + gl(why) + ">" + esc(r.yours) + '</td><td colspan="2"' + gl(why) + '><span class="lp-gcut">' +
-          esc(r.why) + "</span></td></tr>";
-        return;
-      }
+    priced.forEach(function (r) {
       var n = r.next, best = r.k === g.best;
-      h += "<tr" + (best ? ' class="lp-gbest"' : "") + ">" + sys +
+      h += "<tr" + (best ? ' class="lp-gbest"' : "") + ">" +
+        "<td" + gl(GPD_SYSTEM[r.k] || r.label) + '><span class="lp-gdot" style="background:' + esc(r.color) + '"></span>' + esc(r.label) + "</td>" +
         "<td" + gl(gpdYoursGloss(r)) + '><span class="lp-gcut">' + esc(r.yours) + "</span></td>" +
-        (n ? "<td" + gl(gpdNextGloss(r)) + '><span class="lp-gcut"><b>' + esc(n.to) + "</b></span></td>" +
-            '<td class="r"' + gl(gpdPriceGloss(r, g.axis)) + ">" + (best ? '<span class="lp-gtag">cheapest</span>' : "") + "<b>" + esc(n.price) + "</b></td>"
-          : '<td class="lp-dim"' + gl(gpdNextGloss(r)) + '>nothing left</td><td class="r lp-dim"' + gl(gpdPriceGloss(r, g.axis)) + ">—</td>") +
-        "</tr>";
+        "<td" + gl(gpdNextGloss(r)) + '><span class="lp-gcut"><b>' + esc(n.to) + "</b></span></td>" +
+        '<td class="r"' + gl(gpdPriceGloss(r, g.axis)) + ">" + (best ? '<span class="lp-gtag">cheapest</span>' : "") + "<b>" + esc(n.price) + "</b></td></tr>";
     });
-    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>");
+    if (priced.length < 3) {
+      var top = 0, unread = 0, bits = [];
+      g.rows.forEach(function (r) { if (r.why) unread++; else if (!r.next || r.next.gpd == null) top++; });
+      if (top) bits.push(top + (top === 1 ? " ladder is" : " ladders are") + " at the top rung");
+      if (unread) bits.push(unread + (unread === 1 ? " is" : " are") + " not in the pull");
+      h += '<tr class="lp-gnote"><td colspan="4"' + gl("The GPD chart's gear list shows every ladder, with what the pull reads on each.") + ">" +
+        (priced.length ? "Nothing else to price" : "Nothing to price") + (bits.length ? ": " + bits.join("; ") : "") + ".</td></tr>";
+    }
+    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap lp-gpd3"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>");
     setText("lp-gpd-src", g.axis === "support" ? "Support ladders" : "DPS ladders");
     setGloss("lp-gpd-src", gpdAxisWords(g.axis));
   }
@@ -1693,6 +1650,99 @@
     set("lp-open-ag", "/loa-astrogem-calc/grader?" + c);
     set("lp-open-gpd", "/loa-gpd/?" + c);
     set("lp-go-gpd", "/loa-gpd/?" + c);
+    // each overview is a way into its calculator, character loaded
+    set("lp-ovt-br", "/loa-bracelet-calc/?" + c);
+    set("lp-ovgo-br", "/loa-bracelet-calc/?" + c);
+    set("lp-ovt-ag", "/loa-astrogem-calc/grader?" + c);
+    set("lp-ovgo-ag", "/loa-astrogem-calc/grader?" + c);
+    set("lp-ovt-gpd", "/loa-gpd/?" + c);
+    set("lp-ovgo-gpd", "/loa-gpd/?" + c);
+  }
+
+  // ------------------------------------------------------------------ the overviews (the tiles are their tabs)
+
+  // One overview on show under the tiles. The choice is a class on <html>
+  // (lp-v-<view>), set before first paint by index.html's head script from the
+  // hash, else the last choice this browser made, else the bracelet. A switch
+  // moves that class and the tiles' aria-selected, saves the choice and writes
+  // the hash with replaceState; nothing is drawn again, and every overview keeps
+  // updating while hidden.
+  var VIEWS = ["bracelet", "astrogems", "gpd"];
+  var VIEW_TILE = { bracelet: "lp-tile-br", astrogems: "lp-tile-ag", gpd: "lp-tile-gpd" };
+  var VIEW_PANEL = { bracelet: "lp-ov-br", astrogems: "lp-ov-ag", gpd: "lp-ov-gpd" };
+  var K_VIEW = "lp_view";
+  var view = null;
+  function isView(v) { return Object.prototype.hasOwnProperty.call(VIEW_TILE, v); }
+  function hashView() { var v = (location.hash || "").slice(1); return isView(v) ? v : null; }
+  /** Show overview `v`. `save` false: do not remember it as this browser's choice. */
+  function setView(v, save) {
+    if (!isView(v)) v = "bracelet";
+    var d = document.documentElement;
+    if (v !== view || !d.classList.contains("lp-v-" + v)) {
+      VIEWS.forEach(function (x) { if (x !== v) d.classList.remove("lp-v-" + x); });
+      d.classList.add("lp-v-" + v);
+      view = v;
+      VIEWS.forEach(function (x) {
+        var t = $(VIEW_TILE[x]);
+        if (!t) return;
+        t.setAttribute("aria-selected", x === v ? "true" : "false");
+        t.tabIndex = x === v ? 0 : -1;
+      });
+    }
+    if (save !== false) whenShown(function () { lsSet(K_VIEW, v); });
+    syncHash();
+  }
+  /** The address names the overview on show: replaceState, so a switch is not a history step. */
+  function syncHash() {
+    if (!cur || !view) return;
+    whenShown(function () {
+      if (!cur || location.hash === "#" + view) return;
+      try { history.replaceState(history.state, "", location.pathname + location.search + "#" + view); } catch (e) {}
+    });
+  }
+  function wireOverviews() {
+    var strip = $("lp-strip");
+    if (strip) {
+      strip.addEventListener("click", function (e) {
+        var t = e.target.closest ? e.target.closest(".lp-tile") : null;
+        if (!t || e.target.closest("a")) return;
+        setView(t.getAttribute("data-view"));
+      });
+      // arrows move along the tabs and show each one (the switch is instant); Enter and Space show the focused one
+      strip.addEventListener("keydown", function (e) {
+        if (!e.target.closest || e.target.closest("a")) return;   // a tile's own link keeps its keys
+        var t = e.target.closest(".lp-tile");
+        if (!t) return;
+        var i = VIEWS.indexOf(t.getAttribute("data-view")), n = -1, k = e.key;
+        if (k === "Enter" || k === " " || k === "Spacebar") { e.preventDefault(); setView(VIEWS[i]); return; }
+        if (k === "ArrowRight" || k === "ArrowDown") n = (i + 1) % VIEWS.length;
+        else if (k === "ArrowLeft" || k === "ArrowUp") n = (i + VIEWS.length - 1) % VIEWS.length;
+        else if (k === "Home") n = 0;
+        else if (k === "End") n = VIEWS.length - 1;
+        if (n < 0) return;
+        e.preventDefault();
+        setView(VIEWS[n]);
+        var nt = $(VIEW_TILE[VIEWS[n]]);
+        if (nt) nt.focus();
+      });
+      // "Leaderboard →" and "GPD chart →" go where they point without switching the overview
+      [].forEach.call(strip.querySelectorAll(".lp-tile a"), function (a) {
+        a.addEventListener("click", function (e) { e.stopPropagation(); });
+      });
+    }
+    // An overview is a way into its calculator: its title and body are links, and
+    // a click on the card around them follows the same link.
+    VIEWS.forEach(function (v) {
+      var sec = $(VIEW_PANEL[v]);
+      if (!sec) return;
+      sec.addEventListener("click", function (e) {
+        if (e.defaultPrevented || e.button !== 0 || !e.target.closest || e.target.closest("a, button")) return;
+        var go = sec.querySelector("a.lp-ovgo");
+        if (!go || !go.href) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey) window.open(go.href, "_blank");
+        else go.click();
+      });
+    });
   }
 
   function renderAll(ctx) {
@@ -1782,7 +1832,7 @@
       // The Worker's own spelling wins; move the address and the saved copy with it.
       ctx.name = d.name;
       ctx.key = ctx.region + "|" + ctx.name;
-      try { history.replaceState(history.state, "", charPath(ctx.region, ctx.name) + location.search); } catch (e) {}
+      try { history.replaceState(history.state, "", charPath(ctx.region, ctx.name) + location.search + location.hash); } catch (e) {}
     }
     if (fresh) stashForTools(ctx);
     ctx.model.head = headFrom(d, "bracelet");
@@ -1797,7 +1847,7 @@
   }
 
   /**
-   * The bracelet card and its rank: the board's row when the board holds this
+   * The bracelet overview and its rank: the board's row when the board holds this
    * pull, otherwise the calculator's model scores the record right here.
    */
   function deriveBracelet(ctx) {
@@ -2171,12 +2221,15 @@
       });
     }
     openChar(r.region, r.name);
+    // the overview: the address's, else the one on show; a hash that named it is remembered
+    var hv = hashView();
+    setView(hv || view, !!hv && kind !== "load");
   }
 
   function go(region, name) {
     var path = charPath(region, name);
     if (cur && location.pathname === path) return;
-    try { history.pushState({ lp: 1 }, "", path); } catch (e) { location.href = path; return; }
+    try { history.pushState({ lp: 1 }, "", path + (view ? "#" + view : "")); } catch (e) { location.href = path; return; }
     window.scrollTo(0, 0);
     route("nav");
   }
@@ -2221,9 +2274,13 @@
 
   function boot() {
     ["lp-icon", "lp-pulled", "lp-tile-br-body", "lp-tile-ag-body", "lp-tile-gpd-body", "lp-br-body", "lp-ag-body",
-      "lp-stats-body", "lp-gpd-body"].forEach(capture);
+      "lp-stats-line", "lp-gpd-body", "lp-br-fig", "lp-ag-fig", "lp-gpd-fig"].forEach(capture);
     var gth = $("lp-gpd-body") && $("lp-gpd-body").querySelector("thead");
     GPD_HEAD = gth ? gth.outerHTML : "";
+    // the overview the head script picked; a hash that named it is remembered too
+    var hv = hashView();
+    setView(hv || (isView(lsGet(K_VIEW)) ? lsGet(K_VIEW) : "bracelet"), !!hv);
+    wireOverviews();
 
     var form = $("lp-search"), q = $("lp-q");
     var submit = function () {
@@ -2279,7 +2336,7 @@
     var prefetched = {};
     var hoverPrefetch = function (e) {
       if (SPEC_RULES) return;
-      var a = e.target.closest ? e.target.closest("a.lp-cta, a.lp-cta2") : null;
+      var a = e.target.closest ? e.target.closest("a.lp-cta, a.lp-cta2, a.lp-ovt, a.lp-ovgo") : null;
       if (!a || !a.href || prefetched[a.href]) return;
       prefetched[a.href] = 1;
       var l = document.createElement("link");
@@ -2298,7 +2355,21 @@
       if (e.persisted) resume();
     });
 
-    window.addEventListener("popstate", function () { route("pop"); });
+    window.addEventListener("popstate", function () {
+      // Back/Forward over a hash-only step (an overview) stays on this character
+      var r = parsePath(location.pathname);
+      if (cur && r.kind === "char" && r.region === cur.region && nkey(r.name) === nkey(cur.name)) {
+        var hv2 = hashView();
+        if (hv2) setView(hv2); else syncHash();
+        return;
+      }
+      route("pop");
+    });
+    window.addEventListener("hashchange", function () {
+      if (!cur) return;
+      var hv3 = hashView();
+      if (hv3) setView(hv3); else syncHash();
+    });
     window.addEventListener("storage", function (e) {
       if (e.key === K_FAVS || e.key === K_RECENT) { if (cur) renderFav(cur); renderQuick(); }
     });

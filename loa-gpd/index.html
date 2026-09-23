@@ -13,8 +13,22 @@
 <link rel='icon' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 26 L12 16 L19 21 L28 7' fill='none' stroke='%23e8b75c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel='stylesheet' href='styles.css?v=20260922a'>
 <style>.wrap{padding-top:calc(24px + var(--loseii-nav-offset,0px))}</style>
+<!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
+     the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
+     tools: change one, change all three. -->
+<style>
+.lp-back{margin:-8px 0 0;height:30px;display:flex;align-items:center}
+.lp-back[hidden]{display:none}
+.lp-back a{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--border,#2a3142);background:var(--panel2,#1b2030);color:var(--text,#e7e9ee);font-size:12.5px;font-weight:700;text-decoration:none}
+.lp-back a:hover{border-color:var(--accent,#66c7ff);color:var(--accent,#66c7ff)}
+a.lp-prof,a.lp-prof[data-gloss]{font-size:11.5px;font-weight:700;color:var(--accent,#66c7ff);text-decoration:none;white-space:nowrap;cursor:pointer}
+a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
+</style>
 <script src='https://www.loseii.com/nav.js' defer></script>
 <script src='https://www.loseii.com/social-bar.js' defer></script>
+<!-- The house tooltip for data-gloss (the "Profile →" link): the same file and
+     pin the profile page loads. -->
+<script src='/loa-bracelet-calc/tip.js?v=1' defer></script>
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
      press), the same rule as the hub, the tools and the profiles. This page holds
      its character lookup and its storage writes until it is shown (whenShown). -->
@@ -40,6 +54,112 @@
     <div class='tag'>What every progression step costs per 1% damage, on one scale.</div>
   </div>
 </div>
+
+<!-- BACK TO THE PROFILE. The same block, byte for byte, in the bracelet, astrogem
+     and GPD tools (its rules are in <head>): change one, change all three.
+     A visitor who came from a character profile (?c=REGION:Name) gets a way back
+     to it while the tool holds that character. The tab keeps that character in
+     sessionStorage loseii.profile.from, so a reload keeps the bar. This script
+     runs before the first paint, so the bar never pushes the page down once drawn.
+     The tool calls LoseiiBack.held() with each character it loads and
+     LoseiiBack.clear() on a Reset: another character or a Reset ends the trail.
+     LoseiiBack.link() is the small "Profile →" link a tool puts beside the name of
+     the character it holds. -->
+<div class="lp-back" id="lp-back" hidden><a id="lp-back-a" href="/">&larr; Back to the profile</a></div>
+<script>
+(function () {
+  "use strict";
+  var KEY = "loseii.profile.from";                // {"region":"NA","name":"Paroxysmal"}
+  var bar = document.getElementById("lp-back");
+  var link = document.getElementById("lp-back-a");
+  var from = null;       // the profile this tab came from, while the bar stands
+  var holds = null;      // the character the tool last said it holds
+  var dropped = false;
+
+  /** A profile's region and name, or null. CE is lostark.bible's EU; no other region has a profile. */
+  function who(region, name) {
+    var r = String(region == null ? "" : region).trim().toUpperCase();
+    var n = String(name == null ? "" : name).trim();
+    if (r === "CE") r = "EU";
+    return (n && (r === "NA" || r === "EU")) ? { region: r, name: n } : null;
+  }
+  function same(x, y) {
+    return !!(x && y && x.region === y.region && x.name.toLowerCase() === y.name.toLowerCase());
+  }
+  function path(c) { return "/" + c.region + "/" + encodeURIComponent(c.name); }
+  // A prerendered page reads a copy of the tab's sessionStorage and loses what it
+  // writes there, so every write waits until the page is shown.
+  function whenShown(fn) {
+    if (document.prerendering) document.addEventListener("prerenderingchange", fn, { once: true });
+    else fn();
+  }
+  function stored() {
+    var s = null;
+    try { s = JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (e) {}
+    return s ? who(s.region, s.name) : null;
+  }
+  function paint() {
+    if (from) {
+      var p = path(from), t = "← Back to " + from.name + "'s profile";
+      if (link.getAttribute("href") !== p) link.setAttribute("href", p);
+      if (link.textContent !== t) link.textContent = t;
+    }
+    if (bar.hidden !== !from) bar.hidden = !from;
+  }
+  function drop() {
+    from = null;
+    dropped = true;
+    paint();
+    whenShown(function () { try { sessionStorage.removeItem(KEY); } catch (e) {} });
+  }
+  function settle() {
+    if (from && holds && !same(from, holds)) drop();
+    else paint();
+  }
+
+  // ?c= is read the way the tools read it: no colon means NA.
+  var q = null, came = null, i;
+  try { q = new URLSearchParams(location.search).get("c"); } catch (e) {}
+  if (q) {
+    i = q.indexOf(":");
+    came = who(i > 0 ? q.slice(0, i) : "NA", i >= 0 ? q.slice(i + 1) : q);
+  }
+  from = came || stored();
+  paint();
+  if (came) {
+    whenShown(function () {
+      if (!same(from, came)) return;              // another character landed first
+      try { sessionStorage.setItem(KEY, JSON.stringify(came)); } catch (e) {}
+    });
+  } else if (document.prerendering) {
+    // The tab's own sessionStorage arrives with the page: read it again then.
+    document.addEventListener("prerenderingchange", function () {
+      from = dropped ? null : stored();
+      settle();
+    }, { once: true });
+  }
+
+  window.LoseiiBack = {
+    /** The tool now holds this character: anyone but the profile's own ends the trail. */
+    held: function (region, name) {
+      var n = String(name == null ? "" : name).trim();
+      if (!n) return;
+      // A region with no profile (KR) gets a key that matches no profile.
+      holds = who(region, n) || { region: String(region || "?").toUpperCase(), name: n };
+      settle();
+    },
+    /** A Reset ends the trail. */
+    clear: drop,
+    /** The small "Profile →" link for a character, or "" when its region has no
+     *  profile. The empty title keeps an ancestor's native tooltip off it; the gloss
+     *  is tip.js's. */
+    link: function (region, name) {
+      var c = who(region, name);
+      return c ? '<a class="lp-prof" href="' + path(c) + '" title="" data-gloss="Opens this character\'s profile page.">Profile →</a>' : "";
+    }
+  };
+})();
+</script>
 
 <div class='tabbar'>
   <button class='tab active' data-axis='support'>Support</button>
@@ -998,7 +1118,7 @@
       card.classList.toggle("hl-next", key === pos.bestKey);
     });
     if (banner) {
-      var head = "<b>" + esc(c.name) + "</b> · " + esc(c.cls || "?") + " · " + (c.ilvl || "?") +
+      var head = "<b>" + esc(c.name) + "</b>" + lkProfile(c) + " · " + esc(c.cls || "?") + " · " + (c.ilvl || "?") +
         " · graded on the <b>" + (state.axis === "dps" ? "DPS" : "support") + "</b> ladders";
       if (pos.cheapest) {
         banner.innerHTML = head + " — upgrade next: <b style='color:" + SERIES[pos.cheapest.system].color + "'>" +
@@ -1023,6 +1143,13 @@
     return String(s == null ? "" : s).replace(/[&<>"]/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch];
     });
+  }
+  /** The small "Profile →" link beside a looked-up name (LoseiiBack, under the
+   *  title), with its leading space; none for KR, which has no profile. */
+  function lkProfile(c) {
+    var LB = window.LoseiiBack;
+    var h = LB && LB.link ? LB.link(c.region || el("lk-region").value, c.name) : "";
+    return h ? " " + h : "";
   }
   /** How fresh this character can possibly be, said once, at the top.
    *  A re-pull refetches the lostark.bible PAGE; it cannot be newer than what
@@ -1093,7 +1220,7 @@
       "<h2>What the lookup sees on " + esc(c.name) + "</h2>" +
       "<div class='panel'>" +
       "<div class='gv-head'>" +
-        "<div><b>" + esc(c.name) + "</b> · " + esc(c.cls || "?") + " · " + (c.ilvl || "?") + " ilvl" +
+        "<div><b>" + esc(c.name) + "</b>" + lkProfile(c) + " · " + esc(c.cls || "?") + " · " + (c.ilvl || "?") + " ilvl" +
         "<span class='gv-sub'>graded on the " + (state.axis === "dps" ? "DPS" : "support") +
         " ladders" + (age != null ? " · pulled " + (age <= 0 ? "today" : age + "d ago") : "") + "</span>" +
         lkFreshLine(c) +
@@ -1169,6 +1296,9 @@
   // ---- the pull --------------------------------------------------------
   function lkApply(d) {
     state.lookup = L.readAstro(d, state.lookup);
+    // The "Back to <Name>'s profile" bar under the title (LoseiiBack) stands only
+    // while the lookup holds the character the visitor came from.
+    if (window.LoseiiBack) window.LoseiiBack.held(state.lookup.region || el("lk-region").value, state.lookup.name);
     // the class decides the axis; the tab follows, once, on load
     var role = state.lookup.role;
     if (role !== state.axis) {

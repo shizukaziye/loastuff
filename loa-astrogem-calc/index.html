@@ -46,6 +46,17 @@
   carries its own scoped <style> for module-specific bits.
 -->
 <link rel="stylesheet" href="styles.css?v=5">
+<!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
+     the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
+     tools: change one, change all three. -->
+<style>
+.lp-back{margin:-8px 0 0;height:30px;display:flex;align-items:center}
+.lp-back[hidden]{display:none}
+.lp-back a{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--border,#2a3142);background:var(--panel2,#1b2030);color:var(--text,#e7e9ee);font-size:12.5px;font-weight:700;text-decoration:none}
+.lp-back a:hover{border-color:var(--accent,#66c7ff);color:var(--accent,#66c7ff)}
+a.lp-prof,a.lp-prof[data-gloss]{font-size:11.5px;font-weight:700;color:var(--accent,#66c7ff);text-decoration:none;white-space:nowrap;cursor:pointer}
+a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
+</style>
 <!-- Pages this one links to are prerendered once a link to one is pointed at
      (Chromium; "moderate" is a short hover or a press), so crossing to the hub,
      the other tool or a character profile shows a finished page. Only the site's
@@ -73,6 +84,112 @@
       <div class="tag">Lost Ark astrogem cutting — expected value, fusion fodder, and per-turn advice.</div>
     </div>
   </div>
+
+<!-- BACK TO THE PROFILE. The same block, byte for byte, in the bracelet, astrogem
+     and GPD tools (its rules are in <head>): change one, change all three.
+     A visitor who came from a character profile (?c=REGION:Name) gets a way back
+     to it while the tool holds that character. The tab keeps that character in
+     sessionStorage loseii.profile.from, so a reload keeps the bar. This script
+     runs before the first paint, so the bar never pushes the page down once drawn.
+     The tool calls LoseiiBack.held() with each character it loads and
+     LoseiiBack.clear() on a Reset: another character or a Reset ends the trail.
+     LoseiiBack.link() is the small "Profile →" link a tool puts beside the name of
+     the character it holds. -->
+<div class="lp-back" id="lp-back" hidden><a id="lp-back-a" href="/">&larr; Back to the profile</a></div>
+<script>
+(function () {
+  "use strict";
+  var KEY = "loseii.profile.from";                // {"region":"NA","name":"Paroxysmal"}
+  var bar = document.getElementById("lp-back");
+  var link = document.getElementById("lp-back-a");
+  var from = null;       // the profile this tab came from, while the bar stands
+  var holds = null;      // the character the tool last said it holds
+  var dropped = false;
+
+  /** A profile's region and name, or null. CE is lostark.bible's EU; no other region has a profile. */
+  function who(region, name) {
+    var r = String(region == null ? "" : region).trim().toUpperCase();
+    var n = String(name == null ? "" : name).trim();
+    if (r === "CE") r = "EU";
+    return (n && (r === "NA" || r === "EU")) ? { region: r, name: n } : null;
+  }
+  function same(x, y) {
+    return !!(x && y && x.region === y.region && x.name.toLowerCase() === y.name.toLowerCase());
+  }
+  function path(c) { return "/" + c.region + "/" + encodeURIComponent(c.name); }
+  // A prerendered page reads a copy of the tab's sessionStorage and loses what it
+  // writes there, so every write waits until the page is shown.
+  function whenShown(fn) {
+    if (document.prerendering) document.addEventListener("prerenderingchange", fn, { once: true });
+    else fn();
+  }
+  function stored() {
+    var s = null;
+    try { s = JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (e) {}
+    return s ? who(s.region, s.name) : null;
+  }
+  function paint() {
+    if (from) {
+      var p = path(from), t = "← Back to " + from.name + "'s profile";
+      if (link.getAttribute("href") !== p) link.setAttribute("href", p);
+      if (link.textContent !== t) link.textContent = t;
+    }
+    if (bar.hidden !== !from) bar.hidden = !from;
+  }
+  function drop() {
+    from = null;
+    dropped = true;
+    paint();
+    whenShown(function () { try { sessionStorage.removeItem(KEY); } catch (e) {} });
+  }
+  function settle() {
+    if (from && holds && !same(from, holds)) drop();
+    else paint();
+  }
+
+  // ?c= is read the way the tools read it: no colon means NA.
+  var q = null, came = null, i;
+  try { q = new URLSearchParams(location.search).get("c"); } catch (e) {}
+  if (q) {
+    i = q.indexOf(":");
+    came = who(i > 0 ? q.slice(0, i) : "NA", i >= 0 ? q.slice(i + 1) : q);
+  }
+  from = came || stored();
+  paint();
+  if (came) {
+    whenShown(function () {
+      if (!same(from, came)) return;              // another character landed first
+      try { sessionStorage.setItem(KEY, JSON.stringify(came)); } catch (e) {}
+    });
+  } else if (document.prerendering) {
+    // The tab's own sessionStorage arrives with the page: read it again then.
+    document.addEventListener("prerenderingchange", function () {
+      from = dropped ? null : stored();
+      settle();
+    }, { once: true });
+  }
+
+  window.LoseiiBack = {
+    /** The tool now holds this character: anyone but the profile's own ends the trail. */
+    held: function (region, name) {
+      var n = String(name == null ? "" : name).trim();
+      if (!n) return;
+      // A region with no profile (KR) gets a key that matches no profile.
+      holds = who(region, n) || { region: String(region || "?").toUpperCase(), name: n };
+      settle();
+    },
+    /** A Reset ends the trail. */
+    clear: drop,
+    /** The small "Profile →" link for a character, or "" when its region has no
+     *  profile. The empty title keeps an ancestor's native tooltip off it; the gloss
+     *  is tip.js's. */
+    link: function (region, name) {
+      var c = who(region, name);
+      return c ? '<a class="lp-prof" href="' + path(c) + '" title="" data-gloss="Opens this character\'s profile page.">Profile →</a>' : "";
+    }
+  };
+})();
+</script>
 
   <!-- Tab bar -->
   <div class="tabbar" id="tabbar">
@@ -112,7 +229,7 @@ var LAZY_TABS = {
     "advisor-setup.js?v=50", "advisor-window.js?v=64",
     "advisor.js?v=96"
   ],
-  leaderboard: ["leaderboard.js?v=54"],
+  leaderboard: ["leaderboard.js?v=55"],
   feedback: ["feedback.js?v=1"]
 };
 // The Grader's "From screenshot" mode reads the in-game astrogem list. Its
@@ -380,7 +497,7 @@ function routeBoot(){
 <script src="bible-import.js?v=4"></script>
 <script src="bible-oauth.js?v=9"></script>
 <script src="gemlist.js?v=1"></script>
-<script src="grader.js?v=83"></script>
+<script src="grader.js?v=84"></script>
 <script src="pipeline.js?v=53"></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked

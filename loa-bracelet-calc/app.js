@@ -1854,6 +1854,9 @@
    */
   function onProfileChange(d) {
     d = d || {};
+    // Either Reset ends the page's way back to the profile the visitor came
+    // from (index.html, LoseiiBack).
+    if (d.reset && window.LoseiiBack) window.LoseiiBack.clear();
     if (d.reset) {
       cache = {}; cacheOrder = [];
       freshSolve = null; lastSolve = null; freshSolveKey = null; lastSolveKey = null; workerCtxKey = null;
@@ -2042,6 +2045,12 @@
     btn.title = on ? "Remove from saved characters" : "Save this character";
   }
 
+  /** The small "Profile →" link to a character's loseii profile (index.html, LoseiiBack), or "". */
+  function profileLink(c) {
+    var LB = window.LoseiiBack;
+    return LB && LB.link ? LB.link(c.region, c.name) : "";
+  }
+
   /**
    * The character banner — astrogem's loadout header, with our subject.
    *
@@ -2066,6 +2075,9 @@
     var c = S.char;
     if (!c || !c.name) { box.innerHTML = ""; box.style.display = "none"; return; }
     box.style.display = "";
+    // The page's "Back to <Name>'s profile" bar (index.html, LoseiiBack) stands only
+    // while the banner holds the character the visitor came from.
+    if (window.LoseiiBack) window.LoseiiBack.held(c.region, c.name);
 
     // The grade and rolls-left chips READ the bracelet; the controls that set it
     // are in the Grader. The duplication is deliberate — and paintCharChips keeps
@@ -2099,7 +2111,7 @@
       '<div class="bc-id">' +
       '<div class="bc-name"><a href="' + bibleUrl(c.region, c.name) + '" target="_blank" rel="noopener">' +
       esc(c.name) + "</a>" + cacheNoteHtml(c) + "</div>" +
-      '<div class="bc-meta">' + chips + "</div>" +
+      '<div class="bc-meta">' + chips + profileLink(c) + "</div>" +
       "</div></div>" +
       '<div class="bc-sum">' +
       '<div class="stat"><span class="k">Bracelet %</span><span class="v acc" id="bc-sum-pct">' + curTxt + "</span></div>" +
@@ -2279,7 +2291,12 @@
       return true;
     },
     /** Show a character's header without touching the bracelet. */
-    setCharacter: function (c) { P.setCharacter(c); renderCharHeader(); },
+    setCharacter: function (c) {
+      P.setCharacter(c);
+      renderCharHeader();
+      // The picker's "clear" drops the character, and the way back to its profile.
+      if (!c && window.LoseiiBack) window.LoseiiBack.clear();
+    },
 
     /**
      * The shared solver, for advisor.js.

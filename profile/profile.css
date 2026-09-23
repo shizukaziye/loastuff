@@ -123,13 +123,31 @@ option{background:var(--panel2);color:var(--text)}
   @keyframes rank-rainbow-slide{from{background-position:0% 50%}to{background-position:400% 50%}}
 }
 
-/* ---- cards: bracelet beside the stats; astrogems and gold per 1% across the page ---- */
-.lp-cards{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;margin-top:12px}
-.lp-card{display:flex;flex-direction:column;min-width:0}
-.lp-card-ag,.lp-card-gpd{grid-column:1/-1}
-.lp-card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;height:20px;margin-bottom:10px}
-.lp-card-ft{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:14px}
-.lp-cta,.lp-cta2{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:8px;font-size:13px;font-weight:700;
+/* ---- the tiles are the tabs: the one whose overview is on show is lit ---- */
+.lp-tile{cursor:pointer;transition:border-color .12s ease}
+.lp-tile:hover{border-color:#3a4458}
+.lp-tile:focus{outline:none}
+.lp-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lp-v-bracelet #lp-tile-br,.lp-v-astrogems #lp-tile-ag,.lp-v-gpd #lp-tile-gpd{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+
+/* ---- the overviews: one on show under the tiles, picked by a class on <html>.
+   Each is a summary that opens its calculator: the title and the body are links
+   to it, and a click on the card's padding goes there too (profile.js). Every
+   box has a fixed height, so nothing moves when the data lands. ---- */
+.lp-ov{display:none;margin-top:12px;cursor:pointer;transition:border-color .12s ease}
+.lp-v-bracelet #lp-ov-br,.lp-v-astrogems #lp-ov-ag,.lp-v-gpd #lp-ov-gpd{display:block}
+.lp-ov:hover{border-color:#3a4458}
+.lp-ovhd{display:flex;align-items:center;gap:14px;height:34px}
+.lp-ovt{display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0;height:34px;color:inherit;text-decoration:none}
+.lp-ovt .subh{flex:0 0 auto}
+.lp-ovt .lp-src{flex:0 0 auto;white-space:nowrap}
+.lp-ovfig{display:flex;align-items:center;gap:8px;min-width:0;font-size:14px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lp-ovfig .lp-fx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lp-ovfig .lp-fx.lp-dim{font-weight:600}
+.lp-ovbtns{display:flex;gap:8px;flex:0 0 auto}
+.lp-ovgo{display:block;margin-top:14px;color:inherit;text-decoration:none}
+.lp-ovt:focus-visible,.lp-ovgo:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.lp-cta,.lp-cta2{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:8px;font-size:13px;font-weight:700;
   text-decoration:none;white-space:nowrap}
 .lp-cta{background:var(--accent);color:#06121f}
 .lp-cta:hover{filter:brightness(1.08)}
@@ -140,9 +158,19 @@ option{background:var(--panel2);color:var(--text)}
 .lp-warn{margin-top:8px;color:var(--bad);font-size:12px}
 .lp-src{font-size:11px;color:var(--dim)}
 
-.lp-grade{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid var(--border)}
+.lp-grade{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid var(--border);flex:0 0 auto}
 .lp-grade.ancient{color:var(--ancient)}
 .lp-grade.relic{color:var(--relic)}
+
+/* the bracelet overview: the lines beside the traits, then what the calculators assume */
+.lp-ovbr{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);column-gap:28px;align-items:start}
+.lp-ovbr>.lp-cmsg,.lp-ovbr>.lp-warn{grid-column:1/-1}
+.lp-ovbr .lp-kv{margin-top:0}
+.lp-assume{display:flex;align-items:center;gap:12px;height:31px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:12.5px;white-space:nowrap;overflow:hidden}
+.lp-alab{flex:0 0 auto;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:600}
+.lp-aval{min-width:0;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.lp-aval .lp-sep{color:var(--none);margin:0 6px}
 
 /* effect lines: name · tier · value, one row each */
 .lp-lines{min-height:90px}
@@ -157,38 +185,47 @@ option{background:var(--panel2);color:var(--text)}
 
 /* label over value pairs */
 .lp-kv{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 14px;margin-top:12px}
-.lp-kv>div,.lp-stat{min-width:0}
-.lp-kv .k,.lp-stat .k,.lp-agsum .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);line-height:14px;font-weight:600}
-.lp-kv .v,.lp-stat .v{display:block;font-size:13.5px;line-height:20px;height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.lp-kv>div{min-width:0}
+.lp-kv .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);line-height:14px;font-weight:600}
+.lp-kv .v{display:block;font-size:13.5px;line-height:20px;height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .lp-strong{font-weight:800;color:var(--text)}
 
-/* stats: two to a row beside the bracelet */
-.lp-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
-.lp-stat{height:36px}
-
 /* ---- tooltips: the house .gloss + tip.js's #gm-tip ----
-   A glossed pair (label over value) underlines its label only; buttons, links and
-   badges carry their tooltip without the underline. */
+   A glossed pair (label over value) underlines its label only; buttons, links,
+   tiles and badges carry their tooltip without the underline. */
 .gloss,[data-gloss]{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px;cursor:help}
-.lp-kv>[data-gloss],.lp-stat[data-gloss],.lp-agsum .stat[data-gloss],.lp-tile [data-gloss],button[data-gloss],a[data-gloss],
-.lp-badge[data-gloss],.rank-badge[data-gloss],.lp-tchip[data-gloss],.gr-ptab tr[data-gloss],.gr-ptab td[data-gloss]{text-decoration:none}
-.lp-kv>[data-gloss] .k,.lp-stat[data-gloss] .k,.lp-agsum .stat[data-gloss] .k,.gr-ptab th[data-gloss]{
+.lp-kv>[data-gloss],.lp-tile [data-gloss],button[data-gloss],a[data-gloss],.lp-tile[data-gloss],
+.lp-badge[data-gloss],.rank-badge[data-gloss],.lp-tchip[data-gloss],.gr-ptab tr[data-gloss],.gr-ptab td[data-gloss],.lp-sec[data-gloss]{text-decoration:none}
+.lp-kv>[data-gloss] .k,.gr-ptab th[data-gloss]{
   text-decoration:underline dotted;text-decoration-color:var(--none);text-underline-offset:3px}
+.lp-tile[data-gloss],.lp-ovgo[data-gloss]{cursor:pointer}
 #gm-tip{position:fixed;z-index:99999;max-width:290px;background:#10131c;border:1px solid var(--border);
   color:var(--text);font-size:12px;line-height:1.45;padding:7px 10px;border-radius:7px;
   box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
 #gm-tip.on{opacity:1;visibility:visible}
 
-/* ---- astrogems: the Grader's look ---- */
+/* ---- the astrogem overview: the Grader's colours ---- */
 .lp-card-ag.axis-dps{--axis:#e18ac0}
 .lp-card-ag.axis-support{--axis:#66c7ff}
-.lp-agsum{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-start;min-height:44px}
-.lp-agsum .stat{display:flex;flex-direction:column;min-width:0}
-.lp-agsum .stat .v{display:flex;align-items:center;gap:6px;height:24px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.lp-agsum .stat .v.ax{color:var(--axis,var(--accent))}
 .rank-badge{display:inline-block;padding:2px 9px;border-radius:99px;font-weight:800;line-height:1.4;font-variant-numeric:tabular-nums;font-size:12px}
-.lp-agrow{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px;margin-top:14px}
-.lp-agbox{border:1px solid var(--border);border-radius:10px;background:var(--panel2);overflow:hidden}
+.ctype{color:var(--dim);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.ax{color:var(--axis,var(--accent));font-weight:700}
+.lp-agsec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lp-sec{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;border:1px solid var(--border);border-radius:10px;
+  background:var(--panel2);font-size:13px;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+.lp-sec .lp-sx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lp-agfoot{display:flex;align-items:center;justify-content:space-between;gap:14px;height:30px;margin-top:12px}
+.lp-agtiers{display:flex;gap:6px;align-items:center;min-width:0;overflow:hidden}
+.lp-agmeta{min-width:0;font-size:12.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.lp-agmeta b{color:var(--text)}
+.lp-tchip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--border);
+  background:var(--panel);font-size:12px;font-weight:600;white-space:nowrap}
+.lp-tchip b{font-size:13px;font-variant-numeric:tabular-nums}
+.lp-tchip.ancient{color:var(--ancient)}
+.lp-tchip.relic{color:var(--relic)}
+.lp-tchip.legendary{color:var(--legendary)}
+
+/* ---- tables (the Grader's look), used by the gold-per-1% overview ---- */
 .lp-tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.gr-ptab{width:100%;border-collapse:collapse;font-size:12px}
 table.gr-ptab th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);font-weight:700;text-align:left;
@@ -196,34 +233,16 @@ table.gr-ptab th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;c
 table.gr-ptab th.r,table.gr-ptab td.r{text-align:right}
 table.gr-ptab td{padding:0 10px;border-bottom:1px solid var(--border);vertical-align:middle;height:30px;white-space:nowrap;font-variant-numeric:tabular-nums}
 table.gr-ptab tr:last-child td{border-bottom:none}
-table.gr-ptab tr.lp-subtot td{background:var(--panel);font-weight:700}
-table.gr-ptab .ax{color:var(--axis,var(--accent));font-weight:700}
-.lp-tiers{display:flex;gap:6px;height:44px;align-items:center;padding:0 10px;border-top:1px solid var(--border);overflow:hidden}
-.lp-tchip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:99px;border:1px solid var(--border);
-  background:var(--panel);font-size:12px;font-weight:600;white-space:nowrap}
-.lp-tchip b{font-size:13px;font-variant-numeric:tabular-nums}
-.lp-tchip.ancient,.lp-gtier.ancient{color:var(--ancient)}
-.lp-tchip.relic,.lp-gtier.relic{color:var(--relic)}
-.lp-tchip.legendary,.lp-gtier.legendary{color:var(--legendary)}
-.lp-gemwrap{margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
-table.lp-gemtab{min-width:720px}
-table.lp-gemtab .eff b{color:var(--text);font-weight:600}
-table.lp-gemtab .eff{color:var(--dim)}
-table.lp-gemtab .eff.off,table.lp-gemtab .eff.off b{color:#5e6a83}
-table.gr-ptab .ctype{color:var(--dim);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-table.lp-gemtab .gnum{color:var(--dim);margin-left:6px;font-size:11px}
-.lp-gtier{font-weight:700}
-.lp-gtier .c{color:var(--dim);font-weight:600;margin-left:4px}
 
-/* ---- the GPD card: one row per ladder, cheapest next step first ---- */
+/* ---- the gold-per-1% overview: the three cheapest next steps ---- */
 .lp-gpdwrap{border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+.lp-gpd3{height:124px}
 table.lp-gpdtab{min-width:600px}
 table.lp-gpdtab td b{font-weight:700}
 .lp-gcut{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 table.lp-gpdtab tr.lp-gbest td{background:rgba(102,199,255,.08)}
 table.lp-gpdtab tr.lp-gbest td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
-table.lp-gpdtab tr.lp-goff td{color:#5e6a83}
-table.lp-gpdtab tr.lp-goff .lp-gdot{background:#3a4152 !important}
+table.lp-gpdtab tr.lp-gnote td{color:var(--dim);white-space:normal}
 .lp-gtag{display:inline-block;margin-right:8px;padding:0 7px;border-radius:99px;background:var(--accent);color:#06121f;
   font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:16px;vertical-align:1px}
 
@@ -238,12 +257,23 @@ details.method p{font-size:13px;color:var(--text);margin:0 0 10px;max-width:92ch
   #lp-tile-gpd{grid-column:1/-1}
 }
 @media (max-width:900px){
-  .lp-agrow{grid-template-columns:minmax(0,1fr)}
+  .lp-ovt .lp-src{display:none}
 }
 @media (max-width:760px){
   .wrap{padding:16px 16px 90px}
-  .lp-strip,.lp-cards{grid-template-columns:minmax(0,1fr)}
-  .lp-card-ag,.lp-card-gpd{grid-column:auto}
+  .lp-strip{grid-template-columns:minmax(0,1fr)}
+  /* an overview's title on one row, its buttons on the next; heights stay fixed */
+  .lp-ovhd{flex-wrap:wrap;height:78px;row-gap:10px;align-content:space-between}
+  .lp-ovt{flex:1 1 100%}
+  .lp-ovbtns{flex:1 1 100%}
+  .lp-ovbtns .lp-cta,.lp-ovbtns .lp-cta2{flex:1 1 0;padding:0 10px}
+  .lp-ovbr{grid-template-columns:minmax(0,1fr);row-gap:12px}
+  /* what the calculators assume: the label over two lines of figures, one fixed height */
+  .lp-assume{display:block;height:69px;white-space:normal}
+  .lp-alab{display:block;line-height:14px;margin-bottom:4px}
+  .lp-aval{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;height:40px;line-height:20px}
+  .lp-agsec{grid-template-columns:minmax(0,1fr);gap:8px}
+  .lp-agfoot{flex-direction:column;align-items:flex-start;justify-content:space-between;height:68px;gap:0}
   /* header: icon and name on top, actions on a row of their own; still one fixed height */
   .lp-head{grid-template-columns:48px minmax(0,1fr);grid-template-rows:auto 30px;row-gap:8px;height:auto;min-height:0;padding:12px 14px}
   .lp-icon{width:48px;height:48px;align-self:start;margin-top:4px}
@@ -253,7 +283,6 @@ details.method p{font-size:13px;color:var(--text);margin:0 0 10px;max-width:92ch
   .lp-actions{grid-column:1/-1}
   .lp-actions .lp-btn{flex:1 1 0}
   .lp-line{grid-template-columns:minmax(0,1fr) auto 104px}
-  .lp-agsum{gap:10px 18px}
 }
 @media (max-width:420px){
   .lp-go{padding:0 12px}
@@ -264,7 +293,6 @@ details.method p{font-size:13px;color:var(--text);margin:0 0 10px;max-width:92ch
   .lp-trk{font-size:13.5px}
   .lp-line{grid-template-columns:minmax(0,1fr) auto 98px;column-gap:8px;font-size:12.5px}
   .lp-tier{font-size:10.5px}
-  .lp-agsum .stat .v{font-size:14px}
   table.gr-ptab th,table.gr-ptab td{padding-left:6px;padding-right:6px}
   table.gr-ptab th{letter-spacing:.02em}
 }

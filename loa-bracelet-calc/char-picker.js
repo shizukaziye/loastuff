@@ -46,6 +46,7 @@
  *   window.Profile          profile.js — the loaded character, and change notices
  *   window.Favorites        favorites.js — the saved-character spine
  *   window.BraceletApp      app.js — setCharacter(null) for the clear control
+ *   window.LoseiiBack       index.html — the "Profile →" link beside the name
  * Every one is optional: a missing module costs the picker one capability and
  * says which, rather than throwing.
  *
@@ -258,8 +259,10 @@
     if (c.region) bits.push(esc(c.region));
     if (c["class"]) bits.push(esc(c["class"]));
     if (c.itemLevel != null) bits.push("ilvl " + nf(c.itemLevel));
+    var LB = root.LoseiiBack;                    // the small "Profile →" link (index.html)
     inst.sel.innerHTML = '<span><span class="star">&#9733;</span> <b>' + esc(c.name) + "</b>" +
       (bits.length ? ' <span class="meta">' + bits.join(" · ") + "</span>" : "") + "</span>" +
+      (LB && LB.link ? LB.link(c.region, c.name) : "") +
       '<button type="button" class="cp-clear">clear</button>';
   }
 
