@@ -227,7 +227,7 @@ var ROLL_COST = (function () {
     BANDS.forEach(function (b) {
       for (var x = a[1]; x <= a[2]; x++) for (var y = b[1]; y <= b[2]; y++) {
         var pw = (a[0] / (a[2] - a[1] + 1)) * (b[0] / (b[2] - b[1] + 1));
-        e += pw * P.allIn(x, y); w += pw;
+        e += pw * P.allIn(x, y, "support"); w += pw;
       }
     });
   });

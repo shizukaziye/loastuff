@@ -1,82 +1,82 @@
 {
  "F+": {
   "bracelets": 1,
-  "gold": 45483,
+  "gold": 45947,
   "pair": "70/70"
  },
  "D-": {
   "bracelets": 1,
-  "gold": 50049,
+  "gold": 52007,
   "pair": "80/80"
  },
  "D": {
   "bracelets": 1,
-  "gold": 67154,
+  "gold": 69781,
   "pair": "80/80"
  },
  "D+": {
   "bracelets": 2,
-  "gold": 81540,
-  "pair": "90/90"
+  "gold": 88375,
+  "pair": "80/80"
  },
  "C-": {
-  "bracelets": 2,
-  "gold": 115253,
-  "pair": "90/90"
+  "bracelets": 3,
+  "gold": 126528,
+  "pair": "80/80"
  },
  "C": {
-  "bracelets": 3,
-  "gold": 171516,
-  "pair": "90/90"
+  "bracelets": 4,
+  "gold": 190464,
+  "pair": "80/80"
  },
  "C+": {
-  "bracelets": 5,
-  "gold": 240562,
-  "pair": "90/90"
+  "bracelets": 6,
+  "gold": 269845,
+  "pair": "80/80"
  },
  "B-": {
   "bracelets": 7,
-  "gold": 352343,
+  "gold": 402393,
   "pair": "90/90"
  },
  "B": {
   "bracelets": 13,
-  "gold": 621754,
+  "gold": 710074,
   "pair": "90/90"
  },
  "B+": {
-  "bracelets": 26,
-  "gold": 1645729,
-  "pair": "100/100"
+  "bracelets": 33,
+  "gold": 1888425,
+  "pair": "90/90"
  },
  "A-": {
-  "bracelets": 72,
-  "gold": 4562035,
-  "pair": "100/100"
+  "bracelets": 95,
+  "gold": 5385478,
+  "pair": "90/90"
  },
  "A": {
-  "bracelets": 229,
-  "gold": 14428453,
-  "pair": "100/100"
+  "bracelets": 265,
+  "gold": 14964526,
+  "pair": "90/90"
  },
  "A+": {
-  "bracelets": 692,
-  "gold": 43618273,
-  "pair": "100/100"
+  "bracelets": 958,
+  "gold": 54057680,
+  "pair": "90/90"
  },
  "S-": {
   "bracelets": 2874,
-  "gold": 181074326,
+  "gold": 259854600,
   "pair": "100/100"
  },
  "S": {
   "bracelets": 16854,
-  "gold": 1062031442,
+  "gold": 1524091023,
   "pair": "100/100"
  },
  "S+": {
   "bracelets": 150000,
-  "gold": 9452079831,
+  "gold": 13564410104,
   "pair": "100/100"
  }
 }

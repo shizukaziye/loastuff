@@ -213,7 +213,7 @@ var rungs = ASC.map(function (r, k) {
   var best = null;
   PAIRS.forEach(function (p) {
     if (p < minPair || !hit[p][k]) return;
-    var eCost = P.allIn(p, p) * K / hit[p][k];
+    var eCost = P.allIn(p, p, "dps") * K / hit[p][k];
     if (!best || eCost < best.eCost) best = { pair: p, eCost: eCost, n: K / hit[p][k] };
   });
   if (best) minPair = best.pair;
@@ -248,11 +248,11 @@ for (var k2 = 2; k2 < rungs.length; k2++) {
     hit: { stats: p + "/" + p, lines: lines },
     minimum: p + "/" + p + " crit/spec with " + (lineTxt || "no scoring line"),
     mats: [
-      ["cut " + p + "/" + p + " bracelets", nDisp, n * P.listed(p, p)],
+      ["cut " + p + "/" + p + " bracelets", nDisp, n * P.listed(p, p, "dps")],
       ["pheons", 20 * nDisp, n * P.PHEONS_PER_BRACELET * P.PHEON_GOLD]
     ],
     buy: p + "/" + p + " crit/spec unrolled bracelets, about " +
-      Math.round(P.listed(p, p)).toLocaleString() + " each",
+      Math.round(P.listed(p, p, "dps")).toLocaleString() + " each",
     odds: "1 in " + nDisp.toLocaleString() + " rolled " + p + "/" + p +
       " bracelets reaches " + r.rank,
     totalDamage: Number(bandDmg.toFixed(4))

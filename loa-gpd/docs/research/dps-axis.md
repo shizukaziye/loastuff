@@ -155,6 +155,16 @@ gold(X→Y)  = cost(Y) − cost(X)
 
 Pheons at 2,237g each, 44,737g for twenty.
 
+**2026-09-24 — the market moved.** The listing curve above was fitted on
+spec/swift listings in August and reused for crit/spec. Shizu's read of the
+market now: support pairs list at about 2.5x that fit (100/100 ≈ 46k) and the
+DPS pairs — crit/spec and crit/swift — at about 5x (100/100 ≈ 91k).
+`model/bracelet-price.js` carries the two levels as `MARKET_SCALE` and every
+caller names its market; the shape of the curve is unchanged. Pheons are
+unchanged too, so an attempt on a 100/100 is now 136k all-in on DPS (91k
+bracelet, 45k pheons) against 63k before, and the table below this note is the
+August one.
+
 | rank | buy crit/spec | listed | P(hit) | bracelets | cost | step |
 |---|---|---:|---:|---:|---:|---:|
 | D- | 61/108 | 2,697 | 89.19% | 1.1 | 53,186 | — |

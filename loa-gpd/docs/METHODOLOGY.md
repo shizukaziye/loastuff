@@ -159,6 +159,46 @@ accessory calculator's brand base.
 Karmic Evolution (Max HP) and Karmic Leap (Ultimate Awakening Damage) are worth
 nothing to a support's party contribution and are not charted.
 
+## Bracelet
+
+The ladder is the bracelet calculator's own: its `braceletScore` grades every
+bracelet, its band cuts (F- to S+) are the rungs, and each rung's example is
+verified against that scorer at build time (`tools/verify-bracelet-bands.js`).
+
+**What a rung costs is a rolling campaign, not a finished bracelet.** You buy an
+UNROLLED bracelet — its two combat traits are visible on the market, its seven
+rolls on the three granted slots unused — roll it, and keep the first one the
+scorer puts in the band. So a rung is priced as
+
+```
+cost(band) = min over the even pair 60/60 … 120/120 of
+             (listed(pair) + 20 pheons) / P(a rolled bracelet of that pair reaches the band)
+```
+
+with the rolls simulated (1.5M bracelets per pair, lines kept above a lock
+threshold and the rest rerolled) and the odds read off the scorer. The rung
+takes the cheapest pair; a balanced pair is cheapest for a given stat total, so
+the rungs come out even (100/100, 110/110).
+
+**The listing price** is `model/bracelet-price.js`: a log-linear curve in the
+two stats (`log price = −3.81 + 0.076·higher + 0.060·lower`), fitted to twenty
+of Shizu's August listings, times a market level per pair kind —
+`MARKET_SCALE`, support ×2.5 and DPS ×5 as of 2026-09-24 (spec/swift 100/100
+≈ 46k, crit/spec and crit/swift ≈ 91k). The August listings were spec/swift;
+the DPS pairs never had a corpus of their own, hence the larger correction.
+
+**Pheons are in, and they are most of it**: 20 per bracelet at 2,237g (850
+blue crystals per 100 pheons, 25,000g per 95 crystals), 44,737g per attempt
+before the listing. The crystal price is a constant, not live.
+
+**Two readings of a step.** The chart's rows are the ladder's steps —
+cost(band) − cost(band below) — which is right for a planner starting with
+nothing, since the lower band is a waypoint on the way up. The character
+lookup prices a worn bracelet's next band **from scratch**: a rolled-out
+bracelet cannot be improved in place, so the whole campaign is the price, and
+the gain is measured from the bracelet actually worn, on the scorer's own
+damage scale.
+
 ## Accessories
 
 The accessory calculator prices every configuration of a slot — the two primary

@@ -894,141 +894,146 @@
    "label": "C → C+",
    "from": "F",
    "to": "C+",
-   "gold": 200728,
-   "damage": 8.78205,
-   "total": 249930,
+   "gold": 312074,
+   "damage": 8.76898,
+   "total": 363700,
    "hit": {
-    "stats": "100/100",
+    "stats": "90/90",
     "lines": [
      {
-      "name": "dmg, +cd",
-      "id": 15,
-      "tier": "epic"
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "blue"
      },
      {
-      "name": "crit dmg",
-      "id": 32,
+      "name": "front atk",
+      "id": 26,
+      "tier": "LEG"
+     },
+     {
+      "name": "dmg to lower",
+      "id": 2,
       "tier": "blue"
      }
     ]
    },
-   "minimum": "100/100 crit/spec with dmg, +cd epic, crit dmg blue",
+   "minimum": "90/90 crit/spec with cdmg shred blue, front atk LEG, dmg to lower blue",
    "mats": [
     [
-     "cut 100/100 bracelets",
-     4,
-     72491.6249637765
+     "cut 90/90 bracelets",
+     5,
+     124899.91850547247
     ],
     [
      "pheons",
-     80,
-     177438.43199536402
+     100,
+     238800.26745629948
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
-   "odds": "1 in 4 rolled 100/100 bracelets reaches C+",
-   "totalDamage": 11.7487
+   "buy": "90/90 crit/spec unrolled bracelets, about 23,399 each",
+   "odds": "1 in 5 rolled 90/90 bracelets reaches C+",
+   "totalDamage": 11.7357
   },
   {
    "series": "bracelet",
    "label": "C+ → B-",
    "from": "C+",
    "to": "B-",
-   "gold": 161608,
-   "damage": 0.75033,
-   "total": 411538,
+   "gold": 270989,
+   "damage": 0.771,
+   "total": 634689,
    "hit": {
-    "stats": "100/100",
+    "stats": "90/90",
     "lines": [
+     {
+      "name": "non-directional",
+      "id": 27,
+      "tier": "epic"
+     },
+     {
+      "name": "front atk",
+      "id": 26,
+      "tier": "blue"
+     },
      {
       "name": "back atk",
       "id": 25,
-      "tier": "epic"
-     },
-     {
-      "name": "wp x30 stack",
-      "id": 22,
-      "tier": "epic"
-     },
-     {
-      "name": "damage",
-      "id": 23,
       "tier": "blue"
      }
     ]
    },
-   "minimum": "100/100 crit/spec with back atk epic, wp x30 stack epic, damage blue",
+   "minimum": "90/90 crit/spec with non-directional epic, front atk blue, back atk blue",
    "mats": [
     [
-     "cut 100/100 bracelets",
-     7,
-     119365.60976251723
+     "cut 90/90 bracelets",
+     9,
+     217961.5230748674
     ],
     [
      "pheons",
-     140,
-     292172.3252998547
+     180,
+     416727.8139831628
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
-   "odds": "1 in 7 rolled 100/100 bracelets reaches B-",
-   "totalDamage": 12.4991
+   "buy": "90/90 crit/spec unrolled bracelets, about 23,399 each",
+   "odds": "1 in 9 rolled 90/90 bracelets reaches B-",
+   "totalDamage": 12.5067
   },
   {
    "series": "bracelet",
    "label": "B- → B",
    "from": "B-",
    "to": "B",
-   "gold": 311491,
-   "damage": 0.76278,
-   "total": 723029,
+   "gold": 536925,
+   "damage": 0.74515,
+   "total": 1171614,
    "hit": {
-    "stats": "100/100",
+    "stats": "90/90",
     "lines": [
      {
-      "name": "crit dmg+",
-      "id": 12,
+      "name": "crit shred",
+      "id": 17,
       "tier": "blue"
      },
      {
-      "name": "def shred",
-      "id": 16,
-      "tier": "blue"
+      "name": "add damage",
+      "id": 24,
+      "tier": "epic"
      },
      {
-      "name": "weapon power",
-      "id": 33,
+      "name": "damage",
+      "id": 23,
       "tier": "epic"
      }
     ]
    },
-   "minimum": "100/100 crit/spec with crit dmg+ blue, def shred blue, weapon power epic",
+   "minimum": "90/90 crit/spec with crit shred blue, add damage epic, damage epic",
    "mats": [
     [
-     "cut 100/100 bracelets",
-     11,
-     209712.72750059795
+     "cut 90/90 bracelets",
+     17,
+     402349.1809203262
     ],
     [
      "pheons",
-     220,
-     513315.8148375243
+     340,
+     769264.6493631392
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
-   "odds": "1 in 11 rolled 100/100 bracelets reaches B",
-   "totalDamage": 13.2618
+   "buy": "90/90 crit/spec unrolled bracelets, about 23,399 each",
+   "odds": "1 in 17 rolled 90/90 bracelets reaches B",
+   "totalDamage": 13.2518
   },
   {
    "series": "bracelet",
    "label": "B → B+",
    "from": "B",
    "to": "B+",
-   "gold": 709365,
-   "damage": 0.75659,
-   "total": 1432394,
+   "gold": 1378753,
+   "damage": 0.76517,
+   "total": 2550367,
    "hit": {
-    "stats": "100/100",
+    "stats": "90/90",
     "lines": [
      {
       "name": "crit shred",
@@ -1036,82 +1041,87 @@
       "tier": "LEG"
      },
      {
-      "name": "dmg, +cd",
-      "id": 15,
+      "name": "crit rate",
+      "id": 31,
+      "tier": "blue"
+     },
+     {
+      "name": "add damage",
+      "id": 24,
       "tier": "blue"
      }
     ]
    },
-   "minimum": "100/100 crit/spec with crit shred LEG, dmg, +cd blue",
+   "minimum": "90/90 crit/spec with crit shred LEG, crit rate blue, add damage blue",
    "mats": [
     [
-     "cut 100/100 bracelets",
-     23,
-     415462.4348885505
+     "cut 90/90 bracelets",
+     37,
+     875832.8616864505
     ],
     [
      "pheons",
-     460,
-     1016931.3080847233
+     740,
+     1674533.6916178747
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
-   "odds": "1 in 23 rolled 100/100 bracelets reaches B+",
-   "totalDamage": 14.0184
+   "buy": "90/90 crit/spec unrolled bracelets, about 23,399 each",
+   "odds": "1 in 37 rolled 90/90 bracelets reaches B+",
+   "totalDamage": 14.017
   },
   {
    "series": "bracelet",
    "label": "B+ → A-",
    "from": "B+",
    "to": "A-",
-   "gold": 1831108,
-   "damage": 0.75317,
-   "total": 3263502,
+   "gold": 3846941,
+   "damage": 0.74795,
+   "total": 6397308,
    "hit": {
-    "stats": "100/100",
+    "stats": "90/90",
     "lines": [
      {
-      "name": "dmg, +cd",
-      "id": 15,
-      "tier": "LEG"
+      "name": "cdmg shred",
+      "id": 19,
+      "tier": "epic"
      },
      {
-      "name": "damage",
-      "id": 23,
+      "name": "non-directional",
+      "id": 27,
       "tier": "epic"
      },
      {
       "name": "back atk",
       "id": 25,
-      "tier": "blue"
+      "tier": "epic"
      }
     ]
    },
-   "minimum": "100/100 crit/spec with dmg, +cd LEG, damage epic, back atk blue",
+   "minimum": "90/90 crit/spec with cdmg shred epic, non-directional epic, back atk epic",
    "mats": [
     [
-     "cut 100/100 bracelets",
-     52,
-     946570.9751553937
+     "cut 90/90 bracelets",
+     94,
+     2196928.273611844
     ],
     [
      "pheons",
-     1040,
-     2316930.6756169843
+     1880,
+     4200379.516643385
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
-   "odds": "1 in 52 rolled 100/100 bracelets reaches A-",
-   "totalDamage": 14.7716
+   "buy": "90/90 crit/spec unrolled bracelets, about 23,399 each",
+   "odds": "1 in 94 rolled 90/90 bracelets reaches A-",
+   "totalDamage": 14.7649
   },
   {
    "series": "bracelet",
    "label": "A- → A",
    "from": "A-",
    "to": "A",
-   "gold": 5109321,
-   "damage": 0.75882,
-   "total": 8372823,
+   "gold": 11689585,
+   "damage": 0.76549,
+   "total": 18086893,
    "hit": {
     "stats": "100/100",
     "lines": [
@@ -1137,7 +1147,7 @@
     [
      "cut 100/100 bracelets",
      133,
-     2428517.5970790745
+     12142587.985395372
     ],
     [
      "pheons",
@@ -1145,7 +1155,7 @@
      5944305.35546946
     ]
    ],
-   "buy": "100/100 crit/spec unrolled bracelets, about 18,277 each",
+   "buy": "100/100 crit/spec unrolled bracelets, about 91,385 each",
    "odds": "1 in 133 rolled 100/100 bracelets reaches A",
    "totalDamage": 15.5304
   },
@@ -1154,101 +1164,56 @@
    "label": "A → A+",
    "from": "A",
    "to": "A+",
-   "gold": 15913032,
-   "damage": 0.75823,
-   "total": 24285855,
+   "gold": 44126068,
+   "damage": 0.76242,
+   "total": 62212961,
    "hit": {
-    "stats": "110/110",
+    "stats": "100/100",
     "lines": [
      {
-      "name": "cdmg shred",
-      "id": 19,
+      "name": "crit shred",
+      "id": 17,
       "tier": "epic"
      },
      {
-      "name": "dmg+stagger",
-      "id": 13,
-      "tier": "LEG"
+      "name": "dmg, +cd",
+      "id": 15,
+      "tier": "blue"
      },
      {
-      "name": "back atk",
-      "id": 25,
-      "tier": "blue"
+      "name": "def shred",
+      "id": 16,
+      "tier": "epic"
      }
     ]
    },
-   "minimum": "110/110 crit/spec with cdmg shred epic, dmg+stagger LEG, back atk blue",
+   "minimum": "100/100 crit/spec with crit shred epic, dmg, +cd blue, def shred epic",
    "mats": [
     [
-     "cut 110/110 bracelets",
-     209,
-     14929293.257880466
+     "cut 100/100 bracelets",
+     457,
+     41766506.93696781
     ],
     [
      "pheons",
-     4180,
-     9356562.068864295
+     9140,
+     20446454.344270177
     ]
    ],
-   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
-   "odds": "1 in 209 rolled 110/110 bracelets reaches A+",
-   "totalDamage": 16.2887
+   "buy": "100/100 crit/spec unrolled bracelets, about 91,385 each",
+   "odds": "1 in 457 rolled 100/100 bracelets reaches A+",
+   "totalDamage": 16.2928
   },
   {
    "series": "bracelet",
    "label": "A+ → S-",
    "from": "A+",
    "to": "S-",
-   "gold": 59655424,
-   "damage": 0.71464,
-   "total": 83941279,
+   "gold": 184981880,
+   "damage": 0.72699,
+   "total": 247194841,
    "hit": {
-    "stats": "110/110",
-    "lines": [
-     {
-      "name": "dmg, +cd",
-      "id": 15,
-      "tier": "blue"
-     },
-     {
-      "name": "dmg+stagger",
-      "id": 13,
-      "tier": "epic"
-     },
-     {
-      "name": "crit dmg+",
-      "id": 12,
-      "tier": "epic"
-     }
-    ]
-   },
-   "minimum": "110/110 crit/spec with dmg, +cd blue, dmg+stagger epic, crit dmg+ epic",
-   "mats": [
-    [
-     "cut 110/110 bracelets",
-     723,
-     51601393.371334314
-    ],
-    [
-     "pheons",
-     14460,
-     32339885.859226372
-    ]
-   ],
-   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
-   "odds": "1 in 723 rolled 110/110 bracelets reaches S-",
-   "totalDamage": 17.0033
-  },
-  {
-   "series": "bracelet",
-   "label": "S- → S",
-   "from": "S-",
-   "to": "S",
-   "gold": 281212085,
-   "damage": 0.78121,
-   "total": 365153364,
-   "hit": {
-    "stats": "110/110",
+    "stats": "100/100",
     "lines": [
      {
       "name": "cdmg shred",
@@ -1256,42 +1221,87 @@
       "tier": "LEG"
      },
      {
+      "name": "crit rate+",
+      "id": 11,
+      "tier": "blue"
+     },
+     {
+      "name": "dmg+stagger",
+      "id": 13,
+      "tier": "epic"
+     }
+    ]
+   },
+   "minimum": "100/100 crit/spec with cdmg shred LEG, crit rate+ blue, dmg+stagger epic",
+   "mats": [
+    [
+     "cut 100/100 bracelets",
+     1816,
+     165953602.6236421
+    ],
+    [
+     "pheons",
+     36320,
+     81241238.68994519
+    ]
+   ],
+   "buy": "100/100 crit/spec unrolled bracelets, about 91,385 each",
+   "odds": "1 in 1,816 rolled 100/100 bracelets reaches S-",
+   "totalDamage": 17.0198
+  },
+  {
+   "series": "bracelet",
+   "label": "S- → S",
+   "from": "S-",
+   "to": "S",
+   "gold": 968179795,
+   "damage": 0.72862,
+   "total": 1215374636,
+   "hit": {
+    "stats": "100/100",
+    "lines": [
+     {
+      "name": "crit shred",
+      "id": 17,
+      "tier": "LEG"
+     },
+     {
       "name": "dmg, +cd",
       "id": 15,
       "tier": "LEG"
      },
      {
-      "name": "def shred",
-      "id": 16,
-      "tier": "blue"
+      "name": "back atk",
+      "id": 25,
+      "tier": "epic"
      }
     ]
    },
-   "minimum": "110/110 crit/spec with cdmg shred LEG, dmg, +cd LEG, def shred blue",
+   "minimum": "100/100 crit/spec with crit shred LEG, dmg, +cd LEG, back atk epic",
    "mats": [
     [
-     "cut 110/110 bracelets",
-     3145,
-     224471470.1163914
+     "cut 100/100 bracelets",
+     8929,
+     815938546.2329069
     ],
     [
      "pheons",
-     62900,
-     140681893.4127772
+     178580,
+     399436090.2255638
     ]
    ],
-   "buy": "110/110 crit/spec unrolled bracelets, about 71,382 each",
-   "odds": "1 in 3,145 rolled 110/110 bracelets reaches S",
-   "totalDamage": 17.7845
+   "buy": "100/100 crit/spec unrolled bracelets, about 91,385 each",
+   "odds": "1 in 8,929 rolled 100/100 bracelets reaches S",
+   "totalDamage": 17.7485
   },
   {
    "series": "bracelet",
    "label": "S → S+",
    "from": "S",
    "to": "S+",
-   "gold": 1881533540,
-   "damage": 0.92589,
-   "total": 2246686904,
+   "gold": 8775369826,
+   "damage": 0.96194,
+   "total": 9990744462,
    "hit": {
     "stats": "120/120",
     "lines": [
@@ -1317,7 +1327,7 @@
     [
      "cut 120/120 bracelets",
      6944,
-     1936014389.5428345
+     9680071947.714172
     ],
     [
      "pheons",
@@ -1325,7 +1335,7 @@
      310672514.61988294
     ]
    ],
-   "buy": "120/120 crit/spec unrolled bracelets, about 278,786 each",
+   "buy": "120/120 crit/spec unrolled bracelets, about 1,393,930 each",
    "odds": "1 in 6,944 rolled 120/120 bracelets reaches S+",
    "totalDamage": 18.7104
   }

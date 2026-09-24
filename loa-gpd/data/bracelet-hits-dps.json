@@ -1,91 +1,156 @@
 {
  "F+": {
-  "stats": "80/80",
+  "stats": "70/70",
   "lines": [
    {
-    "name": "damage",
-    "id": 23,
+    "name": "front atk",
+    "id": 26,
     "tier": "LEG"
    },
    {
-    "name": "magic def",
-    "id": 5,
-    "tier": "epic"
-   },
-   {
-    "name": "resource regen",
-    "id": 8,
+    "name": "max hp",
+    "id": 6,
     "tier": "blue"
    }
   ]
  },
  "D-": {
-  "stats": "90/90",
+  "stats": "80/80",
   "lines": [
    {
-    "name": "wp hp>50%",
-    "id": 21,
+    "name": "add dmg+demon",
+    "id": 14,
     "tier": "blue"
    },
    {
-    "name": "weapon power",
-    "id": 33,
+    "name": "less dmg taken",
+    "id": 3,
+    "tier": "epic"
+   },
+   {
+    "name": "damage",
+    "id": 23,
     "tier": "blue"
    }
   ]
  },
  "D": {
-  "stats": "90/90",
+  "stats": "80/80",
   "lines": [
    {
-    "name": "wp x30 stack",
-    "id": 22,
-    "tier": "LEG"
+    "name": "def shred",
+    "id": 16,
+    "tier": "blue"
    },
    {
     "name": "weapon power",
     "id": 33,
+    "tier": "LEG"
+   },
+   {
+    "name": "max hp",
+    "id": 6,
     "tier": "blue"
    }
   ]
  },
  "D+": {
-  "stats": "90/90",
+  "stats": "80/80",
   "lines": [
-   {
-    "name": "front atk",
-    "id": 26,
-    "tier": "blue"
-   },
-   {
-    "name": "crit dmg",
-    "id": 32,
-    "tier": "blue"
-   }
-  ]
- },
- "C-": {
-  "stats": "90/90",
-  "lines": [
-   {
-    "name": "crit rate",
-    "id": 31,
-    "tier": "epic"
-   },
    {
     "name": "dmg+stagger",
     "id": 13,
     "tier": "blue"
    },
    {
-    "name": "hp regen",
-    "id": 7,
+    "name": "damage",
+    "id": 23,
+    "tier": "epic"
+   },
+   {
+    "name": "dmg to lower",
+    "id": 2,
+    "tier": "epic"
+   }
+  ]
+ },
+ "C-": {
+  "stats": "80/80",
+  "lines": [
+   {
+    "name": "damage",
+    "id": 23,
+    "tier": "epic"
+   },
+   {
+    "name": "shield dmg+",
+    "id": 18,
+    "tier": "epic"
+   },
+   {
+    "name": "weapon power",
+    "id": 33,
     "tier": "epic"
    }
   ]
  },
  "C": {
-  "stats": "100/100",
+  "stats": "80/80",
+  "lines": [
+   {
+    "name": "crit dmg+",
+    "id": 12,
+    "tier": "epic"
+   },
+   {
+    "name": "front atk",
+    "id": 26,
+    "tier": "blue"
+   }
+  ]
+ },
+ "C+": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "blue"
+   },
+   {
+    "name": "front atk",
+    "id": 26,
+    "tier": "LEG"
+   },
+   {
+    "name": "dmg to lower",
+    "id": 2,
+    "tier": "blue"
+   }
+  ]
+ },
+ "B-": {
+  "stats": "90/90",
+  "lines": [
+   {
+    "name": "non-directional",
+    "id": 27,
+    "tier": "epic"
+   },
+   {
+    "name": "front atk",
+    "id": 26,
+    "tier": "blue"
+   },
+   {
+    "name": "back atk",
+    "id": 25,
+    "tier": "blue"
+   }
+  ]
+ },
+ "B": {
+  "stats": "90/90",
   "lines": [
    {
     "name": "crit shred",
@@ -95,72 +160,17 @@
    {
     "name": "add damage",
     "id": 24,
-    "tier": "blue"
-   },
-   {
-    "name": "dmg to lower",
-    "id": 2,
-    "tier": "epic"
-   }
-  ]
- },
- "C+": {
-  "stats": "100/100",
-  "lines": [
-   {
-    "name": "dmg, +cd",
-    "id": 15,
-    "tier": "epic"
-   },
-   {
-    "name": "crit dmg",
-    "id": 32,
-    "tier": "blue"
-   }
-  ]
- },
- "B-": {
-  "stats": "100/100",
-  "lines": [
-   {
-    "name": "back atk",
-    "id": 25,
-    "tier": "epic"
-   },
-   {
-    "name": "wp x30 stack",
-    "id": 22,
     "tier": "epic"
    },
    {
     "name": "damage",
     "id": 23,
-    "tier": "blue"
-   }
-  ]
- },
- "B": {
-  "stats": "100/100",
-  "lines": [
-   {
-    "name": "crit dmg+",
-    "id": 12,
-    "tier": "blue"
-   },
-   {
-    "name": "def shred",
-    "id": 16,
-    "tier": "blue"
-   },
-   {
-    "name": "weapon power",
-    "id": 33,
     "tier": "epic"
    }
   ]
  },
  "B+": {
-  "stats": "100/100",
+  "stats": "90/90",
   "lines": [
    {
     "name": "crit shred",
@@ -168,29 +178,34 @@
     "tier": "LEG"
    },
    {
-    "name": "dmg, +cd",
-    "id": 15,
+    "name": "crit rate",
+    "id": 31,
+    "tier": "blue"
+   },
+   {
+    "name": "add damage",
+    "id": 24,
     "tier": "blue"
    }
   ]
  },
  "A-": {
-  "stats": "100/100",
+  "stats": "90/90",
   "lines": [
    {
-    "name": "dmg, +cd",
-    "id": 15,
-    "tier": "LEG"
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "epic"
    },
    {
-    "name": "damage",
-    "id": 23,
+    "name": "non-directional",
+    "id": 27,
     "tier": "epic"
    },
    {
     "name": "back atk",
     "id": 25,
-    "tier": "blue"
+    "tier": "epic"
    }
   ]
  },
@@ -215,51 +230,51 @@
   ]
  },
  "A+": {
-  "stats": "110/110",
+  "stats": "100/100",
   "lines": [
    {
-    "name": "cdmg shred",
-    "id": 19,
+    "name": "crit shred",
+    "id": 17,
     "tier": "epic"
    },
-   {
-    "name": "dmg+stagger",
-    "id": 13,
-    "tier": "LEG"
-   },
-   {
-    "name": "back atk",
-    "id": 25,
-    "tier": "blue"
-   }
-  ]
- },
- "S-": {
-  "stats": "110/110",
-  "lines": [
    {
     "name": "dmg, +cd",
     "id": 15,
     "tier": "blue"
    },
    {
-    "name": "dmg+stagger",
-    "id": 13,
+    "name": "def shred",
+    "id": 16,
     "tier": "epic"
+   }
+  ]
+ },
+ "S-": {
+  "stats": "100/100",
+  "lines": [
+   {
+    "name": "cdmg shred",
+    "id": 19,
+    "tier": "LEG"
    },
    {
-    "name": "crit dmg+",
-    "id": 12,
+    "name": "crit rate+",
+    "id": 11,
+    "tier": "blue"
+   },
+   {
+    "name": "dmg+stagger",
+    "id": 13,
     "tier": "epic"
    }
   ]
  },
  "S": {
-  "stats": "110/110",
+  "stats": "100/100",
   "lines": [
    {
-    "name": "cdmg shred",
-    "id": 19,
+    "name": "crit shred",
+    "id": 17,
     "tier": "LEG"
    },
    {
@@ -268,9 +283,9 @@
     "tier": "LEG"
    },
    {
-    "name": "def shred",
-    "id": 16,
-    "tier": "blue"
+    "name": "back atk",
+    "id": 25,
+    "tier": "epic"
    }
   ]
  },

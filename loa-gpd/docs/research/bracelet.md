@@ -322,6 +322,13 @@ attack-power rider is the only part that cares. Any reference level will do.
 
 ## 4. Gold
 
+> **2026-09-24 — the market moved.** The shipped ladder prices an UNROLLED
+> bracelet by its stat pair (`model/bracelet-price.js`, fitted to twenty August
+> listings) plus 20 pheons, over the odds of rolling the band. Shizu's read of
+> the market now: support pairs list at about 2.5x the August fit (spec/swift
+> 100/100 ≈ 46k, 90k an attempt with pheons); DPS pairs at about 5x. The module
+> carries both levels as `MARKET_SCALE`; the fit's shape is unchanged.
+
 **Recommended basis: the market price of a finished bracelet, snapshotted per
 rung.** Not the cost of rolling. Here is why.
 
