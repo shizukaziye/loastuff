@@ -189,6 +189,7 @@
       slots: 3,
       slotsPref: 3,              // the count the reader chose; slots returns to it when the grade allows
       mode: "fresh",             // "fresh" = not rolled yet; "rolled" = these lines
+      price: null,               // gold for one bracelet like this, as the reader entered it; null = none
       rows: [blankRow(), blankRow(), blankRow()],
       // the keep-or-replace flow's own state, against THIS bracelet
       locks: null,               // per-slot booleans; null = follow the solver's pick
@@ -240,6 +241,7 @@
       d.slots = (raw.slots === 1 || raw.slots === 2) ? raw.slots : 3;
       d.slotsPref = (raw.slotsPref === 1 || raw.slotsPref === 2 || raw.slotsPref === 3) ? raw.slotsPref : d.slots;
       d.mode = raw.mode === "rolled" ? "rolled" : "fresh";
+      d.price = (typeof raw.price === "number" && isFinite(raw.price) && raw.price > 0) ? Math.round(raw.price) : null;
       if (raw.rows && raw.rows.length) d.rows = cleanRows(raw.rows);
       if (raw.locks && raw.locks.length) d.locks = raw.locks.map(function (x) { return !!x; });
       if (raw.rolled && raw.rolled.length) d.rolled = cleanRows(raw.rolled);
@@ -849,10 +851,9 @@
       "#tab-advisor .av-dim{opacity:.45;transition:opacity .12s}" +
       // FOUR CARDS, ONE ROW; two by two under 1020px; one under 560px. Fixed
       // counts, so no width can orphan a card on a row of its own.
-      "#tab-advisor .av-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}" +
-      "#tab-advisor .av-cards.two{grid-template-columns:repeat(2,minmax(0,1fr))}" +
-      "@media(max-width:1020px){#tab-advisor .av-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}" +
-      "@media(max-width:560px){#tab-advisor .av-cards,#tab-advisor .av-cards.two{grid-template-columns:minmax(0,1fr)}}" +
+      "#tab-advisor .av-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 12px}" +
+      "@media(max-width:1020px){#tab-advisor .av-cards.six{grid-template-columns:repeat(2,minmax(0,1fr))}}" +
+      "@media(max-width:560px){#tab-advisor .av-cards,#tab-advisor .av-cards.six{grid-template-columns:minmax(0,1fr)}}" +
       "#tab-advisor .av-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}" +
       "#tab-advisor .av-card .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:700}" +
       "#tab-advisor .av-card .v{font-size:25px;font-weight:800;letter-spacing:-.02em;margin-top:5px;line-height:1.1;font-variant-numeric:tabular-nums}" +
@@ -862,6 +863,17 @@
       "#tab-advisor .av-card .v.gold{color:var(--high)}" +
       "#tab-advisor .av-card .v.good{color:var(--good)}" +
       "#tab-advisor .av-card .v.bad{color:var(--bad)}" +
+      // "about 19 bracelets": the count carries the weight, the words sit back.
+      "#tab-advisor .av-card .v .u{font-size:14px;font-weight:700;letter-spacing:0;color:var(--dim)}" +
+      // Price vs worth is one line of words, not a figure.
+      "#tab-advisor .av-card .v.line{font-size:15px;letter-spacing:0;line-height:1.35;margin-top:7px}" +
+      // ---- the price per bracelet ----
+      "#tab-advisor .av-pricebox{min-width:0}" +
+      "#tab-advisor .av-pricebox input{width:100%;max-width:180px;background:var(--panel2);color:var(--text);" +
+        "border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13px;font-variant-numeric:tabular-nums}" +
+      "#tab-advisor .av-pricebox input:focus{outline:1px solid var(--accent)}" +
+      "#tab-advisor .av-pricebox input.bad{border-color:var(--bad)}" +
+      "#tab-advisor .av-pricebox .av-warn{margin:5px 0 0;font-size:11.5px}" +
       // ---- where it can land ----
       // The readout rides above the strip, at the pointer; pan-y keeps a
       // vertical swipe scrolling the page while a sideways drag reads the curve.
@@ -1209,6 +1221,71 @@
 
   function pairText(e) { return e + " / " + e; }
 
+  // ---- the price per bracelet ----
+  //
+  // Shizu, 2026-09-24: "i want to see per bracelet cost." What a bracelet like
+  // this one costs to buy is a market fact the tool cannot see, so the reader
+  // types it: 500k, 1.2M, 900000 or 1,200,000. It changes no solve — only the
+  // two cards that read it — so it repaints the cards and nothing else.
+
+  var priceTimer = null, priceErr = false;
+
+  /**
+   * "500k", "1.2M", "900000", "1,200,000", "1,2M" -> gold. null for an empty
+   * box (or 0: no price), NaN for anything that is not a price.
+   */
+  function parsePrice(t) {
+    var x = String(t == null ? "" : t).trim().toLowerCase().replace(/[\s_]/g, "");
+    if (!x) return null;
+    if (/^\d{1,3}(,\d{3})+(\.\d+)?[kmb]?$/.test(x)) x = x.replace(/,/g, "");    // 1,200,000: grouping
+    else if (/^\d+,\d+[kmb]?$/.test(x)) x = x.replace(",", ".");               // 1,2m: a decimal comma
+    var m = /^(\d+(?:\.\d*)?|\.\d+)([kmb]?)$/.exec(x);
+    if (!m) return NaN;
+    var v = parseFloat(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : m[2] === "b" ? 1e9 : 1);
+    return (isFinite(v) && v > 0) ? Math.round(v) : null;
+  }
+
+  /** The stored price as the box shows it: exact, never rounded — 500k, 1.2M, 1,234,567. */
+  function priceText(v) {
+    if (!(v > 0)) return "";
+    if (v >= 1e6 && v % 1e4 === 0) return String(v / 1e6) + "M";
+    if (v >= 1e3 && v % 1e3 === 0) return String(v / 1e3) + "k";
+    return nf(v);
+  }
+
+  function priceHtml() {
+    return '<div class="bc-segrow av-price"><label class="lb" for="av-price" data-gloss="What a bracelet like this one — these traits, not yet rolled or rolled as shown — costs to buy. The tool cannot know it, so you enter it.">Price per bracelet</label>' +
+      '<div class="av-pricebox"><input id="av-price" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 500k"' +
+      (priceErr ? ' class="bad"' : "") + ' value="' + esc(priceText(SIM.price)) + '">' +
+      '<div id="av-pricewarn">' + (priceErr ? '<div class="av-warn">Not a price: try 500k, 1.2M or 900000.</div>' : "") + "</div></div></div>";
+  }
+
+  function paintPriceErr() {
+    var w = $("av-pricewarn"), el = $("av-price");
+    if (w) w.innerHTML = priceErr ? '<div class="av-warn">Not a price: try 500k, 1.2M or 900000.</div>' : "";
+    if (el) el.classList.toggle("bad", !!priceErr);
+  }
+
+  /**
+   * Take what is in the box. `settle` is the commit — Enter or leaving the box:
+   * the text is tidied to the stored figure, or, if it is no price at all, the
+   * box says so and the last good price stands. While typing, a half-written
+   * figure waits quietly.
+   */
+  function commitPrice(settle) {
+    if (priceTimer) { clearTimeout(priceTimer); priceTimer = null; }
+    var el = $("av-price");
+    if (!el) return;
+    var v = parsePrice(el.value);
+    if (v !== v) {
+      if (settle) { priceErr = true; paintPriceErr(); }
+      return;
+    }
+    if (priceErr) { priceErr = false; paintPriceErr(); }
+    if (v !== SIM.price) { SIM.price = v; saveSim(); paintOut(); }
+    if (settle) el.value = priceText(SIM.price);
+  }
+
   function simHtml() {
     fitSlots();
     var g = simGrade(), r = eachRange(g), e = simEach(), kinds = traitKinds(), b = baselineNow(), i;
@@ -1230,6 +1307,7 @@
         "It sets the values each line rolls and how high the traits go: 120 on Ancient, 100 on Relic.") +
       segHtml("Slots", "avslots", slotOpts, SIM.slots, "How many granted effect slots it has: 2 or 3 on Ancient, 1 or 2 on Relic.") +
       "</div>";
+    h += priceHtml();
     h += "</div><div>";
     h += segHtml("Granted slots", "avmode", [["fresh", "Not rolled yet"], ["rolled", "Rolled — these lines"]], SIM.mode,
       "Not rolled yet: its lines are still unknown. Rolled: the lines below, with an empty slot counted as a junk line.", "av-mode");
@@ -1260,28 +1338,84 @@
 
   function okNum(v) { return typeof v === "number" && isFinite(v); }
 
+  /** "about 19 bracelets": one decimal under 10, whole above; the count stands out. */
+  function attemptsHtml(n, exact) {
+    var t = n < 10 ? fx(n, 1) : nf(Math.round(n));
+    if (t === "1.0") t = "1";
+    return (exact ? "" : '<span class="u">about</span> ') + t + ' <span class="u">bracelet' + (t === "1" ? "" : "s") + "</span>";
+  }
+
   /**
-   * FOUR CARDS OFF ONE DISTRIBUTION: the odds, the worth, and the finish on
-   * either side of your bracelet. Against no bracelet the odds and both halves
-   * would be comparisons against nothing — every outcome "beats" 0% — so the
-   * row drops to the two figures that still mean something (copy-rules §6).
+   * TO BEAT YOURS: how many bracelets like this one it takes, on average, before
+   * one ends better than yours — 1 / P(beat), off the same P(beat) as the card
+   * that prints the odds — and what they cost in all at the reader's price.
+   */
+  function toBeatCardHtml(c, always, price) {
+    var k = "To beat yours";
+    var tail = "Each attempt is a fresh bracelet at this price, rolled out fully and thrown away if it does not beat yours — " +
+      "a geometric expectation; the median attempt count is about 0.69 × this.";
+    if (!c) return cardHtml(k, "How many bracelets like this one you would go through before one ends better than yours. " + tail, "—", "", "", false);
+    if (!(c.pBeat > 1e-9)) {
+      return cardHtml(k, "How many bracelets like this one you would go through before one ends better than yours: none of them can.",
+        "—", "", "none of them beats yours", false);
+    }
+    var n = 1 / c.pBeat, one = Math.round(n);
+    var gloss = (one <= 1
+      ? "Nearly every bracelet like this one ends better than yours. "
+      : "About one in " + nf(one) + " bracelets like this one ends better than yours. ") + tail;
+    var sub = price ? "about " + gold(price * n) + " at " + gold(price) + " each" : "enter a price";
+    return cardHtml(k, gloss, attemptsHtml(n, always), "", sub, false);
+  }
+
+  /**
+   * PRICE VS WORTH: the price the reader entered against Worth paying, in one
+   * line. Worth paying already counts the odds, so the two compare directly.
+   */
+  function priceCardHtml(price, w, hasBar) {
+    var k = "Price vs worth";
+    var gloss = hasBar
+      ? "Your price against Worth paying. Worth paying already counts the odds — how often it beats yours and by how far — " +
+        "so a price above it loses gold on average, and a price below it gains."
+      : "Your price against Worth paying: what it adds over wearing no bracelet. A price above it loses gold on average, " +
+        "and a price below it gains.";
+    if (!price) return cardHtml(k, gloss, "—", "", "enter a price", false);
+    if (!w) return cardHtml(k, gloss, "—", "", "", false);
+    var pg = gold(price), wg = gold(w.gold), line, cls;
+    if (pg === wg) { line = "a fair price: " + pg + " for " + wg + " of value"; cls = "line"; }
+    else if (price < w.gold) { line = "a bargain: " + pg + " for " + wg + " of value"; cls = "line good"; }
+    else { line = "you\u2019d pay " + pg + " for what is worth " + wg + " to you"; cls = "line bad"; }
+    return cardHtml(k, gloss, esc(line), cls, "", false);
+  }
+
+  /**
+   * SIX CARDS OFF ONE DISTRIBUTION, in two rows: how it lands — the odds and
+   * the finish on either side of your bracelet — then what it costs — worth
+   * paying, the bracelets it takes to beat yours, and your price against its
+   * worth. Three across, two by two under 1020px, one under 560px: fixed
+   * counts, so no width can orphan a card on a row of its own.
+   *
+   * Against no bracelet the odds, both halves and the count would be
+   * comparisons against nothing — every outcome "beats" 0% — so the row drops
+   * to the three figures that still mean something (copy-rules §6).
    */
   function cardsHtml(res, b) {
     var cdf = res && res.finalScore && res.finalScore.cdf;
     var ef = res ? pct(res.expectedFinal) : null;
     var rate = "at " + gold(gpd()) + " per 1%";
+    var price = SIM.price > 0 ? SIM.price : null;
     if (!b) {
       var w0 = cdf ? worthCdf(cdf, 0) : null;
-      return '<div class="av-cards two">' +
+      return '<div class="av-cards">' +
         cardHtml("Expected final", "Its average finish, with the remaining rolls played perfectly.",
           res ? dmg(ef) : "—", "acc", res ? rollsSub(lastOpts) : "", true) +
         cardHtml("Worth paying", "What it adds over wearing no bracelet, in gold: its average damage × your gold per 1% (" +
           gold(gpd()) + "). A fair price for you, not a market price.", w0 ? gold(w0.gold) : "—", "gold", rate, false) +
+        priceCardHtml(price, w0, false) +
         "</div>";
     }
     var c = cdf ? compareCdf(cdf, b.D) : null;
     var w = cdf ? worthCdf(cdf, b.pct) : null;
-    var never = c && !(c.pBeat > 1e-9), always = c && !(c.pBeat < 1 - 1e-9);
+    var never = c && !(c.pBeat > 1e-9), always = !!(c && !(c.pBeat < 1 - 1e-9));
     var ib = "—", ibs = "", inot = "—", inots = "";
     if (c) {
       if (never) ibs = "it never beats yours";
@@ -1289,19 +1423,23 @@
       if (always) inots = "it always beats yours";
       else if (okNum(c.meanIfNot)) { inot = dmg(c.meanIfNot); inots = dmg(b.pct - c.meanIfNot) + " short of yours"; }
     }
-    var h = '<div class="av-cards">';
+    var h = '<div class="av-cards six">';
+    // how it lands
     h += cardHtml("Beats your bracelet",
       "How often it finishes at or above your bracelet, over every way the remaining rolls can land, each played perfectly.",
       c ? odds(c.pBeat) : "—", "acc",
       (res ? "expected final " + dmg(ef) + " · " : "") + "yours " + dmg(b.pct), true);
+    h += cardHtml("If it beats", "Its average finish across the outcomes that beat your bracelet, and how far past yours that is.",
+      ib, "good", ibs, false);
+    h += cardHtml("If it doesn\u2019t", "Its average finish across the outcomes that fall short of your bracelet, and how far below yours that is.",
+      inot, "", inots, false);
+    // what it costs
     h += cardHtml("Worth paying",
       "What it is worth to you in gold: the odds it beats yours × how far past yours those finishes land, on average × your gold per 1% (" +
         gold(gpd()) + "). A fair price for you, not a market price.",
       w ? gold(w.gold) : "—", "gold", rate, false);
-    h += cardHtml("If it beats", "Its average finish across the outcomes that beat your bracelet, and how far past yours that is.",
-      ib, "good", ibs, false);
-    h += cardHtml("If it doesn’t", "Its average finish across the outcomes that fall short of your bracelet, and how far below yours that is.",
-      inot, "", inots, false);
+    h += toBeatCardHtml(c, always, price);
+    h += priceCardHtml(price, w, true);
     return h + "</div>";
   }
 
@@ -1884,6 +2022,14 @@
       "worth nothing to you, not a debt. It is what the bracelet is worth to you at the gold rate set on the " +
       "Calculator, not what it sells for. With no bracelet of yours loaded, it is measured against none.</p>" +
 
+      "<p><b>Price per bracelet</b> is yours to enter: what a bracelet like this one costs to buy, which the " +
+      "tool cannot know. <b>To beat yours</b> is <code>1 &divide; P(beat)</code>: how many such bracelets you " +
+      "would go through, on average, before one ends better than yours, each bought at your price, rolled out " +
+      "fully and thrown away if it falls short. It is a geometric expectation, so it often takes fewer: the " +
+      "median is about 0.69 &times; the average. The gold under it is your price &times; that count. " +
+      "<b>Price vs worth</b> sets your price against Worth paying, which already counts the odds and how far " +
+      "past yours it lands, so a price above it loses gold on average and a price below it gains.</p>" +
+
       "<p><b>Where it can land</b> draws the same spread: the box is the middle half (p25 to p75), the whisker " +
       "p10 to p90, the line in the box the median, and the orange line your bracelet. Point at the strip, or tap " +
       "it, to read the chance of finishing at that damage or higher. <b>Grade or better</b> reads the same " +
@@ -1975,6 +2121,9 @@
   function bind(pane) {
     pane.addEventListener("input", function (e) {
       var t = e.target, id = t.id || "", c;
+      // The price: take it once the hand stops, so "1.2" on its way to "1.2M"
+      // is never priced.
+      if (id === "av-price") { if (priceTimer) clearTimeout(priceTimer); priceTimer = setTimeout(function () { commitPrice(false); }, 300); return; }
       if (id === "av-each") {
         var r = eachRange(simGrade());
         SIM.each = clamp(Math.round(num(t.value, EACH_DEFAULT)), r[0], r[1]);
@@ -2007,6 +2156,7 @@
 
     pane.addEventListener("change", function (e) {
       var t = e.target, id = t.id || "", lk;
+      if (id === "av-price") { commitPrice(true); return; }
       if (/^av-s-(fam|tier|val)-\d+$/.test(id)) {
         var flipped = simRowEvent(t);
         voidCut(); saveSim(); retries = 0;
@@ -2091,6 +2241,12 @@
       if (t.id === "av-apply-new") { applyVerdict(true); return; }
       if (t.id === "av-apply-keep") { applyVerdict(false); return; }
       if (t.id === "av-undo") { undo(); return; }
+    });
+
+    // Enter settles the price the way leaving the box does. A text box outside
+    // a form fires no change event on Enter, so it is caught here.
+    pane.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target && e.target.id === "av-price") { e.preventDefault(); commitPrice(true); }
     });
 
     // toggle does not bubble; a capturing listener on the pane still hears it.
