@@ -32,6 +32,28 @@
  * file's solver through window.BraceletApp, because advise() answers off the one
  * DP context the worker is holding. Gold never enters the key: worth is a sum
  * over the distribution the solve returns, recomputed here for free.
+ *
+ * THE COMPARISON FOUNDATION, for the tabs that hold one bracelet against
+ * another (window.BraceletApp):
+ *   baseline  the bracelet you already wear. profile.js stores the snapshot and
+ *             keeps econ.baseline on it; this file copies the Grader's bracelet
+ *             in, sets a character's worn bracelet the moment it is imported,
+ *             and grades it on the same ladder as the Current score card.
+ *   compare   one read of a solved cdf against a baseline score: the odds of
+ *             finishing at or above it, and where the finishes land either side.
+ *   strip     the p10-p90 outcome strip, with the baseline and the bracelet as
+ *             it stands marked on it — one renderer for every tab.
+ *   solver    solve() prices ANY bracelet through the same worker, in its own
+ *             queue lane, so a sweep of them cannot evict the Advisor's context
+ *             or cancel the Calculator's solve.
+ * The Calculator itself only grades what is loaded; the one trace of the
+ * comparison on it is the Economy's baseline row.
+ *
+ * EVERY WAY IN IS HERE. A bracelet reaches the Grader three ways, and all three
+ * live on this tab since the Advisor stopped loading bracelets: the import panel
+ * (bible-import.js), the character search beside it (char-picker.js), and the
+ * screenshot reader under them (advisor-capture.js, joined by advisor-glue.js
+ * through window.BraceletAdvisor — see "the screenshot reader").
  */
 (function () {
   "use strict";
@@ -224,6 +246,466 @@
       fmtDmg(num(S.econ.baseline, 0)) + " baseline clear it, averaged over how often they land, at " +
       gold(gpd()) + " gold per 1%. Never negative — a bracelet you would not equip is worth nothing, not a debt.";
   }
+
+  // ------------------------------------------------------------------
+  // HOLDING ONE BRACELET AGAINST ANOTHER — BraceletApp.compare
+  //
+  // A solve returns where the bracelet finishes as a cdf of log-space scores.
+  // Held against a baseline score, that one curve answers the whole
+  // comparison: how often the finish is at least as good, and where it lands
+  // on either side. Every figure comes back in DAMAGE PERCENT, converted from
+  // the scores as it is read, so it can sit beside the percentages the rest of
+  // the tool prints.
+  // ------------------------------------------------------------------
+
+  // The worker hands the distribution over THINNED to 160 rungs (the model's
+  // distToCdf). A distribution with no more outcomes than that arrives whole,
+  // and the thinner never returns fewer than 160 once it has merged anything —
+  // so a cdf SHORTER than 160 is exact: every rung is one outcome.
+  var THIN_RUNGS = 160;
+  // Two scores this close are one score: the model's own tolerance (pImprove).
+  var TIE_D = 1e-9;
+
+  // Every solve that passes through this file leaves its exact quantiles here,
+  // keyed by its cdf, so a caller that hands compare.fromCdf just
+  // res.finalScore.cdf still gets them (see cdfCurve). Weak, so a dropped solve
+  // takes its entry with it.
+  var CDF_QUANTS = typeof WeakMap === "function" ? new WeakMap() : null;
+  function noteQuantiles(res) {
+    var f = res && res.finalScore;
+    if (CDF_QUANTS && f && f.cdf && f.quantiles) CDF_QUANTS.set(f.cdf, f.quantiles);
+  }
+
+  /**
+   * A thinned cdf as a CURVE: F(x), P(final <= x), through every point the
+   * thinning kept exact, bent the way the mass actually lies between them.
+   *
+   * WHAT THE THINNER KEEPS. Each kept rung is a real outcome, and its `cum` is
+   * exact: F at that score is known. Between two kept rungs, every outcome
+   * merged into the upper one is somewhere in the gap — and in a heavy rung
+   * near the bottom of the curve, 25 to 40% of all the mass over a gap a point
+   * wide, most of it bunched toward the top. Taken as spread evenly across the
+   * gap, a bar landing in such a rung read 88% where the truth was 97%.
+   *
+   * TWO THINGS NARROW IT. The solve's own QUANTILES (p10 … p90) are exact
+   * outcomes read off the whole distribution, and they tend to fall inside
+   * exactly those heavy rungs — so each becomes one more known point of F
+   * (at the largest level that lands on that score: F there is at least that).
+   * And a MONOTONE CUBIC (Fritsch–Carlson) through all the known points lets
+   * the steepness on either side of a gap shape the curve inside it, instead
+   * of drawing each gap as a straight line. On 1,320 random bars over 33
+   * solved bracelets, against the whole distribution: even spreading missed
+   * P(final >= bar) by 0.77 points on average and 24 at worst; this, by 0.31
+   * and 6.4. The worst misses left are bars in the very lowest rungs, where
+   * no quantile falls.
+   *
+   * The first rung is one outcome: the thinner keeps the lowest score as it
+   * is. Returns {xs, ys, h, m0, m1, p0} — knots, F at each, the gaps, each
+   * gap's slope at its two ends, and the mass on the first outcome — or null
+   * for a cdf that arrived whole.
+   */
+  function cdfCurve(cdf, quant, off) {
+    if (!cdf || cdf.length < THIN_RUNGS) return null;
+    var xs = [], ys = [], kept = [], anchored = false, i, j, k, q, lv, s, n;
+    for (i = 0; i < cdf.length; i++) { xs.push(cdf[i].score + off); ys.push(cdf[i].cum); kept.push(1); }
+    if (quant) {
+      // Ascending, so a later level landing on the same score as an anchor just
+      // made raises it: F at that score is at least the largest level there.
+      q = [[quant.p10, 0.10], [quant.p25, 0.25], [quant.p50, 0.50], [quant.p75, 0.75], [quant.p90, 0.90]];
+      for (k = 0; k < q.length; k++) {
+        s = num(q[k][0], NaN) + off; lv = q[k][1];
+        if (!isFinite(s)) continue;
+        for (j = 0; j < xs.length && xs[j] < s - TIE_D; j++) {}
+        if (j === 0 || j >= xs.length) continue;
+        if (Math.abs(xs[j] - s) <= TIE_D) {
+          if (!kept[j] && ys[j] < lv) ys[j] = Math.min(lv, ys[j + 1]);
+          continue;                            // a kept rung's F is exact already
+        }
+        xs.splice(j, 0, s);
+        ys.splice(j, 0, clamp(lv, ys[j - 1], ys[j]));
+        kept.splice(j, 0, 0);
+        anchored = true;
+      }
+    }
+    n = xs.length;
+    var h = [], d = [], ms = new Array(n), m0 = [], m1 = [];
+    for (i = 0; i < n - 1; i++) { h.push(xs[i + 1] - xs[i]); d.push((ys[i + 1] - ys[i]) / h[i]); }
+    if (!anchored) {
+      // No quantile landed inside a gap: straight segments. The cubic earns its
+      // keep only with the anchors — without them it read worse than a straight
+      // line on the same 1,320 bars (0.88 points against 0.77).
+      for (i = 0; i < n - 1; i++) { m0.push(d[i]); m1.push(d[i]); }
+      return { xs: xs, ys: ys, m0: m0, m1: m1, h: h, p0: cdf[0].cum };
+    }
+    for (i = 1; i < n - 1; i++) {
+      if (!(d[i - 1] > 0) || !(d[i] > 0)) { ms[i] = 0; continue; }
+      var w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1];
+      ms[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]);
+    }
+    ms[0] = curveEnd(h[0], h[1], d[0], d[1]);
+    ms[n - 1] = curveEnd(h[n - 2], h[n - 3], d[n - 2], d[n - 3]);
+    for (i = 0; i < n - 1; i++) { m0.push(ms[i]); m1.push(ms[i + 1]); }
+    return { xs: xs, ys: ys, m0: m0, m1: m1, h: h, p0: cdf[0].cum };
+  }
+  /** Fritsch–Carlson's end slope: three-point, held to the curve's own direction. */
+  function curveEnd(h0, h1, d0, d1) {
+    if (h1 === undefined || d1 === undefined) return d0;
+    var s = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+    if (!(s * d0 > 0)) return 0;
+    if (d0 * d1 <= 0 && Math.abs(s) > Math.abs(3 * d0)) return 3 * d0;
+    return s;
+  }
+  /** On segment k at fraction t: F there, and the integral of F from the segment's start. */
+  function curveAt(c, k, t) {
+    var h = c.h[k], y0 = c.ys[k], y1 = c.ys[k + 1], m0 = c.m0[k] * h, m1 = c.m1[k] * h;
+    var t2 = t * t, t3 = t2 * t, t4 = t3 * t;
+    return {
+      F: (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * m1,
+      I: h * ((t4 / 2 - t3 + t) * y0 + (t4 / 4 - 2 * t3 / 3 + t2 / 2) * m0 + (-t4 / 2 + t3) * y1 + (t4 / 4 - t3 / 3) * m1)
+    };
+  }
+
+  /**
+   * One pass over a cdf, split at a bar given as a score (D). Returns the mass
+   * at or above the bar and the mass below it, each with its mass-weighted sum
+   * of final damage %: {pUp, sUp, pDn, sDn, bar}, bar in %. Null with no cdf.
+   *
+   * A cdf that arrived whole is read exactly, outcome by outcome. A thinned one
+   * is read off its curve (cdfCurve): the mass of a stretch is the rise of F
+   * across it, and it lands at the stretch's own mean, from the integral of F —
+   * never at a rung's top, never at the middle of a gap.
+   *
+   * AT OR ABOVE, never strictly above. Finishing level with the bar counts as
+   * beating it, which is what makes a bracelet held against itself read 100%:
+   * you can always keep what you hold. The first rung is exact either way, and
+   * that is where a bracelet's own score sits — no roll ends below it.
+   *
+   * `shiftD` moves every outcome by a constant, as it does in worthFromCdf.
+   */
+  function cdfSplit(cdf, barD, shiftD, quant) {
+    if (!cdf || !cdf.length) return null;
+    var off = num(shiftD, 0), bD = num(barD, 0), bar = pct(bD);
+    var pUp = 0, sUp = 0, pDn = 0, sDn = 0, i, m, prev = 0;
+    var c = cdfCurve(cdf, quant, off);
+    if (!c) {
+      for (i = 0; i < cdf.length; i++) {
+        m = cdf[i].cum - prev;
+        prev = cdf[i].cum;
+        if (!(m > 0)) continue;
+        if (cdf[i].score + off >= bD - TIE_D) { pUp += m; sUp += m * pct(cdf[i].score + off); }
+        else { pDn += m; sDn += m * pct(cdf[i].score + off); }
+      }
+      return { pUp: pUp, sUp: sUp, pDn: pDn, sDn: sDn, bar: bar };
+    }
+    // The first outcome, exact.
+    if (c.xs[0] >= bD - TIE_D) { pUp += c.p0; sUp += c.p0 * pct(c.xs[0]); }
+    else { pDn += c.p0; sDn += c.p0 * pct(c.xs[0]); }
+    // Every stretch of the curve after it: whole, or cut at the bar.
+    function add(up, a, fa, ia, b, fb, ib) {
+      var mm = fb - fa;
+      if (!(mm > 0)) return;
+      // E[x] over the stretch = (b F(b) - a F(a) - integral of F) / mass
+      var ex = (b * fb - a * fa - (ib - ia)) / mm;
+      ex = clamp(ex, a, b);
+      if (up) { pUp += mm; sUp += mm * pct(ex); } else { pDn += mm; sDn += mm * pct(ex); }
+    }
+    for (i = 0; i < c.xs.length - 1; i++) {
+      var a = c.xs[i], b = c.xs[i + 1], fa = c.ys[i], fb = c.ys[i + 1], ib = curveAt(c, i, 1).I;
+      if (a >= bD - TIE_D) add(true, a, fa, 0, b, fb, ib);
+      else if (b < bD - TIE_D) add(false, a, fa, 0, b, fb, ib);
+      else {
+        var cut = curveAt(c, i, (bD - a) / (b - a)), fc = clamp(cut.F, fa, fb);
+        add(false, a, fa, 0, bD, fc, cut.I);
+        add(true, bD, fc, cut.I, b, fb, ib);
+      }
+    }
+    return { pUp: pUp, sUp: sUp, pDn: pDn, sDn: sDn, bar: bar };
+  }
+
+  /**
+   * compare.fromCdf(cdf, baselineD[, shiftD]) — a solved bracelet's finish
+   * against a baseline score (D), in damage %. `cdf` is res.finalScore.cdf,
+   * or res.finalScore itself; either way the solve's quantiles tighten the
+   * reading (cdfCurve), and a cdf solved through this file has them already.
+   *
+   *   pBeat           P(final >= baseline)
+   *   mean            E[final %] over the whole cdf
+   *   meanIfBeat      E[final % | final >= baseline]; null when nothing gets there
+   *   meanIfNot       E[final % | final <  baseline]; null when everything does
+   *   expectedGain    mean - baseline %: signed, the average finish against yours
+   *   gainIfBeat      meanIfBeat - baseline %, or null
+   *   shortfallIfNot  baseline % - meanIfNot, or null
+   *   excess          E[max(0, final % - baseline %)]: the per-1% figure Worth prices
+   *   basePct         the baseline, in %
+   * or null with no cdf. pBeat x meanIfBeat + (1 - pBeat) x meanIfNot = mean.
+   *
+   * `mean` is the cdf's own reading. The headline expected final is
+   * pct(res.expectedFinal), the solver's exact mean score converted, and the two
+   * can sit a few hundredths apart: an average of percentages is not the
+   * percentage of an average score, and a thinned rung carries the rest.
+   */
+  function compareFromCdf(cdf, baselineD, shiftD) {
+    var quant = null;
+    if (cdf && !Array.isArray(cdf) && cdf.cdf) { quant = cdf.quantiles || null; cdf = cdf.cdf; }
+    else if (cdf && CDF_QUANTS) quant = CDF_QUANTS.get(cdf) || null;
+    var r = cdfSplit(cdf, baselineD, shiftD, quant);
+    if (!r) return null;
+    var tot = r.pUp + r.pDn;
+    if (!(tot > 0)) return null;
+    var mean = (r.sUp + r.sDn) / tot;
+    var mb = r.pUp > 0 ? r.sUp / r.pUp : null, mn = r.pDn > 0 ? r.sDn / r.pDn : null;
+    return {
+      pBeat: r.pUp / tot,
+      mean: mean,
+      meanIfBeat: mb,
+      meanIfNot: mn,
+      expectedGain: mean - r.bar,
+      gainIfBeat: mb === null ? null : mb - r.bar,
+      shortfallIfNot: mn === null ? null : r.bar - mn,
+      excess: Math.max(0, (r.sUp - r.pUp * r.bar) / tot),
+      basePct: r.bar
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // THE OUTCOME STRIP — where a solved bracelet finishes, drawn to scale
+  //
+  // BraceletApp.strip: the Advisor's quantile strip, moved here so every tab
+  // draws it one way. Whisker p10 to p90, box the middle half, blue line the
+  // median; two optional marks on the same scale — the bracelet as it stands
+  // (the orange line the Advisor has always drawn) and the baseline bracelet
+  // (a dashed line in the text colour).
+  //
+  // THE LABELS SIT UNDER THE VALUES THEY NAME. They were once a flex row spread
+  // with space-between, so "p10" sat hard left and "p90" hard right whatever
+  // the numbers were — and when four of the five quantiles are one score, the
+  // ordinary case for a bracelet that mostly stands pat, the row read as five
+  // separate outcomes (Shizu, 2026-08-15). Each label carries its own fraction
+  // of the scale; strip.layout() places and merges them once the browser has
+  // sized them, and runs again on a resize.
+  // ------------------------------------------------------------------
+
+  // NOT ".bc-strip". advisor-capture.js injects a .bc-strip of its own — the
+  // "Parsed, 3 fields need a look" banner, display:none until it has news — and
+  // with the reader on this tab now, sharing the name hid every outcome strip.
+  var STRIP_CSS =
+    ".bc-qstrip{position:relative;height:34px;margin:12px 0 4px}" +
+    ".bc-qstrip .track{position:absolute;left:0;right:0;top:13px;height:8px;border-radius:4px;background:var(--panel2);border:1px solid var(--border)}" +
+    ".bc-qstrip .whisk{position:absolute;top:16px;height:2px;background:var(--border)}" +
+    ".bc-qstrip .box{position:absolute;top:9px;height:16px;border-radius:4px;background:rgba(102,199,255,.22);border:1px solid var(--accent)}" +
+    ".bc-qstrip .med{position:absolute;top:5px;width:2px;height:24px;background:var(--accent)}" +
+    ".bc-qstrip .cur{position:absolute;top:2px;width:2px;height:30px;background:var(--high)}" +
+    ".bc-qstrip .base{position:absolute;top:0;width:0;height:34px;border-left:2px dashed var(--text)}" +
+    ".bc-qlab{position:relative;height:16px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}" +
+    ".bc-qmk{position:absolute;top:0;white-space:nowrap;line-height:1.45}" +
+    "@media(max-width:420px){.bc-qlab{font-size:10px}}";
+
+  /** The strip's sheet, once, class-scoped: the strip is drawn in whichever pane asks. */
+  function ensureStripCss() {
+    if ($("bc-strip-css")) return;
+    var st = document.createElement("style");
+    st.id = "bc-strip-css";
+    st.appendChild(document.createTextNode(STRIP_CSS));
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  /** The label row's tooltip, naming only the marks the strip carries. */
+  function stripGloss(hasCur, hasBase) {
+    return "The spread of where this bracelet finishes, over every way the remaining rolls can land under the best play. " +
+      "Each label sits under its own mark on the strip above. p10 means one bracelet in ten ends below this; p90, one in ten ends above. " +
+      "The blue box is the middle half, the blue line the median" +
+      (hasCur ? ", the orange line where you are today" : "") +
+      (hasBase ? ", the dashed line your baseline bracelet" : "") +
+      ". Two labels join up when they land on the same score.";
+  }
+
+  /**
+   * strip.html(o) -> the strip and its label row, as HTML. Call strip.layout()
+   * on whatever holds it once it is in the page.
+   *
+   *   o.q          the solve's finalScore.quantiles {p10, p25, p50, p75, p90}, in D
+   *   o.cur        optional D: the bracelet as it stands — the orange line
+   *   o.base       optional D: the baseline bracelet — the dashed line
+   *   o.baseLabel  optional word for a label under the dashed line ("yours"),
+   *                placed and merged like the quantile labels; none by default
+   *   o.curGloss / o.baseGloss / o.gloss
+   *                optional tooltips for the two marks and the label row
+   *
+   * Every mark is kept on the scale: the ends stretch to take in the two lines
+   * as well as p10 and p90. With {q, cur} alone this draws exactly what the
+   * Advisor's own strip drew.
+   */
+  /** A mark's D from the options, or null when it is not there. */
+  function stripMarkD(v) { return (v != null && isFinite(v)) ? Number(v) : null; }
+
+  /**
+   * The strip's scale, from the options html() takes: {lo, hi, span} in damage
+   * %. The ends take in p10, p90 and whichever of the two lines is drawn, with
+   * 12% of the width (0.3 points at least) spare at each end.
+   */
+  function stripRange(o) {
+    var q = o.q, cur = stripMarkD(o.cur), base = stripMarkD(o.base);
+    var lo = pct(q.p10), hi = pct(q.p90);
+    if (cur !== null) { lo = Math.min(lo, pct(cur)); hi = Math.max(hi, pct(cur)); }
+    if (base !== null) { lo = Math.min(lo, pct(base)); hi = Math.max(hi, pct(base)); }
+    var pad = Math.max(0.3, (hi - lo) * 0.12);
+    lo -= pad; hi += pad;
+    var span = hi - lo || 1;
+    return { lo: lo, hi: lo + span, span: span };
+  }
+
+  function stripHtml(o) {
+    o = o || {};
+    var q = o.q;
+    if (!q) return "";
+    ensureStripCss();
+    var cur = stripMarkD(o.cur), base = stripMarkD(o.base);
+    var rg = stripRange(o), lo = rg.lo, span = rg.span;
+    function x(v) { return ((pct(v) - lo) / span * 100).toFixed(2) + "%"; }
+    function w(a, b) { return ((pct(b) - pct(a)) / span * 100).toFixed(2) + "%"; }
+    var marks = [["p10", pct(q.p10)], ["p25", pct(q.p25)], ["median", pct(q.p50)], ["p75", pct(q.p75)], ["p90", pct(q.p90)]];
+    if (base !== null && o.baseLabel) {
+      marks.push([String(o.baseLabel), pct(base)]);
+      marks.sort(function (a, b) { return a[1] - b[1]; });           // stable: a tie keeps the quantile first
+    }
+    return '<div class="bc-qstrip" data-lo="' + lo + '" data-span="' + span + '">' +
+      '<div class="track"></div>' +
+      '<div class="whisk" style="left:' + x(q.p10) + ";width:" + w(q.p10, q.p90) + '"></div>' +
+      '<div class="box" style="left:' + x(q.p25) + ";width:" + w(q.p25, q.p75) + '"></div>' +
+      '<div class="med" style="left:' + x(q.p50) + '"></div>' +
+      (base !== null ? '<div class="base" style="left:' + x(base) + '" data-gloss="' +
+        esc(o.baseGloss || "Your baseline bracelet: " + fmtDmg(pct(base)) + ".") + '"></div>' : "") +
+      (cur !== null ? '<div class="cur" style="left:' + x(cur) + '" data-gloss="' +
+        esc(o.curGloss || "Where the bracelet sits right now.") + '"></div>' : "") +
+      "</div>" +
+      '<div class="bc-qlab" data-lo="' + lo + '" data-span="' + span + '" data-marks="' + esc(JSON.stringify(marks)) +
+      '" data-gloss="' + esc(o.gloss || stripGloss(cur !== null, base !== null)) + '">' +
+      stripLabels(marks, lo, span) + "</div>";
+  }
+
+  /**
+   * The labels as HTML: grouped by EQUAL VALUE only, each parked at its own x.
+   * Everything measured — labels that merely collide — is stripLayout()'s.
+   */
+  function stripLabels(marks, lo, span) {
+    var groups = [], i, g;
+    for (i = 0; i < marks.length; i++) {
+      g = groups.length ? groups[groups.length - 1] : null;
+      if (g && fmtDmg(g.hi) === fmtDmg(marks[i][1])) { g.keys.push(marks[i][0]); g.hi = marks[i][1]; }
+      else groups.push({ keys: [marks[i][0]], lo: marks[i][1], hi: marks[i][1] });
+    }
+    var h = "";
+    for (i = 0; i < groups.length; i++) h += stripMark(groups[i], lo, span);
+    return h;
+  }
+
+  /**
+   * One label: the names it covers, then the score they land on. Three or more
+   * names run first…last, so a merged label never spells out half a phone's
+   * width; the value is a range whenever the ends differ at the precision they
+   * are printed to, so a merge never claims two scores are one.
+   */
+  function stripMark(g, lo, span) {
+    var mid = (g.lo + g.hi) / 2;
+    var fr = clamp((mid - lo) / span, 0, 1);
+    var names = g.keys.length > 2 ? (g.keys[0] + "…" + g.keys[g.keys.length - 1]) : g.keys.join("·");
+    var txt = names + " " + (fmtDmg(g.lo) === fmtDmg(g.hi) ? fmtDmg(g.hi) : fx(g.lo, 2) + "–" + fmtDmg(g.hi));
+    return '<span class="bc-qmk" data-fr="' + fr.toFixed(4) + '" style="left:' + (fr * 100).toFixed(2) + '%">' +
+      esc(txt) + "</span>";
+  }
+
+  /**
+   * strip.layout([root]) — anchor every strip label inside `root` (an element
+   * or a selector; the whole page by default) to its own value, and merge the
+   * ones that collide. Run it after the strip is in the page: how wide a label
+   * is and how wide the strip is are answers only the browser has. A strip in
+   * a hidden pane has no width and is left until it has one.
+   */
+  function stripLayout(root) {
+    var scope = typeof root === "string" ? document.querySelector(root) : (root || document);
+    if (!scope || !scope.querySelectorAll) return;
+    var boxes = scope.querySelectorAll(".bc-qlab"), b;
+    for (b = 0; b < boxes.length; b++) stripLayoutOne(boxes[b]);
+  }
+
+  function stripLayoutOne(box) {
+    var W = box.clientWidth, marks, lo, span;
+    if (!W) return;
+    try { marks = JSON.parse(box.getAttribute("data-marks") || "[]"); } catch (e) { return; }
+    lo = num(box.getAttribute("data-lo"), 0); span = num(box.getAttribute("data-span"), 1);
+    if (!marks.length || !(span > 0)) return;
+
+    var groups = [], i;
+    for (i = 0; i < marks.length; i++) groups.push({ keys: [marks[i][0]], lo: marks[i][1], hi: marks[i][1] });
+
+    // Merge until nothing overlaps. Each pass writes the labels, measures them
+    // where they would sit, and folds the first collision; a handful of marks,
+    // so it settles in a few passes.
+    var guard = 0;
+    while (guard++ < 8) {
+      var h = "", j;
+      for (j = 0; j < groups.length; j++) h += stripMark(groups[j], lo, span);
+      box.innerHTML = h;
+      var els = box.getElementsByClassName("bc-qmk"), hit = -1, prevRight = -1e9;
+      for (j = 0; j < els.length; j++) {
+        var w = els[j].offsetWidth;
+        var c = clamp(num(els[j].getAttribute("data-fr"), 0) * W, w / 2, Math.max(w / 2, W - w / 2));
+        els[j].style.left = (c - w / 2) + "px";
+        if (c - w / 2 < prevRight + 6) hit = j;                 // 6px is the least gap that still reads as two labels
+        prevRight = c + w / 2;
+        if (hit >= 0) break;
+      }
+      if (hit < 1) return;
+      groups[hit - 1].keys = groups[hit - 1].keys.concat(groups[hit].keys);
+      groups[hit - 1].hi = groups[hit].hi;
+      groups.splice(hit, 1);
+    }
+  }
+
+  /**
+   * strip.scale(target) — the strip's value-to-position mapping, so a tab can
+   * read a pointer against it without knowing how the strip is drawn.
+   *
+   *   scale(opts)     the options html() takes -> {lo, hi, span, fracOf, pctOf}
+   *   scale(element)  a drawn strip, or anything holding one -> the same, plus
+   *                   {el, left, width, xOf, pctAt}, measured off the page at
+   *                   the moment of the call; null when it holds no strip
+   *
+   *   fracOf(pct)     0..1 across the track        pctOf(frac)     its inverse
+   *   xOf(pct)        a client x, in pixels        pctAt(clientX)  the % under it
+   *
+   * Percentages are damage %, the strip's own unit. Measure again after a
+   * resize or a scroll: the element form reads the box where it stands.
+   */
+  function stripScale(target) {
+    var r, el = null;
+    if (target && target.nodeType === 1) {
+      el = (target.classList && target.classList.contains("bc-qstrip")) ? target : target.querySelector(".bc-qstrip");
+      if (!el) return null;
+      var lo = num(el.getAttribute("data-lo"), NaN), span = num(el.getAttribute("data-span"), NaN);
+      if (!isFinite(lo) || !(span > 0)) return null;
+      r = { lo: lo, hi: lo + span, span: span };
+    } else {
+      if (!target || !target.q) return null;
+      r = stripRange(target);
+    }
+    r.fracOf = function (p) { return (num(p, r.lo) - r.lo) / r.span; };
+    r.pctOf = function (f) { return r.lo + num(f, 0) * r.span; };
+    if (el) {
+      var box = el.getBoundingClientRect();
+      r.el = el; r.left = box.left; r.width = box.width;
+      r.xOf = function (p) { return r.left + r.fracOf(p) * r.width; };
+      r.pctAt = function (x) { return r.width > 0 ? r.pctOf(clamp((num(x, r.left) - r.left) / r.width, 0, 1)) : r.lo; };
+    }
+    return r;
+  }
+
+  // A resize moves every strip's width under labels placed in pixels.
+  var stripResizeT = null;
+  window.addEventListener("resize", function () {
+    if (stripResizeT) clearTimeout(stripResizeT);
+    stripResizeT = setTimeout(function () { stripResizeT = null; stripLayout(document); }, 150);
+  });
 
   // ------------------------------------------------------------------
   // the shared state, in this file's terms
@@ -720,8 +1202,20 @@
   // worker plumbing
   // ------------------------------------------------------------------
 
-  var worker = null, reqSeq = 0, inflight = null, queued = null;
+  var worker = null, reqSeq = 0, inflight = null;
+  // ONE WAITING REQUEST PER LANE, and a newer request replaces only its own
+  // lane's. The lanes are the three kinds of solve that share this one worker:
+  //   main   the Grader's bracelet — this tab's and the Advisor's; "advise" too
+  //   fresh  the same bracelet unrolled, for the unrolled card
+  //   side   solver.solve(), any bracelet a tab asks about
+  // With one queue, the unrolled card's solve could cancel the Advisor's, and a
+  // sweep of side solves would cancel both. The main lane goes first.
+  var LANES = ["main", "fresh", "side"];
+  var queued = { main: null, fresh: null, side: null };
   var cache = {}, cacheOrder = [], CACHE_MAX = 40;
+  // Side solves keep a cache of their own, so a sweep of them cannot push the
+  // Grader's bracelet out of the one above. Lookups read both.
+  var sideCache = {}, sideOrder = [], SIDE_MAX = 60;
   var lastSolve = null, lastSolveKey = null;     // the current bracelet
   var freshSolve = null, freshSolveKey = null;   // the same bracelet unrolled — "what an empty one is worth"
   // Which state the WORKER's stored context belongs to. A cache hit answers the
@@ -756,8 +1250,20 @@
   // baselinePct 0 for the same reason: worth is a sum over the distribution the
   // solve returns (worthOf), so the gold slider and the baseline both redraw the
   // number without re-solving. A solve is three seconds; the sum is microseconds.
+  //
+  // A SOLVE SPEC is everything a solve reads: {grade, slots, rolls, fixed,
+  // granted, traits, profile}. The Grader's bracelet is one spec (editorSpec);
+  // solver.solve() builds others (specOf). One key for both, so a side solve of
+  // the very bracelet in the Grader is a cache hit, not a second solve.
+  function keyFor(sp) {
+    return JSON.stringify([sp.grade, sp.slots, sp.rolls, sp.fixed, sp.granted, sp.traits]) + "|" + profileSig(sp.profile);
+  }
+  function editorSpec(profile, granted, rolls) {
+    return { grade: S.grade, slots: S.slots, rolls: rolls, fixed: fixedLines(), granted: granted,
+      traits: traitValues(), profile: profile };
+  }
   function keyOf(profile, granted, rolls) {
-    return JSON.stringify([S.grade, S.slots, rolls, fixedLines(), granted, traitValues()]) + "|" + profileSig(profile);
+    return keyFor(editorSpec(profile, granted, rolls));
   }
 
   function ensureWorker() {
@@ -786,34 +1292,78 @@
     return worker;
   }
 
-  // One request in flight. A newer request replaces whatever is waiting, so a
-  // burst of keystrokes costs one solve, not ten.
-  function send(cmd, payload) {
+  /**
+   * One request in flight. A newer request replaces whatever is waiting IN ITS
+   * OWN LANE, so a burst of keystrokes costs one solve, not ten.
+   *
+   *   o.lane     "main" (the default), "fresh" or "side" — see LANES
+   *   o.key      a solve's cache key. The SAME solve already running, or already
+   *              waiting in this lane, is the answer this caller wants, so it
+   *              gets that request's promise instead of a second three-second
+   *              solve. An import used to pay twice: the load and the economy
+   *              seed each asked for the bracelet while the first solve ran.
+   *   o.keepCtx  false when the worker need not keep this solve's context. A
+   *              request that keeps it can answer one that does not; never the
+   *              other way round, or advise() would read the wrong bracelet.
+   */
+  function send(cmd, payload, o) {
+    o = o || {};
+    var lane = queued.hasOwnProperty(o.lane) ? o.lane : "main";
+    var keep = o.keepCtx !== false;
     var w = ensureWorker();
     if (!w) return Promise.reject(new Error("Web Workers are unavailable in this browser."));
-    return new Promise(function (resolve, reject) {
-      var job = { id: ++reqSeq, cmd: cmd, payload: payload, resolve: resolve, reject: reject };
-      // Only one request ever waits: a newer one replaces it, so a burst of
-      // keystrokes costs one solve. The replaced job MUST be rejected or its
-      // caller would hang and the busy indicator would never clear.
-      if (queued) queued.reject(new Error("superseded"));
-      queued = job;
-      pump();
-    });
+    if (o.key) {
+      var same = sameJob(o.key, lane, keep);
+      if (same) return same.promise;
+    }
+    var job = { id: ++reqSeq, cmd: cmd, payload: payload, lane: lane, key: o.key || null, keepCtx: keep };
+    job.promise = new Promise(function (resolve, reject) { job.resolve = resolve; job.reject = reject; });
+    // Only one request waits per lane: a newer one replaces it. The replaced
+    // job MUST be rejected or its caller would hang and the busy indicator
+    // would never clear.
+    if (queued[lane]) queued[lane].reject(new Error("superseded"));
+    queued[lane] = job;
+    pump();
+    return job.promise;
+  }
+  /**
+   * A request for the same solve that this caller can share: the one running
+   * (whichever lane sent it — it can no longer be replaced), or the one waiting
+   * in the caller's own lane (replaced only by what would replace the caller's).
+   */
+  function sameJob(key, lane, needCtx) {
+    function fits(j) { return !!j && j.key === key && (j.keepCtx || !needCtx); }
+    if (fits(inflight)) return inflight;
+    return fits(queued[lane]) ? queued[lane] : null;
   }
   function pump() {
-    if (inflight || !queued) return;
-    inflight = queued; queued = null;
-    worker.postMessage({ id: inflight.id, cmd: inflight.cmd, payload: inflight.payload });
+    if (inflight || !worker) return;
+    for (var i = 0; i < LANES.length; i++) {
+      var j = queued[LANES[i]];
+      if (!j) continue;
+      queued[LANES[i]] = null;
+      inflight = j;
+      worker.postMessage({ id: j.id, cmd: j.cmd, payload: j.payload });
+      return;
+    }
+  }
+  /** Drop the request waiting in one lane. Its caller hears "superseded". */
+  function cancelLane(lane) {
+    var j = queued[lane];
+    if (!j) return false;
+    queued[lane] = null;
+    j.reject(new Error("superseded"));
+    return true;
   }
 
-  function cacheGet(k) { return cache[k]; }
-  function cachePut(k, v) {
-    if (!cache[k]) {
-      cacheOrder.push(k);
-      while (cacheOrder.length > CACHE_MAX) delete cache[cacheOrder.shift()];
+  function cacheGet(k) { return cache[k] || sideCache[k]; }
+  function cachePut(k, v, side) {
+    var c = side ? sideCache : cache, order = side ? sideOrder : cacheOrder, max = side ? SIDE_MAX : CACHE_MAX;
+    if (!c[k]) {
+      order.push(k);
+      while (order.length > max) delete c[order.shift()];
     }
-    cache[k] = v;
+    c[k] = v;
   }
 
   function setBusy(on) {
@@ -828,27 +1378,169 @@
    *            cannot evict the context advise() reads.
    * o.force    skip the cache — used when the display is cached but the worker
    *            is holding some other bracelet's context.
+   * o.lane     which queue lane; by default "main", or "fresh" when keepCtx is off.
    */
   function solveState(profile, granted, rolls, o) {
+    return solveSpec(editorSpec(profile, granted, rolls), o);
+  }
+
+  /** Any spec, through the cache, the lanes and the worker. -> Promise({key, res, cached}) */
+  function solveSpec(sp, o) {
     o = o || {};
-    var k = keyOf(profile, granted, rolls);
+    var keep = o.keepCtx !== false, lane = o.lane || (keep ? "main" : "fresh");
+    var side = lane === "side";
+    var k = keyFor(sp);
     var hit = cacheGet(k);
     if (hit && !o.force) return Promise.resolve({ key: k, res: hit, cached: true });
-    setBusy(true);
+    // The busy dot is the Grader's: a tab's side solves carry their own signs.
+    if (!side) setBusy(true);
     return send("solve", {
-      grade: S.grade, profile: profile, fixedLines: fixedLines(), grantedLines: granted,
-      traitValues: traitValues(),
-      slots: S.slots, rollsLeft: rolls, goldPer1Pct: 0, baselinePct: 0,
-      ctxKey: k, keepCtx: o.keepCtx !== false
-    }).then(function (res) {
-      setBusy(false);
-      cachePut(k, res);
-      if (o.keepCtx !== false) workerCtxKey = k;
+      grade: sp.grade, profile: sp.profile, fixedLines: sp.fixed, grantedLines: sp.granted,
+      traitValues: sp.traits,
+      slots: sp.slots, rollsLeft: sp.rolls, goldPer1Pct: 0, baselinePct: 0,
+      ctxKey: k, keepCtx: keep
+    }, { lane: lane, key: k, keepCtx: keep }).then(function (res) {
+      if (!side) setBusy(false);
+      noteQuantiles(res);
+      cachePut(k, res, side);
+      if (keep) workerCtxKey = k;
       return { key: k, res: res, cached: false };
     }, function (err) {
-      setBusy(false);
+      if (!side) setBusy(false);
       throw err;
     });
+  }
+
+  // ---- solver.solve(): any bracelet, not just the Grader's ----
+
+  /**
+   * solver.solve(spec) -> Promise(res): a bracelet described from outside the
+   * Grader, solved on the live profile through the same worker. For the
+   * Advisor's simulator, which asks at every slider position:
+   *
+   *   spec = { grade: "ancient" | "relic",           default: the Grader's
+   *            slots: 1-3, legal for the grade,       default: the Grader's
+   *            traits: {crit, spec, swift} points,    or the Grader's {on, v} shape
+   *            lines: [granted lines],                model lines or picker rows;
+   *                                                   null, {} and "none" are empty
+   *            fixed: [fixed lines],                  default none
+   *            rollsLeft: 0-20,                       default 7 unrolled, else the Grader's
+   *            unrolled: true }                       ignore the lines: a sealed bracelet
+   *
+   * CHEAP TO REPEAT: a spec already solved is a cache hit, and one already
+   * running or waiting is shared rather than solved twice. CANCELLABLE: it rides
+   * its own lane, one request waiting at a time, so the position the slider
+   * has left is dropped the moment a newer one arrives — its promise rejects
+   * with Error("superseded"), which a caller should catch and ignore. A solve
+   * already running cannot be stopped; its answer is cached and waits for the
+   * next ask.
+   *
+   * It NEVER keeps its context in the worker (keepCtx off), so it cannot evict
+   * the one advise() reads, and it never touches the Grader's own results.
+   * Anything the solver would refuse — half the slots filled, a duplicate
+   * family, more lines than slots — rejects with a sentence saying so.
+   *
+   * The result is the worker's trimmed solve: finalScore.cdf (160 rungs) and
+   * finalScore.quantiles in log-space D, expectedFinal, currentScore, and the
+   * rest. It may be a cached object shared with other callers: read it, never
+   * write to it.
+   */
+  function solveAny(spec) {
+    var sp;
+    try { sp = specOf(spec); } catch (e) { return Promise.reject(e); }
+    return solveSpec(sp, { keepCtx: false, lane: "side" }).then(function (out) { return out.res; });
+  }
+
+  /** A spec from outside, in the solver's own terms, or a thrown Error saying what is wrong with it. */
+  function specOf(spec) {
+    spec = spec || {};
+    var grade = (spec.grade === "relic" || spec.grade === "ancient") ? spec.grade : S.grade;
+    var legal = grade === "relic" ? [1, 2] : [2, 3];
+    var slots = Math.round(num(spec.slots, legal.indexOf(S.slots) >= 0 ? S.slots : legal[legal.length - 1]));
+    if (legal.indexOf(slots) < 0) {
+      throw new Error("A" + (grade === "relic" ? " Relic" : "n Ancient") + " bracelet has " + legal.join(" or ") +
+        " granted slots, not " + slots + ".");
+    }
+    var unrolled = !!spec.unrolled;
+    var rolls = clamp(Math.round(num(spec.rollsLeft, unrolled ? S.rollsTotal : S.rollsLeft)), 0, 20);
+    var traits = spec.traits ? traitMapOf(spec.traits) : traitValues();
+    var fixed = specLines(spec.fixed, grade, false, []);
+    var granted = unrolled ? [] : specLines(spec.lines, grade, true, fixed);
+    if (granted.length > slots) throw new Error(granted.length + " lines for " + slots + " granted slots.");
+    if (granted.length && granted.length < slots) {
+      throw new Error("Fill every granted slot, or leave them all empty for an unrolled bracelet.");
+    }
+    var bad = validateSet(fixed.concat(granted));
+    if (bad) throw new Error("This bracelet cannot exist: " + bad);
+    return { grade: grade, slots: slots, rolls: rolls, fixed: fixed, granted: granted, traits: traits, profile: buildProfile() };
+  }
+
+  /** Trait points in traitValues()'s own shape and key order, from points or {on, v}. */
+  function traitMapOf(t) {
+    var out = {}, i, k, v;
+    for (i = 0; i < TRAIT_KEYS.length; i++) {
+      k = TRAIT_KEYS[i];
+      v = t[k];
+      if (v === undefined && k === "swift") v = t.swiftness;
+      if (v && typeof v === "object") v = v.on ? v.v : 0;
+      out[k] = Math.max(0, num(v, 0));
+    }
+    return out;
+  }
+
+  /**
+   * Lines from outside, in the shapes grantedLines() makes, so an identical
+   * bracelet has an identical cache key. Model lines ({cat, …}) and picker rows
+   * ({fam, …}) are both read; empties are dropped. A "Junk Line" — {junk: true}
+   * or the row "junk" — gets a stand-in family the way the Grader's does:
+   * worth nothing on the live role, and not a family the other lines already
+   * name.
+   */
+  function specLines(list, grade, granted, others) {
+    if (!list || !list.length) return [];
+    var out = [], junkAt = [], used = {}, all, reps = [], pool, i, x, l;
+    for (i = 0; i < list.length; i++) {
+      x = list[i];
+      if (!x || typeof x !== "object") continue;
+      if (x.fam !== undefined ? x.fam === JUNK : !!x.junk) {
+        // Fixed lines never reroll, so they are never junk: drop it there.
+        if (granted) { junkAt.push(out.length); out.push(null); }
+        continue;
+      }
+      if (x.fam !== undefined) l = (x.fam && x.fam !== "none") ? rowToLine(x, grade) : null;
+      else l = modelLine(x, grade);
+      if (l) out.push(l);
+    }
+    if (!junkAt.length) return out;
+    // Index-aligned stand-ins, exactly as junkReps() hands them to the Grader's
+    // rows, so the same bracelet keys the same whichever door it came in by.
+    all = out.concat(others);
+    for (i = 0; i < all.length; i++) if (all[i] && all[i].cat === "special") used[Number(all[i].family)] = 1;
+    pool = junkFamPool(grade);
+    for (i = 0; i < pool.length && reps.length < out.length; i++) if (!used[pool[i]]) reps.push(pool[i]);
+    while (reps.length < out.length) reps.push(pool[reps.length] || pool[0]);
+    for (i = 0; i < junkAt.length; i++) out[junkAt[i]] = { cat: "special", family: reps[junkAt[i]], tier: "low", junk: true };
+    return out;
+  }
+
+  /** A model line checked into rowToLine's own shape, or null. */
+  function modelLine(x, grade) {
+    if (x.cat === "basic") {
+      if (x.family !== "mainStat" && x.family !== "vitality") return null;
+      var rg = msRange(grade, x.family);
+      var v = num(x.value, defaultBasicValue(grade, x.family));
+      return { cat: "basic", family: x.family, value: clamp(v, rg[0], rg[1]) };
+    }
+    if (x.cat === "trait") {
+      var tk = B.traitFamilyKey(String(x.family));
+      return tk ? { cat: "trait", family: tk } : null;
+    }
+    if (x.cat === "special") {
+      var fam = DATA.SPECIAL_BY_ID[Number(x.family)];
+      if (!fam || TIERS.indexOf(x.tier) < 0) return null;
+      return { cat: "special", family: fam.id, tier: x.tier };
+    }
+    return null;
   }
 
   // ------------------------------------------------------------------
@@ -1045,6 +1737,37 @@
       // Total row would float free of the table without this.
       "#tab-calculator tfoot td{border-top:1px solid var(--border)}" +
       "#tab-calculator .bc-warn{color:var(--bad);font-size:12.5px;margin:8px 0}" +
+      // ---- the ways in: import panel, character search, screenshot reader ----
+      // The search sits beside the import panel where there is room and under it
+      // where there is not. minmax(0,…) on both tracks, never a bare 1fr: the
+      // import panel holds a row of inputs that must not push the page sideways.
+      "#tab-calculator .bc-loadrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,330px);gap:0 12px;align-items:start}" +
+      "@media(max-width:900px){#tab-calculator .bc-loadrow{grid-template-columns:minmax(0,1fr)}}" +
+      // The search is char-picker.js's, and CharPicker.mount() owns the host's
+      // class list, so its frame is set by id.
+      "#bc-who{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:11px 12px;min-width:0;margin:0 0 12px}" +
+      "#bc-who .cp-note:empty{display:none}" +
+      "#tab-calculator .bc-intakepanel{margin:0 0 12px}" +
+      "#tab-calculator .bc-intakepanel .bc-hdrow{margin-bottom:8px}" +
+      "#tab-calculator .bc-intakezone{border:2px dashed var(--border);border-radius:10px;padding:12px;text-align:center;" +
+        "color:var(--dim);background:var(--panel2);font-size:12.5px;line-height:1.9;transition:border-color .15s,background .15s}" +
+      "#tab-calculator .bc-intakezone.drag{border-color:var(--accent);background:rgba(102,199,255,.08);color:var(--text)}" +
+      "#tab-calculator .bc-intakezone b{color:var(--text)}" +
+      "#tab-calculator .bc-intakestatus{font-size:12px;color:var(--dim);margin-top:6px;min-height:16px}" +
+      "#tab-calculator .bc-intakestatus.working{color:var(--accent)}" +
+      "#tab-calculator .bc-intakestatus.err{color:var(--bad)}" +
+      // The reader's own "N fields need a look, tap the highlighted ones" banner
+      // points at highlights this tab does not draw; the list under the reader
+      // says the same thing field by field, with a button on each.
+      "#bc-intake .bc-strip{display:none!important}" +
+      "#tab-calculator .bc-parsed{margin-top:10px;border:1px solid var(--border);border-radius:9px;background:var(--panel2);padding:10px 12px}" +
+      "#tab-calculator .bc-parsed .bc-pline{display:flex;gap:9px;align-items:baseline;padding:4px 0;font-size:12.5px;border-bottom:1px solid var(--border)}" +
+      "#tab-calculator .bc-parsed .bc-pline:last-of-type{border-bottom:none}" +
+      "#tab-calculator .bc-parsed .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);min-width:62px}" +
+      "#tab-calculator .bc-unconf{color:var(--accent);border-bottom:1px dashed var(--accent)}" +
+      "#tab-calculator .bc-okbtn{background:none;border:1px solid var(--border);border-radius:99px;color:var(--dim);" +
+        "font:inherit;font-size:10.5px;font-weight:700;padding:1px 9px;cursor:pointer;margin-left:auto}" +
+      "#tab-calculator .bc-okbtn:hover{color:var(--text);border-color:var(--accent)}" +
       "</style>";
   }
 
@@ -1067,7 +1790,11 @@
    * Every host is empty until something fills it.
    */
   function hostsMarkup() {
-    return '<div id="bc-import"></div><div id="bc-refresh-banner"></div>' +
+    // The ways in first: the import panel with the character search beside it,
+    // the screenshot reader under both. Then who was loaded, then the deck.
+    return '<div class="bc-loadrow"><div id="bc-import"></div><div id="bc-who"></div></div>' +
+      intakeMarkup() +
+      '<div id="bc-refresh-banner"></div>' +
       '<div id="bc-loadouts"></div><div id="bc-charhdr"></div><div id="bc-deckhost"></div>';
   }
 
@@ -1157,8 +1884,9 @@
       "only by the outcomes that beat the bracelet you would wear instead, weighted by how often they land and " +
       "by how far they clear it. So it is never negative: a bracelet you would not equip is worth nothing, not " +
       "a debt. Both inputs are yours &mdash; the gold rate and the baseline are the <b>Economy</b> pair at the " +
-      "foot of the Grader panel, and an " +
-      "import seeds them from the character's own bracelet.</p>" +
+      "foot of the Grader panel. An import sets the rate from the character's combat power and makes the " +
+      "bracelet they wear the baseline, scored the way the solver scores its own outcomes and scored again " +
+      "whenever the deck or the role moves; <b>Clear</b> puts the baseline back to a slider at 0.</p>" +
 
       "<p><b>LOCK and REROLL</b> beside a slot come from the solver's best set of locks. A lock is worth buying only " +
       "when the line it holds is scarcer than what a fresh draw would hand you, so the badge does not say this " +
@@ -1241,6 +1969,40 @@
     msg += " · attack power " + nf(B.attackPower(p, 0, 0)) + " · additional damage pool " + fx(B.addDamagePool(p) * 100, 2) + "%";
     msg += " · fixed traits " + signPct(traitTotalPct(p));
     note.textContent = msg + ".";
+    // The per-line chips are the same kind of live read-out, and the line above
+    // is their sum, so they repaint together.
+    paintTraitChips(p);
+  }
+
+  /**
+   * What one trait line is worth, beside the box it is typed into: the figure
+   * the read-out line sums for "fixed traits", through the same traitOnePct, so
+   * the chips always add up to it.
+   */
+  function traitChip(k, profile) {
+    var v = traitValues()[k];
+    if (!v) return { cls: "bc-trw off", txt: "—", gloss: "Switched off, so this line adds nothing to any score on the page." };
+    var d = traitOnePct(k, profile);
+    return { cls: "bc-trw", txt: signPct(d),
+      gloss: v + " " + TRAIT_LABELS[k] + " is worth " + signPct(d) + " on the character being scored. " +
+        "The chips add up to the fixed-traits figure above." };
+  }
+  function traitChipHtml(k, profile) {
+    var c = traitChip(k, profile);
+    return '<span class="' + c.cls + '" id="bc-trw-' + k + '" data-gloss="' + esc(c.gloss) + '">' + esc(c.txt) + "</span>";
+  }
+  /** Repaint the chips where they stand: a keystroke must not rebuild the row it is typed into. */
+  function paintTraitChips(profile) {
+    var p = profile || buildProfile(), i, k, el, c;
+    for (i = 0; i < TRAIT_KEYS.length; i++) {
+      k = TRAIT_KEYS[i];
+      el = $("bc-trw-" + k);
+      if (!el) continue;
+      c = traitChip(k, p);
+      el.className = c.cls;
+      el.textContent = c.txt;
+      el.setAttribute("data-gloss", c.gloss);
+    }
   }
 
   // ---- the bracelet's two fixed combat traits ----
@@ -1266,6 +2028,8 @@
             ? "Switch off if your bracelet does not carry this line."
             : "Switch on if your bracelet carries this line.") + '">' +
           (t.on ? "active" : "off") + "</button>" +
+        // The chip rides third on the row (CSS order), between the box and the switch.
+        traitChipHtml(k) +
         "</div>";
     }
     // The "two combat traits, 61-120, never reroll" note is gone (Shizu,
@@ -1465,10 +2229,20 @@
    * are not rolled yet, so a grade would be the traits alone, which misleads.
    */
   function gradeOf(res, profile) {
+    if (!res || res.unrolled) return null;
+    return gradeOfSet(S.grade, grantedLines(), traitValues(), profile);
+  }
+  /**
+   * The same ladder for ANY bracelet: its effect lines (granted and fixed, never
+   * the two traits), its trait points, its grade. The baseline bracelet is
+   * graded through here, so a character's worn bracelet carries the letter the
+   * Current score card gives the same bracelet.
+   */
+  function gradeOfSet(grade, lines, traits, profile) {
     var SR = window.Subrank;
-    if (!SR || !res || res.unrolled) return null;
+    if (!SR) return null;
     try {
-      var g = SR.braceletScore({ grade: S.grade, lines: grantedLines(), traits: traitValues(), profile: profile });
+      var g = SR.braceletScore({ grade: grade, lines: lines, traits: traits, profile: profile });
       var col = SR.colorOf(g.band.key, g.isPerfect);
       var sup = profile && profile.role === "support";
       return {
@@ -1897,7 +2671,7 @@
     // from (index.html, LoseiiBack).
     if (d.reset && window.LoseiiBack) window.LoseiiBack.clear();
     if (d.reset) {
-      cache = {}; cacheOrder = [];
+      cache = {}; cacheOrder = []; sideCache = {}; sideOrder = [];
       freshSolve = null; lastSolve = null; freshSolveKey = null; lastSolveKey = null; workerCtxKey = null;
     }
     if (d.shape || d.reset) {
@@ -2002,6 +2776,10 @@
         save(); renderTraits(); updateBasicsNote(); solveNow();
         return;
       }
+      // The Economy's baseline row (profile.js draws it; the editor's lines
+      // are this file's, so the two presses land here).
+      if (t.id === "bc-base-set") { setBaselineFromEditor(); return; }
+      if (t.id === "bc-base-clear") { P.baseline.clear(); return; }
       if (t.id === "bc-clear") {
         // A blank bracelet: the Advisor's padlocks and its half-typed roll both
         // described the one being cleared.
@@ -2234,6 +3012,8 @@
     P.onAdvancedRender(function () { renderFixedRows(); });
     renderBracelet();
     bindBody();
+    mountPicker();
+    bindIntake();
     P.onChange(onProfileChange);
     renderResults(buildProfile(), null);
     recompute();
@@ -2277,6 +3057,424 @@
     try { document.dispatchEvent(new CustomEvent("braceletedited")); } catch (e) {}
   }
 
+  /**
+   * The one hook bible-import.js uses — and the screenshot reader, through
+   * applyParsed. It takes a patch already in this file's own shape — grade,
+   * slots, rolls left, the two combat traits, the granted rows and any fixed
+   * rows — and everything after that is the ordinary redraw an edit would
+   * trigger. Keys the patch leaves out keep their current value, so an import
+   * never disturbs the character or economy settings.
+   *
+   * `patch.character` is optional: {name, region, class, itemLevel, source,
+   * pulledAt, cached, profile}. When it is there the banner appears, and the
+   * bracelet becomes the baseline under that name. A screenshot carries none,
+   * so it changes neither. What the page said about the character's GEAR rides
+   * on that object and is applied only when the user asks for it —
+   * profile.js's importCharacterStats() is the one path, and it runs on a press.
+   */
+  function applyImport(patch) {
+    if (!patch) return false;
+    var keys = ["grade", "slots", "rollsLeft", "traits", "traitOrder", "rows", "fixedRows"], i;
+    var next = {};
+    for (i = 0; i < keys.length; i++) {
+      if (patch[keys[i]] !== undefined) next[keys[i]] = patch[keys[i]];
+    }
+    next.rolled = null;                          // a new bracelet voids the cut in progress
+    // The padlocks the character is actually wearing, if the import found any.
+    // lostark.bible's `fixed` flag is that padlock, not a drop-fixed line.
+    if (patch.lockedIdx && patch.lockedIdx.length && next.rows) {
+      var lk = [], li;
+      for (li = 0; li < next.rows.length; li++) lk.push(patch.lockedIdx.indexOf(li) >= 0);
+      next.locks = lk;
+    } else {
+      next.locks = null;
+    }
+    // The banner and the cards read lastSolve. It belongs to the bracelet being
+    // replaced, so drop it: "—" for a moment beats the previous character's score.
+    lastSolve = null; lastSolveKey = null; freshSolve = null; freshSolveKey = null;
+    if (patch.character) next.char = patch.character;
+    P.set(next);                                 // merges, persists, re-renders the deck, notifies
+    // THE WORN BRACELET BECOMES THE BASELINE, under the character's name.
+    // What someone is wearing is the bracelet any other has to beat, and the
+    // Grader, holding the same bracelet, starts level with it. A bracelet the
+    // game could not hold leaves the baseline as it was.
+    if (patch.character && patch.character.name) {
+      var worn = editorSnapshot(String(patch.character.name), "import");
+      if (worn) P.baseline.set(worn);
+    }
+    // THE LEFT COLUMN IS NOT TOUCHED. An import used to fill the deck with the
+    // character's own gear the moment they loaded, which meant the number on
+    // screen was not the number the board shows them and nobody could tell
+    // which they were reading. The settings stay ours until the user presses
+    // "Import Character Stats" (Shizu, 2026-08-12); everything that button
+    // needs is on patch.character, which P.set has just stored.
+    renderCharHeader();
+    return true;
+  }
+
+  // ------------------------------------------------------------------
+  // THE CHARACTER SEARCH — char-picker.js, beside the import panel
+  //
+  // Type-ahead over the board and the ★ strip. It loads nothing itself: a pick
+  // goes through BraceletImport.loadCharacter, the import panel's own path, so
+  // it fills the Grader and sets the baseline exactly as a pull does.
+  // ------------------------------------------------------------------
+
+  function mountPicker() {
+    var host = $("bc-who");
+    if (!host) return;
+    if (!window.CharPicker || typeof window.CharPicker.mount !== "function") {
+      host.innerHTML = '<div class="note">Character search did not load. The panel beside it still looks a character up.</div>';
+      return;
+    }
+    window.CharPicker.mount(host, { title: "Find a character", emptyText: "No character loaded." });
+  }
+
+  // ------------------------------------------------------------------
+  // THE SCREENSHOT READER — under the import panel
+  //
+  // advisor-capture.js reads a bracelet off a screenshot or a shared game
+  // screen and draws its own drop zone, share buttons and status line;
+  // advisor-glue.js mounts it into a host and joins it to window.BraceletAdvisor,
+  // the seam the Advisor tab used to provide. The Advisor no longer loads a
+  // bracelet — this tab does — so the host and the seam are here, and a read
+  // lands in the Grader through applyImport, the import's own path.
+  //
+  // LOADED ON FIRST USE. Mounting the reader starts its OCR worker, which
+  // fetches Tesseract from a CDN: megabytes, on the tab everyone opens first,
+  // for people who may never paste a screenshot. So the host starts as a
+  // one-line drop zone, and the reader loads the moment it is wanted — a
+  // pointer over the panel, a file dropped, pasted or chosen, or its button. A
+  // file that arrives first waits for it. The two scripts load at the stamps
+  // index.html gives them (LAZY_TABS), so the page keeps one version authority.
+  //
+  // THE SHARE FLOW IS THE READER'S OWN. getDisplayMedia needs a real click, so
+  // nothing here chains a share onto a script load: the reader draws its own
+  // "Share game screen" button, and that press starts the share.
+  // ------------------------------------------------------------------
+
+  var LOW_CONF = 0.75;             // below this a parsed field wants a human look (the Advisor's own cut)
+  var intake = { state: "idle", capture: null, pending: null, report: null, confirmed: {} };
+
+  function intakeMarkup() {
+    return '<div class="panel bc-intakepanel" id="bc-intakewrap">' +
+      '<div class="bc-hdrow"><h2 style="margin:0" data-gloss="Reads the lines off a screenshot of the bracelet&#39;s tooltip and puts them in the Grader below. Check any field it marks before you trust the score.">Screenshot</h2>' +
+      '<button type="button" class="mbtn" id="bc-intake-file">Choose a screenshot</button></div>' +
+      '<div id="bc-intake">' +
+      '<div class="bc-intakezone" id="bc-intakezone"><b>Drop or paste</b> a bracelet screenshot here, or ' +
+      '<button type="button" class="mbtn bc-mini" id="bc-intake-go">open the reader</button> to read your game screen.</div>' +
+      '<div class="bc-intakestatus" id="bc-intakestatus" role="status"></div>' +
+      "</div>" +
+      '<div id="bc-parsed"></div>' +
+      "</div>";
+  }
+
+  /** The reader's own status line once it is mounted; the placeholder's before. */
+  function intakeStatus(text, kind) {
+    var host = $("bc-intake"), el = host ? host.querySelector(".bc-status") : null, base = "bc-status";
+    if (!el) { el = $("bc-intakestatus"); base = "bc-intakestatus"; }
+    if (!el) return;
+    el.className = base + (kind ? " " + kind : "");
+    el.textContent = text || "";
+  }
+
+  /** The two scripts, at the stamps index.html lists them under; bare names only if it lists them nowhere. */
+  function readerUrls() {
+    var want = ["advisor-capture.js", "advisor-glue.js"], lazy = window.LAZY_TABS || {}, out = [], i, k, j, hit;
+    for (i = 0; i < want.length; i++) {
+      hit = null;
+      for (k in lazy) if (Object.prototype.hasOwnProperty.call(lazy, k) && lazy[k] && lazy[k].length) {
+        for (j = 0; j < lazy[k].length; j++) if (String(lazy[k][j]).split("?")[0] === want[i]) hit = lazy[k][j];
+      }
+      out.push(hit || want[i]);
+    }
+    return out;
+  }
+  function loadScript(src) {
+    return new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = function () { resolve(true); };
+      s.onerror = function () { resolve(false); };
+      document.body.appendChild(s);
+    });
+  }
+
+  /**
+   * Load and mount the reader, once; hand it `file` when it is ready. The glue
+   * joins the moment its script runs, because the seam is on window by then.
+   * A failed load says so and can be tried again.
+   */
+  function engageIntake(file) {
+    if (file) intake.pending = file;
+    if (intake.state === "ready") { flushIntake(); return; }
+    if (intake.state === "loading") return;
+    intake.state = "loading";
+    window.BraceletAdvisor = INTAKE_SEAM;
+    intakeStatus("Loading the reader…", "working");
+    var urls = readerUrls(), chain = Promise.resolve(true);
+    if (!window.BraceletCapture) chain = chain.then(function () { return loadScript(urls[0]); });
+    if (!window.BraceletAdvisorGlue) chain = chain.then(function () { return loadScript(urls[1]); });
+    chain.then(function () {
+      var G = window.BraceletAdvisorGlue;
+      if (!intake.capture && G && typeof G.join === "function") G.join();
+      if (intake.capture) { intake.state = "ready"; flushIntake(); return; }
+      intake.state = "idle";
+      intakeStatus("The screenshot reader did not load. Type the lines into the Grader below, or try again.", "err");
+    });
+  }
+
+  /** A file that came in before the reader: exactly what a drop on its own zone does, preview and all. */
+  function flushIntake() {
+    var f = intake.pending, cap = intake.capture;
+    intake.pending = null;
+    if (!f || !cap) return;
+    var host = $("bc-intake"), zone = host ? host.querySelector(".bc-drop") : null;
+    try {
+      if (zone && typeof DataTransfer === "function" && typeof DragEvent === "function") {
+        var dt = new DataTransfer();
+        dt.items.add(f);
+        zone.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+        return;
+      }
+    } catch (e) { /* a browser that will not build the event takes the plain parse */ }
+    if (cap.onFiles) cap.onFiles([f]);
+  }
+
+  /** The image in a paste, or null. */
+  function pastedImage(e) {
+    var items = e.clipboardData && e.clipboardData.items, i, f;
+    if (!items) return null;
+    for (i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf("image") === 0 && (f = items[i].getAsFile())) return f;
+    }
+    return null;
+  }
+
+  var intakeFileInput = null;
+  function chooseScreenshot() {
+    if (!intakeFileInput) {
+      intakeFileInput = document.createElement("input");
+      intakeFileInput.type = "file";
+      intakeFileInput.accept = "image/*";
+      intakeFileInput.style.display = "none";
+      intakeFileInput.addEventListener("change", function () {
+        var f = intakeFileInput.files && intakeFileInput.files[0];
+        intakeFileInput.value = "";
+        if (f) engageIntake(f);
+      });
+      document.body.appendChild(intakeFileInput);
+    }
+    intakeFileInput.click();
+  }
+
+  /** A label and a value for one parsed field, for the list under the reader. */
+  function fieldReport(path, patch) {
+    var m = /^rows\.(\d+)\.(fam|tier|value)$/.exec(path), g = patch.grade || S.grade, i;
+    if (m && patch.rows && patch.rows[Number(m[1])]) {
+      i = Number(m[1]);
+      var line = rowToLine(patch.rows[i], g, junkReps()[i]);
+      return { label: "Slot " + (i + 1), text: line ? lineLabel(line, g) : "empty" };
+    }
+    // A padlock the reader saw, or did not, in a slot's gutter.
+    m = /^rows\.(\d+)\.locked$/.exec(path);
+    if (m) {
+      i = Number(m[1]);
+      return { label: "Slot " + (i + 1) + " lock", text: (patch.lockedIdx && patch.lockedIdx.indexOf(i) >= 0) ? "locked" : "not locked" };
+    }
+    if (path === "grade") return { label: "Grade", text: patch.grade === "relic" ? "Relic" : "Ancient" };
+    if (path === "slots") return { label: "Slots", text: String(patch.slots) };
+    if (path === "rollsLeft") return { label: "Rolls left", text: String(patch.rollsLeft) };
+    if (path.indexOf("traits.") === 0) {
+      var k = path.split(".")[1], t = patch.traits && patch.traits[k];
+      return { label: TRAIT_LABELS[k] || k, text: t ? (t.on ? String(t.v) : "off") : "—" };
+    }
+    return { label: path, text: "read" };
+  }
+
+  function unconfirmedCount() {
+    var f = intake.report, n = 0, i;
+    if (!f) return 0;
+    for (i = 0; i < f.length; i++) if (f[i].conf < LOW_CONF && !intake.confirmed[f[i].path]) n++;
+    return n;
+  }
+
+  /**
+   * The seam's one call: a parsed bracelet into the Grader. Everything the read
+   * leaves out keeps its value, as an import's does, and the character and the
+   * baseline stay as they were — a screenshot says whose bracelet it is to no one.
+   */
+  function applyParsed(parsed, conf) {
+    if (!parsed) return { ok: false, error: "Nothing to apply.", unconfirmed: 0 };
+    if (parsed.target === "rolled") {
+      return { ok: false, error: "This page has no rolled set to fill. The reader fills the Grader.", unconfirmed: 0 };
+    }
+    var patch = {}, keys = ["grade", "slots", "rollsLeft", "traits", "traitOrder", "rows", "fixedRows", "lockedIdx"], i;
+    for (i = 0; i < keys.length; i++) if (parsed[keys[i]] !== undefined) patch[keys[i]] = parsed[keys[i]];
+    applyImport(patch);
+    announceBracelet();
+    var fields = [], path, low = 0, c, r;
+    conf = conf || {};
+    intake.confirmed = {};
+    for (path in conf) if (Object.prototype.hasOwnProperty.call(conf, path)) {
+      c = num(conf[path], 1);
+      r = fieldReport(path, parsed);
+      fields.push({ path: path, label: r.label, text: r.text, conf: c });
+      if (c < LOW_CONF) low++;
+    }
+    fields.sort(function (a, b) { return a.conf - b.conf; });
+    intake.report = fields.length ? fields : null;
+    renderParsed();
+    return { ok: true, unconfirmed: low };
+  }
+
+  /** What the reader made of it: every field it reported, the doubtful ones marked. */
+  function renderParsed() {
+    var box = $("bc-parsed");
+    if (!box) return;
+    var f = intake.report, i;
+    if (!f || !f.length) { box.innerHTML = ""; return; }
+    var open = unconfirmedCount();
+    var h = '<div class="bc-parsed"><div class="subh" style="margin-top:0">What the reader made of it</div>';
+    for (i = 0; i < f.length; i++) {
+      var low = f[i].conf < LOW_CONF && !intake.confirmed[f[i].path];
+      h += '<div class="bc-pline"><span class="k">' + esc(f[i].label) + "</span>" +
+        '<span class="' + (low ? "bc-unconf" : "") + '"' +
+        (low ? ' data-gloss="The reader is only ' + Math.round(f[i].conf * 100) + '% sure of this one. Check it against the game, then mark it right."' : "") +
+        ">" + esc(f[i].text) + "</span>" +
+        (low ? '<button type="button" class="bc-okbtn" data-bcok="' + esc(f[i].path) + '">looks right</button>' : "") +
+        "</div>";
+    }
+    h += '<div class="note">' + (open
+      ? "<b>" + open + (open === 1 ? " field needs" : " fields need") + " a look</b> — the marked ones. Fix anything wrong in the Grader below."
+      : "Every field read cleanly.") + "</div></div>";
+    box.innerHTML = h;
+  }
+
+  /**
+   * window.BraceletAdvisor — the capture seam, the shape advisor-glue.js has
+   * always joined against. Set on first use (engageIntake), so the reader never
+   * mounts before somebody wants it.
+   */
+  var INTAKE_SEAM = {
+    /** The glue announces the reader: {onFiles, onPaste, readScreen, controller}. */
+    registerCapture: function (api) { intake.capture = api || null; return true; },
+    /** The one call that hands a parsed bracelet over. */
+    applyParsed: applyParsed,
+    setStatus: intakeStatus,
+    // The reader draws its own preview and holds its own buttons while it works.
+    setBusy: function () {},
+    setPreview: function () {},
+    /** How many parsed fields still want a human look. */
+    unconfirmed: unconfirmedCount,
+    /** Re-solve and repaint, for anything that changed the state directly. */
+    refresh: function () { solveNow(); }
+  };
+
+  function calcActive() { var p = $("tab-calculator"); return !!(p && p.classList.contains("active")); }
+
+  function bindIntake() {
+    var wrap = $("bc-intakewrap");
+    if (!wrap) return;
+    wrap.addEventListener("click", function (e) {
+      var t = e.target, ok;
+      if (t.id === "bc-intake-go") { engageIntake(); return; }
+      if (t.id === "bc-intake-file") { chooseScreenshot(); return; }
+      if ((ok = t.getAttribute && t.getAttribute("data-bcok"))) { intake.confirmed[ok] = 1; renderParsed(); }
+    });
+    // A pointer over the panel is intent enough to fetch the reader, so it is
+    // usually there before the click that wants it.
+    wrap.addEventListener("pointerenter", function () { if (intake.state === "idle") engageIntake(); });
+    // Until the reader is mounted, the placeholder takes the drop itself.
+    wrap.addEventListener("dragover", function (e) {
+      var z = $("bc-intakezone");
+      if (!z || !z.contains(e.target)) return;
+      e.preventDefault();
+      z.classList.add("drag");
+    });
+    wrap.addEventListener("dragleave", function (e) {
+      var z = $("bc-intakezone");
+      if (z && z.contains(e.target)) z.classList.remove("drag");
+    });
+    wrap.addEventListener("drop", function (e) {
+      var z = $("bc-intakezone");
+      if (!z || !z.contains(e.target)) return;
+      e.preventDefault();
+      z.classList.remove("drag");
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) engageIntake(f);
+    });
+    // Paste is a document event, taken only while this tab is on screen and
+    // only until the reader is mounted: from then on its own handler has it.
+    document.addEventListener("paste", function (e) {
+      if (intake.state === "ready" || !calcActive()) return;
+      var f = pastedImage(e);
+      if (!f) return;
+      e.preventDefault();
+      engageIntake(f);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // THE BASELINE BRACELET, as the tabs see it — BraceletApp.baseline
+  //
+  // profile.js keeps the snapshot, persists it, and keeps econ.baseline on it
+  // (Profile.baseline). What needs this file's vocabulary is here: copying the
+  // Grader's bracelet in, setting a character's worn bracelet the moment it is
+  // imported, and grading it on the Current score card's own ladder.
+  // ------------------------------------------------------------------
+
+  /**
+   * The bracelet in the Grader as a snapshot, or null when the game could not
+   * hold it — half the granted slots filled, or two lines of one family. The
+   * Grader already says which, in its own words.
+   */
+  function editorSnapshot(label, source) {
+    var granted = grantedLines(), fixed = fixedLines();
+    if (isPartial() || validateSet(fixed.concat(granted))) return null;
+    return { grade: S.grade, traits: traitValues(), lines: granted, fixed: fixed, label: label, source: source };
+  }
+
+  /** "Set from the editor": the Grader's bracelet becomes the baseline. -> baseline.get(), or null */
+  function setBaselineFromEditor(label) {
+    var snap = editorSnapshot(label ? String(label) : "Your bracelet", "editor");
+    return (snap && P.baseline.set(snap)) ? baselineView() : null;
+  }
+
+  /**
+   * baseline.get() -> null, or the snapshot with its readings on the LIVE
+   * profile:
+   *
+   *   grade, traits, lines, fixed, label, source, setAt   the snapshot (copies)
+   *   name      "Paroxysmal’s bracelet", or the label as given
+   *   D         its score in the solver's own currency — the bar to hold a
+   *             solved cdf against (compare.fromCdf) and the dashed line on
+   *             the strip
+   *   pct       damagePercent(D): the Economy's baseline figure, exactly
+   *   gradeKey, score, bg, fg
+   *             the letter, the 0-100 and the badge colours from the ladder
+   *             the Current score card uses — for the worn bracelet left in
+   *             the Grader, the card's own badge
+   *   role      "dps" or "support": which axis all of that is read on
+   */
+  function baselineView() {
+    var b = P.baseline.get();
+    if (!b) return null;
+    var prof = buildProfile(), out = JSON.parse(JSON.stringify(b)), i, eff = [];
+    var D = P.baseline.scoreD(b, prof);
+    for (i = 0; i < b.lines.length; i++) if (!b.lines[i].junk) eff.push(b.lines[i]);
+    var gr = gradeOfSet(b.grade, b.fixed.concat(eff), b.traits, prof);
+    out.name = P.baseline.name();
+    out.D = D;
+    out.pct = pct(D);
+    out.gradeKey = gr ? gr.key : null;
+    out.score = gr ? gr.score : null;
+    out.bg = gr ? gr.bg : null;
+    out.fg = gr ? gr.fg : null;
+    out.role = prof.role;
+    return out;
+  }
+
   document.addEventListener("tabselected", function (e) {
     if (!e || !e.detail || e.detail.tab !== "calculator") return;
     var host = $("bc-deckhost");
@@ -2284,51 +3482,10 @@
     mountBraceletPanel("bc-brhome");
   });
 
-  /**
-   * The one hook bible-import.js uses. It hands over a patch already in this
-   * file's own shape — grade, slots, the two combat traits, the granted rows and
-   * any fixed rows — and everything after that is the ordinary redraw an edit
-   * would trigger. Keys the patch leaves out keep their current value, so an
-   * import never disturbs the character or economy settings.
-   *
-   * `patch.character` is optional: {name, region, class, itemLevel, source,
-   * pulledAt, cached, profile}. When it is there the banner appears and the two
-   * buttons with it. What the page said about the character's GEAR is carried on
-   * that object and applied only when the user asks for it — profile.js's
-   * importCharacterStats() is the one path, and it runs on a press.
-   */
+  /** What this tab hands the others. */
   window.BraceletApp = {
-    applyImport: function (patch) {
-      if (!patch) return false;
-      var keys = ["grade", "slots", "rollsLeft", "traits", "traitOrder", "rows", "fixedRows"], i;
-      var next = {};
-      for (i = 0; i < keys.length; i++) {
-        if (patch[keys[i]] !== undefined) next[keys[i]] = patch[keys[i]];
-      }
-      next.rolled = null;                          // a new bracelet voids the cut in progress
-      // The padlocks the character is actually wearing, if the import found any.
-      // lostark.bible's `fixed` flag is that padlock, not a drop-fixed line.
-      if (patch.lockedIdx && patch.lockedIdx.length && next.rows) {
-        var lk = [], li;
-        for (li = 0; li < next.rows.length; li++) lk.push(patch.lockedIdx.indexOf(li) >= 0);
-        next.locks = lk;
-      } else {
-        next.locks = null;
-      }
-      // The banner and the cards read lastSolve. It belongs to the bracelet being
-      // replaced, so drop it: "—" for a moment beats the previous character's score.
-      lastSolve = null; lastSolveKey = null; freshSolve = null; freshSolveKey = null;
-      if (patch.character) next.char = patch.character;
-      P.set(next);                                 // merges, persists, re-renders the deck, notifies
-      // THE LEFT COLUMN IS NOT TOUCHED. An import used to fill the deck with the
-      // character's own gear the moment they loaded, which meant the number on
-      // screen was not the number the board shows them and nobody could tell
-      // which they were reading. The settings stay ours until the user presses
-      // "Import Character Stats" (Shizu, 2026-08-12); everything that button
-      // needs is on patch.character, which P.set has just stored.
-      renderCharHeader();
-      return true;
-    },
+    /** bible-import.js's hook, and the screenshot reader's — see applyImport. */
+    applyImport: applyImport,
     /** Show a character's header without touching the bracelet. */
     setCharacter: function (c) {
       P.setCharacter(c);
@@ -2357,6 +3514,31 @@
      * against the user's baseline. There is no second implementation left.
      */
     worth: { of: worthOf, fromCdf: worthFromCdf, odds: fmtOdds, note: worthNote, gloss: worthGloss },
+    /**
+     * THE BASELINE BRACELET — the one you already wear.
+     *   get()            null, or the snapshot with D, pct and its grade (baselineView)
+     *   set(snapshot)    {grade, traits, lines, fixed?, label?} -> get(), or null if unusable
+     *   setFromEditor()  the Grader's bracelet -> get(), or null if the Grader's is half-filled
+     *   clear()          forget it; econ.baseline goes back to 0, a manual slider again
+     *   onChange(fn)     fn(get()) after the snapshot, its score or its role moved;
+     *                    returns an unsubscribe function
+     * econ.baseline is kept equal to get().pct while one is set, so everything that
+     * reads the economy — worth, its notes, the Advisor's lock table — follows it.
+     */
+    baseline: {
+      get: baselineView,
+      set: function (snap) { return P.baseline.set(snap) ? baselineView() : null; },
+      setFromEditor: setBaselineFromEditor,
+      clear: function () { return P.baseline.clear(); },
+      onChange: function (fn) {
+        if (typeof fn !== "function") return function () {};
+        return P.baseline.onChange(function () { fn(baselineView()); });
+      }
+    },
+    /** compare.fromCdf(cdf, baselineD[, shiftD]) — see compareFromCdf. */
+    compare: { fromCdf: compareFromCdf },
+    /** strip.html(o), strip.layout(root) and strip.scale(target) — see stripHtml and stripScale. */
+    strip: { html: stripHtml, layout: stripLayout, scale: stripScale },
     /** The two shared formatters: damage percentages 2dp, odds 1dp. */
     fmt: { dmg: fmtDmg, signDmg: signPct, odds: fmtOdds, gold: gold },
     /** Heroic / Epic / Legendary, from the one map. */
@@ -2374,8 +3556,10 @@
 
     solver: {
       solveState: solveState,                        // (profile, granted, rolls, opts) -> Promise
-      send: send,                                    // (cmd, payload) -> Promise; "advise" rides this
-      ctxKey: function () { return workerCtxKey; }   // whose DP the worker holds
+      send: send,                                    // (cmd, payload[, {lane, key, keepCtx}]) -> Promise; "advise" rides this
+      ctxKey: function () { return workerCtxKey; },  // whose DP the worker holds
+      solve: solveAny,                               // (spec) -> Promise(res): any bracelet, own lane — see solveAny
+      cancel: function () { return cancelLane("side"); }   // drop the side solve still waiting, if any
     },
 
     /**
@@ -2400,13 +3584,13 @@
       if (!c) return false;
       var cur = null;
       try {
-        // The bracelet as imported, under the profile it is being scored on.
-        // The two FIXED COMBAT TRAITS are part of the bracelet and score with it
-        // — the solver takes them as their own argument, so they have to be added
-        // by hand here or the baseline comes out several points light.
-        var prof = buildProfile();
-        var lines = fixedLines().concat(grantedLines());
-        cur = pct(B.setDamage(lines, S.grade, prof) + B.traitDamage(traitValues(), prof));
+        // The bracelet as imported, under the profile it is being scored on, in
+        // the solver's own currency — the figure the Current score card shows
+        // for it, traits and all (profile.js, baselineScoreD). With a baseline
+        // bracelet set, which an import does first, profile.js only marks the
+        // key: econ.baseline already follows that bracelet.
+        var snap = editorSnapshot("", "set");
+        cur = snap ? pct(P.baseline.scoreD(snap)) : null;
       } catch (e) { cur = null; }
       return P.seedEcon({
         key: P.charKey(c),

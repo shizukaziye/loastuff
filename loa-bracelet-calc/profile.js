@@ -33,6 +33,11 @@
  *                         the loaded character's lostark.bible page. Pressed, never
  *                         automatic — loading someone fills the bracelet and the
  *                         banner, and leaves the settings at our defaults.
+ *   baseline.{get,set,clear,scoreD,D,name,onChange}
+ *                      -> the BASELINE BRACELET: the one you already wear, as a
+ *                         snapshot. While one is set, econ.baseline is derived from
+ *                         it on the live profile (see "the baseline bracelet").
+ *                         app.js wraps this as BraceletApp.baseline.
  *
  * ONE DECK, RE-PARENTED — the multi-mount decision.
  * Every control in the deck carries a stable id derived from its state path
@@ -189,6 +194,13 @@
       // seed happens once per character and never lands on top of a hand-picked
       // number.
       econ: { gpd: 1500000, baseline: 0, gpdAutoKey: null, baseAutoKey: null },
+      // THE BASELINE BRACELET — the one you already wear, as a snapshot (see "the
+      // baseline bracelet" below). While one is set, econ.baseline is DERIVED
+      // from it on the live profile and the Economy slider becomes a read-out;
+      // null leaves econ.baseline the plain slider it always was. It persists
+      // with everything else, every Reset keeps it, and only its own Clear
+      // removes it.
+      baseline: null,
       rows: [blankRow(), blankRow(), blankRow()],
       fixedRows: [],
       advOpen: false,
@@ -303,6 +315,9 @@
         d.adv.coreType = "none";
       }
     }
+    // A stored baseline bracelet is checked on the way in, like anything else a
+    // blob can carry: a malformed one is dropped rather than scored.
+    d.baseline = cleanBaseline(d.baseline);
     // THE TRAIT WEIGHTS ARE NOT MIGRATED. A v2 blob carries 2.5% per 100 points,
     // the old default; a fresh one starts at 2.4245%, which is what a crit point
     // is worth on the shipped profile. Both are ordinary positions on a slider
@@ -1326,12 +1341,273 @@
    * detail.immediate  a press, not a drag: the subscriber should act now
    * detail.shape      grade / slots / override moved — rebuild anything keyed on them
    * detail.reset      the state was wiped back to defaults
+   * detail.baseline   the baseline bracelet was set or cleared
+   *
+   * THE BASELINE BRACELET IS RE-SCORED FIRST, so every listener below reads an
+   * econ.baseline that already follows whatever just moved — a Role press
+   * re-reads the same bracelet on the support axis before the Calculator's
+   * worth or any other tab's figure looks at it. The baseline's own
+   * listeners run LAST, and only when the snapshot, its score or the role it
+   * is read on moved.
    */
   function notify(detail) {
     detail = detail || {};
+    var baseMoved = syncBaseline();
     for (var i = 0; i < listeners.length; i++) {
       try { listeners[i](detail); } catch (e) { /* a bad subscriber must not break others */ }
     }
+    if (!baseMoved) return;
+    for (var j = 0; j < baseListeners.length; j++) {
+      try { baseListeners[j](detail); } catch (e) { /* likewise */ }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // the baseline bracelet
+  //
+  // The bracelet you already wear, kept so that any other bracelet — the one in
+  // the Grader, one the Advisor makes up — can be held against it. An imported
+  // character's worn bracelet becomes it on its own (app.js, applyImport);
+  // "Set from the editor" copies the Grader's; Clear forgets it.
+  //
+  //   { grade, traits: {crit, spec, swift}, lines: [granted], fixed: [fixed],
+  //     label, source: "import" | "editor" | "set", setAt }
+  //
+  // lines and fixed are MODEL lines ({cat, family, tier?, value?}), not the
+  // picker's rows, so a snapshot never hangs on the picker's vocabulary. A
+  // "Junk Line" rides as {junk: true}: it scores nothing on either role, and
+  // the stand-in family behind it is picked per role, so it is never scored as
+  // that family.
+  //
+  // econ.baseline FOLLOWS IT. Worth, its notes and the Advisor's lock table all
+  // read that one field, so the field is kept current rather than each reader
+  // taught about bracelets: notify() re-scores the snapshot on the live profile
+  // before a single listener runs.
+  // ------------------------------------------------------------------
+
+  var baseListeners = [];
+  var baseSeq = 0;               // bumped by every set and clear, so a re-set of the same bracelet still reads as a change
+  var baseSig = null;            // what the baseline's listeners last heard
+
+  var BASE_SOURCES = { "import": 1, editor: 1, set: 1 };
+
+  /** One model line, checked, or null. An unknown family, tier or category is dropped. */
+  function cleanLine(l, grade) {
+    if (!l || typeof l !== "object") return null;
+    if (l.junk) {
+      var jid = Number(l.family);
+      return { cat: "special", family: isFinite(jid) ? jid : 0, tier: "low", junk: true };
+    }
+    if (l.cat === "basic") {
+      if (l.family !== "mainStat" && l.family !== "vitality") return null;
+      var bands = DATA.BASIC.bands;
+      var lo = bands[0][grade][l.family][0], hi = bands[bands.length - 1][grade][l.family][1];
+      var v = num(l.value, NaN);
+      if (!isFinite(v)) v = Math.round(B.basicBandExpected(l.family, grade));
+      return { cat: "basic", family: l.family, value: clamp(v, lo, hi) };
+    }
+    if (l.cat === "trait") {
+      var tk = B.traitFamilyKey(String(l.family));
+      return tk ? { cat: "trait", family: tk } : null;
+    }
+    if (l.cat === "special") {
+      var fam = DATA.SPECIAL_BY_ID[Number(l.family)];
+      if (!fam || DATA.TIERS.indexOf(l.tier) < 0) return null;
+      return { cat: "special", family: fam.id, tier: l.tier };
+    }
+    return null;
+  }
+
+  /**
+   * A snapshot, checked and put in its one shape, or null. Traits arrive as
+   * points ({crit: 119}) or in the Grader's own {on, v} shape; either way an
+   * inactive trait is 0.
+   */
+  function cleanBaseline(b) {
+    if (!b || typeof b !== "object") return null;
+    var grade = b.grade === "relic" ? "relic" : "ancient";
+    var t = (b.traits && typeof b.traits === "object") ? b.traits : {}, traits = {}, i, k, v, l;
+    for (i = 0; i < TRAIT_KEYS.length; i++) {
+      k = TRAIT_KEYS[i];
+      v = t[k];
+      if (v === undefined && k === "swift") v = t.swiftness;
+      if (v && typeof v === "object") v = v.on ? v.v : 0;
+      traits[k] = Math.max(0, num(v, 0));
+    }
+    var lines = [], fixed = [];
+    var gl = Array.isArray(b.lines) ? b.lines : [], fl = Array.isArray(b.fixed) ? b.fixed : [];
+    for (i = 0; i < gl.length; i++) if ((l = cleanLine(gl[i], grade))) lines.push(l);
+    for (i = 0; i < fl.length; i++) if ((l = cleanLine(fl[i], grade)) && !l.junk) fixed.push(l);
+    return {
+      grade: grade, traits: traits, lines: lines, fixed: fixed,
+      label: String(b.label || "Your bracelet").slice(0, 60),
+      source: BASE_SOURCES[b.source] ? b.source : "set",
+      setAt: num(b.setAt, 0) || Date.now()
+    };
+  }
+
+  // ---- the score, in the solver's own currency ----
+
+  var SPECIAL_POS = null;        // family id -> its place in DATA.SPECIALS, the solver's atom order
+  function specialPos(id) {
+    if (!SPECIAL_POS) {
+      SPECIAL_POS = {};
+      for (var i = 0; i < DATA.SPECIALS.length; i++) SPECIAL_POS[DATA.SPECIALS[i].id] = i;
+    }
+    return SPECIAL_POS[id];
+  }
+
+  /** Every tier of this family worth nothing on this profile? The solver folds such a family into one empty draw. */
+  function deadFamily(fam, grade, prof) {
+    for (var t = 0; t < DATA.TIERS.length; t++) {
+      var m = B.contributionMultiplier(B.specialContribution(fam, DATA.TIERS[t], grade, prof), prof);
+      if (Math.abs(100 * Math.log(m)) > 1e-12) return false;
+    }
+    return true;
+  }
+
+  /**
+   * One granted line as the solver DRAWS it: {order, rec}, or null for a draw
+   * that adds nothing. `order` is that draw's place in the solver's atom list
+   * (model/bracelet.js, buildAtoms): the ten main-stat bands, Vitality, the six
+   * traits, then every special family's three tiers.
+   */
+  function drawOf(line, grade, traits, prof) {
+    var i, r;
+    if (!line || line.junk) return null;
+    if (line.cat === "basic") {
+      if (line.family !== "mainStat") return null;               // Vitality: dead weight
+      // The band the roll lands in, scored at the band's MIDDLE — the solver's
+      // matchAtom: the first band that holds the value, else the first band.
+      var bands = DATA.BASIC.bands, b = 0;
+      for (i = 0; i < bands.length; i++) {
+        r = bands[i][grade].mainStat;
+        if (line.value >= r[0] && line.value <= r[1]) { b = i; break; }
+      }
+      r = bands[b][grade].mainStat;
+      var rec = B.emptyContribution();
+      rec.dMs = (r[0] + r[1]) / 2;
+      return { order: b, rec: rec };
+    }
+    if (line.cat === "trait") {
+      var key = B.traitFamilyKey(line.family);
+      if (!key) return null;
+      // A trait the bracelet already carries is not a draw it can make again:
+      // the solver zeroes that family's draw (solve(), "fixedPresent").
+      for (i = 0; i < TRAIT_KEYS.length; i++) {
+        if (traits[TRAIT_KEYS[i]] && B.traitFamilyKey(TRAIT_KEYS[i]) === key) return null;
+      }
+      var one = {}, at = 0;
+      one[key] = B.traitBandExpected(grade);
+      for (i = 0; i < DATA.TRAITS.families.length; i++) if (DATA.TRAITS.families[i].key === key) at = i;
+      return { order: 11 + at, rec: B.traitContribution(one, prof) };
+    }
+    var fam = DATA.SPECIAL_BY_ID[Number(line.family)], tier = DATA.TIERS.indexOf(line.tier);
+    if (!fam || tier < 0 || deadFamily(fam, grade, prof)) return null;
+    return { order: 100 + 3 * specialPos(fam.id) + tier, rec: B.specialContribution(fam, line.tier, grade, prof) };
+  }
+
+  /**
+   * THE BASELINE'S SCORE, D, IN THE SOLVER'S OWN CURRENCY.
+   *
+   * Not jointScore of the lines as typed, and the gap is not cosmetic. The
+   * solver scores a granted line by the draw it matches: a main-stat roll at
+   * the MIDDLE of its value band, and a combat trait rolled into a granted slot
+   * at the band-weighted value it would land on. jointScore reads the main stat
+   * exactly and a granted trait as nothing. Over sixty random bracelets the two
+   * disagreed by up to 2.0 points.
+   *
+   * The baseline is only ever held against the solver's own outcomes, so it is
+   * priced in their currency. Then the bracelet you wear, left in the Grader,
+   * scores EXACTLY its own current score — bit for bit, on all sixty — and an
+   * identical bracelet ties where it should. Priced as typed, a main-stat
+   * bracelet with no rolls left paid a phantom worth over itself, or read no
+   * chance at all of matching itself.
+   *
+   * The pool is summed in the solver's order — fixed lines, the two traits,
+   * then the granted draws in atom order — because a different order moves the
+   * last bit, and a tie has to be a tie.
+   */
+  function baselineScoreD(b, prof) {
+    var rec = B.emptyContribution(), parts = [], i, d;
+    for (i = 0; i < b.fixed.length; i++) B.addContribution(rec, B.lineContribution(b.fixed[i], b.grade, prof));
+    B.addContribution(rec, B.traitContribution(b.traits, prof));
+    for (i = 0; i < b.lines.length; i++) if ((d = drawOf(b.lines[i], b.grade, b.traits, prof))) parts.push(d);
+    parts.sort(function (x, y) { return x.order - y.order; });
+    for (i = 0; i < parts.length; i++) B.addContribution(rec, parts[i].rec);
+    return B.contributionDamage(rec, prof);
+  }
+
+  // ---- econ.baseline follows it ----
+
+  /** econ.baseline from the snapshot, on the live profile: {D, role}, or null with no snapshot. */
+  function followBaseline() {
+    if (!S.baseline) return null;
+    var prof = buildProfile(), D = baselineScoreD(S.baseline, prof), p = B.damagePercent(D);
+    S.econ.baseline = (isFinite(p) && p > 0) ? p : 0;
+    return { D: D, role: prof.role };
+  }
+
+  /**
+   * Keep econ.baseline on the bracelet it names, and say whether anything a
+   * baseline listener cares about has moved since they last heard: the
+   * snapshot, its score or the role it is read on. The top of every notify().
+   */
+  function syncBaseline() {
+    var was = S.econ.baseline, f = followBaseline();
+    if (f && S.econ.baseline !== was) { save(); paintBaselineFig(); }
+    var sig = f ? baseSeq + "|" + f.D + "|" + f.role : "none|" + baseSeq;
+    if (sig === baseSig) return false;
+    baseSig = sig;
+    return true;
+  }
+
+  /** The Economy's read-out, repainted where it stands: a drag must not rebuild the block. */
+  function paintBaselineFig() {
+    var el = movEls.econ ? movEls.econ.querySelector("#bc-basefig") : null;
+    if (el) el.textContent = fx(num(S.econ.baseline, 0), 2) + "%";
+  }
+
+  /** "Paroxysmal's bracelet" for an import, the label as given otherwise. */
+  function baselineName(b) {
+    b = b || S.baseline;
+    if (!b) return "";
+    return b.source === "import" ? b.label + "’s bracelet" : b.label;
+  }
+
+  function setBaseline(snap) {
+    var b = cleanBaseline(snap);
+    if (!b) return null;
+    S.baseline = b;
+    baseSeq++;
+    followBaseline();
+    save();
+    if (movEls.econ) { renderEconCtl(); markProvenance(); }
+    notify({ path: "baseline", immediate: true, baseline: true });
+    return S.baseline;
+  }
+
+  /**
+   * Forget the bracelet, and the figure with it: econ.baseline goes back to 0
+   * and the slider returns there. Keeping the last derived number looked kind —
+   * the worth on screen did not jump — but it left this tab pricing against a
+   * bracelet the Advisor had just been told was gone, so the two tabs quoted
+   * worth against two different bars. No bracelet means no baseline, on every
+   * tab, until someone sets one.
+   *
+   * The seed key goes too. Its note ("the bracelet X is wearing scores …")
+   * would otherwise come back under the slider quoting the 0.
+   */
+  function clearBaseline() {
+    if (!S.baseline) return false;
+    S.baseline = null;
+    S.econ.baseline = 0;
+    S.econ.baseAutoKey = null;
+    baseSeq++;
+    save();
+    if (movEls.econ) { renderEconCtl(); markProvenance(); }
+    notify({ path: "baseline", immediate: true, baseline: true });
+    return true;
   }
 
   // ------------------------------------------------------------------
@@ -1465,6 +1741,18 @@
       ".bc-topcluster .bc-toprow>.bc-sl{flex:1 1 100%;order:2;min-width:0}" +
       // The economy under the panel.
       "#bc-econhost .bc-toprow{gap:9px}" +
+      // ---- the baseline bracelet's row in the Economy ----
+      // The label cell is the slider rows' own 96px (82px on a phone), so the
+      // read-out lines up with "Gold per 1%" above it; the figure wears the
+      // chips' accent. It wraps rather than overflows: two buttons and a name
+      // do not always share a phone's line.
+      ".bc-baserow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}" +
+      ".bc-baserow .lb{flex:0 0 96px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);line-height:1.25}" +
+      ".bc-basewho{flex:1 1 auto;min-width:0;font-size:12.5px;color:var(--dim)}" +
+      ".bc-basewho b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}" +
+      ".bc-baseacts{display:flex;flex-wrap:wrap;gap:6px}" +
+      ".bc-baseacts.bc-baseset{margin:0 0 6px}" +
+      "@media(max-width:640px){.bc-baserow .lb{flex-basis:82px}}" +
       // ---- the gem spread: one line shut, five counts open ----
       ".bc-mini{padding:3px 10px;font-size:11px;line-height:1.4}" +
       ".bc-gems{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-2px 0 9px}" +
@@ -2128,6 +2416,9 @@
       S.econ.gpdAutoKey = key;
       moved = true;
     }
+    // A BASELINE BRACELET OUTRANKS THE SEED. econ.baseline is derived from it
+    // (see "the baseline bracelet"), and an import sets one before this runs,
+    // so the seed only marks the key. With none set it seeds as it always did.
     if (S.econ.baseAutoKey !== key && o.currentPct != null && isFinite(o.currentPct)) {
       // The bracelet they already wear IS the thing a new one has to beat, so it
       // is the honest baseline: worth then answers "what is upgrading worth",
@@ -2139,7 +2430,7 @@
       // NEGATIVE worth. Worth is now the truncated expectation the model defines
       // — you are paid only by the outcomes that beat the baseline — so the same
       // bracelet reports zero, which is the true answer, and the workaround can go.
-      S.econ.baseline = Math.max(0, num(o.currentPct, 0));
+      if (!S.baseline) S.econ.baseline = Math.max(0, num(o.currentPct, 0));
       S.econ.baseAutoKey = key;
       moved = true;
     }
@@ -2157,14 +2448,39 @@
       '<div class="tk"><input id="bc-gpd" type="range" data-gpd="1" min="0" max="' + GPD_STEPS + '" step="1" value="' + gpdPos(S.econ.gpd) + '"></div>' +
       '<span class="chip" id="bc-gpd-chip">' + esc(gold(num(S.econ.gpd, 0))) + "</span></div>";
     h += gpdNoteHtml();
+    // A BASELINE BRACELET MAKES THE FIGURE A READ-OUT. It is that bracelet's
+    // score on the deck as it stands, so a slider beside it would only be
+    // overwritten by the next thing that moved.
+    if (S.baseline) return h + baselineSetHtml();
     h += slider("econ.baseline", "Baseline %", 0, 25, 0.5, "pct1", {
       edit: true,
       // Where the baseline comes from and why worth is truncated at it belong to
       // the Method tab, not to a slider's tooltip (docs/design/copy-rules.md §3).
       gloss: "The bracelet you would wear instead. Worth counts only the rolls that beat it."
     });
+    h += '<div class="bc-baseacts bc-baseset">' + baseSetBtn() + "</div>";
     h += baselineNoteHtml();
     return h;
+  }
+
+  /**
+   * The baseline row while a bracelet is set: one line saying what the figure
+   * is and where it comes from — the provenance rule (copy-rules.md §4.4) —
+   * with its two actions. The buttons are app.js's to answer (bindBody): the
+   * editor's lines are that file's.
+   */
+  function baselineSetHtml() {
+    return '<div class="bc-baserow">' +
+      '<span class="lb" data-gloss="The bracelet you would wear instead, scored on the deck as it stands, so Role and every setting move it. Worth counts only the rolls that beat it.">Baseline %</span>' +
+      '<span class="bc-basewho"><b id="bc-basefig">' + fx(num(S.econ.baseline, 0), 2) + "%</b> &mdash; " +
+        esc(baselineName()) + "</span>" +
+      '<span class="bc-baseacts">' +
+        '<button type="button" class="mbtn bc-mini" id="bc-base-clear" data-gloss="Forget this bracelet. The baseline goes back to a slider at 0.">Clear</button>' +
+        baseSetBtn() +
+      "</span></div>";
+  }
+  function baseSetBtn() {
+    return '<button type="button" class="mbtn bc-mini" id="bc-base-set" data-gloss="Make the bracelet in the Grader your baseline.">Set from the editor</button>';
   }
 
   function renderAdvanced() {
@@ -2783,6 +3099,7 @@
 
   load();
   fitRows();
+  syncBaseline();                // a stored baseline bracelet, re-scored on the profile it came back to
 
   var Profile = {
     get: function () { return S; },
@@ -2856,11 +3173,18 @@
       };
     },
 
-    /** Everything, character and bracelet, back to defaults. No UI reaches this. */
+    /**
+     * Everything, character and bracelet, back to defaults. No UI reaches this.
+     * The baseline bracelet survives even this one: it is not a setting, and
+     * only its own Clear removes it.
+     */
     reset: function () {
       try { localStorage.removeItem(LS_KEY); } catch (e) { /* ignore */ }
+      var keep = S.baseline;
       assignInto(S, defaults());
+      S.baseline = keep;
       fitRows();
+      if (keep) save();
       renderAll();
       notify({ reset: true, shape: true, immediate: true });
     },
@@ -2912,6 +3236,34 @@
     // ---- the two economy defaults ----
     /** Seed gold-per-1% and the baseline from a character. Once per character. */
     seedEcon: seedEcon,
+
+    // ---- the baseline bracelet (app.js wraps it as BraceletApp.baseline) ----
+    baseline: {
+      /** The stored snapshot, or null. Read it; change it through set / clear. */
+      get: function () { return S.baseline; },
+      /** Store a snapshot (checked first); returns the stored one, or null if it was unusable. */
+      set: setBaseline,
+      /** Forget it. econ.baseline goes back to 0 and the slider comes back. */
+      clear: clearBaseline,
+      /** Any snapshot's D in the solver's currency, on `prof` or the live profile. */
+      scoreD: function (snap, prof) {
+        var b = cleanBaseline(snap);
+        return b ? baselineScoreD(b, prof || buildProfile()) : null;
+      },
+      /** The stored snapshot's D on the live profile, or null. */
+      D: function () { return S.baseline ? baselineScoreD(S.baseline, buildProfile()) : null; },
+      /** "Paroxysmal's bracelet", or the label as given. */
+      name: function () { return baselineName(); },
+      /** cb(detail) after the snapshot, its score or its role moved. Returns an unsubscribe fn. */
+      onChange: function (cb) {
+        if (typeof cb !== "function") return function () {};
+        baseListeners.push(cb);
+        return function () {
+          var i = baseListeners.indexOf(cb);
+          if (i !== -1) baseListeners.splice(i, 1);
+        };
+      }
+    },
     /** The astrogem calculator's combat-power ladder, for anyone else who needs it. */
     cpToGpd: cpToGpd,
     /** region:name:pulledAt — the key a seed is remembered against. */

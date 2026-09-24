@@ -471,6 +471,10 @@
     });
 
     function onPaste(e) {
+      // The reader lives on the Calculator (2026-09-24). A screenshot pasted on
+      // another tab must not silently rewrite the grader behind it.
+      var cal = document.getElementById("tab-calculator");
+      if (cal && !cal.classList.contains("active")) return;
       var items = e.clipboardData && e.clipboardData.items;
       if (!items) return;
       for (var i = 0; i < items.length; i++) {

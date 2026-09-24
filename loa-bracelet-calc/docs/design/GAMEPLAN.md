@@ -84,6 +84,27 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
    goes up by `git merge` / `git pull --no-rebase`.
 8. Never invent data. A missing character is missing.
 
+## Rulings of 2026-09-24 — what each tab is for
+
+- **Calculator = the grader.** Load a profile, it grades the bracelet and
+  gives the grade (letter, 0-100, damage %). Nothing to compare there.
+- **Advisor = the simulator.** Your current bracelet (the baseline, set
+  automatically from the imported character) on top; then a bracelet you
+  might roll: ONE trait slider 60/60 → 120/120 (even pairs, the baseline's
+  trait kinds), rolls remaining 0 → 7, grade, and the granted slots — "not
+  rolled yet" by default (the fresh solve), or "rolled — these lines" where
+  empty slots are junk lines. It answers: what it is worth paying (odds ×
+  overshoot × gold rate — not a market price), the odds it beats the current
+  bracelet, expected final, if-it-beats / if-not, and "where it can land"
+  with a tooltip that explains the distribution and a pointer readout of
+  P(final ≥ here). The lock advice and keep-or-replace flow stay, collapsed
+  under the simulator, for a rolled bracelet with rolls left.
+- The baseline % everywhere (worth, locks table) is DERIVED from the baseline
+  bracelet on the live profile and role; the manual slider only exists when
+  no baseline bracelet is set.
+- Shizu on the previous Advisor: "pretty hard to use" — simplicity is the
+  requirement; two brackets, one answer.
+
 ## Decisions made on Shizu's behalf (flag at wake-up)
 
 - **Demon toggle stays OFF by default.** The evidence says bible counts it and turning it

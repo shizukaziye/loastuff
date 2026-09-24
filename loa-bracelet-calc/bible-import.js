@@ -587,8 +587,11 @@
       // characters.json is keyed "<REGION>|<name>"; the old seed was {entries:[…]}.
       // Accept both so a cached copy of either shape still works.
       var rows = (j && j.entries) ? j.entries : [];
-      if (!rows.length && j && typeof j === "object") {
-        for (var k in j) if (Object.prototype.hasOwnProperty.call(j, k) && j[k] && j[k].name) rows.push(j[k]);
+      // characters.json keeps its records under `characters` (keyed "<REGION>|<name>");
+      // older copies were keyed at the top level or were {entries:[…]}. Accept all three.
+      var bag = (j && j.characters && typeof j.characters === "object") ? j.characters : j;
+      if (!rows.length && bag && typeof bag === "object") {
+        for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k) && bag[k] && bag[k].name) rows.push(bag[k]);
       }
       var list = rows.map(fromSeedEntry).filter(function (e) { return !!e; });
       var byKey = {};

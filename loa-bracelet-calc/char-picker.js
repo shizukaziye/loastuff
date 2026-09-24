@@ -483,7 +483,11 @@
     var el = document.getElementById("bi-pull-status");
     if (!el) return;
     var txt = (el.textContent || "").trim();
-    if (!txt) return;
+    // An emptied line is bible-import.js saying the pull landed ("the loaded line
+    // below is the confirmation"). Keeping the last sentence here left "Fetching
+    // Paroxysmal (NA)…" beside a character already loaded; the selected line
+    // above the ★ strip is this box's confirmation, so the status clears too.
+    if (!txt) { broadcast("", ""); return; }
     var cls = " " + (el.className || "") + " ";
     var kind = cls.indexOf(" err ") !== -1 ? "err"
       : cls.indexOf(" working ") !== -1 ? "working"
