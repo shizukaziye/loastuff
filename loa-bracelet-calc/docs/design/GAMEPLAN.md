@@ -105,6 +105,18 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
 - Shizu on the previous Advisor: "pretty hard to use" — simplicity is the
   requirement; two brackets, one answer.
 
+## Debts (2026-09-24)
+
+- The Leaderboard tab and the profile page each fetch `/list` themselves;
+  `BraceletImport.board()` keeps a shared 10-minute copy. Three fetches per
+  visitor against the worker's 3-a-minute throttle — point both at `board()`.
+- The kept board copy is ~480 KB of localStorage.
+- `worthFromCdf` still steps at a rung's midpoint and reads small unthinned
+  distributions as thinned; `compare.fromCdf` bends through the solve's exact
+  quantiles. The Worth card's odds can differ from P(beat) by tenths until
+  worth uses the same read. Per-lock cdfs keep the old accuracy until the
+  worker thins by mass.
+
 ## Decisions made on Shizu's behalf (flag at wake-up)
 
 - **Demon toggle stays OFF by default.** The evidence says bible counts it and turning it

@@ -1640,8 +1640,6 @@
       "#tab-calculator .bc-sum .stat .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}" +
       "#tab-calculator .bc-sum .stat .v.acc{color:var(--accent)}" +
       "#tab-calculator .bc-sum .stat .v.gold{color:var(--high)}" +
-      "#tab-calculator .bc-rankbadge{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:800;" +
-        "font-size:18px;line-height:1.4;color:#fff}" +
       "#tab-calculator .bc-fieldrank{margin-top:6px;font-size:12px;opacity:.75;min-height:15px}" +
       // Read on the left, press on the right (Shizu's mock-up). The cluster keeps
       // its natural width and the identity block takes the rest; under 900px the
@@ -2247,8 +2245,8 @@
       var sup = profile && profile.role === "support";
       return {
         key: g.band.key, score: g.score, bg: col.bg, fg: col.fg,
-        gloss: "Grade " + fx(g.score, 1) + " out of 100, subrank " + g.band.key + " — the ladder the leaderboard and " +
-          "the profiles use. 0 is the worst real bracelet: both traits at the bottom of the band and three lines " +
+        gloss: "Grade " + fx(g.score, 1) + " out of 100, subrank " + g.band.key + ", on the stats loaded here — the ladder " +
+          "the leaderboard and the profiles use. 0 is the worst real bracelet: both traits at the bottom of the band and three lines " +
           "worth nothing. 100 is both traits at 110 with the three best distinct families at Epic. Read on the " +
           (sup ? "support ladder, cut to the same rarities as the damage dealer's." : "damage dealer's ladder.")
       };
@@ -2588,6 +2586,8 @@
       p.innerHTML = (gr ? gradeBadge(gr, true) + " " : "") + fx(pct(lastSolve.currentScore), 2) + "%";
     }
     paintWorthStat(lastSolve);
+    // A new grade here can agree or disagree with the board's; its tooltip says which.
+    paintBoardGloss();
   }
 
   function gradeLabel() { return S.grade === "relic" ? "Relic" : "Ancient"; }
@@ -2873,18 +2873,20 @@
    *
    *   ★ · class icon · 30px name linking to lostark.bible · cache pill
    *   chips: region · class · ilvl · bracelet grade · rolls left
-   *   three headline stats: BRACELET % · RANK · WORTH
-   *   the field rank ("Top 11% of Reapers (#3 of 24) · #9 of 30 tracked")
-   *   the character's two buttons — Import Character Stats, Reset to Default
+   *   three headline stats: BRACELET % · BOARD RANK · WORTH
+   *   the field rank ("#57 of 1,299 on EU · top 4.4% · #6 of 40 Deathblades")
    *
    * The whole block is clickable and reloads its own character, so the banner and
    * a saved chip do exactly the same thing. The ★, the name link and the buttons
    * stop that click, because each of them means something else.
    *
-   * BRACELET % and WORTH come from the live solve, so they follow the deck. RANK
-   * and the field line come from the character's DEFAULT-profile score against
-   * the board — the board's number against the board's numbers, or the
-   * comparison would be ranking gear.
+   * TWO LETTERS, TWO QUESTIONS, NAMED SO THEY CANNOT BE CONFUSED (Shizu,
+   * 2026-09-24: "why does Tikkyy have a C+ and a B tho"). BRACELET % is the
+   * bracelet on the stats loaded here, with its grade — change the deck and
+   * both move. BOARD RANK is the board's own letter and 0-100: the character's
+   * row on the default stats, the same for everyone, which is exactly what the
+   * leaderboard and the profile show. The field line under them is that row's
+   * place. When the two letters differ, the Board rank's tooltip says why.
    */
   function renderCharHeader() {
     var box = $("bc-charhdr");
@@ -2931,8 +2933,8 @@
       '<div class="bc-meta">' + chips + profileLink(c) + "</div>" +
       "</div></div>" +
       '<div class="bc-sum">' +
-      '<div class="stat"><span class="k">Bracelet %</span><span class="v acc" id="bc-sum-pct">' + curTxt + "</span></div>" +
-      '<div class="stat"><span class="k" data-gloss="A letter for the whole bracelet on the same ladder the model grades families with: its share of the best bracelet on the board. S is 90% of the best or better, A 70%, B 50%, C 30%, D 10%. Scored on the canonical default profile, like the board itself.">Rank</span>' +
+      '<div class="stat"><span class="k" data-gloss="' + esc(PCT_GLOSS) + '">Bracelet %</span><span class="v acc" id="bc-sum-pct">' + curTxt + "</span></div>" +
+      '<div class="stat"><span class="k" id="bc-sum-rankk" data-gloss="' + esc(BOARD_GLOSS) + '">Board rank</span>' +
         '<span class="v" id="bc-sum-rank">—</span></div>' +
       '<div class="stat"><span class="k" id="bc-sum-worthk">Worth</span>' +
         '<span class="v gold" id="bc-sum-worth">—</span></div>' +
@@ -2943,6 +2945,10 @@
       "</div>";
 
     paintWorthStat(lastSolve);
+    // The grade badge beside Bracelet %, which the markup above does not draw.
+    // recompute() rebuilds this banner right after a solve lands, and without
+    // this the badge was gone until the NEXT solve painted it back.
+    if (lastSolve) paintCharStats();
 
     var star = $("bc-fav-star");
     if (star) {
@@ -2976,27 +2982,74 @@
     fillFieldRank(c);
   }
 
+  var PCT_GLOSS = "Scored on the stats loaded here. Change the deck and it moves, letter and all.";
+  var BOARD_GLOSS = "Scored on the board's default stats, the same for everyone. This is where the leaderboard and " +
+    "the profile put this bracelet.";
+
+  // The board's answer for the character on the banner, kept so a solve that
+  // lands later can re-judge whether the two letters agree.
+  var boardRank = null;             // {region, name, r}
+
   /**
-   * The rank badge and the field-rank line, both off the baked board. Async: the
-   * board is one fetch, session-cached. A late answer is dropped if a different
-   * character has taken the banner in the meantime.
+   * The Board rank and the field-rank line, both off the board
+   * (BraceletImport.fieldRank). Async: the board is one request, kept ten
+   * minutes. A late answer is dropped if a different character has taken the
+   * banner in the meantime.
    */
   function fillFieldRank(c) {
     var imp = window.BraceletImport;
-    if (!imp || !imp.fieldRank || c.defaultPct == null) return;
+    boardRank = null;
+    if (!imp || !imp.fieldRank) return;
     imp.fieldRank(c, function (r) {
       var cur = S.char;
       if (!cur || cur.name !== c.name || cur.region !== c.region) return;   // superseded
+      boardRank = { region: c.region, name: c.name, r: r };
       var el = $("bc-fieldrank");
       if (el) el.textContent = r.text;
       var rk = $("bc-sum-rank");
       if (rk) {
-        rk.innerHTML = '<span class="bc-rankbadge" style="background:' +
-          (GRADE_COLOR[r.letter] || GRADE_COLOR.F) + '">' + esc(r.letter) + "</span>";
-        rk.title = "Worth " + fx(c.defaultPct, 2) + "% on the canonical default profile — " +
-          Math.round(r.share * 100) + "% of the best bracelet on the board.";
+        rk.innerHTML = r.key
+          ? '<span class="bc-grade sm" style="background:' + r.bg + ";color:" + r.fg + '">' + esc(r.key) + "</span> " +
+            (r.score == null ? "" : fx(r.score, 1))
+          : "—";
       }
+      paintBoardGloss();
     });
+  }
+
+  /**
+   * The Board rank's tooltip: what the figure is, and — when the Grader's letter
+   * and the board's disagree — the one reason why, found rather than guessed:
+   * the role the board read it on, the deck, or a different bracelet.
+   */
+  function paintBoardGloss() {
+    var k = $("bc-sum-rankk");
+    if (!k) return;
+    var r = boardRank && boardRank.r, g = BOARD_GLOSS;
+    if (r && !r.onBoard) g += " Not on the board yet, so this is the row the board will build, scored here the way it scores one.";
+    var live = (r && r.key && lastSolve) ? gradeOf(lastSolve, buildProfile()) : null;
+    if (live && live.key !== r.key) g += " " + whyLettersDiffer(r);
+    k.setAttribute("data-gloss", g);
+  }
+
+  function whyLettersDiffer(r) {
+    var role = P.role() === "support" ? "support" : "dps";
+    if (r.axis !== role) {
+      return "The board reads this bracelet as a " + (r.axis === "support" ? "support" : "damage dealer") +
+        ", and the deck here is set to " + (role === "support" ? "Support" : "DPS") + ".";
+    }
+    // The Grader's bracelet on the board's own stats: if that is the board's
+    // score, the bracelet is the same one and the deck is the whole difference.
+    var SR = window.Subrank, lines = fixedLines(), gl = grantedLines(), i, same = false;
+    for (i = 0; i < gl.length; i++) if (!gl[i].junk) lines.push(gl[i]);
+    try {
+      var s = SR.braceletScore({ grade: S.grade, lines: lines, traits: traitValues(),
+        profile: r.axis === "support" ? B.normalizeProfile({ role: "support" }) : null });
+      same = r.score != null && Math.abs(s.score - r.score) < 0.05;
+    } catch (e) { same = false; }
+    return same
+      ? "It is the same bracelet: your deck is not the board's default character, and the letter moves with the deck."
+      : "The board ranks the character's best loadout as of its last rebuild, which is not the bracelet in the Grader now.";
   }
 
   // ------------------------------------------------------------------

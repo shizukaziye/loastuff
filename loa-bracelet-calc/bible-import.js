@@ -20,9 +20,10 @@
  *   showQueued() / showRefreshBanner()         the queued panel, and the thin bar that
  *                                              rides ABOVE a cached bracelet instead
  *                                              of blanking it
- *   fillFieldRank()      -> fieldRank()        "Top 11% of Reapers (#3 of 24) · #9 of
- *                                              30 tracked characters", conservative
- *                                              estimator, class line only at n>=5
+ *   fillFieldRank()      -> fieldRank()        the board's own letter, 0-100 and
+ *                                              place: "#57 of 1,299 on EU · top 4.4%
+ *                                              · #6 of 40 Deathblades", read off
+ *                                              the live board (see "the board")
  *   loadRosters() / favoriteRoster()           sign-in -> roster -> Favorites.add each
  *   setPullStatus() / syncSourceUI() / setFreeStatus()
  *   maybeAutoRepullForCp -> maybeAutoRepullForProfile()
@@ -371,7 +372,23 @@
     if (slotChoices(other).indexOf(granted) < 0) return dec;   // fits neither; leave the guess alone
     var alt = B.decodeBibleBracelet(stats, { grade: other });
     if (traitsBreakCap(alt, other)) return dec;                // the slot count is the thing that is wrong
+    // The slot count is the weakest witness: refuse the switch when the other
+    // grade's table cannot place a line this one placed (Crit Damage +10% exists
+    // on Ancient and not on Relic). The Worker's own decode has this guard, and
+    // the loader has to agree with it or the board and the Grader read one
+    // bracelet as two grades.
+    if (unplaced(alt) > unplaced(dec)) return dec;
     return alt;
+  }
+
+  /** Lines a grade's value table could not place: no tier, or a value off the table. */
+  function unplaced(dec) {
+    var n = 0, i, l;
+    for (i = 0; i < dec.lines.length; i++) {
+      l = dec.lines[i];
+      if (l.cat === "special" && (!l.tier || l.unmatchedValue)) n++;
+    }
+    return n;
   }
 
   /**
@@ -474,47 +491,57 @@
   // ------------------------------------------------------------------
   // the board figure — the bracelet on the CANONICAL DEFAULT profile
   //
-  // Same split as leaderboard.js's score() and worker/bracelet.js's: EVERY
-  // combat-trait line is scored by traitDamage, every effect line by setDamage. The
-  // duplication is deliberate and matches astrogem's own house pattern — the
-  // leaderboard is lazy-loaded and this panel is eager, so neither may depend on
-  // the other. The MODEL is the single source; only the call sequence repeats.
+  // The Worker's boardScore(), step for step: every combat-trait line (on `cat`,
+  // never on `fixed`) into the trait pair, every other line an effect line, and
+  // the two scored in ONE pool — jointScore for the damage %, subrank's
+  // braceletScore for the 0-100. It used to sum traitDamage and setDamage, the
+  // pre-pooling arithmetic, which read a crit-heavy bracelet high: Tikkyy's
+  // 12.24% here against 12.14% on the board, and a loadout marker that could
+  // point at a different loadout than the board ranks. The duplication is
+  // deliberate — the Worker bundles the model and this panel loads it — and the
+  // MODEL is still the only place damage is scored.
   // ------------------------------------------------------------------
 
   var DEFAULT_PROFILE = B.normalizeProfile({});
+  var SUPPORT_PROFILE = B.normalizeProfile({ role: "support" });
 
-  function defaultScore(stats) {
+  /** The Worker's SUPPORT_CLASSES: the four read a second time, as supports. */
+  var SUPPORT_CLASSES = { bard: 1, paladin: 1, artist: 1, valkyrie: 1 };
+  function isSupportClass(cls) {
+    return !!SUPPORT_CLASSES[String(cls == null ? "" : cls).replace(/[^A-Za-z]/g, "").toLowerCase()];
+  }
+
+  /**
+   * One bracelet's board reading on one role: {role, grade, pct, score,
+   * isPerfect}, or null. The support reading is scored on the support profile
+   * and graded on the support ladder, exactly as the Worker reads it.
+   */
+  function boardReading(stats, role) {
+    var SR = root.Subrank;
     if (!stats || !stats.length) return null;
     var dec, i, l, k;
     try { dec = decodeWithGradeCheck(stats); } catch (e) { return null; }
+    var sup = role === "support", prof = sup ? SUPPORT_PROFILE : DEFAULT_PROFILE;
     var traits = { crit: 0, spec: 0, swift: 0 }, lines = [];
     for (i = 0; i < dec.lines.length; i++) {
       l = dec.lines[i];
       k = TRAIT_TO_APP[l.family];
-      // On `cat`, never on `fixed` — a trait that rolled into a granted slot is
-      // still a combat trait. See model/bracelet.js's traitDamage() header.
       if (l.cat === "trait" && k) { traits[k] = l.value; continue; }
       lines.push(l);
     }
-    var d = B.traitDamage(traits, DEFAULT_PROFILE) + B.setDamage(lines, dec.grade, DEFAULT_PROFILE);
-    var p = B.damagePercent(d);
+    var p = B.damagePercent(B.jointScore(lines, traits, dec.grade, prof));
     if (typeof p !== "number" || !isFinite(p)) return null;
-    return { grade: dec.grade, pct: p, unmapped: (dec.unknown || []).length };
+    // null, not DEFAULT_PROFILE, is what hits subrank's anchor cache — the
+    // Worker passes the same.
+    var g = SR ? SR.braceletScore({ lines: lines, traits: traits, grade: dec.grade, profile: sup ? SUPPORT_PROFILE : null }) : null;
+    return { role: sup ? "support" : "dps", grade: dec.grade, pct: p, score: g ? g.score : null,
+      isPerfect: !!(g && g.isPerfect), unmapped: (dec.unknown || []).length };
   }
 
-  /**
-   * A whole-bracelet letter, on the SAME ladder model/bracelet.js grades families
-   * with (FAMILY_GRADE_BANDS: share of the best -> S/A/B/C/D/F). There the share is
-   * of the best family; here it is of the best bracelet on the board, which is what
-   * ARCHITECTURE §3.5 asks for — "extend the same ladder to a whole-bracelet rank so
-   * a character gets one letter". The bands are mirrored rather than imported
-   * because the model exports familyGrades(), not bandLetter(); this is a banding of
-   * a ratio, not damage maths, and the model stays the only place damage is scored.
-   */
-  var RANK_BANDS = [[0.90, "S"], [0.70, "A"], [0.50, "B"], [0.30, "C"], [0.10, "D"], [-1, "F"]];
-  function bandLetter(share) {
-    for (var i = 0; i < RANK_BANDS.length; i++) if (share >= RANK_BANDS[i][0]) return RANK_BANDS[i][1];
-    return "F";
+  /** The damage-dealer reading's figure, for the loadout pills and the ▲ marker. */
+  function defaultScore(stats) {
+    var r = boardReading(stats, "dps");
+    return r ? { grade: r.grade, pct: r.pct, score: r.score, unmapped: r.unmapped } : null;
   }
 
   // ------------------------------------------------------------------
@@ -581,34 +608,281 @@
   }
 
   // ------------------------------------------------------------------
-  // the baked board — a free, instant cache of 30 characters
+  // THE BOARD — every tracked character, read the way the leaderboard and the
+  // profile read them
+  //
+  // GET {WORKER}/list: the v3 summary the Leaderboard tab and the profile page
+  // both draw. One row per character with the Worker's finished numbers on the
+  // CANONICAL default profile — damage % and the 0-100 grade, both readings for
+  // a support class — decoded here exactly as leaderboard.js decodes it. It
+  // feeds the character search (every tracked name, not the 59 baked ones), the
+  // class icons on saved chips, and the banner's Board rank.
+  //
+  // KEPT, BECAUSE IT IS THROTTLED. The Worker allows three list fetches a
+  // minute per IP and this panel asks at mount, so an answer is kept ten
+  // minutes in memory and in localStorage, and asks that overlap share one
+  // request. A throttle or an outage falls back to the last copy kept, however
+  // old, and only then to the characters baked into this build
+  // (data/characters.json), scored here the way the Worker scores a row.
+  //
+  // A LIVE ROW IS NOT A RECORD. It carries a bracelet's summary, not its stats,
+  // so runPull still asks the Worker for the character itself; only the baked
+  // copy, which does carry the stats, doubles as a load cache (seedHit).
   // ------------------------------------------------------------------
 
-  var seedPromise = null;
+  var BOARD_TTL_MS = 10 * 60 * 1000;
+  var BOARD_RETRY_MS = 60 * 1000;      // a board that fell back to the baked copy asks the Worker again after this
+  var BOARD_KEY = "bc_board_v3";       // localStorage: {at, data} — the raw v3 payload
+  var boardMem = null, boardLoad = null, boardFailAt = 0;
 
-  /** [{region, name, class, itemLevel, pulledAt, loadouts:[…], best, pct}] */
-  function seedIndex() {
-    if (seedPromise) return seedPromise;
-    seedPromise = fetch(SEED_URL).then(function (r) {
+  /**
+   * Can this copy answer without a request? A fresh live or kept copy can. So
+   * can ANY copy for a minute after a fetch failed: a throttled Worker asked
+   * again at once only stays throttled, and three asks a minute is its limit.
+   */
+  function boardUsable(b) {
+    if (!b) return false;
+    if (Date.now() - boardFailAt < BOARD_RETRY_MS) return true;
+    return b.source !== "baked" && !b.stale && Date.now() - b.fetchedAt < BOARD_TTL_MS;
+  }
+
+  /**
+   * board() -> Promise({list, byKey, lists, source, builtAt, fetchedAt, stale})
+   *   list      every row: {region, name, class, itemLevel, pulledAt, grade, role,
+   *             pct, score, isPerfect, dps, sup, source, ord, loadouts}
+   *   byKey     "REGION|name" -> row (charKey; CE is EU)
+   *   lists     {NA:{dps, support}, EU:{dps, support}} — each board in its order
+   *   source    "live" (just fetched), "kept" (localStorage), "baked" (this build)
+   *   stale     true when the copy is older than the Worker would have served
+   * Never rejects: the baked board is the floor.
+   */
+  function board() {
+    if (boardUsable(boardMem)) return Promise.resolve(boardMem);
+    if (boardLoad) return boardLoad;
+    var kept = readKeptBoard();
+    if (kept && Date.now() - kept.at < BOARD_TTL_MS && (!boardMem || boardMem.fetchedAt < kept.at)) {
+      boardMem = buildBoard(kept.data, kept.at, "kept");
+      return Promise.resolve(boardMem);
+    }
+    boardLoad = fetchBoard().then(function (data) {
+      var at = Date.now();
+      keepBoard(data, at);
+      boardMem = buildBoard(data, at, "live");
+      return boardMem;
+    }).catch(function () {
+      // A throttle (429), an outage or no network. The last copy kept is a real
+      // board a little behind; the baked one is older still, but it is a board.
+      boardFailAt = Date.now();
+      if (boardMem && boardMem.source !== "baked") { boardMem.stale = true; return boardMem; }
+      if (kept) { boardMem = buildBoard(kept.data, kept.at, "kept"); boardMem.stale = true; return boardMem; }
+      return bakedBoard().then(function (b) { boardMem = b; return b; });
+    }).then(function (b) { boardLoad = null; return b; });
+    return boardLoad;
+  }
+
+  /** The Worker's /list, or a rejection. Readable means v3 with at least one row. */
+  function fetchBoard() {
+    if (!WORKER_URL) return Promise.reject(new Error("no worker"));
+    return fetch(WORKER_URL.replace(/\/+$/, "") + "/list").then(function (r) {
+      return r.text().then(function (t) {
+        var d = null;
+        try { d = JSON.parse(t); } catch (e) { d = null; }
+        if (r.ok && boardReadable(d)) return d;
+        throw new Error((d && (d.message || d.error)) || ("the board answered " + r.status));
+      });
+    });
+  }
+  function boardReadable(d) { return !!(d && d.v === 3 && Array.isArray(d.characters) && d.characters.length); }
+
+  function readKeptBoard() {
+    var raw = null, k = null;
+    try { raw = localStorage.getItem(BOARD_KEY); } catch (e) { return null; }
+    if (!raw) return null;
+    try { k = JSON.parse(raw); } catch (e) { return null; }
+    return (k && typeof k.at === "number" && boardReadable(k.data)) ? k : null;
+  }
+  function keepBoard(data, at) {
+    // Half a megabyte of JSON. A full store costs the copy, never the board.
+    try { localStorage.setItem(BOARD_KEY, JSON.stringify({ at: at, data: data })); } catch (e) { /* quota or private mode */ }
+  }
+
+  // leaderboard.js's decode tables — the v3 row's codes, in the Worker's order.
+  var BOARD_CATS = ["special", "basic", "trait"], BOARD_TIERS = ["low", "mid", "high"];
+  var BOARD_BASIC = ["mainStat", "vitality"], BOARD_TRAITS = ["crit", "spec", "swiftness"];
+
+  /**
+   * The v3 payload -> the board. leaderboard.js's fromSnapshot(), field for
+   * field: [region, name, ilvl, classIdx, pulledAt, grade, role, [pct, score,
+   * isPerfect], alt, traits, lines, unmapped, loadouts]. Slot 6 says which
+   * reading the Worker's better-letter rule showed, slot 7 is that one and slot
+   * 8 the other, so the two are filed by AXIS, as the leaderboard files them.
+   */
+  function buildBoard(data, at, source) {
+    var classes = data.classes || [], rows = [], i, a;
+    for (i = 0; i < data.characters.length; i++) {
+      a = data.characters[i];
+      var read = a[7] || [], alt = a[8];
+      var won = { pct: typeof read[0] === "number" ? read[0] : null, score: typeof read[1] === "number" ? read[1] : null, isPerfect: !!read[2] };
+      var lost = (alt && typeof alt[0] === "number") ? { pct: alt[0], score: typeof alt[1] === "number" ? alt[1] : null, isPerfect: false } : null;
+      var supWon = a[6] === 1, shown = won;
+      rows.push({
+        region: normRegion(a[0]) || String(a[0] || ""),
+        name: a[1],
+        "class": (a[3] != null && a[3] >= 0) ? (classes[a[3]] || null) : null,
+        itemLevel: typeof a[2] === "number" ? Math.round(a[2]) : null,
+        pulledAt: typeof a[4] === "number" ? a[4] : null,
+        grade: a[5] === 1 ? "relic" : "ancient",
+        role: supWon ? "support" : "dps",
+        dps: supWon ? lost : won,
+        sup: supWon ? won : lost,
+        pct: shown.pct, score: shown.score, isPerfect: shown.isPerfect,
+        traits: boardTraits(a[9]), lines: boardLines(a[10]), unmapped: a[11] || 0,
+        source: "board", ord: i,
+        loadouts: null                  // a summary, not a record: runPull asks the Worker
+      });
+    }
+    return indexBoard(rows, data.builtAt || 0, at, source);
+  }
+  function boardLines(flat) {
+    var out = [], i, cat, line;
+    flat = flat || [];
+    for (i = 0; i + 3 < flat.length; i += 4) {
+      cat = BOARD_CATS[flat[i]] || "special";
+      line = { cat: cat, fixed: !!flat[i + 3], tier: null, value: null, family: null };
+      if (cat === "special") { line.family = flat[i + 1]; line.tier = BOARD_TIERS[flat[i + 2]] || null; }
+      else { line.family = (cat === "basic" ? BOARD_BASIC : BOARD_TRAITS)[flat[i + 1]] || null; line.value = flat[i + 2]; }
+      out.push(line);
+    }
+    return out;
+  }
+  function boardTraits(flat) {
+    var out = [], i;
+    flat = flat || [];
+    for (i = 0; i + 1 < flat.length; i += 2) out.push({ family: BOARD_TRAITS[flat[i]] || null, value: flat[i + 1] });
+    return out;
+  }
+
+  /**
+   * leaderboard.js isSupportMain(): a support class whose support reading lands
+   * two or more subranks above its damage-dealer one leaves the DPS board.
+   */
+  function supportMain(r) {
+    var SR = root.Subrank;
+    if (!SR || !r.sup || !r.dps || r.sup.score == null || r.dps.score == null) return false;
+    return SR.of(r.dps.score, "dps").i - SR.of(r.sup.score, "support").i >= 2;
+  }
+
+  /**
+   * byKey, and each region's two boards in the leaderboard's order — rebuild()
+   * with one region chip on and no class filter: DPS is every row with a dealer
+   * reading less support mains, Support is the four support classes; each by
+   * its own damage %, highest first, ties in payload order.
+   */
+  function indexBoard(rows, builtAt, at, source) {
+    var byKey = {}, lists = {}, i, r, R;
+    for (i = 0; i < rows.length; i++) {
+      r = rows[i];
+      byKey[charKey(r.region, r.name)] = r;
+      R = lists[r.region] || (lists[r.region] = { dps: [], support: [] });
+      if (r.dps && !supportMain(r)) R.dps.push(r);
+      if (r.sup) R.support.push(r);
+    }
+    function by(axis) {
+      return function (x, y) {
+        var a = x[axis] && x[axis].pct != null ? x[axis].pct : -Infinity;
+        var b = y[axis] && y[axis].pct != null ? y[axis].pct : -Infinity;
+        return (b - a) || (x.ord - y.ord);
+      };
+    }
+    for (R in lists) if (Object.prototype.hasOwnProperty.call(lists, R)) {
+      lists[R].dps.sort(by("dps"));
+      lists[R].support.sort(by("sup"));
+    }
+    return { list: rows, byKey: byKey, lists: lists, source: source, builtAt: builtAt, fetchedAt: at, stale: false };
+  }
+
+  /**
+   * The Worker's snapshotEntry() for a record in this file's own shape: every
+   * loadout that wears a DIFFERENT bracelet is scored as a damage dealer and
+   * the best one ranks (a tie keeps the loadout lostark.bible draws); a support
+   * class is read again as a support, and the better-letter rule picks the
+   * reading shown. Null when nothing decodes.
+   */
+  function boardEntryFromRecord(rec) {
+    var SR = root.Subrank;
+    if (!rec || !rec.loadouts || !SR) return null;
+    var los = rec.loadouts.filter(function (l) { return l && l.stats && l.stats.length; }), i;
+    if (!los.length) return null;
+    var seen = {}, nDistinct = 0, chosen = 0;
+    for (i = 0; i < los.length; i++) {
+      var sg = statsSig(los[i].stats);
+      if (!seen[sg]) { seen[sg] = 1; nDistinct++; }
+      if (los[i].isRendered) chosen = i;
+    }
+    var cand = (los.length >= 2 && nDistinct >= 2) ? los : [los[chosen]];
+    if (cand.length === 1) chosen = 0;
+    var best = null, bestPct = -Infinity;
+    for (i = 0; i < cand.length; i++) {
+      var s = boardReading(cand[i].stats, "dps");
+      if (!s) continue;
+      if (s.pct > bestPct + 1e-9 || (Math.abs(s.pct - bestPct) < 1e-9 && i === chosen)) { best = { s: s, stats: cand[i].stats }; bestPct = s.pct; }
+    }
+    if (!best) return null;
+    var dps = best.s, sup = isSupportClass(rec["class"]) ? boardReading(best.stats, "support") : null;
+    var supWins = !!(sup && sup.score != null && dps.score != null &&
+      SR.of(sup.score, "support").i < SR.of(dps.score, "dps").i);
+    var shown = supWins ? sup : dps;
+    function reading(x, won) {
+      return x ? { pct: Math.round(x.pct * 100) / 100, score: x.score == null ? null : Math.round(x.score * 1000) / 1000,
+        isPerfect: won ? !!x.isPerfect : false } : null;
+    }
+    var rd = reading(dps, !supWins), rs = reading(sup, supWins), rw = supWins ? rs : rd;
+    return {
+      region: rec.region, name: rec.name, "class": rec["class"] || null,
+      itemLevel: rec.itemLevel, pulledAt: rec.pulledAt, grade: dps.grade,
+      role: shown.role, dps: rd, sup: rs,
+      pct: rw.pct, score: rw.score, isPerfect: rw.isPerfect
+    };
+  }
+
+  /**
+   * The baked board: data/characters.json's records, scored here as the Worker
+   * scores a row. Only reached when no board came back from the Worker, and the
+   * one board whose rows are also full records — so seedHit can load from it.
+   */
+  function bakedBoard() {
+    return fetch(SEED_URL).then(function (r) {
       if (!r.ok) throw new Error("http_" + r.status);
       return r.json();
     }).then(function (j) {
-      // characters.json is keyed "<REGION>|<name>"; the old seed was {entries:[…]}.
-      // Accept both so a cached copy of either shape still works.
-      var rows = (j && j.entries) ? j.entries : [];
       // characters.json keeps its records under `characters` (keyed "<REGION>|<name>");
       // older copies were keyed at the top level or were {entries:[…]}. Accept all three.
+      var raw = (j && j.entries) ? j.entries : [];
       var bag = (j && j.characters && typeof j.characters === "object") ? j.characters : j;
-      if (!rows.length && bag && typeof bag === "object") {
-        for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k) && bag[k] && bag[k].name) rows.push(bag[k]);
+      if (!raw.length && bag && typeof bag === "object") {
+        for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k) && bag[k] && bag[k].name) raw.push(bag[k]);
       }
-      var list = rows.map(fromSeedEntry).filter(function (e) { return !!e; });
-      var byKey = {};
-      list.forEach(function (e) { byKey[charKey(e.region, e.name)] = e; });
-      return { list: list, byKey: byKey };
-    }).catch(function () { seedPromise = null; return { list: [], byKey: {} }; });
-    return seedPromise;
+      var rows = [], i, rec, e;
+      for (i = 0; i < raw.length; i++) {
+        rec = fromSeedEntry(raw[i]);
+        if (!rec) continue;
+        e = boardEntryFromRecord(rec);
+        if (!e) continue;
+        rec.grade = e.grade; rec.role = e.role; rec.dps = e.dps; rec.sup = e.sup;
+        rec.pct = e.pct; rec.score = e.score; rec.isPerfect = e.isPerfect;
+        rec.ord = rows.length;
+        rows.push(rec);
+      }
+      var stamp = Date.parse((j && j._scoredAt) || "") || 0;
+      return indexBoard(rows, stamp, Date.now(), "baked");
+    }).catch(function () { return indexBoard([], 0, Date.now(), "baked"); });
   }
+
+  /**
+   * The board every other caller of this file reads — the live one, kept, or
+   * baked. Named for the file it used to read; {list, byKey} as it always was.
+   */
+  function seedIndex() { return board(); }
 
   /**
    * One seed row -> the internal record every render path reads. Scores every
@@ -748,57 +1022,136 @@
   }
 
   // ------------------------------------------------------------------
-  // "where does this bracelet sit?" — rank vs the board
+  // "where does this bracelet sit?" — the board's own answer
   // ------------------------------------------------------------------
 
+  /** "top 4.4%": rank over count, rounded UP, so nobody is ever top 0% — the profile page's topPct(). */
+  function topPct(rank, count) {
+    if (!rank || !count) return "";
+    var p = 100 * rank / count;
+    return "top " + (p < 10 ? (Math.ceil(p * 10) / 10).toFixed(1) : String(Math.ceil(p))) + "%";
+  }
+  /** "Sorceress" + "s" reads "Sorceresss": classes ending in s, x or z take "es". */
+  function classPlural(cls) { return /[sxz]$/i.test(cls) ? cls + "es" : cls + "s"; }
+  /** "on EU", or "on EU's support board" for a support reading. */
+  function boardWords(region, axis) { return "on " + region + (axis === "support" ? "’s support board" : ""); }
+
   /**
-   * fillFieldRank(), ported. The estimator is astrogem's and it is deliberately
-   * conservative: (better+1)/(total+1) rounded UP, so a character can never be
-   * told they are top 0% and a small class sample cannot flatter anyone. The class
-   * line only appears at n>=5, because below that the percentage is noise.
+   * fieldRank(char, cb) — where the board puts this character, cb(r):
    *
-   * The comparison is on the CANONICAL DEFAULT profile at both ends — the board's
-   * number against the board's numbers. Scoring one side on the user's own deck
-   * would rank their gear, not their bracelet.
+   *   onBoard   true when the board holds the character's row; false when the
+   *             letter is this file's estimate of the row the board will build
+   *   axis      "dps" | "support" — the reading shown, the Worker's better-letter pick
+   *   key, bg, fg, isPerfect, score, pct
+   *             the subrank letter and its colours (subrank.js's of() and
+   *             colorOf()), the 0-100 and the damage %, on the default profile
+   *   rank, count, region, classRank, classCount, cls
+   *             the place on the region's board for that axis; the class count
+   *             includes the character. rank is an estimate when onBoard is false.
+   *   text      the line under the banner's stats
+   *   source, builtAt, stale   which board answered, and how old it is
+   *
+   * THE BOARD'S LETTER, NEVER A LETTER OF ITS OWN. This used to band the
+   * character's share of the best bracelet on the baked 59 on a six-letter
+   * ladder no other page used — so Tikkyy read "B" beside a C+ grade, and his
+   * class place came out "#6 of 5" because the count left him out. The letter is
+   * now the row's own 0-100 on subrank's ladder, the place is the row's place on
+   * the board the leaderboard draws, and both are what his profile says.
+   *
+   * NOT ON THE BOARD YET — a character the board has not rebuilt with — is
+   * scored here from the record just loaded, the way the Worker will score it,
+   * and its place is marked as an estimate until the next rebuild (every ten
+   * minutes at most).
    */
   function fieldRank(char, cb) {
-    if (!char || char.defaultPct == null || typeof cb !== "function") return;
-    seedIndex().then(function (idx) {
-      var list = idx && idx.list;
-      if (!list || !list.length) return;
-      var mine = char.defaultPct, best = 0, better = 0, total = 0, cBetter = 0, cTotal = 0, i, e;
-      for (i = 0; i < list.length; i++) {
-        e = list[i];
-        if (e.pct == null) continue;
-        if (e.pct > best) best = e.pct;
-        total++;
-        if (e.pct > mine + 1e-9) better++;
-        if (char["class"] && e["class"] === char["class"]) {
-          cTotal++;
-          if (e.pct > mine + 1e-9) cBetter++;
-        }
-      }
-      if (!total) return;
-      var bits = [];
-      if (char["class"] && cTotal >= 5) {
-        var p = Math.max(1, Math.ceil(100 * (cBetter + 1) / (cTotal + 1)));
-        // "Sorceress" + "s" reads as "Sorceresss". Classes ending in s, x or z take
-        // "es"; the rest take "s".
-        var cls = char["class"] || "";
-        var plural = /[sxz]$/i.test(cls) ? cls + "es" : cls + "s";
-        bits.push("Top " + p + "% of " + plural + " (#" + (cBetter + 1) + " of " + cTotal + ")");
-      }
-      bits.push("#" + (better + 1) + " of " + total.toLocaleString("en-US") + " tracked characters");
-      var share = best > 0 ? mine / best : 0;
-      cb({
-        text: bits.join(" · "),
-        letter: bandLetter(share),
-        share: share,
-        best: best,
-        rank: better + 1,
-        total: total
-      });
+    if (!char || !char.name || typeof cb !== "function") return;
+    board().then(function (b) {
+      var row = b.byKey[charKey(normRegion(char.region) || char.region, char.name)] || null;
+      var r = row ? placeOnBoard(b, row) : null;
+      if (!r) r = placeOffBoard(b, char);
+      if (r) cb(r);
     }).catch(function () { /* the rank is a nicety; never break the panel over it */ });
+  }
+
+  /** The board's letter, colours and figures for one reading. */
+  function readingBadge(reading, axis) {
+    var SR = root.Subrank;
+    if (!SR || !reading || reading.score == null) return null;
+    var band = SR.of(reading.score, axis), col = SR.colorOf(band.key, !!reading.isPerfect);
+    return { key: band.key, bg: col.bg, fg: col.fg, score: reading.score, pct: reading.pct, isPerfect: !!reading.isPerfect };
+  }
+
+  /** How old a board copy is, for a line that has to say so. */
+  function boardAge(b) {
+    if (b.source === "baked") return "the board baked into this build";
+    if (!b.stale) return "";
+    var mins = Math.max(1, Math.round((Date.now() - b.fetchedAt) / 60000));
+    return "a board copy from " + (mins < 60 ? mins + "m" : Math.round(mins / 60) + "h") + " ago";
+  }
+
+  function placeOnBoard(b, row) {
+    var axis = row.role === "support" ? "support" : "dps";
+    var lists = b.lists[row.region] || { dps: [], support: [] };
+    var list = lists[axis], i = list.indexOf(row);
+    if (i < 0) { axis = axis === "support" ? "dps" : "support"; list = lists[axis]; i = list.indexOf(row); }
+    var badge = readingBadge(axis === "support" ? row.sup : row.dps, axis);
+    if (i < 0 || !badge) return null;
+    var cls = row["class"], cr = 0, cn = 0, j;
+    for (j = 0; j < list.length; j++) {
+      if (!cls || list[j]["class"] !== cls) continue;
+      cn++;
+      if (j <= i) cr++;
+    }
+    var parts = ["#" + nf(i + 1) + " of " + nf(list.length) + " " + boardWords(row.region, axis), topPct(i + 1, list.length)];
+    if (cls && cn) parts.push("#" + nf(cr) + " of " + nf(cn) + " " + classPlural(cls));
+    var age = boardAge(b);
+    if (age) parts.push(age);
+    return extendObj(badge, {
+      onBoard: true, axis: axis, rank: i + 1, count: list.length, region: row.region,
+      classRank: cls ? cr : null, classCount: cls ? cn : null, cls: cls || null,
+      text: parts.join(" · "), source: b.source, builtAt: b.builtAt, stale: !!b.stale
+    });
+  }
+
+  /**
+   * A character the board does not hold: the record just loaded, scored as the
+   * Worker will score it, and placed among the rows already there — a tie goes
+   * ahead of it, the way a rebuild appends a new row after the ones it keeps.
+   */
+  function placeOffBoard(b, char) {
+    var rec = state.record;
+    if (!rec || String(rec.name).toLowerCase() !== String(char.name).toLowerCase() ||
+        (normRegion(rec.region) || rec.region) !== (normRegion(char.region) || char.region)) return null;
+    var e = boardEntryFromRecord(rec);
+    if (!e) return null;
+    var axis = e.role === "support" ? "support" : "dps";
+    var reading = axis === "support" ? e.sup : e.dps, badge = readingBadge(reading, axis);
+    if (!badge) return null;
+    var region = normRegion(rec.region) || rec.region;
+    var list = (b.lists[region] || { dps: [], support: [] })[axis], better = 0, cn = 1, cAhead = 0, j, v;
+    for (j = 0; j < list.length; j++) {
+      v = list[j][axis === "support" ? "sup" : "dps"];
+      var ahead = v && v.pct != null && v.pct >= reading.pct;
+      if (ahead) better++;
+      if (e["class"] && list[j]["class"] === e["class"]) { cn++; if (ahead) cAhead++; }
+    }
+    // With no board at all there is nothing to be placed among: say that, and
+    // keep the letter, which needs no board.
+    var parts = b.list.length
+      ? ["Not on the board yet", "≈ #" + nf(better + 1) + " of " + nf(list.length + 1) + " " + boardWords(region, axis)]
+      : ["The board could not be read, so there is no place to show"];
+    var age = b.list.length ? boardAge(b) : "";
+    if (age) parts.push(age);
+    return extendObj(badge, {
+      onBoard: false, axis: axis, rank: b.list.length ? better + 1 : null, count: b.list.length ? list.length + 1 : null, region: region,
+      classRank: e["class"] && b.list.length ? cAhead + 1 : null, classCount: e["class"] && b.list.length ? cn : null, cls: e["class"] || null,
+      text: parts.join(" · "), source: b.source, builtAt: b.builtAt, stale: !!b.stale
+    });
+  }
+
+  function extendObj(a, b) {
+    for (var k in b) if (Object.prototype.hasOwnProperty.call(b, k)) a[k] = b[k];
+    return a;
   }
 
   // ------------------------------------------------------------------
@@ -1388,8 +1741,9 @@
       source: rec.source,
       cached: rec.cached,
       pulledAt: rec.pulledAt || Date.now(),
-      // The BOARD figure for the bracelet on screen — the canonical default
-      // profile, never the user's deck. Drives the rank badge and the field rank.
+      // The loadout on screen on the canonical default profile, scored the
+      // board's way (defaultScore). The banner's Board rank does NOT read it:
+      // that is the board's own row, or fieldRank's estimate of one.
       defaultPct: l.pct,
       grade: l.grade,
       loadoutLabel: rec.loadouts.length > 1 ? (l.label || l.classification) : null,
@@ -1618,8 +1972,13 @@
   }
 
   var seedCache = null;
+  /**
+   * A board row that is also a full record — only the baked board's are. A
+   * live row is a summary with no stats, so a lookup on it goes to the Worker.
+   */
   function seedHit(region, name) {
-    return seedCache ? seedCache.byKey[charKey(region, name)] : null;
+    var e = seedCache ? seedCache.byKey[charKey(region, name)] : null;
+    return (e && e.loadouts && e.loadouts.length) ? e : null;
   }
   function showSeed(rec) {
     if (!showRecord(rec)) return;
@@ -2105,6 +2464,8 @@
     // The board figure + where a bracelet sits on the board (app.js draws both).
     defaultScore: defaultScore,
     fieldRank: fieldRank,
+    /** The board — live, kept 10 minutes, or baked — as {list, byKey, lists, source, …}. See board(). */
+    board: board,
     seed: seedIndex,
     // Console handles for checking a fresh deploy without clicking:
     //   BraceletImport.workerUrl()

@@ -491,12 +491,12 @@ function routeBoot(){
 <script src="char-picker.js?v=6"></script>
 <script src="profile.js?v=25"></script>
 <script src="subrank.js?v=9"></script>
-<script src="app.js?v=50"></script>
+<script src="app.js?v=51"></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
 <script src="bible-oauth.js?v=2"></script>
-<script src="bible-import.js?v=22"></script>
+<script src="bible-import.js?v=23"></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
      tab activates exactly as a click just after load would (see ROUTES). -->
