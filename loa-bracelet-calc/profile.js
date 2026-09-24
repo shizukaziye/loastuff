@@ -1389,7 +1389,7 @@
   var baseSeq = 0;               // bumped by every set and clear, so a re-set of the same bracelet still reads as a change
   var baseSig = null;            // what the baseline's listeners last heard
 
-  var BASE_SOURCES = { "import": 1, editor: 1, set: 1 };
+  var BASE_SOURCES = { "import": 1, editor: 1, set: 1, edit: 1 };   // edit = changed in place on the Advisor
 
   /** One model line, checked, or null. An unknown family, tier or category is dropped. */
   function cleanLine(l, grade) {

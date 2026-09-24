@@ -11,8 +11,9 @@
  *
  *   YOUR BRACELET  BraceletApp.baseline.get(): grade, score, damage %, lines,
  *                  traits and whose it is — or, with no bracelet set, the
- *                  Calculator's hand-set Baseline %. Read-only here; the
- *                  Calculator sets both.
+ *                  Calculator's hand-set Baseline %. A character picker above
+ *                  it, and an editor in place: grade, both traits, the granted
+ *                  lines, every change written through baseline.set().
  *   A BRACELET YOU MIGHT ROLL
  *                  one combat-trait slider (both lines at one value, the
  *                  baseline's two kinds), rolls left 0-7, grade, slot count and
@@ -186,6 +187,7 @@
       rolls: ROLLS_MAX,          // rerolls left
       grade: null,               // null = follow the baseline's grade, else Ancient
       slots: 3,
+      slotsPref: 3,              // the count the reader chose; slots returns to it when the grade allows
       mode: "fresh",             // "fresh" = not rolled yet; "rolled" = these lines
       rows: [blankRow(), blankRow(), blankRow()],
       // the keep-or-replace flow's own state, against THIS bracelet
@@ -236,6 +238,7 @@
       d.rolls = clamp(Math.round(num(raw.rolls, d.rolls)), 0, ROLLS_MAX);
       d.grade = (raw.grade === "ancient" || raw.grade === "relic") ? raw.grade : null;
       d.slots = (raw.slots === 1 || raw.slots === 2) ? raw.slots : 3;
+      d.slotsPref = (raw.slotsPref === 1 || raw.slotsPref === 2 || raw.slotsPref === 3) ? raw.slotsPref : d.slots;
       d.mode = raw.mode === "rolled" ? "rolled" : "fresh";
       if (raw.rows && raw.rows.length) d.rows = cleanRows(raw.rows);
       if (raw.locks && raw.locks.length) d.locks = raw.locks.map(function (x) { return !!x; });
@@ -262,13 +265,16 @@
   function legalSlots(grade) { return grade === "relic" ? [1, 2] : [2, 3]; }
   /**
    * Keep the slot count legal for the grade in force — which can move under the
-   * controls when the grade follows your bracelet. An illegal count takes the
-   * grade's larger one.
+   * controls when the grade follows your bracelet. The count is the one the
+   * reader chose whenever the grade allows it, else the grade's larger one: a
+   * trip through Relic, the simulator following an edit of your bracelet, must
+   * not leave an Ancient bracelet at two slots for good.
    */
   function fitSlots() {
     var legal = legalSlots(simGrade());
-    if (legal.indexOf(SIM.slots) >= 0) return;
-    SIM.slots = legal[legal.length - 1];
+    var want = legal.indexOf(SIM.slotsPref) >= 0 ? SIM.slotsPref : legal[legal.length - 1];
+    if (SIM.slots === want) return;
+    SIM.slots = want;
     fitSim(SIM);
     SIM.locks = null; SIM.rolled = null;
     saveSim();
@@ -798,6 +804,19 @@
       "#tab-advisor .av-grade{display:inline-block;min-width:26px;text-align:center;padding:1px 7px;border-radius:6px;" +
         "font-weight:800;font-size:12px;letter-spacing:.02em;line-height:1.5;text-decoration:none}" +
       "#tab-advisor .av-none{margin:0;font-size:13px;color:var(--dim)}" +
+      // ---- editing your bracelet: the simulator's controls, for a worn one ----
+      "#tab-advisor #av-base-body{margin-top:10px}" +
+      "#tab-advisor .av-bbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}" +
+      "#tab-advisor .av-bbtns .mbtn{padding:4px 12px;font-size:12px}" +
+      "#tab-advisor .av-eform{margin-top:12px}" +
+      "#tab-advisor .av-eform .bc-segrow{margin-bottom:12px}" +
+      "#tab-advisor .av-etr{display:flex;flex-wrap:wrap;gap:8px 16px;min-width:0}" +
+      "#tab-advisor .av-etp{display:inline-flex;align-items:center;gap:6px}" +
+      "#tab-advisor .av-etp select,#tab-advisor .av-etp input{background:var(--panel2);color:var(--text);" +
+        "border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-family:inherit;font-size:13px}" +
+      "#tab-advisor .av-etp input{width:70px}" +
+      "#tab-advisor .av-etp select:focus,#tab-advisor .av-etp input:focus{outline:1px solid var(--accent)}" +
+      "#tab-advisor .av-elb{margin:0 0 6px}" +
       // ---- the bracelet you might roll ----
       // Two columns on a wide screen — the shape of the bracelet on the left,
       // its lines on the right — one under 1020px.
@@ -808,7 +827,8 @@
       "#tab-advisor .av-sim .bc-segrow{margin-bottom:12px}" +
       // The deck styles its pill labels only inside its own clusters; here they
       // take the slider rows' caption style so the controls read as one list.
-      "#tab-advisor .av-sim .bc-segrow>.lb{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);line-height:1.25}" +
+      "#tab-advisor .av-sim .bc-segrow>.lb,#tab-advisor .av-eform .bc-segrow>.lb,#tab-advisor .av-elb .lb{font-size:10px;" +
+        "text-transform:uppercase;letter-spacing:.04em;color:var(--dim);line-height:1.25}" +
       "#tab-advisor .av-pair{display:flex;flex-wrap:wrap;gap:0 22px}" +
       "#tab-advisor .av-pair>.bc-segrow{flex:1 1 190px;min-width:0}" +
       // The mode pills carry the longest words, so their label sits above them.
@@ -939,23 +959,9 @@
     return out.join(" / ");
   }
 
-  /**
-   * The grade badge, the 0-100, the damage % and whose it is, then its lines —
-   * what baseline.get() reads on the live profile, so a Role press or any
-   * setting on the Calculator moves it here too.
-   */
-  function baseHtml() {
-    var b = barNow(), i;
-    var h = "";   // the heading is static in the section, above the picker
-    if (!b) {
-      return h + '<p class="av-none">Load your character on the Calculator (or set a baseline there) and it appears here.</p>';
-    }
-    if (b.manual) {
-      return h + '<div class="av-bhead"><span class="av-bpct" data-gloss="The Baseline % set by hand in the Calculator&#39;s Economy. Every figure below is measured against it.">' +
-        dmg(b.pct) + '</span><span class="av-bscore">set by hand on the Calculator</span></div>';
-    }
-    var grade = b.grade === "relic" ? "relic" : "ancient";
-    h += '<div class="av-bhead">';
+  /** The head row both views share: the badge, the 0-100, the damage % and whose it is. */
+  function baseHeadHtml(b) {
+    var h = '<div class="av-bhead">';
     if (b.gradeKey && b.bg) h += badgeHtml(b.gradeKey, b.bg, b.fg || "#fff", "Its grade on the 0–100 ladder the Calculator and the leaderboard use.");
     if (okNum(b.score)) h += '<span class="av-bscore"><b>' + fx(b.score, 1) + "</b> of 100</span>";
     h += '<span class="av-bpct" data-gloss="What your bracelet adds in damage on the character the Calculator is scoring. Every figure below is measured against it.">' +
@@ -964,13 +970,222 @@
     // "Your bracelet", which the heading already says.
     var who = b.source === "import" ? (b.name || b.label) : (b.label && b.label !== "Your bracelet" ? b.label : "");
     if (who) h += '<span class="av-bname">' + esc(who) + "</span>";
+    return h + "</div>";
+  }
+
+  /**
+   * The buttons under either view. Set from the Calculator and Clear are there
+   * in both, as the brief asks; Clear only when there is a bracelet to forget —
+   * the hand-set Baseline % is the Calculator's slider, not a bracelet.
+   */
+  function baseBtnsHtml(b) {
+    var h = '<div id="av-b-btns"><div class="av-bbtns">';
+    h += EDIT
+      ? '<button type="button" class="mbtn" id="av-b-done">Done</button>'
+      : '<button type="button" class="mbtn" id="av-b-edit" data-gloss="Change its grade, traits and lines by hand.">Edit</button>';
+    h += '<button type="button" class="mbtn" id="av-b-set" data-gloss="Make the bracelet in the Calculator&#39;s grader your bracelet.">Set from the Calculator</button>';
+    if (b && !b.manual) {
+      h += '<button type="button" class="mbtn" id="av-b-clear" data-gloss="Forget this bracelet. Every figure goes back to comparing against no bracelet.">Clear</button>';
+    }
     h += "</div>";
+    // One box for the row and its message, so a repaint swaps both at once.
+    return h + (baseMsg ? '<div class="av-warn">' + esc(baseMsg) + "</div>" : "") + "</div>";
+  }
+
+  /**
+   * The summary: the head row, then its grade, traits and lines — what
+   * baseline.get() reads on the live profile, so a Role press or any setting
+   * on the Calculator moves it here too.
+   */
+  function baseHtml() {
+    var b = barNow(), i;
+    if (!b) return '<p class="av-none">Pick your character above, or press Edit to enter your bracelet.</p>' + baseBtnsHtml(null);
+    if (b.manual) {
+      return '<div class="av-bhead"><span class="av-bpct" data-gloss="The Baseline % set by hand in the Calculator&#39;s Economy. Every figure below is measured against it.">' +
+        dmg(b.pct) + '</span><span class="av-bscore">set by hand on the Calculator</span></div>' + baseBtnsHtml(b);
+    }
+    var grade = b.grade === "relic" ? "relic" : "ancient", h = baseHeadHtml(b);
     var parts = [grade === "relic" ? "Relic" : "Ancient"], lines = (b.fixed || []).concat(b.lines || []);
     if (b.traits) { var tt = traitsText(b.traits); if (tt) parts.push(tt); }
     for (i = 0; i < lines.length; i++) parts.push(fullLabel(lines[i], grade));
     h += '<div class="av-blines">';
     for (i = 0; i < parts.length; i++) h += "<span>" + esc(parts[i]) + "</span>";
-    return h + "</div>";
+    return h + "</div>" + baseBtnsHtml(b);
+  }
+
+  // ------------------------------------------------------------------
+  // 1b. EDITING YOUR BRACELET
+  //
+  // Shizu, 2026-09-24: "you should be able to edit 'your bracelet' as well."
+  // The editor mirrors the simulator's controls for a bracelet AS WORN: grade,
+  // the two combat traits — each its own kind and points, because a worn
+  // bracelet is rarely an even pair — and the granted lines, an empty slot a
+  // junk line. No rolls left: your bracelet is not rolling any more. No slot
+  // count either: a junk line scores nothing, so an empty third row IS a
+  // two-slot bracelet as far as any figure can tell.
+  //
+  // EVERY CHANGE WRITES THROUGH BraceletApp.baseline.set(). This file keeps no
+  // copy of the baseline that could drift: app.js and profile.js re-score and
+  // re-grade the snapshot, and baseline.onChange repaints the cards, the strip
+  // and the lock table exactly as a character load does. The draft below only
+  // holds what the controls show between writes — a number half typed, and the
+  // third line a switch to Relic hides.
+  //
+  // OURS OR SOMEONE ELSE'S. set() notifies synchronously, so `writing` is true
+  // for exactly as long as the change is ours: then only the readout above the
+  // controls repaints, under the cursor. Anything else that moves the bracelet
+  // — a character picked, Set from the Calculator, Clear — reloads the draft,
+  // and a write still waiting on its debounce is dropped rather than landed on
+  // top of the new bracelet. The picker's load wins.
+  // ------------------------------------------------------------------
+
+  var EDIT = null;           // null = the summary; else the editor's draft
+  var editTimer = null;      // a write waiting while a number is typed
+  var writing = false;       // inside our own baseline.set()
+  var baseMsg = null;        // one refused "Set from the Calculator", in words
+  var EDIT_DEBOUNCE = 250;
+
+  /** The rows a grade shows: Ancient 3, Relic 2. */
+  function maxSlots(grade) { var l = legalSlots(grade); return l[l.length - 1]; }
+  /** A worn trait's own band: the game's, 61-120 Ancient and 41-100 Relic. */
+  function traitBandOf(grade) {
+    var SR = window.Subrank;
+    return [(SR && SR.TRAIT_FLOOR && SR.TRAIT_FLOOR[grade]) || (grade === "relic" ? 41 : 61),
+      (SR && SR.TRAIT_CEILING && SR.TRAIT_CEILING[grade]) || (grade === "relic" ? 100 : 120)];
+  }
+
+  /** What the snapshot says, in a way that ignores its readings: changes only when the bracelet does. */
+  function sigOf(b) {
+    return b ? JSON.stringify([b.grade, b.traits, b.lines, b.fixed, b.label, b.source, b.setAt]) : "none";
+  }
+
+  /** A model line back into the picker's own row. */
+  function rowOfLine(l) {
+    if (!l) return blankRow();
+    if (l.junk) return { fam: JUNK, tier: "mid", value: null };
+    if (l.cat === "basic") return { fam: knownFam("basic:" + l.family), tier: "mid", value: num(l.value, null) };
+    if (l.cat === "trait") return { fam: knownFam("trait:" + l.family), tier: "mid", value: null };
+    if (l.cat === "special") return { fam: knownFam("sp:" + l.family), tier: l.tier || "mid", value: null };
+    return blankRow();
+  }
+
+  /**
+   * The name an edited bracelet goes by. An import keeps its character's name
+   * with the edit said out loud — the figures are no longer quite that
+   * character's — and anything else keeps its label.
+   */
+  function editLabel(b) {
+    if (!b) return "Your bracelet";
+    if (b.source !== "import") return String(b.label || "Your bracelet");
+    var n = String(b.name || b.label || "Your bracelet");
+    return /, edited$/.test(n) ? n : n + ", edited";
+  }
+
+  /** The draft for a bracelet, or a fresh one — your role's pair at 100 — for none. */
+  function draftOf(b) {
+    var grade = (b && b.grade === "relic") ? "relic" : "ancient";
+    var t = (b && b.traits) || {}, got = [], pair = rolePair(), rows = [], lines = (b && b.lines) || [], i, k, v;
+    for (i = 0; i < TRAIT_KEYS.length; i++) {
+      k = TRAIT_KEYS[i]; v = num(t[k], 0);
+      if (v > 0) got.push({ k: k, v: v });
+    }
+    if (got.length > 2) { got.sort(function (x, y) { return y.v - x.v; }); got.length = 2; }
+    for (i = 0; i < pair.length && got.length < 2; i++) {
+      if (!(got.length && got[0].k === pair[i])) got.push({ k: pair[i], v: EACH_DEFAULT });
+    }
+    got.sort(function (x, y) { return TRAIT_KEYS.indexOf(x.k) - TRAIT_KEYS.indexOf(y.k); });
+    for (i = 0; i < lines.length && rows.length < 3; i++) rows.push(rowOfLine(lines[i]));
+    while (rows.length < 3) rows.push(blankRow());
+    return {
+      grade: grade,
+      kinds: [got[0].k, got[1].k],
+      vals: [Math.round(got[0].v), Math.round(got[1].v)],
+      rows: rows,
+      fixed: (b && b.fixed) ? deepCopy(b.fixed) : [],
+      label: editLabel(b),
+      src: sigOf(b),
+      err: null
+    };
+  }
+
+  /**
+   * A trait value as the grade in force allows it. The draft keeps what was
+   * typed, so a trip through Relic (41-100) and back leaves an Ancient 118 at
+   * 118; only what is written and shown is held to the band.
+   */
+  function editVal(E, i) { var b = traitBandOf(E.grade); return clamp(E.vals[i], b[0], b[1]); }
+
+  /** The draft as a snapshot for baseline.set(): the shape baseline.get() hands out. */
+  function snapshotOf(E) {
+    var traits = { crit: 0, spec: 0, swift: 0 }, lines = [], n = maxSlots(E.grade), i, r;
+    traits[E.kinds[0]] = editVal(E, 0);
+    traits[E.kinds[1]] = editVal(E, 1);
+    for (i = 0; i < n; i++) {
+      r = E.rows[i] || blankRow();
+      // Empty, junk, or anything the line reader cannot place: a junk line.
+      lines.push((!r.fam || r.fam === "none" || r.fam === JUNK) ? { junk: true } : (rowToLine(r, E.grade) || { junk: true }));
+    }
+    return { grade: E.grade, traits: traits, lines: lines, fixed: E.fixed, label: E.label, source: "edit" };
+  }
+
+  /** Write the draft through. A bracelet the game cannot hold is not written; the editor says why. */
+  function writeBase() {
+    if (editTimer) { clearTimeout(editTimer); editTimer = null; }
+    var A = App();
+    if (!EDIT || !A || !A.baseline || typeof A.baseline.set !== "function") return;
+    var snap = snapshotOf(EDIT), real = (EDIT.fixed || []).slice(), i;
+    for (i = 0; i < snap.lines.length; i++) if (!snap.lines[i].junk) real.push(snap.lines[i]);
+    EDIT.err = validateSet(real);
+    paintEditWarn();
+    if (EDIT.err) return;
+    writing = true;
+    try { A.baseline.set(snap); } finally { writing = false; }
+    EDIT.src = sigOf(baselineNow());
+  }
+  function writeSoon() {
+    if (editTimer) clearTimeout(editTimer);
+    editTimer = setTimeout(writeBase, EDIT_DEBOUNCE);
+  }
+
+  function kindOptions(sel) {
+    var h = "", i, k;
+    for (i = 0; i < TRAIT_KEYS.length; i++) {
+      k = TRAIT_KEYS[i];
+      h += '<option value="' + k + '"' + (k === sel ? " selected" : "") + ">" + esc(TRAIT_SHORT[k]) + "</option>";
+    }
+    return h;
+  }
+
+  function editHeadHtml(b) {
+    return b ? baseHeadHtml(b) : '<div class="av-bhead"><span class="av-bscore">Not set yet: the first change sets it.</span></div>';
+  }
+
+  function editHtml() {
+    var E = EDIT, g = E.grade, band = traitBandOf(g), b = baselineNow(), i;
+    var h = '<div id="av-e-head">' + editHeadHtml(b) + "</div>";
+    h += '<div class="av-simgrid av-eform" id="av-e-form"><div>';
+    h += segHtml("Grade", "avegrade", [["ancient", "Ancient"], ["relic", "Relic"]], g,
+      "It sets the values each line rolls and the trait range: 61–120 on Ancient, 41–100 on Relic.");
+    h += '<div class="bc-segrow"><span class="lb" data-gloss="' +
+      esc("The two combat traits it came with, each its own kind and points: " + band[0] + "–" + band[1] + " on " +
+        (g === "relic" ? "Relic" : "Ancient") + ". They never reroll.") + '">Traits</span><div class="av-etr">';
+    for (i = 0; i < 2; i++) {
+      h += '<span class="av-etp"><select id="av-e-tk-' + i + '" aria-label="Trait ' + (i + 1) + '">' + kindOptions(E.kinds[i]) + "</select>" +
+        '<input type="number" id="av-e-tv-' + i + '" min="' + band[0] + '" max="' + band[1] + '" step="1" value="' + editVal(E, i) +
+        '" aria-label="Trait ' + (i + 1) + ' points"></span>';
+    }
+    h += "</div></div></div><div>";
+    h += '<div class="av-elb"><span class="lb" data-gloss="The lines it rolled. An empty slot is a junk line.">Granted slots</span></div>';
+    for (i = 0; i < maxSlots(g); i++) {
+      h += rowMarkup("av-e", i, E.rows[i], "Slot " + (i + 1), g, { text: "— empty: a junk line —", disabled: false });
+    }
+    h += '<div id="av-e-warn">' + (E.err ? '<div class="av-warn">' + esc(E.err) + "</div>" : "") + "</div></div></div>";
+    return h + baseBtnsHtml(b);
+  }
+
+  function paintEditWarn() {
+    var el = $("av-e-warn");
+    if (el) el.innerHTML = (EDIT && EDIT.err) ? '<div class="av-warn">' + esc(EDIT.err) + "</div>" : "";
   }
 
   // ------------------------------------------------------------------
@@ -1228,7 +1443,22 @@
     if (id) { var el = $(id); if (el && el.focus && el !== document.activeElement) el.focus(); }
   }
 
-  function paintBase() { var el = $("av-base-body"); if (el) el.innerHTML = baseHtml(); }
+  /**
+   * The panel body: the summary, or the editor. `full` false while editing
+   * repaints only the readout and the buttons — the change was ours, and the
+   * control under the cursor must survive it.
+   */
+  function paintBase(full) {
+    var el = $("av-base-body");
+    if (!el) return;
+    if (EDIT && !full && $("av-e-form")) {
+      var hd = $("av-e-head"), bt = $("av-b-btns"), b = baselineNow();
+      if (hd) hd.innerHTML = editHeadHtml(b);
+      if (bt) bt.outerHTML = baseBtnsHtml(b);
+      return;
+    }
+    keepFocus(function () { el.innerHTML = EDIT ? editHtml() : baseHtml(); });
+  }
 
   /**
    * The character picker, on this tab too (Shizu, 2026-09-24: "the advisor
@@ -1274,7 +1504,7 @@
     if (rb) rb.classList.add("av-dim");
     if (ck) ck.disabled = true;
   }
-  function paintAll() { paintBase(); paintSim(); paintOut(); paintRoll(); }
+  function paintAll() { paintBase(true); paintSim(); paintOut(); paintRoll(); }
 
   // ------------------------------------------------------------------
   // 4. ROLLING THIS BRACELET — LOCK ADVICE
@@ -1619,8 +1849,11 @@
     return '<details class="method">' +
       "<summary>How the numbers on this tab are worked out</summary>" +
 
-      "<p><b>Two bracelets.</b> The top one is yours: the bracelet your character wears, set when you import " +
-      "them or from the Calculator&rsquo;s editor, and scored on the settings there. With no bracelet set it is " +
+      "<p><b>Two bracelets.</b> The top one is yours: the bracelet your character wears, set when you pick " +
+      "them, from the Calculator&rsquo;s editor, or by hand with <b>Edit</b>, and scored on the Calculator&rsquo;s " +
+      "settings. Edit takes its grade, its two combat traits (each its own kind and points) and its granted " +
+      "lines, an empty slot counting as a junk line; every change becomes your bracelet at once, so every figure " +
+      "on the tab follows it, and it is kept when you leave. With no bracelet set it is " +
       "the Baseline % you set by hand on the Calculator, and with neither, every figure is measured against no " +
       "bracelet at all. The one below is a bracelet you might roll or buy. Its two combat " +
       "traits sit at one value &mdash; the slider &mdash; and take the two kinds yours carries; with no bracelet " +
@@ -1683,7 +1916,7 @@
     var row = SIM.rows[Number(m[2])], flipped = false;
     if (!row) return false;
     if (m[1] === "fam") {
-      row.fam = el.value;
+      row.fam = knownFam(el.value);
       if (row.fam === JUNK || row.fam === "none") row.value = null;
       if (row.fam.indexOf("basic:") === 0 && (row.value === null || row.value === undefined || row.value === "")) {
         row.value = defaultBasicValue(simGrade(), row.fam.slice(6));
@@ -1705,10 +1938,29 @@
     var row = ensureRolled()[Number(m[2])];
     if (!row) return;
     if (m[1] === "fam") {
-      row.fam = el.value;
+      row.fam = knownFam(el.value);
       if (row.fam === JUNK) row.value = null;
       if (row.fam.indexOf("basic:") === 0 && (row.value === null || row.value === undefined || row.value === "")) {
         row.value = defaultBasicValue(lastOpts ? lastOpts.grade : simGrade(), row.fam.slice(6));
+      }
+    } else if (m[1] === "tier") {
+      row.tier = el.value;
+    } else {
+      row.value = num(el.value, row.value);
+    }
+  }
+
+  /** A row of your bracelet, in the editor, changed. */
+  function editRowEvent(el) {
+    var m = /^av-e-(fam|tier|val)-(\d+)$/.exec(el.id || "");
+    if (!m || !EDIT) return;
+    var row = EDIT.rows[Number(m[2])];
+    if (!row) return;
+    if (m[1] === "fam") {
+      row.fam = knownFam(el.value);
+      if (row.fam === JUNK || row.fam === "none") row.value = null;
+      if (row.fam.indexOf("basic:") === 0 && (row.value === null || row.value === undefined || row.value === "")) {
+        row.value = defaultBasicValue(EDIT.grade, row.fam.slice(6));
       }
     } else if (m[1] === "tier") {
       row.tier = el.value;
@@ -1741,6 +1993,15 @@
       }
       // A basic-stat value while it is being typed: solve, but redraw nothing.
       if (/^av-s-val-\d+$/.test(id)) { simRowEvent(t); voidCut(); saveSim(); schedule(); return; }
+      // Your bracelet's numbers while they are typed: write once the hand
+      // stops, and only a value the grade allows — "1" on the way to "100" is
+      // not a trait anyone rolled.
+      if (EDIT && /^av-e-tv-\d$/.test(id)) {
+        var tb = traitBandOf(EDIT.grade), tv = parseFloat(t.value);
+        if (isFinite(tv) && tv >= tb[0] && tv <= tb[1]) { EDIT.vals[Number(id.slice(-1))] = Math.round(tv); writeSoon(); }
+        return;
+      }
+      if (EDIT && /^av-e-val-\d+$/.test(id)) { editRowEvent(t); writeSoon(); return; }
       if (/^av-n-val-\d+$/.test(id)) { cutRowEvent(t); lastVerdict = null; saveSim(); }
     });
 
@@ -1757,6 +2018,30 @@
         return;
       }
       if (/^av-n-(fam|tier|val)-\d+$/.test(id)) { cutRowEvent(t); lastVerdict = null; saveSim(); paintRoll(); return; }
+      if (EDIT && /^av-e-(fam|tier|val)-\d+$/.test(id)) {
+        editRowEvent(t);
+        writeBase();
+        // A family grows or drops its rarity and value boxes.
+        if (/-fam-/.test(id)) paintBase(true);
+        return;
+      }
+      if (EDIT && /^av-e-tk-\d$/.test(id)) {
+        // Two kinds, always two different ones: taking the other trait's kind
+        // hands it this one's.
+        var ti = Number(id.slice(-1)), to = 1 - ti;
+        if (EDIT.kinds[to] === t.value) EDIT.kinds[to] = EDIT.kinds[ti];
+        EDIT.kinds[ti] = t.value;
+        writeBase();
+        paintBase(true);
+        return;
+      }
+      if (EDIT && /^av-e-tv-\d$/.test(id)) {
+        var cb = traitBandOf(EDIT.grade), ci = Number(id.slice(-1));
+        EDIT.vals[ci] = clamp(Math.round(num(t.value, EDIT.vals[ci])), cb[0], cb[1]);
+        t.value = EDIT.vals[ci];
+        writeBase();
+        return;
+      }
       if ((lk = t.getAttribute && t.getAttribute("data-avlock")) !== null && lk !== undefined && lk !== "") {
         var locks = cutLocks(lastRes, lastOpts).slice();
         locks[Number(lk)] = !!t.checked;
@@ -1773,13 +2058,33 @@
         return;
       }
       if ((v = t.getAttribute("data-avslots"))) {
-        SIM.slots = Math.round(num(v, 3));
+        SIM.slots = SIM.slotsPref = Math.round(num(v, 3));
         fitSim(SIM); voidCut(); retries = 0; saveSim(); paintSim(); paintRoll(); schedule(true);
         return;
       }
       if ((v = t.getAttribute("data-avmode"))) {
         SIM.mode = v === "rolled" ? "rolled" : "fresh";
         voidCut(); retries = 0; saveSim(); paintSim(); paintRoll(); schedule(true);
+        return;
+      }
+      if ((v = t.getAttribute("data-avegrade")) && EDIT) {
+        EDIT.grade = v === "relic" ? "relic" : "ancient";
+        writeBase();
+        paintBase(true);
+        return;
+      }
+      if (t.id === "av-b-edit") { baseMsg = null; EDIT = draftOf(baselineNow()); paintBase(true); return; }
+      if (t.id === "av-b-done") { if (editTimer) writeBase(); baseMsg = null; EDIT = null; paintBase(true); return; }
+      if (t.id === "av-b-set") {
+        var A = App(), got = (A && A.baseline && typeof A.baseline.setFromEditor === "function") ? A.baseline.setFromEditor() : null;
+        baseMsg = got ? null : "The Calculator's bracelet has only some of its slots filled, or two lines of one effect, so it cannot be yours yet.";
+        if (!got) paintBase(true);
+        return;
+      }
+      if (t.id === "av-b-clear") {
+        var A2 = App();
+        baseMsg = null;
+        if (A2 && A2.baseline && typeof A2.baseline.clear === "function") A2.baseline.clear();
         return;
       }
       if (t.id === "av-check") { checkRoll(); return; }
@@ -1812,8 +2117,19 @@
   function onOutsideChange(d) {
     d = d || {};
     if (d.reset) { lastRes = null; lastOpts = null; lastKey = null; lastVerdict = null; }
+    var ours = writing;
+    if (EDIT && !ours) {
+      // Someone else moved your bracelet: the draft follows it, and a write
+      // still waiting would put the old one back on top — drop it. Only when
+      // the bracelet itself moved: a Role press re-reads the same one.
+      var now = baselineNow();
+      if (sigOf(now) !== EDIT.src) {
+        if (editTimer) { clearTimeout(editTimer); editTimer = null; }
+        EDIT = now ? draftOf(now) : null;
+      }
+    }
     if (!isActive()) return;
-    paintBase(); paintSim();
+    paintBase(!ours); paintSim();
     schedule(true);
   }
 
@@ -1841,7 +2157,8 @@
   }
 
   document.addEventListener("tabselected", function (e) {
-    if (!e || !e.detail || e.detail.tab !== "advisor") return;
+    if (!e || !e.detail) return;
+    if (e.detail.tab !== "advisor") { if (editTimer) writeBase(); return; }
     if (init()) return;
     paintAll();
     // Always ask on activation, not only when dirty: the baseline and the

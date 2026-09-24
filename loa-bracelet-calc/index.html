@@ -229,7 +229,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 // they exist: a missing file fails its <script> and the loader skips it, so each
 // pane simply keeps the placeholder until the file lands.
 var LAZY_TABS = {
-  advisor: ['advisor.js?v=25'],
+  advisor: ['advisor.js?v=26'],
   // The screenshot reader lives on the Calculator now (2026-09-24) and mounts
   // itself on first use; listed under a non-tab key so the stamp checker sees it.
   reader: ['advisor-capture.js?v=3', 'advisor-glue.js?v=2'],
@@ -489,7 +489,7 @@ function routeBoot(){
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
 <script src="char-picker.js?v=6"></script>
-<script src="profile.js?v=24"></script>
+<script src="profile.js?v=25"></script>
 <script src="subrank.js?v=9"></script>
 <script src="app.js?v=50"></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
