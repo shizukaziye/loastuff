@@ -242,7 +242,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 <!-- live NA market prices for the material panel; unpinned, the 6-hour refresh
      (fetch_prices.py in refresh-data.yml) rewrites it in place -->
 <script src='prices.js'></script>
-<script src='lookup.js?v=2'></script>
+<script src='lookup.js?v=3'></script>
 <script src='https://www.loseii.com/loa-astrogem-calc/model/astrogem.js' defer></script>
 <script src='bible-oauth.js?v=20260922a'></script>
 <script>
@@ -1251,7 +1251,9 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
       "<div class='note'><b>Gold / 1% is a rate, not the price of a 1% upgrade</b>: each step's own " +
       "cost and gain sit under its name, and the rate is the cost divided by the gain" +
       (state.axis === "support" ? " times three, because a support's 1% lands on three dealers" : "") +
-      ", so a bracelet step can be compared with a honing step. Sorted by the NEXT step's price, so the top row is the buy; the last " +
+      ", so a bracelet step can be compared with a honing step. A bracelet's next step is priced from scratch — a " +
+      "rolled-out bracelet cannot be improved, so the whole buy-and-roll campaign is the price — and its gain is " +
+      "measured from your own bracelet. Sorted by the NEXT step's price, so the top row is the buy; the last " +
       "step is what the rung you already stand on cost per 1%, at today's material prices. " +
       "The bracelet is scored by the <a href='" + BC_BASE + "'>bracelet calculator</a>'s own scorer. " +
       "Accessory rungs are the chart's own chain for the families ticked above the plan — by " +

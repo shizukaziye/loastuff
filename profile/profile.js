@@ -78,7 +78,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=2";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=3";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];

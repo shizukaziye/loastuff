@@ -8,7 +8,7 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=2"></script>
+ *   <script src="/loa-gpd/lookup.js?v=3"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
@@ -699,6 +699,7 @@
       var names = Object.keys(traits);
       return {
         grade: dec.grade, band: r.band.key, score: r.score, damagePct: r.damagePct,
+        total: r.total,        // the chart's additive damage scale, for the from-here gain
         traits: names.map(function (k) { return { stat: k, v: traits[k] }; }),
         lines: lines.map(function (l) {
           // a basic (Str/Dex/Int) line has no family id, so it carries its own
@@ -846,6 +847,20 @@
                      "";
           e.lines = br.lines;
           e.bracelet = br;
+          // A rolled-out bracelet cannot be improved in place, so the next band
+          // is a fresh rolling campaign priced FROM SCRATCH — the rung's total,
+          // not the ladder's band-to-band step — and its gain is measured from
+          // THIS bracelet's damage, not from the band mean it belongs to. The
+          // steps are right for a planner starting with nothing; a holder of a
+          // C+ still needs the full 1-in-7 to see a B- (tikky, 2026-09-24: the
+          // list said 162k for +0.75%; from a rolled-out C+ it is 412k).
+          var nx = mine[e.owned + 1];
+          if (nx && nx.total != null && nx.totalDamage != null && br.total != null) {
+            var gain = nx.totalDamage - br.total;
+            e.braceletNext = Object.assign({}, nx, {
+              gold: nx.total, damage: gain, fromScratch: true,
+              gpd: gain > 0 ? nx.total / (gain * party(axis)) : Infinity });
+          }
         } else {
           if (c.braceletStats) e.seen = c.braceletStats.join("/") + " combat traits";
           e.why = c.braceletRaw
@@ -904,7 +919,7 @@
         if (e.accNext !== undefined) { e.last = e.accLast; e.next = e.accNext; }
         else {
           if (e.owned >= 0) e.last = mine[e.owned];
-          e.next = mine[e.owned + 1] || null;
+          e.next = e.braceletNext || mine[e.owned + 1] || null;
         }
       }
       if (graded && e.next && isFinite(e.next.gpd) && e.next.gpd != null && e.next.gpd <= 25e6) {
