@@ -1739,8 +1739,7 @@
       // The search sits beside the import panel where there is room and under it
       // where there is not. minmax(0,…) on both tracks, never a bare 1fr: the
       // import panel holds a row of inputs that must not push the page sideways.
-      "#tab-calculator .bc-loadrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,330px);gap:0 12px;align-items:start}" +
-      "@media(max-width:900px){#tab-calculator .bc-loadrow{grid-template-columns:minmax(0,1fr)}}" +
+      "#tab-calculator .bc-loadrow{display:grid;grid-template-columns:minmax(0,1fr);align-items:start}" +
       // The search is char-picker.js's, and CharPicker.mount() owns the host's
       // class list, so its frame is set by id.
       "#bc-who{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:11px 12px;min-width:0;margin:0 0 12px}" +
@@ -1790,8 +1789,11 @@
   function hostsMarkup() {
     // The ways in first: the import panel with the character search beside it,
     // the screenshot reader under both. Then who was loaded, then the deck.
-    return '<div class="bc-loadrow"><div id="bc-import"></div><div id="bc-who"></div></div>' +
-      intakeMarkup() +
+    // The character search and the screenshot reader are gone from this tab
+    // (Shizu, 2026-09-24: "we dont need screenshot or find a character") — the
+    // import panel already looks a character up and lists the saved ones, and
+    // the Advisor hosts the picker. The reader's code stays for a return.
+    return '<div class="bc-loadrow"><div id="bc-import"></div></div>' +
       '<div id="bc-refresh-banner"></div>' +
       '<div id="bc-loadouts"></div><div id="bc-charhdr"></div><div id="bc-deckhost"></div>';
   }
@@ -3065,7 +3067,7 @@
     P.onAdvancedRender(function () { renderFixedRows(); });
     renderBracelet();
     bindBody();
-    mountPicker();
+    // mountPicker(): not on this tab any more (see charLoadHtml).
     bindIntake();
     P.onChange(onProfileChange);
     renderResults(buildProfile(), null);

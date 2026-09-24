@@ -230,8 +230,8 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 // pane simply keeps the placeholder until the file lands.
 var LAZY_TABS = {
   advisor: ['advisor.js?v=28'],
-  // The screenshot reader lives on the Calculator now (2026-09-24) and mounts
-  // itself on first use; listed under a non-tab key so the stamp checker sees it.
+  // The screenshot reader (advisor-capture.js + advisor-glue.js) is parked:
+  // no tab mounts it since 2026-09-24. The files stay in the repo for a return.
   reader: ['advisor-capture.js?v=3', 'advisor-glue.js?v=2'],
   tierlist: ['tierlist.js?v=20'],
   leaderboard: ['leaderboard.js?v=19'],
@@ -491,7 +491,7 @@ function routeBoot(){
 <script src="char-picker.js?v=6"></script>
 <script src="profile.js?v=25"></script>
 <script src="subrank.js?v=9"></script>
-<script src="app.js?v=51"></script>
+<script src="app.js?v=52"></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
