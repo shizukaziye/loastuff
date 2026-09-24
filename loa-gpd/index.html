@@ -1122,7 +1122,8 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
         " · graded on the <b>" + (state.axis === "dps" ? "DPS" : "support") + "</b> ladders";
       if (pos.cheapest) {
         banner.innerHTML = head + " — upgrade next: <b style='color:" + SERIES[pos.cheapest.system].color + "'>" +
-          esc(pos.cheapest.text) + "</b> at " + pos.cheapest.price;
+          esc(pos.cheapest.text) + "</b> at " + pos.cheapest.price +
+          (pos.cheapest.damage > 0 ? " (" + stepCost(pos.cheapest) + ")" : "");
       } else {
         banner.innerHTML = head + " — already past every priced upgrade the lookup can see.";
       }
@@ -1191,8 +1192,11 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
     var rows = read.map(function (e) {
       var colour = SERIES[e.key] ? SERIES[e.key].color : "var(--dim)";
       function step(row, none) {
-        return row ? "<b>" + esc(row.to || row.label) + "</b>"
-                   : "<span class='gv-dim'>" + none + "</span>";
+        if (!row) return "<span class='gv-dim'>" + none + "</span>";
+        // the rate alone was read as "215k buys 1%" (tikky, 2026-09-23); the
+        // step's own price and gain sit under its name so the rate explains itself
+        var sz = row.damage > 0 ? "<span class='gv-sub'>" + stepCost(row) + "</span>" : "";
+        return "<b>" + esc(row.to || row.label) + "</b>" + sz;
       }
       function price(row) {
         return row && isFinite(row.gpd) && row.gpd != null ? fmtGpd(row.gpd) : "—";
@@ -1232,7 +1236,8 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
         (best ? "<div class='gv-best-card'>upgrade next<b style='color:" + SERIES[pos.bestKey].color + "'>" +
           esc(SERIES[pos.bestKey].label) + " → " + esc(best.to || "") + "</b>" +
           "<span class='gv-sub'>" + (best.gpd === 0 ? "pheons only" : fmtGold(best.gpd) + " per 1% " +
-          (state.axis === "support" ? "party " : "") + "damage") + "</span></div>"
+          (state.axis === "support" ? "party " : "") + "damage") +
+          (best.damage > 0 ? " · " + stepCost(best) : "") + "</span></div>"
         : "<div class='gv-best-card'>nothing under 25M / 1% left</div>") +
       "</div>" +
       "<div class='gv-wrap'><table class='gv'><thead>" +
@@ -1243,7 +1248,10 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
       "<tr><th>Step</th><th class='num'>Gold / 1%</th>" +
       "<th>Step</th><th class='num'>Gold / 1%</th></tr></thead><tbody>" +
       rows + missing + "</tbody></table></div>" +
-      "<div class='note'>Sorted by the NEXT step's price, so the top row is the buy; the last " +
+      "<div class='note'><b>Gold / 1% is a rate, not the price of a 1% upgrade</b>: each step's own " +
+      "cost and gain sit under its name, and the rate is the cost divided by the gain" +
+      (state.axis === "support" ? " times three, because a support's 1% lands on three dealers" : "") +
+      ", so a bracelet step can be compared with a honing step. Sorted by the NEXT step's price, so the top row is the buy; the last " +
       "step is what the rung you already stand on cost per 1%, at today's material prices. " +
       "The bracelet is scored by the <a href='" + BC_BASE + "'>bracelet calculator</a>'s own scorer. " +
       "Accessory rungs are the chart's own chain for the families ticked above the plan — by " +
@@ -1251,6 +1259,11 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
       "own piece is a rung on it, so both prices are measured against the piece you actually wear, " +
       "flat lines and main stat included.</div>" +
       "</div>" + lkPiecePanel(pos);
+  }
+  /** "162k for +0.75%" — what one step costs and buys, beside its rate. */
+  function stepCost(row) {
+    var cost = row.gold > 0 ? fmtGold(row.gold) : "pheons only";
+    return cost + " for +" + row.damage.toFixed(2) + "%";
   }
   /** One accessory line as the game writes it. Only the PERCENTAGE lines
    *  arrive multiplied by a hundred; a flat roll is already its own number, so
