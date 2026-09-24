@@ -1017,6 +1017,9 @@
       "#tab-calculator .bc-card .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:700}" +
       "#tab-calculator .bc-card .v{font-size:25px;font-weight:800;letter-spacing:-.02em;margin-top:5px;line-height:1.1}" +
       "#tab-calculator .bc-card .s{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.45}" +
+      ".bc-grade{display:inline-block;min-width:26px;text-align:center;padding:1px 7px;border-radius:6px;font-weight:800;font-size:12px;letter-spacing:.02em;line-height:1.5;vertical-align:1px;cursor:help;text-decoration:none}" +
+      ".bc-grade.sm{font-size:11px;padding:0 6px}" +
+      "#tab-calculator .bc-card .s .bc-gradeof{color:var(--dim)}" +
       "#tab-calculator .bc-card.hero{border-color:var(--accent)}" +
       "#tab-calculator .bc-card .v.gold{color:var(--high)}" +
       "#tab-calculator .bc-card .v.acc{color:var(--accent)}" +
@@ -1455,8 +1458,41 @@
     return out;
   }
 
+  /**
+   * The letter and 0-100 score the leaderboard and the profiles put on this
+   * same bracelet — one ladder everywhere (Shizu, 2026-09-24: "we should show
+   * the grade on the calculator"). Null for an unrolled bracelet: its lines
+   * are not rolled yet, so a grade would be the traits alone, which misleads.
+   */
+  function gradeOf(res, profile) {
+    var SR = window.Subrank;
+    if (!SR || !res || res.unrolled) return null;
+    try {
+      var g = SR.braceletScore({ grade: S.grade, lines: grantedLines(), traits: traitValues(), profile: profile });
+      var col = SR.colorOf(g.band.key, g.isPerfect);
+      var sup = profile && profile.role === "support";
+      return {
+        key: g.band.key, score: g.score, bg: col.bg, fg: col.fg,
+        gloss: "Grade " + fx(g.score, 1) + " out of 100, subrank " + g.band.key + " — the ladder the leaderboard and " +
+          "the profiles use. 0 is the worst real bracelet: both traits at the bottom of the band and three lines " +
+          "worth nothing. 100 is both traits at 110 with the three best distinct families at Epic. Read on the " +
+          (sup ? "support ladder, cut to the same rarities as the damage dealer's." : "damage dealer's ladder.")
+      };
+    } catch (e) { return null; }
+  }
+  function gradeBadge(gr, small) {
+    return '<span class="bc-grade' + (small ? " sm" : "") + '" style="background:' + gr.bg + ';color:' + gr.fg +
+      '" data-gloss="' + esc(gr.gloss) + '">' + esc(gr.key) + "</span>";
+  }
+  function gradeLineHtml(gr) {
+    if (!gr) return "";
+    return '<div class="s">' + gradeBadge(gr, false) + " " + fx(gr.score, 1) +
+      '<span class="bc-gradeof" data-gloss="' + esc(gr.gloss) + '"> of 100</span></div>';
+  }
+
   function cardsHtml(res, profile) {
     var curPct = pct(res.currentScore), finPct = pct(res.expectedFinal);
+    var gr = gradeOf(res, profile);
     var w = worthOf(res, 0);
     var h = '<div class="bc-cards">';
     // Current score is the hero card: it is what the bracelet IS. Expected final
@@ -1469,7 +1505,7 @@
     // tooltip is cut, and cut with its element rather than emptied — a hole in
     // the layout where a sentence used to be is worse than either (rule 6).
     h += '<div class="bc-card hero"><div class="k" data-gloss="What the bracelet on screen is worth in damage over no bracelet at all: every effect line and both combat traits, combined.">Current score</div><div class="v acc">' + fx(curPct, 2) +
-      "%</div></div>";
+      "%</div>" + gradeLineHtml(gr) + "</div>";
     h += '<div class="bc-card"><div class="k" data-gloss="The average score this bracelet finishes at once the remaining rolls are played perfectly. Rolls are free, so rolling always beats stopping. An average, not a promise.">Expected final</div><div class="v">' + fx(finPct, 2) +
       '%</div><div class="s">' + (S.rollsLeft ? "after " + S.rollsLeft + " roll" + (S.rollsLeft === 1 ? "" : "s") : "no rolls left") + "</div></div>";
     var wn = worthNote(w);
@@ -1773,7 +1809,10 @@
   function paintCharStats() {
     if (!lastSolve) return;
     var p = $("bc-sum-pct");
-    if (p) p.textContent = fx(pct(lastSolve.currentScore), 2) + "%";
+    if (p) {
+      var gr = gradeOf(lastSolve, buildProfile());
+      p.innerHTML = (gr ? gradeBadge(gr, true) + " " : "") + fx(pct(lastSolve.currentScore), 2) + "%";
+    }
     paintWorthStat(lastSolve);
   }
 
