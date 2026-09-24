@@ -111,6 +111,11 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   `BraceletImport.board()` keeps a shared 10-minute copy. Three fetches per
   visitor against the worker's 3-a-minute throttle — point both at `board()`.
 - The kept board copy is ~480 KB of localStorage.
+- The Advisor's price estimate calls `/loa-gpd/model/bracelet-price.js?v=1`
+  (GPD's listing curve + 20 pheons; market level constants inside it). The
+  stamp checker cannot see across tools: when that file changes — the market
+  level moves — bump the `?v=` in advisor.js by hand, or returning browsers
+  price with the old level for four hours.
 - `worthFromCdf` still steps at a rung's midpoint and reads small unthinned
   distributions as thinned; `compare.fromCdf` bends through the solve's exact
   quantiles. The Worth card's odds can differ from P(beat) by tenths until
