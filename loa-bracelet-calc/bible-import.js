@@ -387,12 +387,21 @@
     var traitOrder = [], rows = [], fixedRows = [], locks = [], warn = [];
     var i, line, r;
 
+    // EVERY combat-trait line is one of the two combat traits, whatever the
+    // padlock says. `fixed` is bible's LOCK icon, not the drop's fixed/granted
+    // split (see the note below) — Tikkyy's Spec 118 carried no padlock, so
+    // this loop used to send it to a granted row and the panel invented a
+    // default Spec 120 in its place (Shizu, 2026-09-24: "the spec is not in
+    // the first 2 rolls"). The worker's scorer split on `cat` already; the
+    // loader now does the same. A third trait line — one rolled into a
+    // granted slot — stays a granted row, since only two places exist.
     for (i = 0; i < dec.lines.length; i++) {
       line = dec.lines[i];
-      if (line.fixed && line.cat === "trait" && TRAIT_TO_APP[line.family]) {
+      if (line.cat === "trait" && TRAIT_TO_APP[line.family] && traitOrder.length < 2 &&
+          traitOrder.indexOf(TRAIT_TO_APP[line.family]) < 0) {
         var tk = TRAIT_TO_APP[line.family];
         traits[tk] = { on: true, v: Math.round(line.value) };
-        if (traitOrder.indexOf(tk) < 0) traitOrder.push(tk);
+        traitOrder.push(tk);
         continue;
       }
       r = rowFor(line);

@@ -946,7 +946,7 @@
    */
   function baseHtml() {
     var b = barNow(), i;
-    var h = '<h2 class="av-h">Your bracelet</h2>';
+    var h = "";   // the heading is static in the section, above the picker
     if (!b) {
       return h + '<p class="av-none">Load your character on the Calculator (or set a baseline there) and it appears here.</p>';
     }
@@ -1228,7 +1228,22 @@
     if (id) { var el = $(id); if (el && el.focus && el !== document.activeElement) el.focus(); }
   }
 
-  function paintBase() { var el = $("av-base"); if (el) el.innerHTML = baseHtml(); }
+  function paintBase() { var el = $("av-base-body"); if (el) el.innerHTML = baseHtml(); }
+
+  /**
+   * The character picker, on this tab too (Shizu, 2026-09-24: "the advisor
+   * should still have the character selector"). Picking a character loads it
+   * through the same import path the Calculator uses, which sets the baseline;
+   * baseline.onChange then repaints the panel above. Same shared state as the
+   * Calculator's picker — two views of one picker.
+   */
+  function mountPicker() {
+    var host = $("av-base-pick");
+    if (!host || host.getAttribute("data-mounted")) return;
+    if (!window.CharPicker || typeof window.CharPicker.mount !== "function") return;
+    host.setAttribute("data-mounted", "1");
+    window.CharPicker.mount(host, { layout: "row", title: "Pick a character", emptyText: "No character loaded." });
+  }
   function paintSim() {
     var el = $("av-sim");
     if (!el) return;
@@ -1809,13 +1824,15 @@
     pane.setAttribute("data-init", "1");
     injectStyle();
     pane.innerHTML =
-      '<section class="panel av-sec" id="av-base"></section>' +
+      '<section class="panel av-sec" id="av-base"><h2 class="av-h">Your bracelet</h2>' +
+        '<div id="av-base-pick"></div><div id="av-base-body"></div></section>' +
       '<section class="panel av-sec av-sim" id="av-sim"></section>' +
       '<div id="av-out"></div>' +
       '<div id="av-rollbox"></div>' +
       methodHtml();
     bind(pane);
     paintAll();
+    mountPicker();
     P.onChange(onOutsideChange);
     var A = App();
     if (A && A.baseline && typeof A.baseline.onChange === "function") A.baseline.onChange(onOutsideChange);
