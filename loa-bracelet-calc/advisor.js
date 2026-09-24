@@ -19,11 +19,15 @@
  *                  baseline's two kinds), rolls left 0-7, grade, slot count and
  *                  the granted slots: "not rolled yet" (an unrolled solve, the
  *                  default) or "rolled — these lines", where an empty slot is a
- *                  junk line. Picking any family switches to "rolled".
- *   WHAT YOU'D GET the odds it beats yours, what it is worth paying, where it
- *                  finishes if it does and if it does not, and where it can land:
- *                  the spread, a pointer readout of P(final >= here) and the odds
- *                  of each grade. Live as the sliders move.
+ *                  junk line. Picking any family switches to "rolled". Then
+ *                  its price — GPD's estimate, or yours typed over it — and the
+ *                  market level that scales the estimate.
+ *   WHAT YOU'D GET the odds it beats yours, where it finishes if it does and if
+ *                  it does not; what it is worth paying, how many it takes to
+ *                  beat yours and the price against the worth; which pair to
+ *                  buy; and where it can land: the spread, a pointer readout of
+ *                  P(final >= here) and the odds of each grade. Live as the
+ *                  sliders move.
  *   LOCK ADVICE    the rolling flow this tab used to lead with — best locks, the
  *                  lock table, keep or replace — collapsed under one <details>
  *                  and run against the simulated bracelet. It opens only for a
@@ -68,11 +72,11 @@
   var DEBOUNCE_MS = 120;                         // live under the hand: one solve per pause
   var ROLLS_MAX = 7;                             // 4 base rolls + 3 tickets
   var EACH_DEFAULT = 100;
-  // Shizu: "from 60/60 to 120/120". The bottom of the slider is 60 or the
-  // grade's own floor, whichever is higher, and the top is the grade's own
-  // ceiling: an Ancient line rolls 61-120 and a Relic one 41-100, and a bracelet
-  // the game cannot produce must not be priced as if it could.
-  var EACH_FLOOR = 60;
+  // Shizu: "from 60/60 to 120/120". The slider runs the grade's own band: an
+  // Ancient line rolls 61-120 and a Relic one 41-100, and a bracelet the game
+  // cannot produce must not be priced as if it could. Relic runs its whole
+  // band, down to 41, so every pair "which pair to buy" can name is one the
+  // slider can be set to.
   var TRAIT_KEYS = P.TRAIT_KEYS;
   var TRAIT_SHORT = { crit: "Crit", spec: "Spec", swift: "Swift" };
   var GRADE_COLOR = P.GRADE_COLOR, JUNK = P.JUNK;
@@ -162,15 +166,19 @@
     var p = num(S.econ.baseline, 0);
     return p > 0 ? { manual: true, pct: p, D: dOf(p) } : null;
   }
-  /** P(final >= D) and the finish on either side of it, off one distribution. */
-  function compareCdf(cdf, D) {
+  /**
+   * P(final >= D) and the finish on either side of it, off one distribution.
+   * shiftD moves every outcome by a log-space constant: the same units, and the
+   * same convention, as worth.fromCdf's — the Calculator's unrolled repricing.
+   */
+  function compareCdf(cdf, D, shiftD) {
     var A = App();
-    return (A && A.compare && typeof A.compare.fromCdf === "function") ? A.compare.fromCdf(cdf, D) : null;
+    return (A && A.compare && typeof A.compare.fromCdf === "function") ? A.compare.fromCdf(cdf, D, shiftD || 0) : null;
   }
-  /** app.js's one worth formula, for a distribution against a bar in damage %. */
-  function worthCdf(cdf, barPct) {
+  /** app.js's one worth formula, for a distribution against a bar in damage %, moved by shiftD. */
+  function worthCdf(cdf, barPct, shiftD) {
     var A = App();
-    return (A && A.worth && typeof A.worth.fromCdf === "function") ? A.worth.fromCdf(cdf, barPct, 0) : null;
+    return (A && A.worth && typeof A.worth.fromCdf === "function") ? A.worth.fromCdf(cdf, barPct, shiftD || 0) : null;
   }
   function solverApi() { var A = App(); return (A && A.solver) || null; }
 
@@ -190,6 +198,7 @@
       slotsPref: 3,              // the count the reader chose; slots returns to it when the grade allows
       mode: "fresh",             // "fresh" = not rolled yet; "rolled" = these lines
       price: null,               // gold for one bracelet like this, as the reader entered it; null = none
+      scale: 1,                  // the market level: a multiplier on the price model's listed price
       rows: [blankRow(), blankRow(), blankRow()],
       // the keep-or-replace flow's own state, against THIS bracelet
       locks: null,               // per-slot booleans; null = follow the solver's pick
@@ -242,6 +251,7 @@
       d.slotsPref = (raw.slotsPref === 1 || raw.slotsPref === 2 || raw.slotsPref === 3) ? raw.slotsPref : d.slots;
       d.mode = raw.mode === "rolled" ? "rolled" : "fresh";
       d.price = (typeof raw.price === "number" && isFinite(raw.price) && raw.price > 0) ? Math.round(raw.price) : null;
+      d.scale = (typeof raw.scale === "number" && raw.scale >= 0.25 && raw.scale <= 4) ? raw.scale : 1;
       if (raw.rows && raw.rows.length) d.rows = cleanRows(raw.rows);
       if (raw.locks && raw.locks.length) d.locks = raw.locks.map(function (x) { return !!x; });
       if (raw.rolled && raw.rolled.length) d.rolled = cleanRows(raw.rolled);
@@ -282,12 +292,12 @@
     saveSim();
   }
 
-  /** The slider's range for a grade: [60 or the band floor, the band ceiling]. */
+  /** The slider's range for a grade: the band the game rolls, 61-120 Ancient and 41-100 Relic. */
   function eachRange(grade) {
     var SR = window.Subrank;
     var lo = (SR && SR.TRAIT_FLOOR && SR.TRAIT_FLOOR[grade]) || (grade === "relic" ? 41 : 61);
     var hi = (SR && SR.TRAIT_CEILING && SR.TRAIT_CEILING[grade]) || (grade === "relic" ? 100 : 120);
-    return [Math.max(EACH_FLOOR, lo), hi];
+    return [lo, hi];
   }
   /**
    * The per-line trait value being simulated, inside the grade's range. The
@@ -710,6 +720,56 @@
     if (api && typeof api.cancel === "function") api.cancel();
   }
 
+  // ---- the fresh solve behind "which pair to buy" ----
+  //
+  // ONE solve of an unrolled bracelet with seven rolls — what the price model
+  // prices — at one pair, on the current grade, slots, trait kinds and
+  // profile. Every other pair is that distribution moved by what its traits
+  // add (compare.fromCdf's shiftD: the Calculator's own unrolled repricing).
+  // When the simulator itself is not rolled yet with seven rolls, its own
+  // solve IS that solve and is simply adopted: no extra work, and the row at
+  // its pair reads exactly what the Beats card reads. Otherwise one is asked
+  // for after the simulator's own has landed — never beside it: the two would
+  // take each other's place in the solver's one waiting slot — and only when
+  // the grade, the slots, the kinds or the profile moved. A trait or a
+  // market-level drag re-reads the one in hand; it never solves.
+  var fresh = null;          // { key, res, each }
+  var freshWant = null;      // the key being solved for right now
+  function kindsOfTraits(t) {
+    var out = [], i;
+    for (i = 0; i < TRAIT_KEYS.length; i++) if (num(t && t[TRAIT_KEYS[i]], 0) > 0) out.push(TRAIT_KEYS[i]);
+    return out;
+  }
+  function freshKeyOf(grade, slots, kinds) { return JSON.stringify([grade, slots, kinds]) + "|" + JSON.stringify(P.profile()); }
+  function freshKeyNow() { return freshKeyOf(simGrade(), SIM.slots, traitKinds()); }
+
+  /** A landed simulator solve that is itself the fresh one: take it. */
+  function adoptFresh(o, res) {
+    if (!o || !res || !o.unrolled || o.rollsLeft !== 7) return;
+    var k = kindsOfTraits(o.traits);
+    fresh = { key: freshKeyOf(o.grade, o.slots, k), res: res, each: num(o.traits[k[0]], 0) };
+  }
+
+  /** Ask for the fresh solve when the one in hand is for another grade, slot count, pair of kinds or profile. */
+  function ensureFresh() {
+    var want = freshKeyNow(), api = solverApi();
+    if ((fresh && fresh.key === want) || freshWant === want || solving || !api || typeof api.solve !== "function" || contractGap()) return;
+    var each = simEach();
+    var spec = { grade: simGrade(), slots: SIM.slots, traits: simTraits(), lines: [], rollsLeft: 7, unrolled: true };
+    freshWant = want;
+    api.solve(spec).then(function (res) {
+      if (freshWant === want) freshWant = null;
+      if (want !== freshKeyNow()) return;
+      fresh = { key: want, res: res, each: each };
+      paintCosts();
+    }, function (e) {
+      if (freshWant === want) freshWant = null;
+      // Taken from the waiting slot: by the simulator, whose landing asks again,
+      // or by something else, and then this asks once more.
+      if (e && e.message === "superseded" && !solving) setTimeout(ensureFresh, 80);
+    });
+  }
+
   function schedule(now) {
     if (timer) { clearTimeout(timer); timer = null; }
     if (now) recompute(); else timer = setTimeout(recompute, DEBOUNCE_MS);
@@ -728,7 +788,7 @@
     var key = keyOf(o);
     // Back on the bracelet already on screen: nothing to solve, and whatever is
     // still waiting in the lane is for a position the controls have left.
-    if (lastRes && key === lastKey) { solving = false; dropWaiting(); paintOut(); paintRoll(); return; }
+    if (lastRes && key === lastKey) { solving = false; dropWaiting(); paintOut(); paintRoll(); ensureFresh(); return; }
     solving = true;
     markStale();
     var p;
@@ -737,7 +797,9 @@
       if (mine !== seq) return;
       solving = false; solveErr = null; retries = 0;
       lastRes = res; lastOpts = o; lastKey = key;
+      adoptFresh(o, res);
       paintOut(); paintRoll();
+      ensureFresh();
     }, function (e) {
       if (mine !== seq) return;
       // A newer request took this lane's one waiting place. If it was ours, the
@@ -881,6 +943,24 @@
       "#tab-advisor .av-plink{background:none;border:none;padding:0;font-family:inherit;font-size:11.5px;font-weight:600;" +
         "color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}" +
       "#tab-advisor .av-pline{margin-top:5px;font-size:11px;color:var(--dim);line-height:1.45}" +
+      // ---- the market level ----
+      "#tab-advisor .av-sim .bc-sl.av-scale{align-items:start}" +
+      "#tab-advisor .av-sim .bc-sl.av-scale>.lb,#tab-advisor .av-sim .bc-sl.av-scale>.chip{padding-top:2px}" +
+      "#tab-advisor .av-scale .bc-ticks{margin-top:1px}" +
+      "#tab-advisor .bc-sl.off{opacity:.5}" +
+      // ---- which pair to buy ----
+      "#tab-advisor .av-aimhd{font-size:16px;font-weight:700;line-height:1.4;margin:0 0 4px}" +
+      "#tab-advisor .av-aimhd b{color:var(--accent)}" +
+      "#tab-advisor .av-aimhd.plain{font-size:14px;color:var(--text)}" +
+      "#tab-advisor .av-aimsub{font-size:12.5px;color:var(--dim);margin:0 0 6px}" +
+      "#tab-advisor .av-aimnote{font-size:11px;color:var(--dim);margin:0 0 10px;line-height:1.45}" +
+      "#tab-advisor .av-aimtab{font-size:12px;min-width:360px}" +
+      "#tab-advisor .av-aimtab th,#tab-advisor .av-aimtab td{padding:5px 7px}" +
+      "#tab-advisor .av-aimtab tbody tr{cursor:pointer}" +
+      "#tab-advisor .av-aimtab tbody tr:hover td{background:var(--panel2)}" +
+      "#tab-advisor .av-aimtab tr.best td{color:var(--accent);font-weight:700}" +
+      "#tab-advisor .av-aimtab tr.flat td{opacity:.45}" +
+      "#tab-advisor .av-aimtab tr.cur td:first-child{box-shadow:inset 3px 0 0 var(--high)}" +
       "#tab-advisor .av-pricebox input:focus{outline:1px solid var(--accent)}" +
       "#tab-advisor .av-pricebox input.bad{border-color:var(--bad)}" +
       "#tab-advisor .av-pricebox .av-warn{margin:5px 0 0;font-size:11.5px}" +
@@ -1289,17 +1369,83 @@
   /** The market a pair is bought on: any pair with Crit is a damage dealer's, Spec/Swift a support's. */
   function priceMarket(kinds) { return kinds.indexOf("crit") >= 0 ? "dps" : "support"; }
 
+  // ---- the market level: a multiplier on the model's listed price ----
+  //
+  // Shizu, 2026-09-24: "the advisor should have a scale for the pricing you can
+  // adjust". A log slider from 0.25x to 4x, sixteen notches to a doubling, so
+  // 0.5x and 2x sit one tick either side of 1x. It scales the LISTED part only:
+  // the pheons are a fixed floor, not a market price.
+  var SCALE_STEPS = 16, SCALE_MAX = 4 * SCALE_STEPS;   // positions 0..64; 32 is 1x
+  function scaleAt(pos) {
+    return Math.pow(2, (clamp(Math.round(num(pos, SCALE_MAX / 2)), 0, SCALE_MAX) - SCALE_MAX / 2) / SCALE_STEPS);
+  }
+  function scalePos(x) { return clamp(Math.round(Math.log(x) / Math.LN2 * SCALE_STEPS) + SCALE_MAX / 2, 0, SCALE_MAX); }
+  /** The level in force, on the slider's own notches. */
+  function simScale() { var x = num(SIM.scale, 1); return scaleAt(scalePos(x > 0 ? x : 1)); }
+  function scaleText(x) { return fx(x, 2) + "×"; }
+
+  /**
+   * What one unrolled bracelet with the even pair v/v costs on a market, at the
+   * market level on the slider, or null without the model. The listed price
+   * scales; the pheons do not.  -> { total, listed, pheons, count, market }
+   */
+  function pairPrice(v, market) {
+    if (priceState !== "ready" || !priceModel) return null;
+    var listed, all;
+    try { listed = priceModel.listed(v, v, market); all = priceModel.allIn(v, v, market); } catch (err) { return null; }
+    if (!isFinite(listed) || !isFinite(all) || !(all > 0)) return null;
+    var pheons = all - listed, lv = listed * simScale();
+    return { total: lv + pheons, listed: lv, pheons: pheons, count: priceModel.PHEONS_PER_BRACELET || 20, market: market };
+  }
+
   /**
    * GPD's estimate for the simulated pair, or null: the model has not loaded,
    * could not, or the bracelet is Relic, which its listings never covered.
-   * -> { total, listed, pheons, count, market }
    */
   function priceEstimate() {
-    if (priceState !== "ready" || !priceModel || simGrade() !== "ancient") return null;
-    var e = simEach(), market = priceMarket(traitKinds()), listed, total;
-    try { listed = priceModel.listed(e, e, market); total = priceModel.allIn(e, e, market); } catch (err) { return null; }
-    if (!isFinite(total) || !(total > 0) || !isFinite(listed)) return null;
-    return { total: total, listed: listed, pheons: total - listed, count: priceModel.PHEONS_PER_BRACELET || 20, market: market };
+    if (simGrade() !== "ancient") return null;
+    return pairPrice(simEach(), priceMarket(traitKinds()));
+  }
+
+  /** Why the market level has nothing to do, or what it does. */
+  function scaleGloss() {
+    if (priceState === "failed") return "GPD’s price model did not load, so there is nothing to scale.";
+    if (priceState === "ready" && simGrade() !== "ancient") return "GPD’s price model covers Ancient bracelets only, so there is nothing to scale on Relic.";
+    if (SIM.price > 0) return "Your typed price is in force, so this level no longer sets the price above. It still prices every pair in the recommendation below.";
+    return "The level of unrolled-bracelet listings relative to the model’s fit: drag it until the estimate matches what you see on the market. " +
+      "It scales every pair the same way, so the recommendation below moves with it.";
+  }
+  function scaleDim() { return SIM.price > 0 || priceState === "failed" || (priceState === "ready" && simGrade() !== "ancient"); }
+  function scaleCaption() {
+    var asOf = (priceModel && priceModel.MARKET_AS_OF) || PRICE_AS_OF, x = simScale();
+    return (x === 1 ? "" : scaleText(x) + " ") + "GPD’s level as of " + asOf;
+  }
+
+  function scaleHtml() {
+    var x = simScale(), ticks = [["0.25×", 0], ["0.5×", 0.25], ["1×", 0.5], ["2×", 0.75], ["4×", 1]], t = "", i;
+    for (i = 0; i < ticks.length; i++) {
+      t += '<span style="left:calc(var(--bc-thumb)/2 + ' + ticks[i][1] + ' * (100% - var(--bc-thumb)))">' + ticks[i][0] + "</span>";
+    }
+    return '<div class="bc-sl av-scale' + (scaleDim() ? " off" : "") + '" id="av-scalerow">' +
+      '<label class="lb" for="av-scale" id="av-scale-lb" data-gloss="' + esc(scaleGloss()) + '">Market level</label>' +
+      '<div class="tk"><input id="av-scale" type="range" min="0" max="' + SCALE_MAX + '" step="1" value="' + scalePos(x) + '">' +
+      '<div class="bc-ticks">' + t + '</div><div class="av-pline" id="av-scalecap">' + esc(scaleCaption()) + "</div></div>" +
+      '<span class="chip" id="av-scale-chip">' + scaleText(x) + "</span></div>";
+  }
+
+  /** Repaint the market level. Mid-drag only its words move, never the slider under the hand. */
+  function paintScale() {
+    var row = $("av-scalerow"), el = $("av-scale");
+    if (!row) return;
+    if (el && document.activeElement === el) {
+      var c = $("av-scale-chip"), cap = $("av-scalecap"), lb = $("av-scale-lb");
+      if (c) c.textContent = scaleText(simScale());
+      if (cap) cap.textContent = scaleCaption();
+      if (lb) lb.setAttribute("data-gloss", scaleGloss());
+      row.classList.toggle("off", scaleDim());
+      return;
+    }
+    row.outerHTML = scaleHtml();
   }
 
   /** The price the cards use: yours when you typed one, else the estimate. -> { gold, mine, est }, or null for none. */
@@ -1340,7 +1486,7 @@
     if (est) {
       return "GPD's estimate of what a bracelet with these traits costs before it is rolled: a curve fitted to Shizu's listings — " +
         "the price rises with each stat, the higher stat faster — plus " + est.count + " pheons, a fixed floor. " +
-        "It moves with the traits; type a price to use your own.";
+        "It moves with the traits and the market level; type a price to use your own.";
     }
     return "What a bracelet like this one — these traits, not yet rolled or rolled as shown — costs to buy. The tool cannot know it, so you enter it.";
   }
@@ -1358,8 +1504,9 @@
     var M = priceModel;
     if (SIM.price > 0) return "";
     if (est) {
+      var asOf = (M && M.MARKET_AS_OF) || PRICE_AS_OF, x = simScale();
       return '<div class="av-pline">listed ' + esc(gold(est.listed)) + " + " + est.count + " pheons " + esc(gold(est.pheons)) +
-        " — GPD’s price model, market level as of " + esc((M && M.MARKET_AS_OF) || PRICE_AS_OF) + "</div>";
+        " — GPD’s price model, " + (x === 1 ? "market level as of " + esc(asOf) : "at " + scaleText(x) + " its " + esc(asOf) + " level") + "</div>";
     }
     if (priceState === "ready" && simGrade() !== "ancient") return '<div class="av-pline">GPD’s price model covers Ancient bracelets only.</div>';
     return "";
@@ -1383,6 +1530,7 @@
    * never lost to a repaint.
    */
   function paintPrice() {
+    paintScale();
     var row = $("av-pricerow"), el = $("av-price");
     if (!row) return;
     if (el && document.activeElement === el) {
@@ -1455,7 +1603,7 @@
         "It sets the values each line rolls and how high the traits go: 120 on Ancient, 100 on Relic.") +
       segHtml("Slots", "avslots", slotOpts, SIM.slots, "How many granted effect slots it has: 2 or 3 on Ancient, 1 or 2 on Relic.") +
       "</div>";
-    h += priceHtml();
+    h += priceHtml() + scaleHtml();
     h += "</div><div>";
     h += segHtml("Granted slots", "avmode", [["fresh", "Not rolled yet"], ["rolled", "Rolled — these lines"]], SIM.mode,
       "Not rolled yet: its lines are still unknown. Rolled: the lines below, with an empty slot counted as a junk line.", "av-mode");
@@ -1555,7 +1703,7 @@
     var ap = activePrice();
     if (!b) {
       var w0 = cdf ? worthCdf(cdf, 0) : null;
-      return '<div class="av-cards">' +
+      return '<div class="av-cards" id="av-cards">' +
         cardHtml("Expected final", "Its average finish, with the remaining rolls played perfectly.",
           res ? dmg(ef) : "—", "acc", res ? rollsSub(lastOpts) : "", true) +
         cardHtml("Worth paying", "What it adds over wearing no bracelet, in gold: its average damage × your gold per 1% (" +
@@ -1573,7 +1721,7 @@
       if (always) inots = "it always beats yours";
       else if (okNum(c.meanIfNot)) { inot = dmg(c.meanIfNot); inots = dmg(b.pct - c.meanIfNot) + " short of yours"; }
     }
-    var h = '<div class="av-cards six">';
+    var h = '<div class="av-cards six" id="av-cards">';
     // how it lands
     h += cardHtml("Beats your bracelet",
       "How often it finishes at or above your bracelet, over every way the remaining rolls can land, each played perfectly.",
@@ -1591,6 +1739,140 @@
     h += toBeatCardHtml(c, always, ap);
     h += priceCardHtml(ap, w, true);
     return h + "</div>";
+  }
+
+  // ------------------------------------------------------------------
+  // WHICH PAIR TO BUY
+  //
+  // Shizu, 2026-09-24: "it recommends the optimal crit+spec you should aim
+  // for." Every even pair across the grade's band, every five points, each an
+  // unrolled bracelet at GPD's price for that pair at the market level above,
+  // rolled out fully and thrown away if it does not beat yours. The one to aim
+  // for costs least to reach a bracelet better than yours: its price ÷ the
+  // odds one such bracelet beats yours. Cheaper pairs beat yours less often,
+  // dearer ones cost more each time; the answer is where the two meet.
+  //
+  // ALWAYS THE CURVE. A typed price is one bracelet's price; the question here
+  // is which pair to buy, so every row is priced on GPD's curve even when a
+  // typed price is in force above.
+  // ------------------------------------------------------------------
+
+  var lastAimInner = null;   // the last section drawn, kept up dimmed while a fresh solve is out
+
+  /** The pairs the table covers: the band's floor, then every multiple of five to its top. */
+  function aimPairs(grade) {
+    var band = traitBandOf(grade), out = [band[0]], v;
+    for (v = Math.ceil((band[0] + 1) / 5) * 5; v <= band[1]; v += 5) out.push(v);
+    return out;
+  }
+
+  /** "about 4.2 bracelets", the To-beat card's own count. */
+  function countText(p) {
+    var n = 1 / p;
+    if (!(p < 1 - 1e-9)) return "1 bracelet";
+    var t = n < 10 ? fx(n, 1) : nf(Math.round(n));
+    return "about " + t + " bracelet" + (t === "1.0" || t === "1" ? "" : "s");
+  }
+
+  /** One row per pair, off the fresh solve; null until the right fresh solve is in hand. */
+  function aimRows() {
+    if (!fresh || fresh.key !== freshKeyNow() || contractGap()) return null;
+    var res = fresh.res, cdf = res && res.finalScore && res.finalScore.cdf;
+    if (!cdf) return null;
+    var g = simGrade(), kinds = traitKinds(), market = priceMarket(kinds), prof = P.profile(), bar = barNow();
+    var base = num(res.traitDamage, 0), pairs = aimPairs(g), rows = [], priced = g === "ancient" && priceState === "ready";
+    var prev = null, flat = false, i, v, t, shift, c, w, pr, pb;
+    for (i = 0; i < pairs.length; i++) {
+      v = pairs[i];
+      t = { crit: 0, spec: 0, swift: 0 }; t[kinds[0]] = v; t[kinds[1]] = v;
+      shift = B.traitDamage(t, prof) - base;
+      c = bar ? compareCdf(cdf, bar.D, shift) : null;
+      w = worthCdf(cdf, bar ? bar.pct : 0, shift);
+      pr = priced ? pairPrice(v, market) : null;
+      pb = c ? c.pBeat : null;
+      // Past the point where the odds stop rising, a dearer pair buys nothing:
+      // once a pair all but always beats yours, or where a step up adds nothing
+      // at all. Never on a slow climb — on Relic the odds creep up from
+      // hundredths of a percent, and every step of that still counts.
+      if (!flat && prev !== null && pb !== null && (prev >= 0.9995 || (prev > 0 && pb - prev <= 1e-9))) flat = true;
+      rows.push({ v: v, price: pr ? pr.total : null, p: pb, spend: (pr && pb > 1e-9) ? pr.total / pb : null,
+        worth: w ? w.gold : null, flat: flat });
+      if (pb !== null) prev = pb;
+    }
+    var best = null, runner = null;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].spend === null) continue;
+      if (!best || rows[i].spend < best.spend) { runner = best; best = rows[i]; }
+      else if (!runner || rows[i].spend < runner.spend) runner = rows[i];
+    }
+    return { rows: rows, best: best, runner: runner, bar: bar, priced: priced, ref: fresh.each };
+  }
+
+  function aimInnerHtml(m) {
+    var h = '<h2 class="av-h">Which pair to buy</h2>', bar = m.bar, i, r, cur = simEach();
+    var noModel = priceState === "failed" ? "GPD’s price model did not load, so no pair can be priced."
+      : (simGrade() !== "ancient" ? "GPD’s price model covers Ancient bracelets only, so no pair is priced on Relic." : null);
+    if (!bar) h += '<p class="av-aimhd plain">Set your bracelet to get a recommendation.</p>';
+    if (bar && m.priced && m.best) {
+      h += '<div class="av-aimhd" data-gloss="The pair with the lowest expected spend in the table: its price ÷ the odds it beats yours. ' +
+        "Cheaper pairs beat yours less often, dearer ones cost more each time; this is where the two meet. " +
+        'Every pair is priced on GPD’s curve at the market level above, never on a typed price, because the question is which pair to buy.">' +
+        "Aim for <b>" + m.best.v + "/" + m.best.v + "</b> — about " + esc(gold(m.best.spend)) + " expected to beat yours (" +
+        esc(countText(m.best.p)) + " at " + esc(gold(m.best.price)) + ")</div>";
+      if (m.runner) h += '<div class="av-aimsub">' + m.runner.v + "/" + m.runner.v + " would cost about " + esc(gold(m.runner.spend)) + "</div>";
+    } else if (bar && m.priced) {
+      h += '<p class="av-aimhd plain">Nothing at any pair beats yours at this level.</p>';
+    }
+    if (noModel) h += '<p class="av-aimsub">' + esc(noModel) + "</p>";
+    if (bar && m.priced) {
+      h += '<div class="av-aimnote" data-gloss="' + esc("Buying an unrolled bracelet is what the price model prices, so every row is a fresh bracelet with that pair and seven rolls. " +
+        "The odds come from one solve at " + m.ref + "/" + m.ref + ", moved to each pair by what its traits add: exact for Spec and Swiftness, within a few hundredths of a point for Crit near the crit cap.") +
+        '">Unrolled bracelets at the market level above, seven rolls each, played optimally, thrown away if they do not beat yours.</div>';
+    }
+    var cols = [["Pair", "Both combat traits at this value, " + (bar ? "the kinds your bracelet carries" : "your role’s usual pair until you set your bracelet") +
+      ". Click a row to set the simulator to it."]];
+    if (m.priced) cols.push(["Price", "One unrolled bracelet with this pair: GPD’s curve at the market level above, plus 20 pheons. Always the curve, never a typed price, because the table compares pairs."]);
+    if (bar) cols.push(["Beats yours", "How often one such bracelet, rolled out fully, finishes at or above yours."]);
+    if (m.priced && bar) cols.push(["Expected spend", "Price ÷ the odds: what you would spend, on average, buying such bracelets until one beats yours."]);
+    cols.push(["Worth paying", bar
+      ? "What one such bracelet is worth to you: the odds it beats yours × how far past yours it lands, on average × your gold per 1%."
+      : "What one such bracelet adds over wearing no bracelet: its average damage × your gold per 1%."]);
+    h += '<div class="av-tabwrap"><table class="av-aimtab"><thead><tr>';
+    for (i = 0; i < cols.length; i++) h += "<th" + (i ? ' class="num"' : "") + '><span data-gloss="' + esc(cols[i][1]) + '">' + cols[i][0] + "</span></th>";
+    h += "</tr></thead><tbody>";
+    for (i = 0; i < m.rows.length; i++) {
+      r = m.rows[i];
+      var cls = (m.best && r === m.best ? "best" : "") + (r.flat ? " flat" : "") + (r.v === cur ? " cur" : "");
+      h += '<tr data-avpair="' + r.v + '"' + (cls.trim() ? ' class="' + cls.trim() + '"' : "") + "><td>" + r.v + "/" + r.v + "</td>";
+      if (m.priced) h += '<td class="num">' + (r.price !== null ? esc(gold(r.price)) : "—") + "</td>";
+      if (bar) h += '<td class="num">' + (r.p !== null ? odds(r.p) : "—") + "</td>";
+      if (m.priced && bar) h += '<td class="num">' + (r.spend !== null ? esc(gold(r.spend)) : "—") + "</td>";
+      h += '<td class="num">' + (r.worth !== null ? esc(gold(r.worth)) : "—") + "</td></tr>";
+    }
+    return h + "</tbody></table></div>";
+  }
+
+  function aimHtml() {
+    var m = aimRows();
+    if (!m) {
+      return '<div class="panel av-sec av-aim' + (lastAimInner ? " av-dim" : "") + '" id="av-aim">' +
+        (lastAimInner || '<h2 class="av-h">Which pair to buy</h2><p class="av-none">Working out every pair…</p>') + "</div>";
+    }
+    lastAimInner = aimInnerHtml(m);
+    return '<div class="panel av-sec av-aim" id="av-aim">' + lastAimInner + "</div>";
+  }
+
+  /** The row for the simulator's pair, marked as the trait slider moves. */
+  function markAimCur() {
+    var rows = document.querySelectorAll("#av-aim tr[data-avpair]"), e = simEach(), i;
+    for (i = 0; i < rows.length; i++) rows[i].classList.toggle("cur", Number(rows[i].getAttribute("data-avpair")) === e);
+  }
+
+  /** The figures that read the price, and nothing that reads only the solve: the cards and the section. */
+  function paintCosts() {
+    var c = $("av-cards"), a = $("av-aim");
+    if (c) c.outerHTML = cardsHtml(lastRes, barNow());
+    if (a) a.outerHTML = aimHtml();
   }
 
   /**
@@ -1659,7 +1941,7 @@
       return h + '<div class="av-empty"><b>The solve failed:</b> ' + esc(solveErr) + ". Move any control to try again.</div>";
     }
     h += '<div id="av-figs"' + (solving || !res ? ' class="av-dim"' : "") + ">";
-    h += cardsHtml(res, b) + landHtml(res, b);
+    h += cardsHtml(res, b) + aimHtml() + landHtml(res, b);
     if (solveErr) h += '<div class="av-warn">The last solve failed: ' + esc(solveErr) + ". Move any control to try again.</div>";
     return h + "</div>";
   }
@@ -2179,11 +2461,23 @@
       "floor. The tab asks that chart&rsquo;s own model rather than keeping a copy of it. It covers Ancient " +
       "bracelets only. Type a price to use your own; <b>use estimate</b> goes back. " +
       "<b>To beat yours</b> is <code>1 &divide; P(beat)</code>: how many such bracelets you " +
-      "would go through, on average, before one ends better than yours, each bought at your price, rolled out " +
-      "fully and thrown away if it falls short. It is a geometric expectation, so it often takes fewer: the " +
-      "median is about 0.69 &times; the average. The gold under it is your price &times; that count. " +
-      "<b>Price vs worth</b> sets your price against Worth paying, which already counts the odds and how far " +
+      "would go through, on average, before one ends better than yours, each bought at the price in force &mdash; " +
+      "yours if you typed one, else the estimate &mdash; rolled out fully and thrown away if it falls short. It is a " +
+      "geometric expectation, so it often takes fewer: the median is about 0.69 &times; the average. The gold under " +
+      "it is that price &times; that count. <b>Price vs worth</b> sets the same price against Worth paying, which " +
+      "already counts the odds and how far " +
       "past yours it lands, so a price above it loses gold on average and a price below it gains.</p>" +
+
+      "<p><b>Market level</b> scales the listed part of that estimate &mdash; never the pheons, a fixed floor " +
+      "&mdash; so you can match it to what you see on the market; 1&times; is GPD&rsquo;s level as of " + PRICE_AS_OF + ". " +
+      "<b>Which pair to buy</b> ranks even trait pairs, every five points across the grade&rsquo;s band, by " +
+      "expected spend: a pair&rsquo;s price &divide; the odds one such bracelet beats yours, bought unrolled " +
+      "&mdash; which is what the price model prices &mdash; and rolled out fully with seven rolls. The odds come " +
+      "from one solve, moved to each pair by what its traits add on your character: exact for Specialization and " +
+      "Swiftness, within a few hundredths of a point for Crit, whose worth bends near the crit cap. A cheaper pair " +
+      "beats yours less often and a dearer one costs more each time; the pair where the two meet is the one to aim " +
+      "for. Rows past the point where the odds stop rising are dimmed. The table always prices pairs on the curve, " +
+      "even when a typed price is in force, because it compares pairs.</p>" +
 
       "<p><b>Where it can land</b> draws the same spread: the box is the middle half (p25 to p75), the whisker " +
       "p10 to p90, the line in the box the median, and the orange line your bracelet. Point at the strip, or tap " +
@@ -2279,12 +2573,22 @@
       // The price: take it once the hand stops, so "1.2" on its way to "1.2M"
       // is never priced.
       if (id === "av-price") { if (priceTimer) clearTimeout(priceTimer); priceTimer = setTimeout(function () { commitPrice(false); }, 300); return; }
+      // The market level: no solve, only the prices and what reads them.
+      if (id === "av-scale") {
+        SIM.scale = scaleAt(t.value);
+        saveSim();
+        paintScale();
+        if (!(SIM.price > 0)) paintPrice();
+        paintCosts();
+        return;
+      }
       if (id === "av-each") {
         var r = eachRange(simGrade());
         SIM.each = clamp(Math.round(num(t.value, EACH_DEFAULT)), r[0], r[1]);
         if ((c = $("av-each-chip"))) c.textContent = pairText(SIM.each);
         // The estimate moves with the traits; the cards wait for the solve.
         if (!(SIM.price > 0)) paintPrice();
+        markAimCur();
         lastVerdict = null; retries = 0; saveSim(); schedule();
         return;
       }
@@ -2392,6 +2696,15 @@
         var A2 = App();
         baseMsg = null;
         if (A2 && A2.baseline && typeof A2.baseline.clear === "function") A2.baseline.clear();
+        return;
+      }
+      // A row of "which pair to buy" sets the simulator to that pair.
+      var arow = t.closest ? t.closest("tr[data-avpair]") : null;
+      if (arow && $("av-aim") && $("av-aim").contains(arow)) {
+        var rg = eachRange(simGrade());
+        SIM.each = clamp(Math.round(num(arow.getAttribute("data-avpair"), SIM.each)), rg[0], rg[1]);
+        lastVerdict = null; retries = 0; saveSim();
+        paintSim(); markAimCur(); schedule(true);
         return;
       }
       if (t.id === "av-price-est") {
