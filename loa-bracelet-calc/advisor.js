@@ -957,7 +957,7 @@
       "#tab-advisor .av-aimhd.plain{font-size:14px;color:var(--text)}" +
       "#tab-advisor .av-aimsub{font-size:12.5px;color:var(--dim);margin:0 0 6px}" +
       "#tab-advisor .av-aimnote{font-size:11px;color:var(--dim);margin:0 0 10px;line-height:1.45}" +
-      "#tab-advisor .av-aimtab{font-size:12px;min-width:360px}" +
+      "#tab-advisor .av-aimtab{font-size:12px;min-width:430px}" +
       "#tab-advisor .av-aimtab th,#tab-advisor .av-aimtab td{padding:5px 7px}" +
       "#tab-advisor .av-aimtab tbody tr{cursor:pointer}" +
       "#tab-advisor .av-aimtab tbody tr:hover td{background:var(--panel2)}" +
@@ -1737,8 +1737,17 @@
       if (!best || rows[i].spend < best.spend) { runner = best; best = rows[i]; }
       else if (!runner || rows[i].spend < runner.spend) runner = rows[i];
     }
+    // BANG FOR THE BUCK (Shizu, 2026-09-25: "another column for bang for ur
+    // buck factor which is what makes 95/95 the best"): the odds one such
+    // bracelet beats yours per gold spent, as a share of the best pair's. The
+    // same figure as Expected spend, turned the way people read it — higher is
+    // better, and the pair to aim for is the one at 100%.
+    for (i = 0; i < rows.length; i++) rows[i].bang = (best && rows[i].spend !== null) ? best.spend / rows[i].spend : null;
     return { rows: rows, best: best, runner: runner, bar: bar, priced: priced, ref: fresh.each };
   }
+
+  /** "100%", "37%", "0.8%": a share of the best pair's bang for the buck. */
+  function bangText(x) { return fx(x * 100, x < 0.1 ? 1 : 0) + "%"; }
 
   function aimInnerHtml(m) {
     var h = '<h2 class="av-h">Which pair to buy</h2>', bar = m.bar, i, r, cur = simEach();
@@ -1746,7 +1755,7 @@
       : (simGrade() !== "ancient" ? "GPD’s price model covers Ancient bracelets only, so no pair is priced on Relic." : null);
     if (!bar) h += '<p class="av-aimhd plain">Set your bracelet to get a recommendation.</p>';
     if (bar && m.priced && m.best) {
-      h += '<div class="av-aimhd" data-gloss="The pair with the lowest expected spend in the table: its price ÷ the odds it beats yours. ' +
+      h += '<div class="av-aimhd" data-gloss="The pair with the lowest expected spend in the table — its price ÷ the odds it beats yours — which is the most bang for the buck: the most chance of beating yours per gold. ' +
         "Cheaper pairs beat yours less often, dearer ones cost more each time; this is where the two meet. " +
         'Every pair is priced on GPD’s curve at the market level above, pheons included.">' +
         "Aim for <b>" + m.best.v + "/" + m.best.v + "</b> — about " + esc(gold(m.best.spend)) + " expected to beat yours (" +
@@ -1770,6 +1779,7 @@
     if (m.priced) cols.push(["Price", "One unrolled bracelet with this pair: GPD’s curve at the market level above, plus 20 pheons."]);
     if (bar) cols.push(["Beats yours", "How often one such bracelet, rolled out fully, finishes at or above yours."]);
     if (m.priced && bar) cols.push(["Expected spend", "Price ÷ the odds: what you would spend, on average, buying such bracelets until one beats yours."]);
+    if (m.priced && bar) cols.push(["Bang for buck", "How far each gold goes at this pair: the odds one such bracelet beats yours, per gold spent, as a share of the best pair’s. The pair to aim for is the one at 100%; a pair at 50% needs twice the gold for the same chance."]);
     cols.push(["Worth paying", bar
       ? "What one such bracelet is worth to you: the odds it beats yours × how far past yours it lands, on average × your gold per 1%."
       : "What one such bracelet adds over wearing no bracelet: its average damage × your gold per 1%."]);
@@ -1783,6 +1793,7 @@
       if (m.priced) h += '<td class="num">' + (r.price !== null ? esc(gold(r.price)) : "—") + "</td>";
       if (bar) h += '<td class="num">' + (r.p !== null ? odds(r.p) : "—") + "</td>";
       if (m.priced && bar) h += '<td class="num">' + (r.spend !== null ? esc(gold(r.spend)) : "—") + "</td>";
+      if (m.priced && bar) h += '<td class="num">' + (r.bang !== null ? bangText(r.bang) : "—") + "</td>";
       h += '<td class="num">' + (r.worth !== null ? esc(gold(r.worth)) : "—") + "</td></tr>";
     }
     return h + "</tbody></table></div>";
@@ -1905,15 +1916,27 @@
     if (!SR || !a || typeof SR.bandsFor !== "function" || !res.finalScore || !res.finalScore.cdf) return "";
     var role = P.role(), bands = SR.bandsFor(role), sE = scoreOf(res.expectedFinal, a);
     if (sE === null) return "";
-    // The bottom band opens at -Infinity, so "or better" is certain there.
-    var here = SR.of(sE, role).i, last = bands.length - 2, i, chips = "";
-    var top = clamp(here - 2, 0, Math.max(0, last - 3));
-    for (i = Math.min(last, top + 3); i >= top; i--) {
-      var bd = bands[i], c = compareCdf(res.finalScore.cdf, dAtScore(bd.min, a)), p = c ? c.pBeat : 0;
-      chips += '<span class="av-go' + (i === here ? " here" : "") + '"><span class="av-grade" style="background:' +
-        bd.bg + ";color:" + bd.fg + '">' + esc(bd.key) + "</span>" + odds(p) + "</span>";
+    // EVERY GRADE THAT SAYS SOMETHING (Shizu, 2026-09-25: "show more grade or
+    // betters"): from the last band it is sure to reach up to the first it
+    // cannot, each end kept as an anchor — one chip reads 100.0%, one 0.0%,
+    // and everything between is the spread. Four chips around the expected
+    // final used to hide where the tails run out. S+ opens above 100 and F-
+    // is certain, so neither is ever drawn (bands run best first: 0 = S+).
+    var here = SR.of(sE, role).i, last = bands.length - 2, i, chips = "", ps = [];
+    for (i = 1; i <= last; i++) {
+      var ci = compareCdf(res.finalScore.cdf, dAtScore(bands[i].min, a));
+      ps[i] = ci ? ci.pBeat : 0;
     }
-    return '<div class="av-godds"><span class="lb" data-gloss="The chance it finishes at this grade or better. The outlined grade is where its expected final lands.">Grade or better</span>' +
+    var hi = last, lo = 1;                              // hi: the best band it can reach; lo: the worst it is not sure of
+    for (i = 1; i <= last; i++) if (ps[i] >= 0.0005) { hi = i; break; }
+    for (i = last; i >= 1; i--) if (ps[i] < 0.9995) { lo = i; break; }
+    var first = Math.max(1, hi - 1), until = Math.min(last, Math.max(lo + 1, first));
+    for (i = until; i >= first; i--) {
+      var bd = bands[i];
+      chips += '<span class="av-go' + (i === here ? " here" : "") + '"><span class="av-grade" style="background:' +
+        bd.bg + ";color:" + bd.fg + '">' + esc(bd.key) + "</span>" + odds(ps[i]) + "</span>";
+    }
+    return '<div class="av-godds"><span class="lb" data-gloss="The chance it finishes at this grade or better: every grade from the one it is sure of to the one it cannot reach. The outlined grade is where its expected final lands.">Grade or better</span>' +
       chips + "</div>";
   }
 
@@ -2468,7 +2491,9 @@
       "from one solve, moved to each pair by what its traits add on your character: exact for Specialization and " +
       "Swiftness, within a few hundredths of a point for Crit, whose worth bends near the crit cap. A cheaper pair " +
       "beats yours less often and a dearer one costs more each time; the pair where the two meet is the one to aim " +
-      "for. Rows past the point where the odds stop rising are dimmed. Until you move the trait slider or pick " +
+      "for. <b>Bang for buck</b> is the same ranking read the other way up: the odds per gold at each pair as a " +
+      "share of the best pair&rsquo;s, so the pair to aim for reads 100% and a pair at 50% needs twice the gold for " +
+      "the same chance. Rows past the point where the odds stop rising are dimmed. Until you move the trait slider or pick " +
       "a row, the simulator&rsquo;s pair follows this recommendation, and <b>Reset to default</b> brings it back " +
       "to it, with 7 rolls, 3 slots, not rolled yet and the market level at 1&times;.</p>" +
 

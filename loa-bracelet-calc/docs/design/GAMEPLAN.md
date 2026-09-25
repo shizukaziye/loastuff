@@ -137,7 +137,9 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   headline puts it back on the pick, and **Reset to default** on the sim
   block returns everything (pair to aim for, 7 rolls, 3 slots, not rolled,
   market level 1×). "If it doesn't" is gone; **Expected final** holds that
-  card (the mean over every outcome, signed against yours).
+  card (the mean over every outcome, signed against yours). The pair table
+  has a **Bang for buck** column: odds per gold as a share of the best
+  pair's (best = 100%) — Expected spend read the other way up.
 
 ## Debts (2026-09-24)
 
