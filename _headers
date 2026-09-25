@@ -1,7 +1,8 @@
 # Shared chrome must update immediately across every page — always revalidate.
 # NOTE: these rules hold on the pages.dev origin, but the loseii.com zone
 # rewrites .js Cache-Control to max-age=14400. On www.loseii.com the
-# chrome-cache-worker/ routes enforce no-cache instead — keep both in place.
+# chrome-cache-worker/ routes enforce no-cache instead (nav.js, social-bar.js and
+# the two prices.js files below) — keep both in place.
 /nav.js
   Cache-Control: no-cache
 /social-bar.js
@@ -15,4 +16,11 @@
   Cache-Control: no-cache
 # GPD chart data (sweep results, lattices) is re-baked without a pin bump too.
 /loa-gpd/data/*
+  Cache-Control: no-cache
+# Market prices, rewritten in place by refresh-data.yml every 6 h with no pin
+# bump. On www.loseii.com the zone's .js rule would win over this, so the
+# chrome-cache-worker routes these two paths as well.
+/loa-gpd/prices.js
+  Cache-Control: no-cache
+/loa-hell-key-calc/prices.js
   Cache-Control: no-cache

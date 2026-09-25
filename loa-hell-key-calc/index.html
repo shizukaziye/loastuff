@@ -4,7 +4,11 @@
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <title>Hell Key Calculator — Lost Ark Paradise</title>
 <meta name='description' content='Gold value of Lost Ark Hell keys (Paradise Season 4): EV per key, when to take the middle jump, whether to altar a key, season projection.'>
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel='stylesheet' href='styles.css?v=6'>
+<!-- Touch screens: finger-sized buttons. A mouse sees no change. -->
+<style>@media (pointer:coarse){.mbtn{min-height:40px}}</style>
 </head><body>
 <div class='wrap'>
   <h1>Hell Key Calculator</h1>
@@ -132,10 +136,10 @@ EV(key) = V(0, D, no streak, no flags), by backward induction over descents left
     <p><b>Data.</b> Reward quantities: <a href='https://sekwahar.github.io/loa_datamining/pages/hell_drops.html'>sekwahar's data-mined Season 4 tables</a> via the <a href='https://thejunglewalrus.github.io/hell-rewards-picker/'>Hell Reward Picker</a> dump. Altar odds: <a href='https://www.inven.co.kr/board/lostark/4821/108631'>Inven</a>. Mechanics: KR Season 4 patch notes. Cross-checked against Ple0k's 1750 sheet: fed its gold values, this model lands 2–5% above it (it skips Descent +1 and Rocket jump). A Python mirror (<code>verify.py</code>) reproduces the page's numbers.</p>
   </details>
 </div>
-<script src='data.js?v=6'></script>
-<script src='prices.js?v=6'></script>
-<script src='model.js?v=6'></script>
-<script src='app.js?v=6'></script>
+<script src='data.js?v=6' defer></script>
+<script src='prices.js?v=6' defer></script>
+<script src='model.js?v=6' defer></script>
+<script src='app.js?v=6' defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

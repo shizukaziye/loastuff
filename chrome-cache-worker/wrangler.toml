@@ -3,7 +3,11 @@ name = "loseii-chrome-cache"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+# Every pattern ends in * because a route is matched against the query string
+# too: without it "nav.js?cb=1" missed the worker and got the zone's 4 h cache.
 routes = [
-  { pattern = "www.loseii.com/nav.js", zone_name = "loseii.com" },
-  { pattern = "www.loseii.com/social-bar.js", zone_name = "loseii.com" }
+  { pattern = "www.loseii.com/nav.js*", zone_name = "loseii.com" },
+  { pattern = "www.loseii.com/social-bar.js*", zone_name = "loseii.com" },
+  { pattern = "www.loseii.com/loa-gpd/prices.js*", zone_name = "loseii.com" },
+  { pattern = "www.loseii.com/loa-hell-key-calc/prices.js*", zone_name = "loseii.com" }
 ]

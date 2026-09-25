@@ -57,6 +57,15 @@
 a.lp-prof,a.lp-prof[data-gloss]{font-size:11.5px;font-weight:700;color:var(--accent,#66c7ff);text-decoration:none;white-space:nowrap;cursor:pointer}
 a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </style>
+<!-- Touch screens: the small buttons and tabs get a finger-sized target.
+     A mouse (pointer: fine) sees no change. -->
+<style>
+@media (pointer:coarse){
+  .tab,.mbtn{min-height:40px}
+  #astro-banner{padding-right:48px}
+  body #astro-banner .ab-x{min-width:40px;min-height:40px;top:0;right:0}
+}
+</style>
 <!-- Pages this one links to are prerendered once a link to one is pointed at
      (Chromium; "moderate" is a short hover or a press), so crossing to the hub,
      the other tool or a character profile shows a finished page. Only the site's
@@ -488,24 +497,44 @@ function routeBoot(){
      grader's plan section via pipelineReady). The Advisor stack and Leaderboard are in
      LAZY_TABS above and load on first tab activation. -->
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
-<script src="model/astrogem.js?v=62"></script>
-<script src="banner.js?v=8"></script>
-<script src="gate.js?v=39"></script>
-<script src="favorites.js?v=40"></script>
-<script src="tip.js?v=2"></script>
-<script src="loadout-econ.js?v=8"></script>
-<script src="bible-import.js?v=4"></script>
-<script src="bible-oauth.js?v=11"></script>
-<script src="gemlist.js?v=1"></script>
-<script src="grader.js?v=84"></script>
-<script src="pipeline.js?v=54"></script>
-<!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
-     listener runs after every module above has initialised, so a deep-linked
-     tab activates exactly as a click just after load would (see ROUTES). -->
+<!-- `defer` on all of them: they download in parallel, run in this order once the
+     page has parsed, and never block the first paint. An INLINE script cannot be
+     deferred and runs before all of these, so no inline script may read a global
+     these files define at parse time (the inline scripts above only define
+     functions, called later). The inline script just below keeps their
+     "init now or on DOMContentLoaded?" checks answering as they did. -->
 <script>
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", routeBoot);
-else routeBoot();
+// DEFER, SAFELY. Several app scripts open with "if document.readyState is
+// 'loading', init on DOMContentLoaded, else init now". Loaded as plain tags the
+// answer was 'loading', so every init waited until ALL the files had run, and
+// then ran in file order. Deferred, the answer would be 'interactive' and each
+// would init at once, before the files after it exist (the Grader before
+// pipeline.js). So until DOMContentLoaded this page keeps answering 'loading',
+// which is what those checks mean to ask: is DOMContentLoaded still to come?
+// This listener is the first one added, so the real value is back before any
+// module's own DOMContentLoaded handler runs.
+(function () {
+  try {
+    Object.defineProperty(document, "readyState", { configurable: true, get: function () { return "loading"; } });
+    document.addEventListener("DOMContentLoaded", function () { delete document.readyState; }, { once: true });
+  } catch (e) {}
+})();
 </script>
+<script src="model/astrogem.js?v=62" defer></script>
+<script src="banner.js?v=8" defer></script>
+<script src="gate.js?v=39" defer></script>
+<script src="favorites.js?v=40" defer></script>
+<script src="tip.js?v=2" defer></script>
+<script src="loadout-econ.js?v=8" defer></script>
+<script src="bible-import.js?v=4" defer></script>
+<script src="bible-oauth.js?v=11" defer></script>
+<script src="gemlist.js?v=1" defer></script>
+<script src="grader.js?v=84" defer></script>
+<script src="pipeline.js?v=54" defer></script>
+<!-- Route boot. LAST of the app scripts on purpose: it runs after every module
+     above has initialised, so a deep-linked tab activates exactly as a click just
+     after load would (see ROUTES). A file, not inline, so it can wait its turn. -->
+<script src="route-boot.js?v=1" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

@@ -32,8 +32,9 @@
 }
 </script>
 
-<!-- Inline SVG favicon: a gold gem -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='none' stroke='%23a9802a' stroke-width='1.2'/%3E%3Cpath d='M3 12h26M16 3v26M9.5 7.5 16 12l6.5-4.5M3 12l13 4 13-4' fill='none' stroke='%23fff3d6' stroke-opacity='.5' stroke-width='.8'/%3E%3C/svg%3E" />
+<!-- The site icon: the nav wordmark's gold gem on the dark ground -->
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
 <style>
   :root{
@@ -98,6 +99,8 @@
     all:unset;cursor:pointer;color:var(--gold,#e2c26b);text-decoration:underline;text-underline-offset:2px;
   }
   .pill-stat button:hover{color:var(--text)}
+  /* Touch screens: a finger-sized sign-in target. A mouse sees no change. */
+  @media (pointer:coarse){.pill-stat button{display:inline-flex;align-items:center;min-height:40px}}
   #bible-auth[hidden]{display:none}
 
   /* ---------- Hero search: the home page's first action (Shizu, 2026-09-22) ---------- */

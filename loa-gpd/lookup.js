@@ -61,8 +61,10 @@
   // file -> the global it defines; the pins are index.html's
   var MODELS = [["model/support.js?v=20260922a", "Support"], ["model/gear.js?v=20260922a", "Gear"],
                 ["model/honing.js?v=20260922a", "Honing"], ["model/karma.js?v=20260922a", "Karma"]];
-  // the chart loads this one unpinned from www, and so does this file
-  var ASTROGEM_JS = "https://www.loseii.com/loa-astrogem-calc/model/astrogem.js";
+  // The astrogem calculator's model, at the pin loa-astrogem-calc/index.html
+  // uses: the same URL is one cached copy for the calculator, the chart and this
+  // file. It MUST follow the astrogem pin (and the chart's tag in index.html).
+  var ASTROGEM_JS = "https://www.loseii.com/loa-astrogem-calc/model/astrogem.js?v=62";
   // the bracelet calculator lives on loseii too; its github.io address is a
   // redirect stub since 2026-09-22 and serves no scripts
   var BC_BASE = "https://www.loseii.com/loa-bracelet-calc/";
