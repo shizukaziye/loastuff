@@ -90,12 +90,34 @@
       '<a class="kofi" href="' + LINKS.kofi + '" target="_blank" rel="noopener" aria-label="Support me on Ko-fi">' + ICONS.kofi + '<span>Support</span></a>' +
     '</div>';
 
+  // Keep the page's last rows clear of the bar, the way nav.js keeps the top
+  // clear: pad the body's bottom by the strip the bar covers (its height plus
+  // its gap above the screen edge) and publish that as --loseii-social-offset
+  // on :root, for pages with their own bottom-pinned parts. Measured, not
+  // typed in: the bar is shorter under 420px, so it is measured again whenever
+  // its size changes.
+  var basePad = null;
+  function reserve() {
+    var bar = root.querySelector(".bar");
+    if (!bar) return;
+    var h = Math.ceil(bar.offsetHeight + (parseFloat(getComputedStyle(bar).bottom) || 0));
+    if (!h) return;
+    document.documentElement.style.setProperty("--loseii-social-offset", h + "px");
+    var b = document.body;
+    if (basePad === null) basePad = parseFloat(getComputedStyle(b).paddingBottom) || 0;
+    b.style.paddingBottom = (basePad + h) + "px";
+    b.setAttribute("data-loseii-social-offset", "");
+  }
+
   function mount() {
     document.body.appendChild(host);
+    reserve();
+    var bar = root.querySelector(".bar");
+    if (bar && window.ResizeObserver) new ResizeObserver(reserve).observe(bar);
+    else window.addEventListener("resize", reserve);
     // next frame -> trigger the entrance transition
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        var bar = root.querySelector(".bar");
         if (bar) bar.classList.add("in");
       });
     });

@@ -10,6 +10,8 @@
 <meta property="og:title" content="Bracelet Calculator — Lost Ark">
 <meta property="og:description" content="Score any T4 bracelet in % damage, get exact keep-or-replace and lock advice, and price an unrolled bracelet.">
 <meta property="og:url" content="https://www.loseii.com/loa-bracelet-calc/">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <!--
   App shell for the Lost Ark T4 bracelet tool. The math lives in
   model/bracelet.js (window.Bracelet), a pure core the UI reads and never mutates.
@@ -218,7 +220,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
      nothing boots on defaults and nothing of the user's is overwritten. Silent,
      self-limiting, one round trip per browser, and gone for good once it has
      run. -->
-<script src="handoff.js?v=5"></script>
+<script src="handoff.js?v=5" defer></script>
 
 <!-- Tab switching: toggle .active on the matching button + pane, and keep the
      tab in the address bar (ROUTES below). -->
@@ -233,7 +235,7 @@ var LAZY_TABS = {
   // The screenshot reader (advisor-capture.js + advisor-glue.js) is parked:
   // no tab mounts it since 2026-09-24. The files stay in the repo for a return.
   reader: ['advisor-capture.js?v=3', 'advisor-glue.js?v=2'],
-  tierlist: ['tierlist.js?v=20'],
+  tierlist: ['tierlist.js?v=21'],
   leaderboard: ['leaderboard.js?v=21'],
   method: ['method.js?v=10'],
   feedback: ['feedback.js?v=2']
@@ -480,30 +482,44 @@ function routeBoot(){
      parse time to grade the families. app.js is last: it holds the state object
      profile.js hands it. -->
 <!-- ?v= cache-buster: bump on each deploy so browsers load fresh JS without a hard-refresh -->
-<script src="data/bracelet-data.js?v=2"></script>
-<script src="data/gear-data.js?v=4"></script>
-<script src="model/bracelet.js?v=14"></script>
-<script src="tip.js?v=1"></script>
-<script src="favorites.js?v=1"></script>
+<script>
+// DEFER, SAFELY. Every app script here is `defer`, and several open with "if
+// document.readyState is 'loading', init on DOMContentLoaded, else init now".
+// As plain tags the answer was 'loading', so every init waited until ALL the
+// files had run. Deferred, it would be 'interactive' and app.js would init
+// before bible-import.js exists. So until DOMContentLoaded the page keeps
+// answering 'loading' (DOMContentLoaded is still to come, which is what those
+// checks ask), and this first listener puts the real value back.
+(function () {
+  try {
+    Object.defineProperty(document, "readyState", { configurable: true, get: function () { return "loading"; } });
+    document.addEventListener("DOMContentLoaded", function () { delete document.readyState; }, { once: true });
+  } catch (e) {}
+})();
+</script>
+<script src="data/bracelet-data.js?v=2" defer></script>
+<script src="data/gear-data.js?v=4" defer></script>
+<script src="model/bracelet.js?v=14" defer></script>
+<script src="tip.js?v=1" defer></script>
+<script src="favorites.js?v=1" defer></script>
 <!-- The shared character lookup + ★ strip. EAGER, though it mounts lazily: the
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
-<script src="char-picker.js?v=6"></script>
-<script src="profile.js?v=27"></script>
-<script src="subrank.js?v=9"></script>
-<script src="app.js?v=54"></script>
+<script src="char-picker.js?v=6" defer></script>
+<script src="profile.js?v=27" defer></script>
+<script src="subrank.js?v=9" defer></script>
+<script src="app.js?v=54" defer></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
-<script src="bible-oauth.js?v=4"></script>
-<script src="bible-import.js?v=24"></script>
+<script src="bible-oauth.js?v=4" defer></script>
+<script src="bible-import.js?v=24" defer></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
-     tab activates exactly as a click just after load would (see ROUTES). -->
-<script>
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", routeBoot);
-else routeBoot();
-</script>
+     tab activates exactly as a click just after load would (see ROUTES).
+     A deferred file, not inline: every script here is `defer`, and an inline
+     script would run before all of them. -->
+<script src="route-boot.js?v=1" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

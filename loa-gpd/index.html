@@ -12,7 +12,6 @@
 <meta name='twitter:card' content='summary'>
 <link rel='icon' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 26 L12 16 L19 21 L28 7' fill='none' stroke='%23e8b75c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel='stylesheet' href='styles.css?v=20260922a'>
-<style>.wrap{padding-top:calc(24px + var(--loseii-nav-offset,0px))}</style>
 <!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
      the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
      tools: change one, change all three. -->
@@ -24,8 +23,6 @@
 a.lp-prof,a.lp-prof[data-gloss]{font-size:11.5px;font-weight:700;color:var(--accent,#66c7ff);text-decoration:none;white-space:nowrap;cursor:pointer}
 a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </style>
-<script src='https://www.loseii.com/nav.js' defer></script>
-<script src='https://www.loseii.com/social-bar.js' defer></script>
 <!-- The house tooltip for data-gloss (the "Profile →" link): the same file and
      pin the profile page loads. -->
 <script src='/loa-bracelet-calc/tip.js?v=1' defer></script>
@@ -235,20 +232,26 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </div>
 </div>
 
-<script src='model/support.js?v=20260922a'></script>
-<script src='model/gear.js?v=20260922a'></script>
-<script src='model/combat-power.js?v=20260922a'></script>
-<script src='model/honing.js?v=20260922a'></script>
-<script src='model/karma.js?v=20260922a'></script>
-<script src='model/gems.js?v=20260922a'></script>
+<script src='model/support.js?v=20260922a' defer></script>
+<script src='model/gear.js?v=20260922a' defer></script>
+<script src='model/combat-power.js?v=20260922a' defer></script>
+<script src='model/honing.js?v=20260922a' defer></script>
+<script src='model/karma.js?v=20260922a' defer></script>
+<script src='model/gems.js?v=20260922a' defer></script>
 <!-- live NA market prices for the material panel; unpinned, the 6-hour refresh
-     (fetch_prices.py in refresh-data.yml) rewrites it in place -->
-<script src='prices.js'></script>
-<script src='lookup.js?v=4'></script>
-<script src='https://www.loseii.com/loa-astrogem-calc/model/astrogem.js' defer></script>
-<script src='bible-oauth.js?v=20260925b'></script>
+     (fetch_prices.py in refresh-data.yml) rewrites it in place. It is served
+     no-cache (_headers, and the loseii-chrome-cache worker on www). -->
+<script src='prices.js' defer></script>
+<script src='lookup.js?v=5' defer></script>
+<!-- The astrogem calculator's model. The pin MUST follow the one in
+     loa-astrogem-calc/index.html (and ASTROGEM_JS in lookup.js): the same URL
+     there and here is one cached copy for both pages. -->
+<script src='https://www.loseii.com/loa-astrogem-calc/model/astrogem.js?v=62' defer></script>
+<script src='bible-oauth.js?v=20260925b' defer></script>
+<!-- The chart. Inline, so it cannot be deferred: it waits for DOMContentLoaded,
+     which comes after every deferred script above has run. -->
 <script>
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
   // The systems, every row and the character lookup come from lookup.js,
@@ -1597,6 +1600,8 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
     if (state.honing) buildInputs(state.honing);
     render();
   });
-})();
+});
 </script>
+<script src='https://www.loseii.com/nav.js' defer></script>
+<script src='https://www.loseii.com/social-bar.js' defer></script>
 </body></html>

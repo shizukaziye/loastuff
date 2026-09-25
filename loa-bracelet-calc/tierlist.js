@@ -1134,7 +1134,7 @@
       "#tab-tierlist .tl-head .tl-bar,#tab-tierlist .tl-head .tl-pct{background:none;border:0}" +
       "#tab-tierlist .tl-band{display:grid;grid-template-columns:64px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}" +
       "#tab-tierlist .tl-band:last-child{border-bottom:none}" +
-      "#tab-tierlist .tl-chip{align-self:start;position:sticky;top:8px}" +
+      "#tab-tierlist .tl-chip{align-self:start;position:sticky;top:calc(var(--loseii-nav-offset, 0px) + 8px)}" +   // clear the site nav
       // 18 subranks means two-character chips ("S+", "B-"), so the type is sized
       // to the widest of them rather than to a single letter.
       "#tab-tierlist .tl-chip span{display:flex;width:64px;height:64px;align-items:center;justify-content:center;" +

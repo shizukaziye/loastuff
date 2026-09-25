@@ -1,0 +1,14 @@
+{
+  "name": "loseii-site",
+  "version": "0.1.0",
+  "description": "www.loseii.com (Cloudflare Pages). The site itself needs no build; `npm run build` makes an optional minified copy in dist/.",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build-dist.mjs",
+    "check-dist": "node tools/build-dist.mjs --check-only"
+  },
+  "devDependencies": {
+    "csso": "^5.0.5",
+    "terser": "^5.51.2"
+  }
+}
