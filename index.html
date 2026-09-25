@@ -93,6 +93,12 @@
     border-radius:999px;padding:5px 13px;color:var(--muted);
   }
   .dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80aa}
+  /* lostark.bible session: one sign-in for the hub and every tool (bible-oauth.js). */
+  .pill-stat button{
+    all:unset;cursor:pointer;color:var(--gold,#e2c26b);text-decoration:underline;text-underline-offset:2px;
+  }
+  .pill-stat button:hover{color:var(--text)}
+  #bible-auth[hidden]{display:none}
 
   /* ---------- Hero search: the home page's first action (Shizu, 2026-09-22) ---------- */
   .hero-find{max-width:640px;margin:28px auto 0;text-align:left}
@@ -270,7 +276,8 @@
     <div class="meta-row">
       <span class="pill-stat"><span class="dot"></span>12 live tools</span>
       <span class="pill-stat">Free &amp; in-browser</span>
-      <span class="pill-stat">No login</span>
+      <span class="pill-stat">No login needed</span>
+      <span class="pill-stat" id="bible-auth" hidden></span>
     </div>
     <div class="connect">
       <a class="chan twitch" href="https://twitch.tv/shizukaziye" target="_blank" rel="noopener">
@@ -519,6 +526,33 @@
       (c.star ? "★ " : "") + esc(c.name) + '<span class="rg">' + esc(c.region) + "</span></a>";
   }
   host.innerHTML = h;
+})();
+</script>
+<!-- One lostark.bible session for the whole site. The astrogem copy of bible-oauth.js is
+     loaded on purpose: a sign-in started here returns through that tool's registered
+     callback folder and bounces back to the hub. Keep this pin in step with the one in
+     loa-astrogem-calc/index.html. -->
+<script src="/loa-astrogem-calc/bible-oauth.js?v=10" defer></script>
+<script>
+(function () {
+  function init() {
+    var O = window.BibleOAuth, host = document.getElementById("bible-auth");
+    if (!O || !host || !O.configured()) return;
+    function paint() {
+      host.hidden = false;
+      host.innerHTML = O.signedIn()
+        ? 'Signed in to lostark.bible · <button type="button" id="bible-out">Sign out</button>'
+        : '<button type="button" id="bible-in">Sign in with lostark.bible</button>';
+      var btn = host.querySelector("button");
+      btn.addEventListener("click", function () {
+        btn.disabled = true;
+        if (O.signedIn()) O.logout().then(paint); else O.login();
+      });
+    }
+    O.onChange(paint);
+    paint();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
 </script>
 <script src="https://www.loseii.com/nav.js" defer></script>

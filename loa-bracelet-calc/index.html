@@ -218,7 +218,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
      nothing boots on defaults and nothing of the user's is overwritten. Silent,
      self-limiting, one round trip per browser, and gone for good once it has
      run. -->
-<script src="handoff.js?v=4"></script>
+<script src="handoff.js?v=5"></script>
 
 <!-- Tab switching: toggle .active on the matching button + pane, and keep the
      tab in the address bar (ROUTES below). -->
@@ -495,7 +495,7 @@ function routeBoot(){
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
-<script src="bible-oauth.js?v=2"></script>
+<script src="bible-oauth.js?v=3"></script>
 <script src="bible-import.js?v=24"></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
