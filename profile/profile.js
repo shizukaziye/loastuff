@@ -95,7 +95,7 @@
   var K_FAVS = "bc_favs";                     // the bracelet tool's favourites, same shape
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 2;
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 3;   // 3: bracelet lines carry their raw form and traits their family
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -774,12 +774,13 @@
     var lo = loadoutInfo(x.lo, rec);
     var band = traitBand(x.grade), aGrade = x.grade === "relic" ? "a Relic" : "an Ancient";
     var traits = x.traits.map(function (t) {
-      return { label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
+      return { family: t.family, label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
     });
     return {
       st: "ok", onBoard: onBoard, grade: x.grade, axis: axis, pct: reading ? reading.pct : null,
-      lines: x.lines.map(function (l) { return lineView(l, x.grade); }),
+      lines: x.lines.map(function (l) { var v = lineView(l, x.grade); v.raw = l; return v; }),
       traits: traits,
+      loItems: (x.lo && x.lo.items) ? x.lo.items : null,
       traitsGloss: traits.length ? traits.map(function (t) { return t.label + " " + nf(t.value); }).join(" and ") +
         ": the combat traits the bracelet came with." +
         (band ? " On " + aGrade + " bracelet each rolls " + band[0] + " to " + band[1] + ", and higher is better." : "") : "",
@@ -1273,6 +1274,43 @@
     setHtml("lp-gpd-fig", gpdFigHtml(ctx));
   }
 
+  /**
+   * Per-line and per-trait damage from the calculator's model, priced on the
+   * board's default character (the same bare profile the calculator's "Line by
+   * line" table uses). null until the model has loaded: the overview paints
+   * without the column first and fills it in when the scripts land, so a
+   * character the board already knows is never held back by them.
+   */
+  function brDetail(b) {
+    var Br = window.Bracelet;
+    if (!Br || !Br.lineDamage || !Br.traitDamage || !Br.damagePercent || !window.Subrank) return null;
+    // A copy saved before the lines carried their raw form cannot be priced; it
+    // goes without the column until the network answer replaces it.
+    for (var j = 0; j < b.lines.length; j++) if (!b.lines[j].raw && !b.lines[j].unk) return null;
+    for (j = 0; j < b.traits.length; j++) if (!b.traits[j].family) return null;
+    var prof = profiles()[b.axis === "support" ? "support" : "dps"];
+    var linesD = 0, perLine = [], i;
+    for (i = 0; i < b.lines.length; i++) {
+      var raw = b.lines[i].raw, d = 0;
+      if (raw && !b.lines[i].unk && raw.cat !== "trait") { try { d = Br.lineDamage(raw, b.grade, prof) || 0; } catch (e) { d = 0; } }
+      perLine.push(d);
+      linesD += d;
+    }
+    var perTrait = [], traitsD = 0;
+    for (i = 0; i < b.traits.length; i++) {
+      var one = {}, td = 0;
+      one[b.traits[i].family === "swiftness" ? "swift" : b.traits[i].family] = b.traits[i].value;
+      try { td = Br.traitDamage(one, prof) || 0; } catch (e) { td = 0; }
+      perTrait.push(td);
+      traitsD += td;
+    }
+    var total = linesD + traitsD;
+    return { perLine: perLine, perTrait: perTrait, linesPct: Br.damagePercent(linesD), traitsPct: Br.damagePercent(traitsD),
+      total: total, pct: function (d) { return Br.damagePercent(d); },
+      share: function (d) { return total > 1e-9 ? Math.round(d / total * 100) : null; } };
+  }
+  function signPct(x) { return (x >= 0 ? "+" : "\u2212") + fx(Math.abs(x), 2) + "%"; }
+
   function renderBracelet(ctx) {
     var b = ctx.model.br;
     if (!b || b.st === "loading") {
@@ -1286,28 +1324,68 @@
       return;
     }
     var sup = b.axis === "support";
-    var h = '<div class="lp-lines">';
-    b.lines.forEach(function (l) {
+    var det = brDetail(b);
+    if (!det && !ctx.brDetailAsked) {
+      // The model is not here yet: paint now, fill the damage column when it lands.
+      ctx.brDetailAsked = true;
+      loadBraceletModel().then(function () { if (isLive(ctx) && ctx.model.br === b) renderBracelet(ctx); }, function () {});
+    }
+    var h = '<div class="lp-lines' + (det ? " has-dmg" : "") + '">';
+    b.lines.forEach(function (l, i) {
       var nameGloss = (l.full || "") + (l.fixed ? " This line is locked." : "");
       var tier = l.tier ? '<span class="lp-tier" style="color:' + TIER_COLOR[l.tier] + '"' + gl(l.tierGloss) + ">" + TIER_WORD[l.tier] + "</span>"
         : '<span class="lp-tier"></span>';
+      var dmg = "";
+      if (det) {
+        var d = det.perLine[i], sh = det.share(d);
+        var why = d > 1e-9
+          ? signPct(det.pct(d)) + " damage on the calculator\u2019s default character" + (sh != null ? ", " + sh + "% of what this bracelet adds" : "") +
+            ". Lines multiply rather than add, so the column comes to a shade over the total."
+          : "This line adds no damage the model can price" + (l.raw && l.raw.cat === "trait" ? ": a combat trait in a rerollable slot scores zero." :
+            l.raw && l.raw.family === "vitality" ? ": vitality is survivability." : ".");
+        dmg = '<span class="lp-ldmg' + (d > 1e-9 ? "" : " z") + '"' + gl(why) + ">" + (d > 1e-9 ? signPct(det.pct(d)) : "0%") + "</span>";
+      }
       h += '<div class="lp-line' + (l.unk ? " unk" : "") + '">' +
         '<span class="lp-lname"' + gl(nameGloss) + ">" + esc(l.name) +
         (l.fixed ? ' <span class="lp-lock" aria-label="locked">&#128274;</span>' : "") + "</span>" +
-        tier + '<span class="lp-lval"' + gl(l.valueGloss) + ">" + esc(l.value) + "</span></div>";
+        tier + '<span class="lp-lval"' + gl(l.valueGloss) + ">" + esc(l.value) + "</span>" + dmg + "</div>";
     });
     if (!b.lines.length) h += '<div class="lp-line"><span class="lp-lname lp-dim">No effect lines</span><span></span><span></span></div>';
     h += "</div>";
-    var traits = b.traits.length ? b.traits.map(function (t) { return esc(t.short || t.label) + " " + nf(t.value); }).join(" · ") : "—";
-    var rolls = b.rolls ? String(b.rolls.left) : "—";
+
+    // The four categories, each with its figure and the detail under it.
+    var traits = b.traits.length ? b.traits.map(function (t) { return esc(t.short || t.label) + " " + nf(t.value); }).join(" \u00b7 ") : "\u2014";
+    var traitSub = "";
+    if (b.traits.length && det) {
+      traitSub = b.traits.map(function (t, i) { return esc(t.short || t.label) + " " + signPct(det.pct(det.perTrait[i])); }).join(" \u00b7 ");
+    } else if (b.traits.length) {
+      var band = traitBand(b.grade);
+      traitSub = band ? "each rolls " + band[0] + "\u2013" + band[1] + " on " + (b.grade === "relic" ? "Relic" : "Ancient") : "";
+    }
+    var dmgSub = det ? "lines " + signPct(det.linesPct) + " \u00b7 traits " + signPct(det.traitsPct) : "";
+    var dmgGloss = (sup ? "What one damage dealer next to this support gains from the bracelet, on the default support. The Support board ranks on it." :
+      "What the whole bracelet adds to damage on the calculator's default character. The board ranks on it.") +
+      (det ? " Under it, the effect lines and the combat traits priced on their own; together they multiply, and crit pools across them, so the pair comes in near the total rather than on it." : "");
+    var rolls = b.rolls ? String(b.rolls.left) : "\u2014";
+    var rollSub = b.rolls ? b.rolls.base + " of 4 regular \u00b7 " + b.rolls.ticket + " of 3 ticket used" : "not reported";
+    var loSub = "";
+    if (b.loItems && b.loItems.length > 1) {
+      loSub = b.loItems.map(function (it) { return esc(it.label) + " " + (isNum(it.pct) ? fx(it.pct, 2) + "%" : "\u2014"); }).join(" \u00b7 ");
+    } else if (b.loadoutNote) {
+      loSub = b.loadoutNote.replace(/^The only lostark\.bible loadout on the record\.?$/, "the only loadout on the record")
+        .replace(/^Every lostark\.bible loadout on the record wears this bracelet\.?$/, "every loadout wears this bracelet")
+        .replace(/^The record names no loadout\.?$/, "no loadout named");
+    }
+    function kv(gloss, k, v, sub, strong) {
+      return "<div" + gl(gloss) + '><span class="k">' + k + '</span><span class="v' + (strong ? " lp-strong" : "") + '">' + v + "</span>" +
+        '<span class="s">' + (sub || "") + "</span></div>";
+    }
     h += '<div class="lp-kv">' +
-      '<div' + gl(b.traitsGloss || "The record lists no combat traits for this bracelet.") + '><span class="k">Combat traits</span><span class="v">' + traits + "</span></div>" +
-      '<div' + gl(sup ? "What one damage dealer next to this support gains from the bracelet, on the default support. The Support board ranks on it." :
-        "What the whole bracelet adds to damage on the calculator's default character. The board ranks on it.") +
-        '><span class="k">' + (sup ? "Per dealer" : "Damage") + '</span><span class="v lp-strong">' + (isNum(b.pct) ? fx(b.pct, 2) + "%" : "—") + "</span></div>" +
-      '<div' + gl(b.rolls ? b.rolls.base + " of 4 regular and " + b.rolls.ticket + " of 3 ticket rerolls used, as lostark.bible reports them, so " + b.rolls.left + " left. The calculator reads them the same way."
-        : "lostark.bible does not report the rerolls for this bracelet.") + '><span class="k">Rolls left</span><span class="v">' + rolls + "</span></div>" +
-      '<div' + gl(b.loadoutNote || "") + '><span class="k">Loadout</span><span class="v">' + esc(b.loadout || "—") + "</span></div>" +
+      kv(b.traitsGloss || "The record lists no combat traits for this bracelet.", "Combat traits", traits, traitSub) +
+      kv(dmgGloss, sup ? "Per dealer" : "Damage", isNum(b.pct) ? fx(b.pct, 2) + "%" : "\u2014", dmgSub, true) +
+      kv(b.rolls ? b.rolls.base + " of 4 regular and " + b.rolls.ticket + " of 3 ticket rerolls used, as lostark.bible reports them, so " + b.rolls.left + " left. The calculator reads them the same way."
+        : "lostark.bible does not report the rerolls for this bracelet.", "Rolls left", rolls, rollSub) +
+      kv(b.loadoutNote || "", "Loadout", esc(b.loadout || "\u2014"), loSub) +
       "</div>";
     if (b.unmapped) h += '<div class="lp-warn">' + b.unmapped + " line" + (b.unmapped === 1 ? " uses" : "s use") + " a stat index the model does not map yet.</div>";
     setHtml("lp-br-body", h);

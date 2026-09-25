@@ -44,7 +44,7 @@
 -->
 <link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
 <link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
-<link rel="stylesheet" href="/profile/profile.css?v=5">
+<link rel="stylesheet" href="/profile/profile.css?v=6">
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
      press), so the next page opens already drawn. profile.js holds every side
      effect until the page is shown. The favorite/recent chips are left out: they
@@ -163,10 +163,10 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
             <div class="lp-line"><span class="lp-lname"><span class="sk" style="width:9em"></span></span><span class="lp-tier"><span class="sk" style="width:4.5em"></span></span><span class="lp-lval"><span class="sk" style="width:3em"></span></span></div>
           </div>
           <div class="lp-kv">
-            <div><span class="k">Combat traits</span><span class="v"><span class="sk" style="width:9em"></span></span></div>
-            <div><span class="k">Damage</span><span class="v"><span class="sk" style="width:4em"></span></span></div>
-            <div><span class="k">Rolls left</span><span class="v"><span class="sk" style="width:1.5em"></span></span></div>
-            <div><span class="k">Loadout</span><span class="v"><span class="sk" style="width:5em"></span></span></div>
+            <div><span class="k">Combat traits</span><span class="v"><span class="sk" style="width:9em"></span></span><span class="s"></span></div>
+            <div><span class="k">Damage</span><span class="v"><span class="sk" style="width:4em"></span></span><span class="s"></span></div>
+            <div><span class="k">Rolls left</span><span class="v"><span class="sk" style="width:1.5em"></span></span><span class="s"></span></div>
+            <div><span class="k">Loadout</span><span class="v"><span class="sk" style="width:5em"></span></span><span class="s"></span></div>
           </div>
         </div>
         <div class="lp-assume"><span class="lp-alab" data-gloss="The character&rsquo;s own figures from lostark.bible: what the bracelet calculator fills its character panel with when this character opens there.">Calculators assume</span><span class="lp-aval" id="lp-stats-line"><span class="sk" style="width:22em"></span></span></div>
@@ -219,7 +219,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
 
     <details class="method">
       <summary>How this page works out its numbers</summary>
-      <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board.</p>
+      <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board. The figure beside each line, and the split under Damage, come from the calculator&rsquo;s model on that same default character: each effect line and each combat trait priced on its own, as the calculator&rsquo;s &ldquo;Line by line&rdquo; table prices them. Lines multiply rather than add, and crit pools across them, so the parts land a shade off the total. Under Rolls left are the regular and ticket rerolls used; under Loadout, each loadout&rsquo;s own bracelet reading when the character wears more than one.</p>
       <p><b>Bracelet rank.</b> The character&rsquo;s place on its region&rsquo;s board, in the board&rsquo;s own order. The DPS board ranks everyone by damage %, less support mains; the Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains. A support class shows on the board the Worker reads it on. Top X% is the place divided by the number on that board. The board rebuilds at most every 10 minutes; a character it has not picked up yet (a new pull, or one just updated) is scored here with the calculator&rsquo;s own model, and its place is marked &asymp; until the board catches up.</p>
       <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The average grade, the Order and Chaos figures and the grid damage are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
       <p><b>Gold per 1% damage.</b> The GPD chart&rsquo;s own lookup (<code>/loa-gpd/lookup.js</code>), run here on the same two lostark.bible answers as the bracelet and astrogem overviews: the three cheapest next steps, each with your rung and what it costs per 1% damage at the chart&rsquo;s default prices and switches (no flat line, high main stat); the chart itself shows every ladder. A support is graded on the support ladders, where gold per 1% counts the buff on all three dealers. Only a step under 25M per 1% can be the pick. It loads after the bracelet and astrogem overviews, so it never holds them up.</p>
@@ -233,7 +233,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
 <script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
 <script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
 <script src="/loa-bracelet-calc/tip.js?v=1" defer></script>
-<script src="/profile/profile.js?v=6" defer></script>
+<script src="/profile/profile.js?v=7" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>
