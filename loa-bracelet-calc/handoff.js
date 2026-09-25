@@ -46,7 +46,8 @@
  * Keys that travel (this tool's own, nothing else):
  *   loa-bracelet-calc.v1  profile.js — character + bracelet state, incl. roll history
  *   bc_favs               favorites.js — saved characters
- *   bc_bible_oauth        bible-oauth.js — the lostark.bible token (stays signed in)
+ *   bc_bible_oauth        bible-oauth.js — the old per-tool token key; bible-oauth.js
+ *                         adopts it into the site-wide session (loseii_bible_oauth) on arrival
  *   bc_bi_last            bible-import.js — last {region, name} imported
  *   bc_lb_regions         leaderboard.js — region filter
  *   bc_lb_class           leaderboard.js — class filter
