@@ -95,7 +95,7 @@
   var K_FAVS = "bc_favs";                     // the bracelet tool's favourites, same shape
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 2;
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 3;   // 3: bracelet lines carry their raw form and traits their family
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -774,7 +774,7 @@
     var lo = loadoutInfo(x.lo, rec);
     var band = traitBand(x.grade), aGrade = x.grade === "relic" ? "a Relic" : "an Ancient";
     var traits = x.traits.map(function (t) {
-      return { label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
+      return { family: t.family, label: TRAIT_LABEL[t.family] || t.family || "Trait", short: TRAIT_SHORT[t.family] || t.family || "Trait", value: t.value };
     });
     return {
       st: "ok", onBoard: onBoard, grade: x.grade, axis: axis, pct: reading ? reading.pct : null,
@@ -1284,6 +1284,10 @@
   function brDetail(b) {
     var Br = window.Bracelet;
     if (!Br || !Br.lineDamage || !Br.traitDamage || !Br.damagePercent || !window.Subrank) return null;
+    // A copy saved before the lines carried their raw form cannot be priced; it
+    // goes without the column until the network answer replaces it.
+    for (var j = 0; j < b.lines.length; j++) if (!b.lines[j].raw && !b.lines[j].unk) return null;
+    for (j = 0; j < b.traits.length; j++) if (!b.traits[j].family) return null;
     var prof = profiles()[b.axis === "support" ? "support" : "dps"];
     var linesD = 0, perLine = [], i;
     for (i = 0; i < b.lines.length; i++) {
