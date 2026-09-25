@@ -142,9 +142,10 @@ Two other things the 30-page sweep settled:
 - **`numRerolls` / `numTicketRerolls` are the counts USED, not left.** 4 and 3
   mean a fully-rolled bracelet. `rollsRemaining = 4−base / 3−ticket` reproduces
   bible's rendered "N+M rolls remaining" on all four pages that print it (bible
-  omits the line at 0+0). `bible-import.js` reads them the other way round and
-  says so in a comment — that comment is now answered, and the panel's
-  `rollsLeft` is wrong for a fully-rolled bracelet.
+  omits the line at 0+0). `bible-import.js` read them the other way round until
+  2026-09-25, when Paroxysmal's fully rolled bracelet loaded with 7 rolls;
+  `BraceletImport.rollsLeft()` does the subtraction now, and the leaderboard's
+  row click and the profile page go through the same rule.
 - **The combat-trait cap outranks the slot count when guessing the grade.**
   Relic tops out at 100, Ancient at 120. `decodeWithGradeCheck` used the granted-
   slot count alone (Ancient 2–3, Relic 1–2) and so called four of the thirty

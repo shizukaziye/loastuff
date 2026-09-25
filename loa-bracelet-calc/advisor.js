@@ -1604,6 +1604,10 @@
       segHtml("Slots", "avslots", slotOpts, SIM.slots, "How many granted effect slots it has: 2 or 3 on Ancient, 1 or 2 on Relic.") +
       "</div>";
     h += priceHtml() + scaleHtml();
+    // The gold rate is profile.js's movable control (#bc-econctl), and this is
+    // the host placeMovables parks it in — under the price, with the other gold
+    // knobs. paintSim re-places it after every repaint of this block.
+    h += '<div id="bc-econhost"></div>';
     h += "</div><div>";
     h += segHtml("Granted slots", "avmode", [["fresh", "Not rolled yet"], ["rolled", "Rolled — these lines"]], SIM.mode,
       "Not rolled yet: its lines are still unknown. Rolled: the lines below, with an empty slot counted as a junk line.", "av-mode");
@@ -2048,6 +2052,8 @@
     var el = $("av-sim");
     if (!el) return;
     keepFocus(function () { el.innerHTML = simHtml(); });
+    // The block was just rebuilt, and the gold rate's host with it.
+    if (typeof P.placeMovables === "function") P.placeMovables();
     paintSimWarn();
   }
   function paintSimWarn() {
@@ -2479,6 +2485,10 @@
       "for. Rows past the point where the odds stop rising are dimmed. The table always prices pairs on the curve, " +
       "even when a typed price is in force, because it compares pairs.</p>" +
 
+      "<p><b>Gold per 1%</b>, under Market level, is the rate every gold figure on this tab uses &mdash; Worth " +
+      "paying, the Worth column and the lock table. It arrives with the character, from combat power, and it is " +
+      "yours to drag.</p>" +
+
       "<p><b>Where it can land</b> draws the same spread: the box is the middle half (p25 to p75), the whisker " +
       "p10 to p90, the line in the box the median, and the orange line your bracelet. Point at the strip, or tap " +
       "it, to read the chance of finishing at that damage or higher. <b>Grade or better</b> reads the same " +
@@ -2760,6 +2770,10 @@
       }
     }
     if (!isActive()) return;
+    // The gold rate's slider sits inside the sim block (profile.js's control,
+    // hosted here): a drag on it must not rebuild the block under the hand, and
+    // nothing moves with it but the gold figures.
+    if (d.path === "econ.gpd") { paintCosts(); paintRoll(); return; }
     paintBase(!ours); paintSim();
     schedule(true);
   }

@@ -105,6 +105,27 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
 - Shizu on the previous Advisor: "pretty hard to use" — simplicity is the
   requirement; two brackets, one answer.
 
+## Rulings of 2026-09-25 — the grader grades
+
+- **The Calculator shows four things:** the score (letter, 0-100), the damage
+  %, the line-by-line table, and what to lock (LOCK / REROLL badges plus a
+  "Next roll" card that says the lock set in words). Shizu: "we don't need
+  economy, gold, worth, unrolled value, etc." Expected final stays, drawn only
+  while rolls are left. The Economy pair, the Worth card, the banner's Worth
+  and the unrolled-price card are gone from the tab, and the "what an empty
+  one is worth" side solve went with them: one solve per change, not two.
+- **The gold rate lives on the Advisor**, under Market level. profile.js's
+  movable `#bc-econctl` is hosted by the Advisor's `#bc-econhost`
+  (`Profile.placeMovables()` after every repaint of the sim block; a drag on
+  it repaints only the gold figures, never the block it sits in). The manual
+  Baseline % slider and its Set / Clear row are gone: the Advisor's "Your
+  bracelet" is the baseline, and `econ.baseline` is derived from it.
+- **Rolls left = 7 − used.** lostark.bible's `numRerolls` / `numTicketRerolls`
+  count the rolls USED (the research note of 2026-08-11 said so; the importer
+  summed them as rolls left). `rollsLeft = max(0, 4 − base) + max(0, 3 −
+  ticket)`, in `BraceletImport.rollsLeft()`; the leaderboard's row click and
+  the profile page read it the same way. Paroxysmal at 4/3 has none left.
+
 ## Debts (2026-09-24)
 
 - The Leaderboard tab and the profile page each fetch `/list` themselves;

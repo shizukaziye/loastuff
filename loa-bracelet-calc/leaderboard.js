@@ -1144,30 +1144,41 @@
     return (r === "EU" ? "CE" : r) + "|" + String(name || "").toLowerCase();
   }
 
+  /**
+   * Rolls LEFT from a stored bracelet. A record keeps lostark.bible's numRerolls
+   * and numTicketRerolls, which count the rolls USED (4 and 3 = nothing left);
+   * bible-import.js owns the allowance they are taken from. Null when the record
+   * carries neither.
+   */
+  function leftOf(br) {
+    var imp = window.BraceletImport;
+    if (!br || !imp || typeof imp.rollsLeft !== "function") return null;
+    return imp.rollsLeft(br.numRerolls, br.numTicketRerolls);
+  }
+  /** The baked file's {base, ticket} of rolls LEFT, summed; null when absent. */
+  function sumLeft(r) { return r ? ((r.base || 0) + (r.ticket || 0)) : null; }
+
   /** The Worker's /character answer, as the list of loadouts the click picks from. */
   function loadoutsFromWorker(j) {
     if (!j || !j.bracelet || !Array.isArray(j.bracelet.stats)) return null;
     var los = (j.loadouts || []).filter(function (l) {
       return l && l.bracelet && Array.isArray(l.bracelet.stats) && l.bracelet.stats.length;
     }).map(function (l) {
-      // Rolls LEFT is what the Calculator counts; a record stores rolls USED, and
-      // there is no honest way to turn one into the other. So this path fills
-      // zero, exactly as the board did before it fetched anything at all.
-      return { label: l.label || null, stats: l.bracelet.stats, rollsRemaining: null };
+      return { label: l.label || null, stats: l.bracelet.stats, rollsLeft: leftOf(l.bracelet) };
     });
-    return { list: los, fallback: { stats: j.bracelet.stats, rollsRemaining: null } };
+    return { list: los, fallback: { stats: j.bracelet.stats, rollsLeft: leftOf(j.bracelet) } };
   }
 
-  /** The same, from the baked whole-character store — which DOES know rolls left. */
+  /** The same, from the baked whole-character store, which stores rolls left directly. */
   function loadoutsFromBaked(e) {
     if (!e || !Array.isArray(e.rawStats)) return null;
     var los = (e.loadouts || []).filter(function (l) {
       return l && Array.isArray(l.rawStats) && l.rawStats.length;
     }).map(function (l) {
       return { label: l.label || null, stats: l.rawStats,
-        rollsRemaining: l.rollsRemaining || e.rollsRemaining || null };
+        rollsLeft: sumLeft(l.rollsRemaining || e.rollsRemaining) };
     });
-    return { list: los, fallback: { stats: e.rawStats, rollsRemaining: e.rollsRemaining || null } };
+    return { list: los, fallback: { stats: e.rawStats, rollsLeft: sumLeft(e.rollsRemaining) } };
   }
 
   /**
@@ -1247,16 +1258,11 @@
       }
       var lo = pickLoadout(c, d);
       if (!lo || !lo.stats || !lo.stats.length) { setStatus("That row carries no bracelet to load.", "err"); return; }
-      var rolls = lo.rollsRemaining || { base: 0, ticket: 0 };
       var built;
       try {
-        built = imp.buildPatch({
-          stats: lo.stats,
-          // The panel counts rolls LEFT; a payload's numRerolls are the counts
-          // USED, so only a source that stores rolls-left can fill these.
-          numRerolls: rolls.base || 0,
-          numTicketRerolls: rolls.ticket || 0
-        });
+        // Rolls left as the record knows it. A record with no reroll counts at
+        // all loads with none — the reading a finished board bracelet earns.
+        built = imp.buildPatch({ stats: lo.stats, rollsLeft: lo.rollsLeft == null ? 0 : lo.rollsLeft });
       } catch (e) { setStatus("That bracelet could not be decoded.", "err"); return; }
       built.patch.character = {
         name: c.name, region: c.region, "class": c["class"] || null,

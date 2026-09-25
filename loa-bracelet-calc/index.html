@@ -229,12 +229,12 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 // they exist: a missing file fails its <script> and the loader skips it, so each
 // pane simply keeps the placeholder until the file lands.
 var LAZY_TABS = {
-  advisor: ['advisor.js?v=29'],
+  advisor: ['advisor.js?v=30'],
   // The screenshot reader (advisor-capture.js + advisor-glue.js) is parked:
   // no tab mounts it since 2026-09-24. The files stay in the repo for a return.
   reader: ['advisor-capture.js?v=3', 'advisor-glue.js?v=2'],
   tierlist: ['tierlist.js?v=20'],
-  leaderboard: ['leaderboard.js?v=19'],
+  leaderboard: ['leaderboard.js?v=20'],
   method: ['method.js?v=10'],
   feedback: ['feedback.js?v=2']
 };
@@ -489,14 +489,14 @@ function routeBoot(){
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
 <script src="char-picker.js?v=6"></script>
-<script src="profile.js?v=25"></script>
+<script src="profile.js?v=26"></script>
 <script src="subrank.js?v=9"></script>
-<script src="app.js?v=52"></script>
+<script src="app.js?v=53"></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
 <script src="bible-oauth.js?v=2"></script>
-<script src="bible-import.js?v=23"></script>
+<script src="bible-import.js?v=24"></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
      tab activates exactly as a click just after load would (see ROUTES). -->

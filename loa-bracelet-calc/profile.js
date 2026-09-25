@@ -22,8 +22,10 @@
  *   set(patch)         -> merge (one level deep for the nested blocks), persist, notify
  *   mount(hostEl)      -> put the control deck inside hostEl and render it
  *   adoptPanel()       -> the Grader panel has just moved between tabs: put its own
- *                         three controls (grade + rolls, granted slots, economy) back
- *                         into its hosts. app.js calls it as it moves the panel.
+ *                         two controls (grade + rolls, granted slots) back into its
+ *                         hosts. app.js calls it as it moves the panel.
+ *   placeMovables()    -> the same placement for any tab that draws a host. The
+ *                         Advisor hosts the gold rate (#bc-econhost) under its price.
  *   onChange(cb)       -> unsubscribe fn; cb(detail) after every change the deck makes
  *   reset()            -> back to defaults, wiping the stored state
  *   resetCharacter()   -> the gear / accessory / fight / skill / economy half only
@@ -1555,17 +1557,11 @@
    */
   function syncBaseline() {
     var was = S.econ.baseline, f = followBaseline();
-    if (f && S.econ.baseline !== was) { save(); paintBaselineFig(); }
+    if (f && S.econ.baseline !== was) save();
     var sig = f ? baseSeq + "|" + f.D + "|" + f.role : "none|" + baseSeq;
     if (sig === baseSig) return false;
     baseSig = sig;
     return true;
-  }
-
-  /** The Economy's read-out, repainted where it stands: a drag must not rebuild the block. */
-  function paintBaselineFig() {
-    var el = movEls.econ ? movEls.econ.querySelector("#bc-basefig") : null;
-    if (el) el.textContent = fx(num(S.econ.baseline, 0), 2) + "%";
   }
 
   /** "Paroxysmal's bracelet" for an import, the label as given otherwise. */
@@ -1588,15 +1584,13 @@
   }
 
   /**
-   * Forget the bracelet, and the figure with it: econ.baseline goes back to 0
-   * and the slider returns there. Keeping the last derived number looked kind —
-   * the worth on screen did not jump — but it left this tab pricing against a
-   * bracelet the Advisor had just been told was gone, so the two tabs quoted
-   * worth against two different bars. No bracelet means no baseline, on every
-   * tab, until someone sets one.
+   * Forget the bracelet, and the figure with it: econ.baseline goes back to 0.
+   * Keeping the last derived number looked kind — the worth on screen did not
+   * jump — but it left one tab pricing against a bracelet the Advisor had just
+   * been told was gone, so two tabs quoted worth against two different bars.
+   * No bracelet means no baseline, on every tab, until someone sets one.
    *
-   * The seed key goes too. Its note ("the bracelet X is wearing scores …")
-   * would otherwise come back under the slider quoting the 0.
+   * The seed key goes too, so a re-seed cannot bring the old figure back.
    */
   function clearBaseline() {
     if (!S.baseline) return false;
@@ -1746,13 +1740,6 @@
       // read-out lines up with "Gold per 1%" above it; the figure wears the
       // chips' accent. It wraps rather than overflows: two buttons and a name
       // do not always share a phone's line.
-      ".bc-baserow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}" +
-      ".bc-baserow .lb{flex:0 0 96px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);line-height:1.25}" +
-      ".bc-basewho{flex:1 1 auto;min-width:0;font-size:12.5px;color:var(--dim)}" +
-      ".bc-basewho b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}" +
-      ".bc-baseacts{display:flex;flex-wrap:wrap;gap:6px}" +
-      ".bc-baseacts.bc-baseset{margin:0 0 6px}" +
-      "@media(max-width:640px){.bc-baserow .lb{flex-basis:82px}}" +
       // ---- the gem spread: one line shut, five counts open ----
       ".bc-mini{padding:3px 10px;font-size:11px;line-height:1.4}" +
       ".bc-gems{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-2px 0 9px}" +
@@ -2090,11 +2077,14 @@
   }
 
   /**
-   * The economy, in the element the Grader hosts.
+   * The gold rate, in the element the ADVISOR hosts (#bc-econhost, under its
+   * price controls).
    *
-   * It used to be a column of the deck. It is neither a setting the user chose
-   * nor something they want folded away: both numbers arrive with the character
-   * and both are adjusted while reading the results right below them.
+   * It sat in the Grader as the Economy pair, gold rate and baseline, until
+   * 2026-09-25: the Calculator grades and stops now (Shizu: "we don't need
+   * economy, gold, worth, unrolled value"), the Advisor is the one tab that
+   * prices anything, and its "Your bracelet" section IS the baseline — so the
+   * manual Baseline % slider and its Set / Clear row went with the move.
    */
   function renderEconCtl() {
     buildEconCtl().innerHTML = econHtml();
@@ -2385,17 +2375,6 @@
       "</div>";
   }
 
-  function baselineNoteHtml() {
-    if (!hasCharacter() || !S.econ.baseAutoKey) return "";
-    var same = S.econ.baseAutoKey === charKey();
-    return '<div class="note bc-basenote">' +
-      (same
-        ? "the bracelet " + esc(S.char.name) + " is wearing scores " + fx(num(S.econ.baseline, 0), 2) +
-          "% — worth is what an upgrade over it would be worth"
-        : "carried over from an earlier character; edit it to price against this one") +
-      "</div>";
-  }
-
   /**
    * Seed the two economy numbers from a freshly imported character. Each is
    * seeded ONCE per character key: a hand-picked rate or baseline is never
@@ -2441,46 +2420,13 @@
     return true;
   }
 
-  /** The economy's two controls as markup. The Grader hosts them (renderEconCtl). */
+  /** The gold rate as markup — the one economy control left. The Advisor hosts it (renderEconCtl). */
   function econHtml() {
-    var h = '<div class="bc-sl">' +
+    return '<div class="bc-sl">' +
       '<label class="lb" for="bc-gpd" data-gloss="What one percent of damage is worth to you in gold. It is a rate you choose, not a market read — the same convention the accessory and astrogem tools use, so a bracelet, an accessory and a gem can be priced against each other. Higher for a whale roster, lower for a fresh one. The track is logarithmic: 100k at the left, 10M at the right.">Gold per 1%</label>' +
       '<div class="tk"><input id="bc-gpd" type="range" data-gpd="1" min="0" max="' + GPD_STEPS + '" step="1" value="' + gpdPos(S.econ.gpd) + '"></div>' +
-      '<span class="chip" id="bc-gpd-chip">' + esc(gold(num(S.econ.gpd, 0))) + "</span></div>";
-    h += gpdNoteHtml();
-    // A BASELINE BRACELET MAKES THE FIGURE A READ-OUT. It is that bracelet's
-    // score on the deck as it stands, so a slider beside it would only be
-    // overwritten by the next thing that moved.
-    if (S.baseline) return h + baselineSetHtml();
-    h += slider("econ.baseline", "Baseline %", 0, 25, 0.5, "pct1", {
-      edit: true,
-      // Where the baseline comes from and why worth is truncated at it belong to
-      // the Method tab, not to a slider's tooltip (docs/design/copy-rules.md §3).
-      gloss: "The bracelet you would wear instead. Worth counts only the rolls that beat it."
-    });
-    h += '<div class="bc-baseacts bc-baseset">' + baseSetBtn() + "</div>";
-    h += baselineNoteHtml();
-    return h;
-  }
-
-  /**
-   * The baseline row while a bracelet is set: one line saying what the figure
-   * is and where it comes from — the provenance rule (copy-rules.md §4.4) —
-   * with its two actions. The buttons are app.js's to answer (bindBody): the
-   * editor's lines are that file's.
-   */
-  function baselineSetHtml() {
-    return '<div class="bc-baserow">' +
-      '<span class="lb" data-gloss="The bracelet you would wear instead, scored on the deck as it stands, so Role and every setting move it. Worth counts only the rolls that beat it.">Baseline %</span>' +
-      '<span class="bc-basewho"><b id="bc-basefig">' + fx(num(S.econ.baseline, 0), 2) + "%</b> &mdash; " +
-        esc(baselineName()) + "</span>" +
-      '<span class="bc-baseacts">' +
-        '<button type="button" class="mbtn bc-mini" id="bc-base-clear" data-gloss="Forget this bracelet. The baseline goes back to a slider at 0.">Clear</button>' +
-        baseSetBtn() +
-      "</span></div>";
-  }
-  function baseSetBtn() {
-    return '<button type="button" class="mbtn bc-mini" id="bc-base-set" data-gloss="Make the bracelet in the Grader your baseline.">Set from the editor</button>';
+      '<span class="chip" id="bc-gpd-chip">' + esc(gold(num(S.econ.gpd, 0))) + "</span></div>" +
+      gpdNoteHtml();
   }
 
   function renderAdvanced() {
@@ -2708,18 +2654,19 @@
   }
 
   /**
-   * WHERE THE THREE MOVABLE CONTROLS GO. The Grader panel's own hosts first, the
-   * borrowing cluster only as a fallback.
+   * WHERE THE THREE MOVABLE CONTROLS GO. Their own hosts first, the borrowing
+   * cluster only as a fallback.
    *
-   * The panel is one live element that MOVES between the Calculator and the
-   * Advisor, and it carries #bc-tophost, #bc-slotshost and #bc-econhost with it
-   * — so whichever tab is on screen has somewhere to put all three, beside the
-   * lines they describe. The Advisor used to drag them into its own control
-   * cluster instead, which left the ECONOMY heading in the panel printed over an
-   * empty box on both tabs (Shizu, 2026-08-15) and, coming back to the
-   * Calculator, left grade, rolls and the granted-slot count stranded in a
-   * hidden pane. The cluster is still the fallback: a tab that shows no panel
-   * host on screen keeps them.
+   * Grade + rolls and the granted-slot count live in the Grader panel's hosts
+   * (#bc-tophost, #bc-slotshost), beside the lines they describe. The gold
+   * rate's host is on the ADVISOR (#bc-econhost, under its price controls): the
+   * Calculator grades and stops (Shizu, 2026-09-25), and the Advisor is the one
+   * tab that prices anything. A host in a hidden pane does not count, so each
+   * control stays put until the tab that hosts it is on screen — the Advisor
+   * calls this after every repaint of its controls, and adoptBraceletPanel
+   * calls it as the Grader panel arrives. The cluster is still the fallback: a
+   * tab that shows no host on screen keeps all three (the Tier List borrows
+   * them).
    *
    * Re-parenting is safe by construction — every one of the three carries its
    * own delegated listeners (buildMovable calls bindDeck on the element itself),
@@ -3050,16 +2997,17 @@
    *
    *   #bc-top        grade and rolls left
    *   #bc-slotsctl   how many granted slots
-   *   #bc-econctl    gold per 1% and the baseline
+   *   #bc-econctl    gold per 1%
    *
-   * Each is built detached and parented into its own host in the Grader panel on
-   * the first mount, so renderTop() always has somewhere to write — even on the
-   * Tier List and the Advisor, which have no Grader and borrow all three into
-   * their control cluster instead. The Calculator claims them back on activation.
+   * Each is built detached and parented into its own host — the Grader panel
+   * for the first two, the Advisor's price block for the gold rate — so
+   * renderTop() always has somewhere to write, even on the Tier List, which has
+   * no hosts and borrows all three into its control cluster instead. Each host's
+   * tab claims its control back on activation (placeMovables).
    *
    * They are separate elements because they belong in separate places: the count
-   * sits beside the combat traits and the economy at the foot of the panel, and
-   * a single element could only ever be in one of them.
+   * sits beside the combat traits, the grade and rolls above them, and the gold
+   * rate on another tab — a single element could only ever be in one of them.
    */
   var movEls = {};
   function buildMovable(key, id, cls) {
@@ -3078,7 +3026,7 @@
   function buildTop() { return buildMovable("top", "bc-top", "bc-brachdr"); }
   /** How many granted slots. Its own element so it can sit beside the traits. */
   function buildSlotsCtl() { return buildMovable("slots", "bc-slotsctl", "bc-brachdr"); }
-  /** Gold per 1% and the baseline. */
+  /** Gold per 1%. */
   function buildEconCtl() { return buildMovable("econ", "bc-econctl", ""); }
 
   var deckEl = null;
@@ -3163,6 +3111,8 @@
      * the panel is leaving.
      */
     adoptPanel: adoptBraceletPanel,
+    /** Put each movable control in its host if that host is on screen (the Advisor calls it after a repaint). */
+    placeMovables: placeMovables,
 
     onChange: function (cb) {
       if (typeof cb !== "function") return function () {};

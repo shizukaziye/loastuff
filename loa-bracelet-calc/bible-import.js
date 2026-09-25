@@ -113,6 +113,18 @@
 
   var MOUNT_ID = "bc-import";
   var REGIONS = ["NA", "EU"];
+  // A fresh T4 bracelet's allowance: 4 rolls and 3 reconversion-ticket rolls
+  // (docs/research/mechanics-bible-leaderboard.md). lostark.bible's numRerolls
+  // and numTicketRerolls are the counts USED against it, so 4 and 3 is a
+  // bracelet with nothing left — Paroxysmal's, 2026-09-25.
+  var ROLLS_BASE = 4, ROLLS_TICKET = 3;
+  /** Rolls left from the two used-counts; null when the record carries neither. */
+  function rollsLeftOf(nr, nt) {
+    var a = (typeof nr === "number" && isFinite(nr)) ? nr : null;
+    var b = (typeof nt === "number" && isFinite(nt)) ? nt : null;
+    if (a === null && b === null) return null;
+    return Math.max(0, ROLLS_BASE - (a || 0)) + Math.max(0, ROLLS_TICKET - (b || 0));
+  }
 
   var state = {
     mode: "pull",      // "pull" | "manual"
@@ -127,7 +139,7 @@
     // a chaos-dungeon one, sometimes an estimated-raid one — and nine of the
     // thirty characters read so far wear a DIFFERENT bracelet in each. So the
     // panel offers them all instead of deciding for the user.
-    loadouts: null,    // [{classification, label, stats, rolls, pct, grade, isRendered}]
+    loadouts: null,    // [{classification, label, stats, rollsLeft, pct, grade, isRendered}]
     loadoutIdx: 0,     // which one is in the calculator right now
     bestLoadout: 0,    // the highest, which is what the board ranks
     record: null       // the whole character record on screen
@@ -472,13 +484,15 @@
       lockedIdx: locks
     };
 
-    // numRerolls / numTicketRerolls: seen as 4 and 3 on live characters, which is
-    // exactly a fresh bracelet's allowance, so they read as ROLLS REMAINING. That
-    // is an inference from two samples, not a documented field — if an imported
-    // character ever shows the wrong number here, this is the line to fix.
-    var nr = firstNumber(data, ["numRerolls"]);
-    var nt = firstNumber(data, ["numTicketRerolls"]);
-    if (nr !== null || nt !== null) patch.rollsLeft = Math.max(0, Math.min(20, (nr || 0) + (nt || 0)));
+    // ROLLS LEFT. A caller that knows it passes rollsLeft. Otherwise numRerolls
+    // and numTicketRerolls are lostark.bible's own fields, and they count the
+    // rolls USED, not the rolls left: 4 and 3 is a fully rolled bracelet. This
+    // file read them the other way round until 2026-09-25, so every finished
+    // bracelet arrived with 7 rolls (Shizu: "for paroxysmal im pretty sure there
+    // are no rolls remaining").
+    var rl = firstNumber(data, ["rollsLeft"]);
+    if (rl === null) rl = rollsLeftOf(firstNumber(data, ["numRerolls"]), firstNumber(data, ["numTicketRerolls"]));
+    if (rl !== null) patch.rollsLeft = Math.max(0, Math.min(20, Math.round(rl)));
 
     if (dec.unknown && dec.unknown.length) {
       warn.push(dec.unknown.length + " line" + (dec.unknown.length > 1 ? "s" : "") +
@@ -894,7 +908,9 @@
     if (!e || !e.name) return null;
     var raw = (e.loadouts && e.loadouts.length) ? e.loadouts : [e];
     var los = raw.map(function (l, i) {
-      var rolls = l.rollsRemaining || e.rollsRemaining || { base: 0, ticket: 0 };
+      // The baked file stores rolls LEFT under rollsRemaining (its used counts
+      // sit under rerollsUsed); the internal record carries rolls left.
+      var rolls = l.rollsRemaining || e.rollsRemaining || null;
       var stats = l.rawStats || e.rawStats || [];
       var s = defaultScore(stats);
       return {
@@ -903,8 +919,7 @@
         itemLevel: l.itemLevel != null ? Math.round(l.itemLevel) : (e.itemLevel != null ? Math.round(e.itemLevel) : null),
         isRendered: !!l.isRendered,
         stats: stats,
-        numRerolls: rolls.base || 0,
-        numTicketRerolls: rolls.ticket || 0,
+        rollsLeft: rolls ? ((rolls.base || 0) + (rolls.ticket || 0)) : null,
         pct: s ? s.pct : null,
         grade: s ? s.grade : (l.grade || e.grade || null),
         unmapped: s ? s.unmapped : 0,
@@ -987,8 +1002,8 @@
         itemLevel: l.itemLevel != null ? Math.round(l.itemLevel) : null,
         isRendered: !!l.isRendered,
         stats: stats,
-        numRerolls: br.numRerolls || 0,
-        numTicketRerolls: br.numTicketRerolls || 0,
+        // The Worker stores lostark.bible's used-counts; rolls left is derived.
+        rollsLeft: rollsLeftOf(br.numRerolls, br.numTicketRerolls),
         pct: s ? s.pct : (l.defaultScore && typeof l.defaultScore.pct === "number" ? l.defaultScore.pct : null),
         grade: s ? s.grade : (l.defaultScore && l.defaultScore.grade) || null,
         unmapped: s ? s.unmapped : 0,
@@ -1710,11 +1725,7 @@
 
     var built;
     try {
-      built = buildPatch({
-        stats: l.stats,
-        numRerolls: l.numRerolls,
-        numTicketRerolls: l.numTicketRerolls
-      });
+      built = buildPatch({ stats: l.stats, rollsLeft: l.rollsLeft });
     } catch (e) {
       state.error = { kind: "undecodable", detail: rec.name };
       renderMsg();
@@ -2433,6 +2444,8 @@
     findCharacters: findCharacters,
     findBracelet: findBracelet,
     buildPatch: buildPatch,
+    /** Rolls left from lostark.bible's two used-counts (4 and 3 = none left); null when neither is known. */
+    rollsLeft: rollsLeftOf,
     reload: function () { loadRosters(true); },
     raw: function () { return state.raw; },
     // The loadouts behind the pills, and a way to switch without clicking:
