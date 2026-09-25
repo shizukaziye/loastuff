@@ -299,6 +299,13 @@ A private dashboard that polls `?metrics=1` (with the admin header, see **Auth**
 - **Queue** — the live backlog in drain order (premium first), with each entry's wait time.
 - **Feedback** — the newest ≤200 notes (the header says "showing 200 of N" when trimmed), with
   mark-read / delete buttons (POSTs).
+- **Reader accuracy** — per-field misread rates of the Advisor's screen reader over the newest N
+  (default 150, max 300) saved records, from the **`astrogem-data`** worker's
+  `POST /admin/accuracy?n=` (same `X-Admin-Token`; both workers' secrets must match). A misread is
+  a field the user changed before pressing Get advice. Only same-board records count (the
+  `clean` / `fix` / `turnfix` classes of `tools/triage-collected.js`); a record where the user
+  played on is left out, and only the newest record per screenshot counts. Loads on connect and
+  on its own Refresh button, never on the 2s poll.
 - **Import bookmarklet** — the (deliberately non-public) one-click importer install, kept here rather
   than on the public grader.
 
@@ -311,7 +318,9 @@ request header**. The old scheme compared `?k=` to a hash baked into the source 
 - **Mutations are POST** — `?control`, `?dequeue` evictions, feedback read/delete. A GET can then
   never change state, so a drive-by `<img>` tag can't freeze lookups or purge the queue. Old GET
   admin calls get a `405` whose error names the replacement.
-- The page stores the token in `localStorage` and forgets it on any `403` (wrong/rotated token).
+- The page keeps the token in `sessionStorage` (it dies with the tab, like the bracelet admin
+  page's) and forgets it on any `403` (wrong/rotated token). A token an older version left in
+  `localStorage` moves across once on load and is deleted there (2026-09-25).
 
 **Treat `ADMIN_TOKEN` as a real credential.** Set it with
 `wrangler secret put ADMIN_TOKEN --config wrangler.bible.toml`, rotate it there if it leaks, and
@@ -349,7 +358,8 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | GET | `…&refresh=1` | public | Bypass the cache and re-pull (re-enqueue; signed-in only). |
 | GET | `?wait=1&region=&name=&since=<ms>` | public | Long-poll: `{done:true, …gems}` when cached newer than `since`, `{done:false, notFound, error}` if dropped, else `{done:false}` after ~25s. Pre-checks that the lookup is actually pending (cached / `nf:` / queued) and answers at once when it isn't — the hold-and-poll no longer runs for arbitrary names. |
 | GET | `?status=1` | public | `{paused, mode, message}` (30s browser cache) — drives the "unavailable" banner; the message now tracks the mode. |
-| GET | `?list=1[&fmt=2]` | public (throttled) | The whole leaderboard snapshot (gzip). |
+| GET | `?list=1[&fmt=2]` | public (throttled) | The whole leaderboard snapshot (gzip). `Cache-Control: public, max-age=1800` + `ETag` (`"lb2-<builtAt>"`, once a rebuild has run on the 2026-09-25 code); `If-None-Match` → `304`. |
+| GET | `/board-slim?region=NA\|EU\|KR` | public | The slim per-region rank index (§9b). `Cache-Control: public, max-age=1800` + `ETag`; `If-None-Match` → `304`. |
 | POST | `?submit=1` | public (throttled + 40/day/IP) | Bookmarklet import: JSON `{region, name, src}` → cache + leaderboard. `CE` normalizes to `EU`. |
 | POST | `?feedback=1` | public (throttled) | Store a feedback note (JSON body; ~90-day TTL). |
 | GET | `/oauth/start`, `/oauth/callback` | public | lostark.bible sign-in (Authorization Code + PKCE). |
@@ -361,6 +371,66 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | POST | `?dequeue=1&match=`/`&all=1` | **admin** | Evict queue items (substring match, or everything). |
 | POST | `?feedback=1&read=`/`&del=` | **admin** | Mark a note read / delete it. |
 | POST | `/oauth/probe-token` | **admin** | Arm the drain/probe credential (`Authorization: Bearer` + a server-side roster check that the token owns the canary). Admin-gated so no stranger with a same-name character can seize it. |
+
+---
+
+## 9b. The slim board index (`GET /board-slim`, 2026-09-25)
+
+The profile page needs one character's board rank. It used to download the whole `?list=1`
+snapshot (2.6 MB gzipped, 12.6 MB of JSON, ~25k characters) and score every row itself. The slim
+index is that scoring done once per snapshot rebuild, on the Worker, with the same model calls
+`leaderboard.js` makes.
+
+**Request.** `GET https://astrogem-bible.shizukaziye.workers.dev/board-slim?region=NA` — region is
+`NA`, `EU` or `KR` (the board's region chips; case-insensitive). Anything else → `400`. Public, no
+token, same CORS allowlist as every other route. Only `HARD_CAP` applies (no `LB_THROTTLE`), and it
+keeps answering while the site is degraded: it is one small KV read.
+
+**Response** (`Content-Type: application/json`, gzip on the wire, ~270 KB for NA vs 2.6 MB):
+
+```
+{ "v": 1, "builtAt": <ms>, "region": "NA",
+  "classes": ["Aeromancer", …],                       // the snapshot's class table
+  "rows": [ [name, classIdx, dps|null, sup|null, supportMain], … ] }
+```
+
+- `name` — display name as stored (compare lower-cased).
+- `classIdx` — index into `classes`; `-1` = no class.
+- `dps` — `gridDamage(valid gems, "dps")`, the DPS board's sort key (`totalDmgOf`). `null` when the
+  character has no valid gem (the board leaves it out).
+- `sup` — `gridDamage(valid gems, "support")`, the Support board's key (`totalPartyDmgOf`). Set only
+  for the four support classes (Bard, Paladin, Artist, Valkyrie), the only ones the Support board
+  holds; `null` for everyone else.
+- `supportMain` — `1` when a support-class character's support grade is at least 2 sub-ranks above
+  its DPS grade (`isSupportMain`); the DPS board drops these rows. Else `0`.
+- Numbers are full precision, exactly what the board sorts on.
+- **Rows keep the snapshot order**, which is the board's stable-sort tie-break (~250 exact ties per
+  region). To rebuild the boards exactly:
+  - **DPS board** = rows with `dps != null && supportMain == 0`, stable-sorted by `dps` descending.
+  - **Support board** = rows with `sup != null`, stable-sorted by `sup` descending.
+  A row's rank is its 1-based position. Rows whose region is none of the chips (a stray `CE`
+  row) are in no region's index, as on the board.
+
+Checked 2026-09-25 against the live snapshot: both boards, both regions, names and keys, are
+identical to `profile/ag-worker.js`'s own `buildIndexes`.
+
+**Caching.** `Cache-Control: public, max-age=1800` and `ETag: "bs1-<REGION>-<builtAt>"`. Send
+`If-None-Match` to get a bodiless `304`. The ETag changes only when the snapshot is rebuilt (at most
+every ~30 min).
+
+**How it is built.** `rebuildSnapshotIfChanged` writes one gzipped key per region
+(`lb:slim:gz:<REGION>`, metadata `{ builtAt, v, rows }`) right after it stores the snapshot, from the
+payload already in memory, one row decoded and scored at a time (tuple space — the OOM law). A
+failure there is logged and never costs the board; the previous slim keys stay until the next
+rebuild. If a region's key is missing (the first request after a deploy, before any rebuild), the
+read derives it once from the stored snapshot, answers, and stores all three keys. The scoring uses
+the `model/astrogem.js` bundled at the Worker's last deploy, so a model change needs a Worker
+deploy (and then a rebuild) before the slim index follows it.
+
+**Upstream timeouts.** Every fetch to lostark.bible (pages, the OAuth token/revoke/roster API) and
+lopec.kr carries `AbortSignal.timeout(10000)`, so a hung fetch can't hold a cron invocation past
+its minute and overlap two drains. A timeout is a transient network failure (skip, retry later),
+never a block.
 
 ---
 
@@ -380,7 +450,8 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 | `fb:<ts>-<rand>` | A feedback note `{ ts, type, message, contact, ua, read }` (TTL ~90d). |
 | `lb:lastwrite` / `lb:builtat` | Timestamps: last character write / last snapshot rebuild. |
 | `lb:snapshot:gz` | The prebuilt leaderboard list, stored **gzipped** (`?list=1` serves the bytes as-is with `Content-Encoding: gzip`). The plain-JSON predecessor (`lb:snapshot`) outgrew KV's 25MiB value cap at ~5k characters and its writes silently failed — gzip is ~1.2MB (~25× headroom). |
-| `lb:snapshot:gz2` | The same list in the compact v2 tuple format (`?list=1&fmt=2`) — ~10× less JSON for the browser. Rebuilt together with `:gz`. |
+| `lb:snapshot:gz2` | The same list in the compact v2 tuple format (`?list=1&fmt=2`) — ~10× less JSON for the browser. Rebuilt together with `:gz`. Carries metadata `{ builtAt }` (the `?list=1` ETag). |
+| `lb:slim:gz:<REGION>` | The slim rank index for `NA` / `EU` / `KR` (§9b), gzipped; metadata `{ builtAt, v, rows }`. Written by each rebuild. |
 | `lb:rebuild:cursor` / `lb:rebuild:acc:gz` | From-scratch rebuild state: the list cursor + the gzipped partial character list. Present only while a chunked first build is in flight (≤750 record reads per cron tick, so the build fits the ~1k-subrequest budget); cleared when it finishes. |
 | `lb:dirty:<key>` | Per-character "changed since last snapshot" marker (incremental rebuild). |
 | `rp:plan` | The weekly repull sweep's ordered target list `[[region, name], …]` (§5b). |
@@ -440,5 +511,5 @@ mutations are POST-only — an old GET admin call gets a `405` naming the fix).
 
 ---
 
-*Last updated 2026-08-17 (added §5b, the weekly repull sweep). Source of truth is always `worker/astrogem-bible.js`,
+*Last updated 2026-09-25 (added §9b, the slim board index; reader-accuracy panel; admin token in sessionStorage; upstream timeouts). Source of truth is always `worker/astrogem-bible.js`,
 `queue-admin.html`, and `grader.js` — if this doc and the code disagree, the code wins.*

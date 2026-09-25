@@ -25,6 +25,9 @@
  *   POST /collect      body: JSON { image, parse, final, changed, meta } -> { ok, id }
  *   GET  /list?cursor= -> { keys: [...], cursor }        (admin)
  *   GET  /obj?key=     -> the stored record JSON          (admin)
+ *   POST /admin/accuracy?n=150 -> per-field reader misread rates over the newest
+ *                         n (<=300) records                (admin; see handleAccuracy)
+ * Records (col/…) expire after 30 days (RECORD_TTL_S).
  *   GET  /health       -> ok (open)
  *
  * Deploy:  npx wrangler deploy -c wrangler-data.toml
@@ -48,6 +51,105 @@ const ALLOW_ORIGINS = [
 // oversize is a visible CORS'd 413 the client can react to, never a silent death.
 const MAX_BODY = 5 * 1024 * 1024;
 const DAILY_WRITE_CAP = 300;   // records/day — far above real use, far below the 1k KV free tier
+const RECORD_TTL_S = 30 * 24 * 3600;   // col/ records expire after 30 days (pull-collected.js fetches them within days)
+const ACCURACY_DEFAULT_N = 150;        // /admin/accuracy sample size: default ...
+const ACCURACY_MAX_N = 300;            // ... and cap (one KV read per record, bodies up to 5MB each)
+
+// The fields the Advisor diffs (advisor.js diffParseVsFinal) — the same `changed[].field`
+// names tools/triage-collected.js tallies.
+const ACC_CONFIG_FIELDS = ["baseCost", "gemType", "willpowerLevel", "orderLevel", "effect1", "effect1Level", "effect2", "effect2Level"];
+const ACC_STATE_FIELDS = ["currentTurn", "maxTurns", "rerollsRemaining", "processCostMultiplier"];
+const ACC_FIELDS = ACC_CONFIG_FIELDS.map(function (k) { return "config." + k; })
+  .concat(ACC_STATE_FIELDS.map(function (k) { return "state." + k; }))
+  .concat(["outcomes.0", "outcomes.1", "outcomes.2", "outcomes.3"]);
+// Mirror of advisor.js diffParseVsFinal, for records stored without a `changed` list.
+function diffParseVsFinal(parsed, fin) {
+  const changed = [];
+  const pc = (parsed && parsed.config) || {}, fc = fin.config || {};
+  ACC_CONFIG_FIELDS.forEach(function (k) { if (String(pc[k]) !== String(fc[k])) changed.push({ field: "config." + k }); });
+  const ps = (parsed && parsed.state) || {};
+  ACC_STATE_FIELDS.forEach(function (k) { if (String(ps[k]) !== String(fin[k])) changed.push({ field: "state." + k }); });
+  const po = (parsed && parsed.outcomes) || [], fo = fin.outcomes || [];
+  for (let i = 0; i < 4; i++) {
+    if (JSON.stringify(po[i] || null) !== JSON.stringify(fo[i] || null)) changed.push({ field: "outcomes." + i });
+  }
+  return changed;
+}
+// Mirror of tools/triage-collected.js classify(): only clean / fix / turnfix records describe
+// the SAME board the parser read. A "progression" record's final state is a LATER board (the
+// user played on), so its differences are not misreads and it is left out of the rates.
+function classifyRecord(rec) {
+  const par = rec.parse || {}, fin = rec.final || {};
+  const ps = par.state || {};
+  const changed = rec.changed || [];
+  if (!fin.config || !fin.outcomes) return "malformed";
+  if (changed.length === 0) return "clean";
+  if ((fin.history || []).length > 0) return "progression";
+  if (ps.currentTurn != null && fin.currentTurn != null && fin.currentTurn !== ps.currentTurn) {
+    const goldMoved = (fin.totalGoldSpent || 0) !== (ps.totalGoldSpent || 0);
+    const outcomesChanged = changed.filter(function (c) { return /^outcomes\./.test(c.field); }).length;
+    if (goldMoved || outcomesChanged >= 3) return "progression";
+    return "turnfix";
+  }
+  if ((fin.totalGoldSpent || 0) !== (ps.totalGoldSpent || 0)) return "progression";
+  return "fix";
+}
+async function sha1Hex(s) {
+  const d = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(d)).slice(0, 8).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+}
+// POST /admin/accuracy?n=150 — per-field misread rates over the newest N col/ records.
+// Memory stays bounded: keys are listed (small), then records are read and scored ONE AT A
+// TIME and dropped — only counters and image hashes survive the loop.
+// Dedupe: the Advisor may ship several records for one screenshot (a re-click after a
+// correction ships again), so only the NEWEST record per image counts — that is the user's
+// final word on that screen.
+async function handleAccuracy(req, env, u) {
+  let n = parseInt(u.searchParams.get("n") || "", 10);
+  if (!Number.isFinite(n) || n < 1) n = ACCURACY_DEFAULT_N;
+  n = Math.min(n, ACCURACY_MAX_N);
+  // col/<YYYY-MM-DD>/<ms base36>-<rand>: list order is chronological, so the newest N are the
+  // tail of a full listing (names only; 1000 per page).
+  let tail = [], cursor, pages = 0;
+  do {
+    const res = await env.COLLECT.list({ prefix: "col/", cursor: cursor, limit: 1000 });
+    for (const k of res.keys) tail.push(k.name);
+    if (tail.length > n) tail = tail.slice(-n);
+    cursor = res.list_complete ? null : res.cursor;
+  } while (cursor && ++pages < 100);
+  tail.reverse();                                  // newest first, so dedupe keeps the newest
+  const miss = {}; ACC_FIELDS.forEach(function (f) { miss[f] = 0; });
+  const classes = { clean: 0, fix: 0, turnfix: 0, progression: 0, malformed: 0, unreadable: 0 };
+  const seen = new Set();
+  let samples = 0, dupes = 0, from = null, to = null;
+  for (const key of tail) {
+    let rec = null;
+    try { rec = await env.COLLECT.get(key, "json"); } catch (e) { rec = null; }
+    if (!rec || typeof rec !== "object") { classes.unreadable++; continue; }
+    if (typeof rec.image === "string" && rec.image.length) {
+      const h = await sha1Hex(rec.image);
+      rec.image = null;
+      if (seen.has(h)) { dupes++; continue; }
+      seen.add(h);
+    }
+    if (!Array.isArray(rec.changed) && rec.final && rec.final.config) rec.changed = diffParseVsFinal(rec.parse, rec.final);
+    const cls = classifyRecord(rec);
+    classes[cls]++;
+    if (rec.ts) { if (!to || rec.ts > to) to = rec.ts; if (!from || rec.ts < from) from = rec.ts; }
+    if (cls !== "clean" && cls !== "fix" && cls !== "turnfix") continue;
+    samples++;
+    const hit = {};
+    (rec.changed || []).forEach(function (c) { if (c && miss[c.field] != null && !hit[c.field]) { hit[c.field] = 1; miss[c.field]++; } });
+  }
+  return json({
+    ok: true,
+    requested: n, read: tail.length, samples: samples, duplicates: dupes, classes: classes,
+    from: from, to: to,
+    fields: ACC_FIELDS.map(function (f) {
+      return { field: f, samples: samples, misreads: miss[f], rate: samples ? miss[f] / samples : null };
+    })
+  }, 200, req);
+}
 
 function cors(req) {
   const origin = req.headers.get("Origin") || "";
@@ -175,8 +277,10 @@ async function handle(req, env) {
       // counter incremented — the old order consumed cap on a failed write and
       // let the client believe the save landed); a caught failure reports 500
       // so the client's NOT-saved note is truthful and the record re-stages
+      // 30-day expiry: records are up to 5MB and up to 300/day, and tools/pull-collected.js
+      // copies them to disk within days — without a TTL the namespace only ever grew.
       try {
-        await env.COLLECT.put(key, JSON.stringify(record));
+        await env.COLLECT.put(key, JSON.stringify(record), { expirationTtl: RECORD_TTL_S });
       } catch (e) {
         await logErr(env, req, 500, "storage write: " + String(e && e.message || e));
         return json({ error: "storage write failed: " + String(e && e.message || e).slice(0, 120) }, 500, req);
@@ -205,6 +309,14 @@ async function handle(req, env) {
       const h = cors(req);
       h["Content-Type"] = "application/json";
       return new Response(val, { status: 200, headers: h });
+    }
+
+    // Reader-accuracy panel (queue-admin.html). Admin, POST-only like the bible worker's admin
+    // calls: a GET can never trigger ~300 KV reads from a drive-by <img> tag.
+    if (u.pathname === "/admin/accuracy") {
+      if (req.method !== "POST") return json({ error: "POST only (with the X-Admin-Token header)" }, 405, req);
+      if (!adminOk(req, env)) return json({ error: "locked" }, 403, req);
+      return handleAccuracy(req, env, u);
     }
 
     return json({ error: "no route" }, 404, req);

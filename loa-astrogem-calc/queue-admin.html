@@ -89,6 +89,20 @@
       <div id="fbbody" style="max-height:58vh;overflow:auto;padding:4px 16px 14px"></div>
     </div>
     <div class="panel">
+      <h2 id="achead">Reader accuracy</h2>
+      <div style="padding:14px 16px 6px">
+        <div class="row" style="gap:8px;align-items:center">
+          <span class="muted">Newest</span>
+          <input id="acn" type="number" min="1" max="300" value="150" style="min-width:72px;flex:0 0 72px">
+          <span class="muted">records</span>
+          <button class="ghost" id="acrefresh">Refresh</button>
+          <span class="muted" id="acnote" style="font-size:12px"></span>
+        </div>
+        <p class="muted" style="margin:9px 0 0;font-size:12px">Each saved Advisor record holds the reader's parse and the state the user ran. A misread is a field the user changed. Only same-board records count (clean, fix, turn fix); a record where the user played on is left out, and only the newest record per screenshot counts.</p>
+      </div>
+      <div id="acbody" style="overflow-x:auto"></div>
+    </div>
+    <div class="panel">
       <h2>Import bookmarklet</h2>
       <div id="bmbody" style="padding:14px 16px"></div>
     </div>
@@ -101,14 +115,30 @@
 <script>
 (function(){
   var WORKER = "https://astrogem-bible.shizukaziye.workers.dev";
+  var DATA_WORKER = "https://astrogem-data.shizukaziye.workers.dev";   // the reader-accuracy panel
   var TOKKEY = "astrogem_admin_token";
   var $ = function(id){ return document.getElementById(id); };
   var timer = null, lastOk = 0, lastErr = "", curMode = "", curRate = 0;
 
+  // The token lives in sessionStorage: it dies with the tab, like the bracelet admin page's.
+  // It used to sit in localStorage forever — moved across ONCE here and deleted from there.
+  function tokGet(){ try { return sessionStorage.getItem(TOKKEY) || ""; } catch(e){ return ""; } }
+  function tokSet(t){ try { sessionStorage.setItem(TOKKEY, t); } catch(e){} }
+  function tokDel(){ try { sessionStorage.removeItem(TOKKEY); } catch(e){} }
+  (function migrateToken(){
+    try {
+      var old = localStorage.getItem(TOKKEY);
+      if(old != null){
+        if(old && !tokGet()) tokSet(old);
+        localStorage.removeItem(TOKKEY);
+      }
+    } catch(e){}
+  })();
+
   // Admin auth rides in the X-Admin-Token HEADER (the ADMIN_TOKEN Worker secret) — never in a
   // URL, so it can't leak via logs or Referer. Mutations are POST; the Worker 405s admin GETs
   // that try to mutate. A 403 clears the stored token and shows the sign-in box again.
-  function adminHeaders(){ var t = localStorage.getItem(TOKKEY) || ""; return t ? { "X-Admin-Token": t } : {}; }
+  function adminHeaders(){ var t = tokGet() || ""; return t ? { "X-Admin-Token": t } : {}; }
 
   function fmtAgo(ms){
     if(!ms) return "never";
@@ -216,7 +246,7 @@
     if(rate != null && document.activeElement !== $("rate")) $("rate").value = rate;
   }
   function applyControl(qs){
-    if(!localStorage.getItem(TOKKEY)) return;
+    if(!tokGet()) return;
     $("ctlnote").textContent = "Applying…";
     fetch(WORKER + "/?control=1&" + qs, { method: "POST", headers: adminHeaders() }).then(function(r){ return r.json(); }).then(function(j){
       if(j && j.ok){ $("ctlnote").textContent = "Set — mode: " + j.config.mode + " · " + j.config.drainPerMin + "/min."; poll(); }
@@ -277,7 +307,7 @@
   function showAuth(){ $("auth").classList.remove("hide"); $("app").classList.add("hide"); if(timer){ clearInterval(timer); timer=null; } }
 
   function poll(){
-    var tok = localStorage.getItem(TOKKEY) || "";
+    var tok = tokGet() || "";
     if(!tok){ showAuth(); return; }
     fetch(WORKER + "/?metrics=1", { headers: adminHeaders() }).then(function(r){
       if(r.status === 403){ var e = new Error("Wrong token"); e.forbidden = true; throw e; }
@@ -290,14 +320,14 @@
       if(Date.now() - lastFb > 30000) loadFeedback();   // refresh feedback at most every ~30s alongside the 2s metrics poll
     }).catch(function(e){
       lastErr = e.message || "error"; setStatus();
-      if(e.forbidden){ localStorage.removeItem(TOKKEY); showAuth(); }
+      if(e.forbidden){ tokDel(); showAuth(); }
     });
   }
 
   // ---- Feedback panel (admin-gated ?feedback=1: GET lists, POST read=/del= mutates) ----
   var lastFb = 0;
   function loadFeedback(){
-    if(!localStorage.getItem(TOKKEY)) return;
+    if(!tokGet()) return;
     var body = $("fbbody"); if(!body) return;
     lastFb = Date.now();
     fetch(WORKER + "/?feedback=1", { headers: adminHeaders() }).then(function(r){ return r.json(); }).then(function(j){
@@ -326,17 +356,52 @@
     }).catch(function(){});
   }
   function fbAction(kind, id){
-    if(!localStorage.getItem(TOKKEY) || !id) return;
+    if(!tokGet() || !id) return;
     if(kind === "del" && !confirm("Delete this feedback?")) return;
     fetch(WORKER + "/?feedback=1&" + kind + "=" + encodeURIComponent(id), { method: "POST", headers: adminHeaders() }).then(function(){ loadFeedback(); }).catch(function(){});
   }
 
-  function start(){ poll(); loadFeedback(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
+  // ---- Reader accuracy (astrogem-data POST /admin/accuracy) ----
+  // On demand only (connect + the Refresh button), never on the 2s poll: one call reads up to
+  // 300 records of up to 5MB each on the worker.
+  var acBusy = false;
+  function fmtDay(iso){ return iso ? String(iso).slice(0, 10) : "—"; }
+  function loadAccuracy(){
+    if(!tokGet() || acBusy) return;
+    var n = parseInt($("acn").value, 10);
+    if(!(n >= 1 && n <= 300)){ n = 150; $("acn").value = n; }
+    acBusy = true; $("acnote").textContent = "Reading records…";
+    fetch(DATA_WORKER + "/admin/accuracy?n=" + n, { method: "POST", headers: adminHeaders() }).then(function(r){
+      if(r.status === 403) throw new Error("Wrong token (the data worker's ADMIN_TOKEN must match)");
+      return r.json().then(function(j){ if(!r.ok || !j || !j.ok) throw new Error((j && j.error) || ("Worker " + r.status)); return j; });
+    }).then(function(j){
+      var c = j.classes || {};
+      $("achead").textContent = "Reader accuracy — " + j.samples + " samples";
+      $("acnote").textContent = j.read + " read · " + fmtDay(j.from) + " to " + fmtDay(j.to) +
+        " · clean " + (c.clean||0) + " · fix " + (c.fix||0) + " · turn fix " + (c.turnfix||0) +
+        " · left out: played on " + (c.progression||0) + ", malformed " + ((c.malformed||0) + (c.unreadable||0)) +
+        ", repeat screenshots " + (j.duplicates||0);
+      if(!j.samples){ $("acbody").innerHTML = '<p class="muted" style="padding:0 16px 14px;margin:0">No same-board records in this window.</p>'; return; }
+      var rows = (j.fields || []).slice().sort(function(a, b){ return (b.rate||0) - (a.rate||0); }).map(function(f){
+        var pct = f.rate == null ? "—" : (100 * f.rate).toFixed(1) + "%";
+        var cls = !f.misreads ? "good" : (f.rate >= 0.05 ? "bad" : "warn");
+        return '<tr><td>' + esc(f.field) + '</td><td class="muted">' + num(f.samples) + '</td>' +
+          '<td class="' + (f.misreads ? cls : "muted") + '">' + num(f.misreads) + '</td><td class="' + cls + '">' + pct + '</td></tr>';
+      }).join("");
+      $("acbody").innerHTML = '<table style="min-width:360px"><thead><tr><th>Field</th><th>Samples</th><th>Misreads</th><th>Rate</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }).catch(function(e){
+      $("acnote").innerHTML = '<span class="bad">' + esc(e.message || "failed") + '</span>';
+    }).then(function(){ acBusy = false; });
+  }
+  $("acrefresh").addEventListener("click", loadAccuracy);
+  $("acn").addEventListener("keydown", function(e){ if(e.key === "Enter") loadAccuracy(); });
 
-  $("connect").addEventListener("click", function(){ var t = $("tok").value.trim(); if(t){ localStorage.setItem(TOKKEY, t); lastErr=""; start(); } });
+  function start(){ poll(); loadFeedback(); loadAccuracy(); if(timer) clearInterval(timer); timer = setInterval(poll, 2000); } // 2s: keep the admin view snappy
+
+  $("connect").addEventListener("click", function(){ var t = $("tok").value.trim(); if(t){ tokSet(t); lastErr=""; start(); } });
   $("tok").addEventListener("keydown", function(e){ if(e.key === "Enter") $("connect").click(); });
   $("refresh").addEventListener("click", function(){ poll(); loadFeedback(); });
-  $("logout").addEventListener("click", function(){ localStorage.removeItem(TOKKEY); lastOk=0; lastErr=""; showAuth(); });
+  $("logout").addEventListener("click", function(){ tokDel(); lastOk=0; lastErr=""; showAuth(); });
   ["run","off","probe"].forEach(function(m){ $("m-"+m).addEventListener("click", function(){ applyControl("mode="+m); }); });
   $("rateapply").addEventListener("click", function(){ var v=parseInt($("rate").value,10); if(v>=1 && v<=30) applyControl("rate="+v); else $("ctlnote").textContent="Rate must be 1–30."; });
   $("rate").addEventListener("keydown", function(e){ if(e.key==="Enter") $("rateapply").click(); });
@@ -374,7 +439,7 @@
   }
   renderBookmarklet();
 
-  if(localStorage.getItem(TOKKEY)) start(); else showAuth();
+  if(tokGet()) start(); else showAuth();
 })();
 </script>
 </body>
