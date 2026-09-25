@@ -1459,7 +1459,24 @@
     el.innerHTML = scopedStyle() + inputsHtml() + legendHtml()
       + '<div id="pl-results"></div>' + methodologyHtml();
     renderBody();
-    ensureData();
+    // The ~1MB bake loads only when the Pipeline tab is shown (or when a caller such as
+    // the Grader's plan section asks through pipelineReady) — never on a plain page load,
+    // where the Grader is the default tab. A deep link to /pipeline paints the tab active
+    // before this runs, so it loads at once; a later switch arrives as `tabselected`.
+    if (el.classList.contains("active")) ensureData();
+    document.addEventListener("tabselected", function (e) {
+      if (e && e.detail && e.detail.tab === "pipeline") ensureData();
+    });
+  }
+
+  // A PRERENDER IS NOT A VISIT (as in grader.js / bible-oauth.js): Chrome may load this
+  // page in the background when a link to it is pointed at and throw it away unseen, so
+  // the bake download waits until the page is really shown.
+  function whenShown() {
+    if (!document.prerendering) return Promise.resolve();
+    return new Promise(function (resolve) {
+      document.addEventListener("prerenderingchange", function () { resolve(); }, { once: true });
+    });
   }
 
   // Re-render just the inputs row (to refresh the gpd buttons once data arrives) + body.
@@ -1473,26 +1490,30 @@
   }
 
   // Load (or reuse a cached) baked grid for `axis`; runs after(grid) on success. The DPS
-  // and Support grids are cached separately so the toggle never re-fetches.
+  // and Support grids are cached separately so the toggle never re-fetches. Callers that
+  // arrive while a fetch is in flight (or parked behind a prerender) join its waiter list.
+  var DATA_WAITERS = {};    // axis -> [after, ...] for the fetch in flight
   function loadAxis(axis, after) {
     axis = (axis === "support") ? "support" : "dps";
     if (DATA_CACHE[axis]) { if (after) after(DATA_CACHE[axis]); return; }
-    if (DATA_LOADING[axis]) {                       // a fetch is already in flight — poll for it
-      var t = 0;
-      (function w() {
-        if (DATA_CACHE[axis]) { if (after) after(DATA_CACHE[axis]); return; }
-        if (++t > 600) return;
-        setTimeout(w, 50);
-      })();
-      return;
-    }
+    if (after) (DATA_WAITERS[axis] = DATA_WAITERS[axis] || []).push(after);
+    if (DATA_LOADING[axis]) return;                 // joined the fetch already in flight
     DATA_LOADING[axis] = true;
     var url = (axis === "support") ? "data/pipeline-support.json" : "data/pipeline.json";
-    fetch(url, { cache: "no-cache" })  // revalidate so re-bakes show without a hard-refresh (304 when unchanged)
+    whenShown().then(function () {
+      return fetch(url, { cache: "no-cache" });  // revalidate so re-bakes show without a hard-refresh (304 when unchanged)
+    })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (j) { DATA_CACHE[axis] = j; DATA_LOADING[axis] = false; if (after) after(j); })
+      .then(function (j) {
+        DATA_CACHE[axis] = j; DATA_LOADING[axis] = false;
+        var ws = DATA_WAITERS[axis] || []; DATA_WAITERS[axis] = [];
+        for (var i = 0; i < ws.length; i++) {
+          try { ws[i](j); } catch (err) { if (window.console) console.error(err); }
+        }
+      })
       .catch(function (e) {
         DATA_LOADING[axis] = false;
+        DATA_WAITERS[axis] = [];                     // a later call retries the fetch
         var host = document.getElementById("pl-results");
         if (host && axis === AXIS) {
           host.innerHTML = '<div class="placeholder"><b>Could not load ' + url + '</b>'

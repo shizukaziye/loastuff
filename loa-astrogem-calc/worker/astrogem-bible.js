@@ -408,6 +408,11 @@ const UNAVAILABLE_MSG = "Character lookups are temporarily unavailable";
 const MAX_FETCH_ATTEMPTS = 5;                // after this many failed fetches a queued character is DROPPED, so a permanently-broken entry (e.g. some KR names) can't sit at the head retrying forever and starving everyone behind it.
 const QUEUE_TTL_S = 7 * 24 * 60 * 60;        // a queued request expires after 7 days if never drained.
 const SNAPSHOT_MIN_INTERVAL_MS = 30 * 60 * 1000; // rebuild the leaderboard snapshot at most every ~30 min (the read-heavy part).
+// Every upstream fetch (lostark.bible pages + OAuth API, lopec.kr) gives up after 10s. A hung
+// fetch could hold a cron invocation open past its minute, so two per-minute drains could
+// overlap (the drain lock lives only 60s). A timeout lands in each caller's existing
+// network-error branch (transient: skip, retry later), never in the block/breaker branch.
+const UPSTREAM_TIMEOUT_MS = 10000;
 // ---- Admin auth ----------------------------------------------------------------------------
 // Every admin surface (?metrics, ?control, ?dequeue, ?feedback review, /oauth/probe-token)
 // requires the ADMIN_TOKEN Worker secret, sent as an `X-Admin-Token` request header:
@@ -524,7 +529,7 @@ async function storeProbeToken(env, request) {
   // from the (possibly blocked) character page, so this can succeed even while scraping is blocked.
   let owns = null, apiStatus = 0;
   try {
-    const r = await fetch("https://lostark.bible/api/oauth/rosters", { headers: { "Authorization": "Bearer " + tok, "Accept": "application/json" } });
+    const r = await fetch("https://lostark.bible/api/oauth/rosters", { headers: { "Authorization": "Bearer " + tok, "Accept": "application/json" }, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
     apiStatus = r.status;
     if (r.ok) {
       const j = await r.json();
@@ -953,7 +958,8 @@ async function fetchCharacterData(env, region, name, userToken) {
     resp = await fetch(url, {
       headers: headers,
       // Follow SvelteKit redirects (region casing etc.).
-      redirect: "follow"
+      redirect: "follow",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)   // covers the body read below too
     });
   } catch (e) {
     return { ok: false, status: 502, body: { error: "Upstream fetch failed: " + (e && e.message || e), url: url } };
@@ -973,7 +979,11 @@ async function fetchCharacterData(env, region, name, userToken) {
     return { ok: false, status: 502, body: { error: site + " returned HTTP " + resp.status + "." + hint, region: region, name: name, url: url, upstreamStatus: resp.status, authIssue: authIssue || undefined } };
   }
 
-  const html = await resp.text();
+  // The timeout signal also aborts a body that stalls mid-stream; report that like any other
+  // network failure (transient 502) instead of throwing out of the caller.
+  let html;
+  try { html = await resp.text(); }
+  catch (e) { return { ok: false, status: 502, body: { error: "Upstream read failed: " + (e && e.message || e), url: url } }; }
 
   let gems, warnings, coreCount, chaosGems = null;
   if (isKR) {
@@ -1291,32 +1301,174 @@ async function readSnapshotV2(env) {
   return null;
 }
 
+// ---- HTTP revalidation helpers (the board and its slim index) ----
+// Both change at most once per ~30-min rebuild, so browsers may keep them 30 min and then
+// revalidate with If-None-Match. Every ETag is derived from the snapshot's builtAt, stored as
+// KV METADATA on the very value it describes — so an ETag can never pair with another build's
+// bytes (lb:builtat is a separate key and can disagree with the value at a lagging PoP).
+const BOARD_CACHE_CONTROL = "public, max-age=1800";
+function etagMatches(ifNoneMatch, etag) {
+  if (!ifNoneMatch || !etag) return false;
+  const want = etag.replace(/^W\//, "");
+  return ifNoneMatch.split(",").some(function (t) {
+    t = t.trim();
+    return t === "*" || t.replace(/^W\//, "") === want;
+  });
+}
+function boardEtag(builtAt) { return builtAt ? "\"lb2-" + builtAt + "\"" : null; }
+function slimEtag(region, builtAt) { return "\"bs" + SLIM_V + "-" + region + "-" + builtAt + "\""; }
+// Serve stored gzip bytes as-is (one KV read, no JSON work), or decompress for the rare
+// client that doesn't accept gzip (plain curl, odd scripts) — the edge does NOT do it for us.
+function gzipJsonResponse(gz, acceptEncoding, extraHeaders) {
+  const h = Object.assign({ "Content-Type": "application/json" }, extraHeaders || {});  // CORS stamped on by the fetch() wrapper
+  if (!/gzip/i.test(acceptEncoding || "")) {
+    return new Response(new Response(gz).body.pipeThrough(new DecompressionStream("gzip")), { status: 200, headers: h });
+  }
+  h["Content-Encoding"] = "gzip";
+  // body is ALREADY gzip — without encodeBody:"manual" the runtime re-encodes it (double-gzip) to honor the header
+  return new Response(gz, { status: 200, encodeBody: "manual", headers: h });
+}
+
+// ---- the slim per-region board index (GET /board-slim?region=) ----
+// The profile page needs ONE character's board rank, and used to download the whole 2.6MB-gz
+// / 12.6MB-JSON snapshot to score ~24k characters for it. The slim index is that scoring done
+// once per rebuild, server-side, with the same model calls leaderboard.js makes:
+//   { v:1, builtAt, region, classes:[...], rows:[[name, classIdx, dps|null, sup|null, supportMain 0/1], ...] }
+//   dps  = gridDamage(valid gems, "dps")     — the DPS board's sort key (totalDmgOf); null = no valid gems
+//   sup  = gridDamage(valid gems, "support") — the Support board's key (totalPartyDmgOf); set ONLY for the
+//          four support classes (the only ones the Support board holds), else null
+//   supportMain = 1 when a support class's support grade outranks its DPS grade by >=2 sub-ranks
+//          (leaderboard.js isSupportMain) — the DPS board drops these rows
+//   classIdx indexes `classes` (-1 = none). Rows keep the SNAPSHOT order, which is the board's
+//   stable-sort tie-break, so a client rebuilds each board exactly: DPS = rows with dps != null &&
+//   !supportMain, Support = rows with sup != null, each stable-sorted descending by its key.
+// Built in TUPLE SPACE like the rebuild (decode one row's gems, score, discard) — never the full
+// per-gem object graph. Stored gzipped, one small key per region.
+const SLIM_V = 1;
+const SLIM_KEY_PREFIX = "lb:slim:gz:";         // + region -> gzipped slim index, metadata { builtAt, v, rows }
+const SLIM_REGIONS = ["NA", "EU", "KR"];       // the board's region chips (leaderboard.js loadRegions)
+const SLIM_SUPPORT_CLASSES = { "Bard": 1, "Paladin": 1, "Artist": 1, "Valkyrie": 1 }; // keep in sync with leaderboard.js
+const SLIM_SUBRANK = { "F-": 0, "F": 1, "F+": 2, "D-": 3, "D": 4, "D+": 5, "C-": 6, "C": 7, "C+": 8,
+  "B-": 9, "B": 10, "B+": 11, "A-": 12, "A": 13, "A+": 14, "S-": 15, "S": 16, "S+": 17 };  // leaderboard.js SUBRANK_ORDINAL
+function slimValueToGrade(v, zero, anchor) {   // leaderboard.js valueToGrade
+  if (zero == null || anchor == null) return null;
+  const g = 100 * (v - zero) / (anchor - zero);
+  return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
+}
+// Score one v2 row exactly as leaderboard.js renderTable does (decodeSnapshotV2 -> validGemsOf ->
+// totalDmgOf / totalPartyDmgOf / avgGradeOf / avgSupportGradeOf -> isSupportMain).
+function slimScoreRow(effects, cls, row) {
+  function eff(i) { return (typeof i === "number" && i > 0) ? (effects[i - 1] || null) : null; }
+  const t5 = row[5] || [], valid = [];
+  for (let j = 0; j < t5.length; j++) {
+    const t = t5[j], core = t[0] | 0;
+    const g = {
+      slot: core ? SLOT_LABEL[10000 + core] : null, coreBase: core ? 10000 + core : null,
+      baseCost: t[1], gemType: t[2] ? "chaos" : "order",
+      willpowerLevel: t[3], orderLevel: t[4],
+      effect1: eff(t[5]), effect1Level: t[6], effect2: eff(t[7]), effect2Level: t[8]
+    };
+    if (AG.validateConfig(g).valid) valid.push(g);
+  }
+  if (!valid.length) return [null, null, 0];
+  const dps = AG.gridDamage(valid, "dps");
+  if (!(cls && SLIM_SUPPORT_CLASSES[cls])) return [dps, null, 0];
+  const n = valid.length;
+  const avg = slimValueToGrade(Math.exp(AG.gridQuality(valid, "dps") / n), AG.valueBounds().min, AG.valueAnchor());
+  const savg = slimValueToGrade(Math.exp(AG.gridQuality(valid, "support") / n), AG.supportValueBounds().min, AG.supportValueAnchor());
+  const main = (avg != null && savg != null &&
+    SLIM_SUBRANK[AG.supportRankFromGrade(savg)] - SLIM_SUBRANK[AG.rankFromGrade(avg)] >= 2) ? 1 : 0;
+  return [dps, AG.gridDamage(valid, "support"), main];
+}
+// payload = a v2 snapshot object -> { NA: {v, builtAt, region, classes, rows}, EU: …, KR: … }.
+// Rows whose region is not a board chip (a stray CE row, junk) belong to no board and are skipped.
+function buildSlimIndexes(payload) {
+  const classes = payload.classes || [], effects = payload.effects || [];
+  const out = {};
+  for (const r of SLIM_REGIONS) out[r] = { v: SLIM_V, builtAt: payload.builtAt || 0, region: r, classes: classes, rows: [] };
+  const rows = payload.characters || [];
+  for (let i = 0; i < rows.length; i++) {
+    const a = rows[i], bucket = out[a[0]];
+    if (!bucket) continue;
+    const ci = (a[3] != null && a[3] >= 0) ? a[3] : -1;
+    let s;
+    try { s = slimScoreRow(effects, ci >= 0 ? classes[ci] : null, a); } catch (e) { s = [null, null, 0]; }
+    bucket.rows.push([a[1], ci, s[0], s[1], s[2]]);
+  }
+  return out;
+}
+async function writeSlimIndexes(env, slim) {
+  for (const r of SLIM_REGIONS) {
+    const idx = slim[r];
+    const gz = await gzipString(JSON.stringify(idx));
+    await env.CHARS.put(SLIM_KEY_PREFIX + r, gz, { metadata: { builtAt: idx.builtAt, v: SLIM_V, rows: idx.rows.length } });
+  }
+}
+// GET /board-slim?region=NA — one KV read (plus a 304 when the ETag still matches). Normally the
+// cron's rebuild has already written the key; if it's missing (first request after the deploy
+// that introduced it, before the next rebuild) derive it ONCE from the stored snapshot — the same
+// in-memory work the rebuild does — serve it, and store every region's key for the next caller.
+async function handleBoardSlim(env, request, u, ctx) {
+  const region = String(u.searchParams.get("region") || "").toUpperCase();
+  if (SLIM_REGIONS.indexOf(region) === -1) return json({ error: "region must be one of " + SLIM_REGIONS.join(", ") }, 400);
+  if (!env || !env.CHARS) return json({ error: "board unavailable" }, 503);
+  let got = null;
+  try { got = await env.CHARS.getWithMetadata(SLIM_KEY_PREFIX + region, "arrayBuffer"); } catch (e) {}
+  const md = got && got.metadata;
+  if (got && got.value && got.value.byteLength && md && md.v === SLIM_V && md.builtAt) {
+    const etag = slimEtag(region, md.builtAt);
+    const h = { "Cache-Control": BOARD_CACHE_CONTROL, "ETag": etag };
+    if (etagMatches(request.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers: h });
+    return gzipJsonResponse(got.value, request.headers.get("Accept-Encoding"), h);
+  }
+  // Missing (or an older slim format): derive from the snapshot.
+  const snap = await readSnapshotV2(env);
+  if (!snap || !Array.isArray(snap.characters) || !snap.characters.length) {
+    return json({ error: "The board has not been built yet — try again in a few minutes." }, 503, { "Cache-Control": "no-store" });
+  }
+  const slim = buildSlimIndexes(snap);
+  const idx = slim[region];
+  const store = writeSlimIndexes(env, slim).catch(function (e) { console.error("board-slim store failed", e && e.message); });
+  if (ctx && ctx.waitUntil) ctx.waitUntil(store); else await store;
+  const etag = slimEtag(region, idx.builtAt);
+  return json(idx, 200, { "Cache-Control": BOARD_CACHE_CONTROL, "ETag": etag });
+}
+
 // GET /?list=1 — leaderboard list. Serves the STORED GZIP BYTES as-is in a single read
 // (Content-Encoding: gzip; the edge transparently decompresses for non-gzip clients), so a
 // request costs one KV read and zero JSON work. NEVER rebuilds on demand: the snapshot is
 // maintained server-side by the cron (rebuildSnapshotIfChanged). Empty until the first build.
-async function handleList(env, acceptEncoding, fmt) {
+// Cache-Control lets a browser keep it 30 min; the ETag (from the value's builtAt metadata,
+// present once a rebuild has run on this code) lets it revalidate for a 304 instead of 2.6MB.
+async function handleList(env, request, fmt) {
   if (!env || !env.CHARS) return json({ characters: [] }, 200);
+  const acceptEncoding = request.headers.get("Accept-Encoding");
+  const inm = request.headers.get("If-None-Match");
   try {
+    // 304 fast path without the 2.6MB read: lb:builtat is written AFTER the snapshot value, so
+    // when it still equals the client's build, nothing newer exists yet (a lagging PoP can only
+    // make this answer staler by a KV-cache minute, never pair an ETag with other bytes).
+    if (inm) {
+      const b = parseInt((await env.CHARS.get(BUILTAT_KEY)) || "0", 10);
+      if (b && etagMatches(inm, boardEtag(b))) {
+        return new Response(null, { status: 304, headers: { "Cache-Control": BOARD_CACHE_CONTROL, "ETag": boardEtag(b) } });
+      }
+    }
     // v2 (compact tuples) is the ONLY stored format now — `fmt` is accepted but ignored.
     // (v1 grew to ~93MB uncompressed and OOM'd the rebuild; every live client requests
     // fmt=2 and its decoder branches on the payload's `v` field.) The legacy gz key is a
     // read fallback only until the first post-fix rebuild deletes it.
-    const gz = (await env.CHARS.get(SNAPSHOT_GZ2_KEY, "arrayBuffer"))
-      || await env.CHARS.get(SNAPSHOT_GZ_KEY, "arrayBuffer");
+    const got = await env.CHARS.getWithMetadata(SNAPSHOT_GZ2_KEY, "arrayBuffer");
+    let gz = got && got.value, builtAt = (got && got.metadata && got.metadata.builtAt) || 0;
+    if (!gz) { gz = await env.CHARS.get(SNAPSHOT_GZ_KEY, "arrayBuffer"); builtAt = 0; }
     if (gz && gz.byteLength) {
-      if (!/gzip/i.test(acceptEncoding || "")) {
-        // rare non-gzip client (plain curl, odd scripts): decompress for them — the edge does NOT.
-        return new Response(new Response(gz).body.pipeThrough(new DecompressionStream("gzip")), {
-          status: 200,
-          headers: { "Content-Type": "application/json" }   // CORS stamped on by the fetch() wrapper
-        });
+      const h = { "Cache-Control": BOARD_CACHE_CONTROL };
+      const etag = boardEtag(builtAt);
+      if (etag) {
+        h.ETag = etag;
+        if (etagMatches(inm, etag)) return new Response(null, { status: 304, headers: h });
       }
-      return new Response(gz, {
-        status: 200,
-        encodeBody: "manual", // body is ALREADY gzip — without this the runtime re-encodes it (double-gzip) to honor the header
-        headers: { "Content-Type": "application/json", "Content-Encoding": "gzip" }   // CORS stamped on by the fetch() wrapper
-      });
+      return gzipJsonResponse(gz, acceptEncoding, h);
     }
   } catch (e) {}
   const snap = await kvGetJson(env, SNAPSHOT_KEY); // legacy fallback until the first gz rebuild
@@ -1372,8 +1524,11 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
     if (!characters.length) return;
     payload = encodeSnapshotV2(startedAt, characters);
   }
-  const gz2Bytes = await gzipString(JSON.stringify(payload));
-  await env.CHARS.put(SNAPSHOT_GZ2_KEY, gz2Bytes);
+  let gz2Bytes = await gzipString(JSON.stringify(payload));
+  // builtAt rides as METADATA on the value so ?list=1 can derive an ETag that always describes
+  // these exact bytes (see handleList).
+  await env.CHARS.put(SNAPSHOT_GZ2_KEY, gz2Bytes, { metadata: { builtAt: startedAt } });
+  gz2Bytes = null;
   try { await env.CHARS.delete(SNAPSHOT_GZ_KEY); } catch (e) {} // drop the v1 blob for good (its ~93MB expansion is what OOM'd the rebuild)
   try { await env.CHARS.delete(SNAPSHOT_KEY); } catch (e) {}    // pre-gz plain copy, if any pre-migration deploy still has one
   await env.CHARS.put(BUILTAT_KEY, String(startedAt));
@@ -1382,6 +1537,11 @@ async function rebuildSnapshotIfChanged(env, minIntervalMs) {
   // re-cached mid-build may hold newer data than the page we read — the next incremental pass
   // upserts (then clears) them.
   if (!fromScratch) await Promise.all(dirty.keys.map(function (k) { return env.CHARS.delete(k.name).catch(function () {}); }));
+  // LAST, after the snapshot is safely stored: the slim per-region rank index (/board-slim), from
+  // the payload already in memory (tuple space, one row scored at a time). A failure here must
+  // never cost the board — it only leaves the previous slim keys in place until the next rebuild.
+  try { await writeSlimIndexes(env, buildSlimIndexes(payload)); }
+  catch (e) { console.error("slim index build failed", e && e.message); }
 }
 
 // Rolling per-drain history (~last hour) for the admin dashboard: every cron drain appends one
@@ -2014,7 +2174,8 @@ async function oauthCallback(env, u) {
         "Authorization": "Basic " + btoa(env.BIBLE_CLIENT_ID + ":" + env.BIBLE_CLIENT_SECRET),
         "Accept": "application/json"
       },
-      body: form.toString()
+      body: form.toString(),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
     });
     status = r.status;
     tok = await r.json();
@@ -2057,7 +2218,8 @@ async function oauthLogout(env, u) {
           "Content-Type": "application/x-www-form-urlencoded",
           "Authorization": "Basic " + btoa(env.BIBLE_CLIENT_ID + ":" + env.BIBLE_CLIENT_SECRET)
         },
-        body: form.toString()
+        body: form.toString(),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
       });
     } catch (e) {}   // RFC 7009 always 200s; a failure here just leaves the token to expire
   }
@@ -2183,6 +2345,11 @@ async function handleFetch(request, env, ctx) {
       return json({ error: "Method not allowed (use GET ?region=&name=, or POST ?submit=1)." }, 405);
     }
 
+    // Slim per-region board index for rank lookups (the profile page). One small KV read, so it
+    // stays up while degraded (like cached reads) and needs no leaderboard throttle beyond
+    // HARD_CAP; browsers keep it 30 min and revalidate by ETag.
+    if (u.pathname === "/board-slim") return handleBoardSlim(env, request, u, ctx);
+
     // GLOBAL overload gate: one shared counter across ALL requests (fixed key, not the IP). When the
     // site-wide rate trips ~1000/min we enter "degraded" mode and pause NEW work for everyone equally
     // (no bypass). period max 60s, so it's a rolling per-minute proxy that auto-recovers.
@@ -2248,7 +2415,7 @@ async function handleFetch(request, env, ctx) {
         const l = await env.LB_THROTTLE.limit({ key: ip });
         if (!l.success) return json({ error: "The leaderboard refreshes about every 10 minutes — please wait a moment.", rateLimited: true, retryAfterMs: 20000, lbThrottle: true }, 429);
       }
-      return handleList(env, request.headers.get("Accept-Encoding"), u.searchParams.get("fmt"));
+      return handleList(env, request, u.searchParams.get("fmt"));
     }
 
     // Admin QUEUE METRICS (GET + X-Admin-Token): backlog counts, the queued list in drain order
