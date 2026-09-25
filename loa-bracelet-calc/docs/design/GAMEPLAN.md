@@ -139,7 +139,10 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   market level 1×). "If it doesn't" is gone; **Expected final** holds that
   card (the mean over every outcome, signed against yours). The pair table
   has a **Bang for buck** column: odds per gold as a share of the best
-  pair's (best = 100%) — Expected spend read the other way up.
+  pair's (best = 100%) — Expected spend read the other way up. "Grade or
+  better" under Where it can land is a GRID, one cell per grade (badge, odds,
+  a bar the odds fill), every grade from the last certain band to the first
+  unreachable one, worst on the left.
 
 ## Debts (2026-09-24)
 

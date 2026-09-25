@@ -974,11 +974,18 @@
         "pointer-events:none;display:none;font-variant-numeric:tabular-nums}" +
       "#tab-advisor .av-hair{position:absolute;top:22px;bottom:0;width:1px;background:var(--text);opacity:.55;pointer-events:none;display:none}" +
       "#tab-advisor .av-stripwrap.on .av-readout,#tab-advisor .av-stripwrap.on .av-hair{display:block}" +
-      "#tab-advisor .av-godds{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:14px}" +
-      "#tab-advisor .av-godds>.lb{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-right:2px}" +
-      "#tab-advisor .av-go{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 3px;border:1px solid var(--border);" +
-        "border-radius:99px;background:var(--panel2);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}" +
-      "#tab-advisor .av-go.here{border-color:var(--accent)}" +
+      // ---- grade or better: a grid, one cell per grade ----
+      // A wrapped row of pills hid the shape once it ran to fifteen; cells of
+      // one width with a bar each read as a histogram (Shizu, 2026-09-25).
+      "#tab-advisor .av-godds{margin-top:14px}" +
+      "#tab-advisor .av-godds>.lb{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:6px}" +
+      "#tab-advisor .av-gogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}" +
+      "#tab-advisor .av-go{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;padding:6px 5px 5px;" +
+        "border:1px solid var(--border);border-radius:8px;background:var(--panel2);font-weight:700;font-variant-numeric:tabular-nums}" +
+      "#tab-advisor .av-go.here{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}" +
+      "#tab-advisor .av-go .av-gop{font-size:11px;color:var(--text);white-space:nowrap}" +
+      "#tab-advisor .av-go .av-gobar{display:block;width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden}" +
+      "#tab-advisor .av-go .av-gobar i{display:block;height:100%;border-radius:2px}" +
       // ---- lock advice ----
       "#tab-advisor details.av-roll{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0 16px}" +
       "#tab-advisor details.av-roll>summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;" +
@@ -1933,11 +1940,14 @@
     var first = Math.max(1, hi - 1), until = Math.min(last, Math.max(lo + 1, first));
     for (i = until; i >= first; i--) {
       var bd = bands[i];
-      chips += '<span class="av-go' + (i === here ? " here" : "") + '"><span class="av-grade" style="background:' +
-        bd.bg + ";color:" + bd.fg + '">' + esc(bd.key) + "</span>" + odds(ps[i]) + "</span>";
+      // One CELL per grade: the badge, the odds, and a bar the odds fill in the
+      // grade's own colour (Shizu, 2026-09-25: "it should be a grid").
+      chips += '<div class="av-go' + (i === here ? " here" : "") + '"><span class="av-grade" style="background:' +
+        bd.bg + ";color:" + bd.fg + '">' + esc(bd.key) + '</span><span class="av-gop">' + odds(ps[i]) + "</span>" +
+        '<span class="av-gobar"><i style="width:' + fx(ps[i] * 100, 1) + "%;background:" + bd.bg + '"></i></span></div>';
     }
-    return '<div class="av-godds"><span class="lb" data-gloss="The chance it finishes at this grade or better: every grade from the one it is sure of to the one it cannot reach. The outlined grade is where its expected final lands.">Grade or better</span>' +
-      chips + "</div>";
+    return '<div class="av-godds"><span class="lb" data-gloss="The chance it finishes at this grade or better: every grade from the one it is sure of to the one it cannot reach, worst on the left. The bar is the odds; the outlined grade is where its expected final lands.">Grade or better</span>' +
+      '<div class="av-gogrid">' + chips + "</div></div>";
   }
 
   function outHtml() {
