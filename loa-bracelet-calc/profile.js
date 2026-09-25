@@ -1730,9 +1730,13 @@
         ".bc-topcluster #bc-top,.bc-topcluster #bc-slotsctl,.bc-topcluster .bc-toprow{display:contents}" +
       ".bc-topcluster .bc-toprow>.bc-segrow{flex:0 0 auto;min-width:132px}" +
       ".bc-topcluster #bc-slotsctl .bc-segrow{min-width:104px}" +
-      // Its own line, and the whole of it: basis 100% cannot share a line, and
-      // order puts it after the pill groups whichever element it arrived in.
-      ".bc-topcluster .bc-toprow>.bc-sl{flex:1 1 100%;order:2;min-width:0}" +
+      // The rolls slider SHARES THE ROW and takes what the pill groups leave
+      // (Shizu, 2026-09-25: "it doesn't need a whole row, it can share with
+      // everything else"); order puts it after the pill groups whichever
+      // element it arrived in, and its label is dressed like theirs so the four
+      // read as one row. Under 260px of room it wraps to a line of its own.
+      ".bc-topcluster .bc-toprow>.bc-sl{flex:1 1 300px;order:2;min-width:260px}" +
+      ".bc-topcluster .bc-toprow>.bc-sl>.lb{font:inherit;text-transform:none;letter-spacing:normal;color:var(--text);line-height:inherit}" +
       // The economy under the panel.
       "#bc-econhost .bc-toprow{gap:9px}" +
       // ---- the baseline bracelet's row in the Economy ----

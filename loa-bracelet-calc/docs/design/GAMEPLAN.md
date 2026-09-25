@@ -125,6 +125,19 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   summed them as rolls left). `rollsLeft = max(0, 4 − base) + max(0, 3 −
   ticket)`, in `BraceletImport.rollsLeft()`; the leaderboard's row click and
   the profile page read it the same way. Paroxysmal at 4/3 has none left.
+- **Grader layout:** the rolls slider shares the Role / Grade / Granted-slots
+  row (it takes what the pills leave and wraps under 260px); the trait rows
+  and the granted-slot rows sit side by side, traits in a 340px column, slots
+  in the rest, stacking again under 860px.
+- **Advisor:** the price per bracelet is a READ-OUT, pheons included, at the
+  market level — the level is the only knob (the typed price and "use
+  estimate" are gone). The trait pair FOLLOWS "which pair to buy" until the
+  reader moves the slider or picks a row (`SIM.eachSet`), once per set of
+  inputs the recommendation is made from; "Set the slider to N/N" in the
+  headline puts it back on the pick, and **Reset to default** on the sim
+  block returns everything (pair to aim for, 7 rolls, 3 slots, not rolled,
+  market level 1×). "If it doesn't" is gone; **Expected final** holds that
+  card (the mean over every outcome, signed against yours).
 
 ## Debts (2026-09-24)
 

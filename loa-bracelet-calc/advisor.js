@@ -197,7 +197,7 @@
       slots: 3,
       slotsPref: 3,              // the count the reader chose; slots returns to it when the grade allows
       mode: "fresh",             // "fresh" = not rolled yet; "rolled" = these lines
-      price: null,               // gold for one bracelet like this, as the reader entered it; null = none
+      eachSet: false,            // false = the pair follows "which pair to buy"; true = the reader chose it
       scale: 1,                  // the market level: a multiplier on the price model's listed price
       rows: [blankRow(), blankRow(), blankRow()],
       // the keep-or-replace flow's own state, against THIS bracelet
@@ -250,7 +250,7 @@
       d.slots = (raw.slots === 1 || raw.slots === 2) ? raw.slots : 3;
       d.slotsPref = (raw.slotsPref === 1 || raw.slotsPref === 2 || raw.slotsPref === 3) ? raw.slotsPref : d.slots;
       d.mode = raw.mode === "rolled" ? "rolled" : "fresh";
-      d.price = (typeof raw.price === "number" && isFinite(raw.price) && raw.price > 0) ? Math.round(raw.price) : null;
+      d.eachSet = raw.eachSet === true;      // a save from before the flag follows the recommendation
       d.scale = (typeof raw.scale === "number" && raw.scale >= 0.25 && raw.scale <= 4) ? raw.scale : 1;
       if (raw.rows && raw.rows.length) d.rows = cleanRows(raw.rows);
       if (raw.locks && raw.locks.length) d.locks = raw.locks.map(function (x) { return !!x; });
@@ -762,6 +762,7 @@
       if (want !== freshKeyNow()) return;
       fresh = { key: want, res: res, each: each };
       paintCosts();
+      maybeFollowAim();
     }, function (e) {
       if (freshWant === want) freshWant = null;
       // Taken from the waiting slot: by the simulator, whose landing asks again,
@@ -800,6 +801,7 @@
       adoptFresh(o, res);
       paintOut(); paintRoll();
       ensureFresh();
+      maybeFollowAim();
     }, function (e) {
       if (mine !== seq) return;
       // A newer request took this lane's one waiting place. If it was ours, the
@@ -934,12 +936,13 @@
       "#tab-advisor .av-pin{display:flex;flex-wrap:wrap;align-items:center;gap:6px 9px}" +
       // The label sits beside the box, not beside the whole block the line makes.
       "#tab-advisor .av-sim .bc-segrow.av-price{align-items:start}" +
-      "#tab-advisor .av-sim .bc-segrow.av-price>.lb{padding-top:6px}" +
-      "#tab-advisor .av-pricebox input{flex:0 1 130px;width:130px;min-width:0;background:var(--panel2);color:var(--text);" +
-        "border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13px;font-variant-numeric:tabular-nums}" +
+      "#tab-advisor .av-sim .bc-segrow.av-price>.lb{padding-top:4px}" +
+      // ---- the sim block's header: the title and Reset to default ----
+      "#tab-advisor .av-hdrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}" +
+      "#tab-advisor .av-hdrow .av-h{margin:0}" +
+      "#tab-advisor .av-pfig{font-size:16px;font-weight:800;letter-spacing:-.01em;color:var(--text);font-variant-numeric:tabular-nums;line-height:1.3}" +
       "#tab-advisor .av-ptag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;line-height:1.6;" +
         "padding:0 7px;border-radius:99px;border:1px solid var(--border);color:var(--dim)}" +
-      "#tab-advisor .av-ptag.mine{color:var(--accent);border-color:var(--accent)}" +
       "#tab-advisor .av-plink{background:none;border:none;padding:0;font-family:inherit;font-size:11.5px;font-weight:600;" +
         "color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}" +
       "#tab-advisor .av-pline{margin-top:5px;font-size:11px;color:var(--dim);line-height:1.45}" +
@@ -961,9 +964,6 @@
       "#tab-advisor .av-aimtab tr.best td{color:var(--accent);font-weight:700}" +
       "#tab-advisor .av-aimtab tr.flat td{opacity:.45}" +
       "#tab-advisor .av-aimtab tr.cur td:first-child{box-shadow:inset 3px 0 0 var(--high)}" +
-      "#tab-advisor .av-pricebox input:focus{outline:1px solid var(--accent)}" +
-      "#tab-advisor .av-pricebox input.bad{border-color:var(--bad)}" +
-      "#tab-advisor .av-pricebox .av-warn{margin:5px 0 0;font-size:11.5px}" +
       // ---- where it can land ----
       // The readout rides above the strip, at the pointer; pan-y keeps a
       // vertical swipe scrolling the page while a sideways drag reads the curve.
@@ -1314,14 +1314,13 @@
   // ---- the price per bracelet ----
   //
   // Shizu, 2026-09-24: "i want to see per bracelet cost", then "you are using
-  // a price right?" The field starts at GPD's own estimate for an unrolled
-  // bracelet with the simulated traits, and the reader can type over it: 500k,
-  // 1.2M, 900000 or 1,200,000. A typed price is kept per browser, marked "your
-  // price", until "use estimate" clears it. It changes no solve — only the two
-  // cards that read it — so it repaints the field and the cards, nothing else.
+  // a price right?" — and 2026-09-25: "remove the price per bracelet as
+  // editable and have only market level be movable". The figure is GPD's own
+  // estimate for an unrolled bracelet with the simulated traits, pheons
+  // included, at the market level on the slider under it. It changes no solve
+  // — only the cards that read it — so a level change repaints the figure and
+  // the cards, nothing else.
 
-  var priceTimer = null, priceErr = false;
-  var priceShown = null;       // the estimate's text as the box shows it; Enter on it is no price of yours
 
   // ---- GPD's price model (loa-gpd/model/bracelet-price.js) ----
   //
@@ -1360,9 +1359,9 @@
       var X = window.BraceletPrice;
       if (X && typeof X.allIn === "function" && typeof X.listed === "function") { priceModel = X; priceState = "ready"; }
       else priceState = "failed";
-      paintPrice(); paintOut();
+      paintPrice(); paintScale(); paintOut();
     };
-    tag.onerror = function () { priceState = "failed"; paintPrice(); paintOut(); };
+    tag.onerror = function () { priceState = "failed"; paintPrice(); paintScale(); paintOut(); };
     document.head.appendChild(tag);
   }
 
@@ -1411,11 +1410,10 @@
   function scaleGloss() {
     if (priceState === "failed") return "GPD’s price model did not load, so there is nothing to scale.";
     if (priceState === "ready" && simGrade() !== "ancient") return "GPD’s price model covers Ancient bracelets only, so there is nothing to scale on Relic.";
-    if (SIM.price > 0) return "Your typed price is in force, so this level no longer sets the price above. It still prices every pair in the recommendation below.";
     return "The level of unrolled-bracelet listings relative to the model’s fit: drag it until the estimate matches what you see on the market. " +
       "It scales every pair the same way, so the recommendation below moves with it.";
   }
-  function scaleDim() { return SIM.price > 0 || priceState === "failed" || (priceState === "ready" && simGrade() !== "ancient"); }
+  function scaleDim() { return priceState === "failed" || (priceState === "ready" && simGrade() !== "ancient"); }
   function scaleCaption() {
     var asOf = (priceModel && priceModel.MARKET_AS_OF) || PRICE_AS_OF, x = simScale();
     return (x === 1 ? "" : scaleText(x) + " ") + "GPD’s level as of " + asOf;
@@ -1448,138 +1446,63 @@
     row.outerHTML = scaleHtml();
   }
 
-  /** The price the cards use: yours when you typed one, else the estimate. -> { gold, mine, est }, or null for none. */
+  /** The price the cards use: GPD's estimate, pheons included. -> { gold, est }, or null without one. */
   function activePrice() {
     var est = priceEstimate();
-    if (SIM.price > 0) return { gold: SIM.price, mine: true, est: est };
-    return est ? { gold: est.total, mine: false, est: est } : null;
+    return est ? { gold: est.total, est: est } : null;
   }
 
-  /** "at the estimated 136k each" / "at your 500k each" — which price a card is reading. */
-  function priceWhich(ap) { return "at " + (ap.mine ? "your " : "the estimated ") + gold(ap.gold) + " each"; }
+  /** "at the estimated 136k each" — the price a card is reading. */
+  function priceWhich(ap) { return "at the estimated " + gold(ap.gold) + " each"; }
 
-  /**
-   * "500k", "1.2M", "900000", "1,200,000", "1,2M" -> gold. null for an empty
-   * box (or 0: no price), NaN for anything that is not a price.
-   */
-  function parsePrice(t) {
-    var x = String(t == null ? "" : t).trim().toLowerCase().replace(/[\s_]/g, "");
-    if (!x) return null;
-    if (/^\d{1,3}(,\d{3})+(\.\d+)?[kmb]?$/.test(x)) x = x.replace(/,/g, "");    // 1,200,000: grouping
-    else if (/^\d+,\d+[kmb]?$/.test(x)) x = x.replace(",", ".");               // 1,2m: a decimal comma
-    var m = /^(\d+(?:\.\d*)?|\.\d+)([kmb]?)$/.exec(x);
-    if (!m) return NaN;
-    var v = parseFloat(m[1]) * (m[2] === "k" ? 1e3 : m[2] === "m" ? 1e6 : m[2] === "b" ? 1e9 : 1);
-    return (isFinite(v) && v > 0) ? Math.round(v) : null;
+  /** Why there is no price, for a card's sub-line; "" while one is still expected. */
+  function noPriceWhy() {
+    if (priceState === "failed") return "GPD’s price model did not load";
+    if (priceState === "ready" && simGrade() !== "ancient") return "GPD prices Ancient bracelets only";
+    return "";
   }
 
-  /** A typed price as the box shows it: exact, never rounded — 500k, 1.2M, 1,234,567. */
-  function priceText(v) {
-    if (!(v > 0)) return "";
-    if (v >= 1e6 && v % 1e4 === 0) return String(v / 1e6) + "M";
-    if (v >= 1e3 && v % 1e3 === 0) return String(v / 1e3) + "k";
-    return nf(v);
-  }
-
-  /** The label's tooltip: what the figure in the box is, and how to change it. */
+  /** The label's tooltip: what the figure is. */
   function priceGloss(est) {
     if (est) {
-      return "GPD's estimate of what a bracelet with these traits costs before it is rolled: a curve fitted to Shizu's listings — " +
-        "the price rises with each stat, the higher stat faster — plus " + est.count + " pheons, a fixed floor. " +
-        "It moves with the traits and the market level; type a price to use your own.";
+      return "GPD's estimate of what a bracelet with these traits costs before it is rolled, pheons included: a curve fitted to Shizu's listings — " +
+        "the price rises with each stat, the higher stat faster — at the market level below, plus " + est.count + " pheons, a fixed floor. " +
+        "It moves with the traits and the market level.";
     }
-    return "What a bracelet like this one — these traits, not yet rolled or rolled as shown — costs to buy. The tool cannot know it, so you enter it.";
+    return "What a bracelet like this one costs to buy before it is rolled, pheons included. GPD's price model covers Ancient bracelets only, and it has no price for this one.";
   }
 
-  /** The tag beside the box, and the line under it. */
-  function priceTagHtml(est) {
-    if (SIM.price > 0) {
-      return '<span class="av-ptag mine">your price</span>' + (est
-        ? '<button type="button" class="av-plink" id="av-price-est" data-gloss="Go back to GPD’s estimate: ' + esc(gold(est.total)) + '.">use estimate</button>'
-        : "");
-    }
-    return est ? '<span class="av-ptag">estimated</span>' : "";
-  }
+  /** The line under the figure: listed + pheons, and whose level. */
   function priceLineHtml(est) {
     var M = priceModel;
-    if (SIM.price > 0) return "";
     if (est) {
       var asOf = (M && M.MARKET_AS_OF) || PRICE_AS_OF, x = simScale();
       return '<div class="av-pline">listed ' + esc(gold(est.listed)) + " + " + est.count + " pheons " + esc(gold(est.pheons)) +
         " — GPD’s price model, " + (x === 1 ? "market level as of " + esc(asOf) : "at " + scaleText(x) + " its " + esc(asOf) + " level") + "</div>";
     }
     if (priceState === "ready" && simGrade() !== "ancient") return '<div class="av-pline">GPD’s price model covers Ancient bracelets only.</div>';
+    if (priceState === "failed") return '<div class="av-pline">GPD’s price model did not load.</div>';
     return "";
   }
-  function priceWarnHtml() { return priceErr ? '<div class="av-warn">Not a price: try 500k, 1.2M or 900000.</div>' : ""; }
 
+  /**
+   * THE PRICE IS A READ-OUT (Shizu, 2026-09-25: "remove the price per bracelet
+   * as editable and have only market level be movable. You should still see
+   * price per bracelet though"). The estimate, pheons included, at the market
+   * level on the slider beneath it; the level is the one knob.
+   */
   function priceHtml() {
-    var est = priceEstimate(), mine = SIM.price > 0;
-    var val = mine ? priceText(SIM.price) : (est ? gold(est.total) : "");
-    priceShown = (!mine && est) ? val : null;
-    return '<div class="bc-segrow av-price" id="av-pricerow"><label class="lb" for="av-price" id="av-price-lb" data-gloss="' + esc(priceGloss(est)) + '">Price per bracelet</label>' +
-      '<div class="av-pricebox"><div class="av-pin"><input id="av-price" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. 500k"' +
-      (priceErr ? ' class="bad"' : "") + ' value="' + esc(val) + '"><span id="av-pricetag">' + priceTagHtml(est) + "</span></div>" +
-      '<div id="av-priceline">' + priceLineHtml(est) + "</div>" +
-      '<div id="av-pricewarn">' + priceWarnHtml() + "</div></div></div>";
+    var est = priceEstimate();
+    return '<div class="bc-segrow av-price" id="av-pricerow"><span class="lb" id="av-price-lb" data-gloss="' + esc(priceGloss(est)) + '">Price per bracelet</span>' +
+      '<div class="av-pricebox"><div class="av-pin"><span class="av-pfig">' + (est ? esc(gold(est.total)) : "—") + "</span>" +
+      (est ? '<span class="av-ptag" data-gloss="' + est.count + ' pheons at the game’s price are in this figure: a fixed floor under every bracelet, whatever the market level.">incl. ' + est.count + " pheons</span>" : "") +
+      "</div>" + priceLineHtml(est) + "</div></div>";
   }
 
-  /**
-   * Repaint the field. The box itself is left alone while the reader is in
-   * it — only the tag, the line and the tooltip follow — so a keystroke is
-   * never lost to a repaint.
-   */
+  /** Repaint the price. The market level's row repaints on its own (paintScale). */
   function paintPrice() {
-    paintScale();
-    var row = $("av-pricerow"), el = $("av-price");
-    if (!row) return;
-    if (el && document.activeElement === el) {
-      var est = priceEstimate(), t = $("av-pricetag"), ln = $("av-priceline"), lb = $("av-price-lb");
-      if (t) t.innerHTML = priceTagHtml(est);
-      if (ln) ln.innerHTML = priceLineHtml(est);
-      if (lb) lb.setAttribute("data-gloss", priceGloss(est));
-      return;
-    }
-    row.outerHTML = priceHtml();
-  }
-
-  function paintPriceErr() {
-    var w = $("av-pricewarn"), el = $("av-price");
-    if (w) w.innerHTML = priceWarnHtml();
-    if (el) el.classList.toggle("bad", !!priceErr);
-  }
-
-  /**
-   * Take what is in the box. `settle` is the commit — Enter or leaving the box:
-   * the field is redrawn to what is now in force, "your price" or the
-   * estimate, or, if the text is no price at all, the box says so and the last
-   * good price stands. While typing, a half-written figure waits quietly. The
-   * estimate's own text, untouched, is not a price of yours: Enter on it
-   * changes nothing. An empty box clears your price and the estimate returns.
-   */
-  function commitPrice(settle) {
-    if (priceTimer) { clearTimeout(priceTimer); priceTimer = null; }
-    var el = $("av-price");
-    if (!el) return;
-    var raw = String(el.value).trim();
-    if (!(SIM.price > 0) && priceShown !== null && raw === priceShown) {
-      if (priceErr) { priceErr = false; paintPriceErr(); }
-      return;
-    }
-    var v = parsePrice(raw);
-    if (v !== v) {
-      if (settle) { priceErr = true; paintPriceErr(); }
-      return;
-    }
-    if (priceErr) { priceErr = false; paintPriceErr(); }
-    if (v !== SIM.price) { SIM.price = v; saveSim(); paintOut(); }
-    if (settle) {
-      // Tidy the text in place — the cursor stays in the box on Enter.
-      var est = priceEstimate();
-      el.value = SIM.price > 0 ? priceText(SIM.price) : (est ? gold(est.total) : "");
-      priceShown = (!(SIM.price > 0) && est) ? el.value : null;
-    }
-    paintPrice();
+    var row = $("av-pricerow");
+    if (row) row.outerHTML = priceHtml();
   }
 
   function simHtml() {
@@ -1589,7 +1512,9 @@
     for (i = 0; i < legal.length; i++) slotOpts.push([legal[i], String(legal[i])]);
     var longNames = [];
     for (i = 0; i < kinds.length; i++) longNames.push((P.TRAIT_LABELS && P.TRAIT_LABELS[kinds[i]]) || kinds[i]);
-    var h = '<h2 class="av-h">A bracelet you might roll</h2><div class="av-simgrid"><div>';
+    var h = '<div class="av-hdrow"><h2 class="av-h">A bracelet you might roll</h2>' +
+      '<button type="button" class="mbtn av-reset" id="av-reset" data-gloss="Back to the defaults: the pair to aim for from Which pair to buy, 7 rolls, the grade your bracelet has with 3 slots, not rolled yet, market level 1×. Your bracelet is left alone.">Reset to default</button></div>' +
+      '<div class="av-simgrid"><div>';
     h += '<div class="bc-sl"><label class="lb" for="av-each" data-gloss="' +
       esc("Its two combat traits, both at this value: " + longNames.join(" and ") + ", the pair " +
         (b ? "your bracelet carries" : "your role runs") + ". They never reroll.") + '">' + esc(kindsLabel(kinds)) + "</label>" +
@@ -1648,11 +1573,11 @@
   /**
    * TO BEAT YOURS: how many bracelets like this one it takes, on average, before
    * one ends better than yours — 1 / P(beat), off the same P(beat) as the card
-   * that prints the odds — and what they cost in all at the reader's price.
+   * that prints the odds — and what they cost in all at the estimated price.
    */
   function toBeatCardHtml(c, always, ap) {
     var k = "To beat yours";
-    var tail = "Each attempt is a fresh bracelet, bought " + (ap ? priceWhich(ap) : "at the price you enter") +
+    var tail = "Each attempt is a fresh bracelet, bought " + (ap ? priceWhich(ap) : "at its estimated price") +
       ", rolled out fully and thrown away if it does not beat yours — a geometric expectation; the median attempt count is about 0.69 × this.";
     if (!c) return cardHtml(k, "How many bracelets like this one you would go through before one ends better than yours. " + tail, "—", "", "", false);
     if (!(c.pBeat > 1e-9)) {
@@ -1663,24 +1588,24 @@
     var gloss = (one <= 1
       ? "Nearly every bracelet like this one ends better than yours. "
       : "About one in " + nf(one) + " bracelets like this one ends better than yours. ") + tail;
-    var sub = ap ? "about " + gold(ap.gold * n) + " at " + gold(ap.gold) + " each" : "enter a price";
+    var sub = ap ? "about " + gold(ap.gold * n) + " at " + gold(ap.gold) + " each" : noPriceWhy();
     return cardHtml(k, gloss, attemptsHtml(n, always), "", sub, false);
   }
 
   /**
-   * PRICE VS WORTH: the price in force — yours, or the estimate — against
-   * Worth paying, in one line. Worth paying already counts the odds, so the
-   * two compare directly.
+   * PRICE VS WORTH: the estimated price, pheons included, against Worth
+   * paying, in one line. Worth paying already counts the odds, so the two
+   * compare directly.
    */
   function priceCardHtml(ap, w, hasBar) {
     var k = "Price vs worth";
-    var head = ap ? "The price " + priceWhich(ap) + ", against Worth paying" : "Your price against Worth paying";
+    var head = ap ? "The price " + priceWhich(ap) + ", pheons included, against Worth paying" : "The estimated price against Worth paying";
     var gloss = hasBar
       ? head + ". Worth paying already counts the odds — how often it beats yours and by how far — " +
         "so a price above it loses gold on average, and a price below it gains."
       : head + ": what it adds over wearing no bracelet. A price above it loses gold on average, " +
         "and a price below it gains.";
-    if (!ap) return cardHtml(k, gloss, "—", "", "enter a price", false);
+    if (!ap) return cardHtml(k, gloss, "—", "", noPriceWhy(), false);
     if (!w) return cardHtml(k, gloss, "—", "", "", false);
     var price = ap.gold, pg = gold(price), wg = gold(w.gold), line, cls;
     if (pg === wg) { line = "a fair price: " + pg + " for " + wg + " of value"; cls = "line"; }
@@ -1718,23 +1643,26 @@
     var c = cdf ? compareCdf(cdf, b.D) : null;
     var w = cdf ? worthCdf(cdf, b.pct) : null;
     var never = c && !(c.pBeat > 1e-9), always = !!(c && !(c.pBeat < 1 - 1e-9));
-    var ib = "—", ibs = "", inot = "—", inots = "";
+    var ib = "—", ibs = "";
     if (c) {
       if (never) ibs = "it never beats yours";
       else if (okNum(c.meanIfBeat)) { ib = dmg(c.meanIfBeat); ibs = signPct(c.meanIfBeat - b.pct) + " over yours"; }
-      if (always) inots = "it always beats yours";
-      else if (okNum(c.meanIfNot)) { inot = dmg(c.meanIfNot); inots = dmg(b.pct - c.meanIfNot) + " short of yours"; }
     }
+    // EXPECTED FINAL holds the third card, where "If it doesn't" was (Shizu,
+    // 2026-09-25: "we don't need 'if it doesn't'"). The average over every
+    // outcome is the figure people quote, and it carries the missing half:
+    // mean = P(beat) × mean-if-beats + (1 − P(beat)) × mean-if-not.
+    var efs = "";
+    if (res && okNum(ef)) efs = (ef >= b.pct ? signPct(ef - b.pct) + " over yours" : dmg(b.pct - ef) + " short of yours") + " · " + rollsSub(lastOpts);
     var h = '<div class="av-cards six" id="av-cards">';
     // how it lands
     h += cardHtml("Beats your bracelet",
       "How often it finishes at or above your bracelet, over every way the remaining rolls can land, each played perfectly.",
-      c ? odds(c.pBeat) : "—", "acc",
-      (res ? "expected final " + dmg(ef) + " · " : "") + "yours " + dmg(b.pct), true);
+      c ? odds(c.pBeat) : "—", "acc", "yours " + dmg(b.pct), true);
     h += cardHtml("If it beats", "Its average finish across the outcomes that beat your bracelet, and how far past yours that is.",
       ib, "good", ibs, false);
-    h += cardHtml("If it doesn\u2019t", "Its average finish across the outcomes that fall short of your bracelet, and how far below yours that is.",
-      inot, "", inots, false);
+    h += cardHtml("Expected final", "Its average finish over every way the remaining rolls can land, each played perfectly: the odds-weighted mean of the finishes that beat yours and the ones that fall short.",
+      res ? dmg(ef) : "—", "", efs, false);
     // what it costs
     h += cardHtml("Worth paying",
       "What it is worth to you in gold: the odds it beats yours × how far past yours those finishes land, on average × your gold per 1% (" +
@@ -1756,9 +1684,9 @@
   // odds one such bracelet beats yours. Cheaper pairs beat yours less often,
   // dearer ones cost more each time; the answer is where the two meet.
   //
-  // ALWAYS THE CURVE. A typed price is one bracelet's price; the question here
-  // is which pair to buy, so every row is priced on GPD's curve even when a
-  // typed price is in force above.
+  // Every row is priced on GPD's curve at the market level above, pheons
+  // included — the same figure the Price per bracelet read-out shows for the
+  // simulated pair.
   // ------------------------------------------------------------------
 
   var lastAimInner = null;   // the last section drawn, kept up dimmed while a fresh solve is out
@@ -1820,9 +1748,13 @@
     if (bar && m.priced && m.best) {
       h += '<div class="av-aimhd" data-gloss="The pair with the lowest expected spend in the table: its price ÷ the odds it beats yours. ' +
         "Cheaper pairs beat yours less often, dearer ones cost more each time; this is where the two meet. " +
-        'Every pair is priced on GPD’s curve at the market level above, never on a typed price, because the question is which pair to buy.">' +
+        'Every pair is priced on GPD’s curve at the market level above, pheons included.">' +
         "Aim for <b>" + m.best.v + "/" + m.best.v + "</b> — about " + esc(gold(m.best.spend)) + " expected to beat yours (" +
         esc(countText(m.best.p)) + " at " + esc(gold(m.best.price)) + ")</div>";
+      if (cur !== m.best.v) {
+        h += '<div class="av-aimsub"><button type="button" class="av-plink" id="av-aim-use" data-gloss="Put the simulator on this pair. It is the default: the pair follows this recommendation until you move the slider or pick a row.">Set the slider to ' +
+          m.best.v + "/" + m.best.v + "</button></div>";
+      }
       if (m.runner) h += '<div class="av-aimsub">' + m.runner.v + "/" + m.runner.v + " would cost about " + esc(gold(m.runner.spend)) + "</div>";
     } else if (bar && m.priced) {
       h += '<p class="av-aimhd plain">Nothing at any pair beats yours at this level.</p>';
@@ -1835,7 +1767,7 @@
     }
     var cols = [["Pair", "Both combat traits at this value, " + (bar ? "the kinds your bracelet carries" : "your role’s usual pair until you set your bracelet") +
       ". Click a row to set the simulator to it."]];
-    if (m.priced) cols.push(["Price", "One unrolled bracelet with this pair: GPD’s curve at the market level above, plus 20 pheons. Always the curve, never a typed price, because the table compares pairs."]);
+    if (m.priced) cols.push(["Price", "One unrolled bracelet with this pair: GPD’s curve at the market level above, plus 20 pheons."]);
     if (bar) cols.push(["Beats yours", "How often one such bracelet, rolled out fully, finishes at or above yours."]);
     if (m.priced && bar) cols.push(["Expected spend", "Price ÷ the odds: what you would spend, on average, buying such bracelets until one beats yours."]);
     cols.push(["Worth paying", bar
@@ -1870,6 +1802,60 @@
   function markAimCur() {
     var rows = document.querySelectorAll("#av-aim tr[data-avpair]"), e = simEach(), i;
     for (i = 0; i < rows.length; i++) rows[i].classList.toggle("cur", Number(rows[i].getAttribute("data-avpair")) === e);
+  }
+
+  // THE DEFAULT PAIR IS THE ONE TO AIM FOR (Shizu, 2026-09-25: "the default
+  // setting should also be which pair to buy"). Until the reader moves the
+  // slider or picks a row (SIM.eachSet), the pair follows the recommendation:
+  // once per set of inputs the recommendation is made from — the bar, grade,
+  // slots, trait kinds, market level and profile — so the re-solve at the new
+  // pair can never chase its own tail. Never mid-drag: moving the slider
+  // rebuilds the sim block, so a market-level drag follows on its change event.
+  var aimFollowed = null;
+  function aimKeyNow() {
+    var b = barNow();
+    return JSON.stringify([b ? b.D : null, simGrade(), SIM.slots, traitKinds(), simScale()]) + "|" + JSON.stringify(P.profile());
+  }
+  function maybeFollowAim() {
+    if (SIM.eachSet) return false;
+    var m = aimRows();
+    if (!m || !m.best) return false;
+    var k = aimKeyNow();
+    if (aimFollowed === k) return false;
+    aimFollowed = k;
+    return setEach(m.best.v, false);
+  }
+  /**
+   * Put the simulator on a pair: the slider, the row mark and a solve.
+   * `chosen` records it as the reader's own, which stops the following above.
+   * False when the pair did not move (nothing repainted, nothing solved).
+   */
+  function setEach(v, chosen) {
+    var rg = eachRange(simGrade());
+    v = clamp(Math.round(num(v, SIM.each)), rg[0], rg[1]);
+    SIM.eachSet = !!chosen;
+    if (v === simEach()) { saveSim(); return false; }
+    SIM.each = v;
+    lastVerdict = null; retries = 0; saveSim();
+    paintSim(); markAimCur(); schedule(true);
+    return true;
+  }
+
+  /**
+   * RESET TO DEFAULT (Shizu, 2026-09-25: "there should be buttons to set to
+   * default"): the simulator's own state back to simDefaults — the pair to aim
+   * for (set at once when the recommendation is in hand, else when the next
+   * solve lands), 7 rolls, the grade your bracelet has with 3 slots, not
+   * rolled yet, market level 1×, and the cut flow's padlocks, roll and history
+   * gone. Your bracelet is not touched.
+   */
+  function resetSim() {
+    SIM = simDefaults();
+    fitSim(SIM);
+    aimFollowed = null; lastVerdict = null; retries = 0;
+    saveSim();
+    paintSim(); paintCosts(); paintRoll();
+    if (!maybeFollowAim()) schedule(true);
   }
 
   /** The figures that read the price, and nothing that reads only the solve: the cards and the section. */
@@ -2448,10 +2434,10 @@
       "gold, and this tool treats them as free, so rolling always beats stopping.</p>" +
 
       "<p><b>Beats your bracelet</b> is the share of that spread at or above your bracelet&rsquo;s score. " +
-      "<b>If it beats</b> and <b>if it doesn&rsquo;t</b> average the finishes on each side of it. The spread is " +
+      "<b>If it beats</b> averages the finishes above it. The spread is " +
       "carried in about 160 steps; where one step straddles your score, its share is split across it rather " +
       "than counted whole. <b>Expected final</b> is the solver&rsquo;s average score turned into damage, while " +
-      "the two halves average the damage itself, so when every finish lands on one side, that side can read a " +
+      "If it beats averages the damage itself, so when every finish beats yours it can read a " +
       "hundredth or two above the expected final.</p>" +
 
       "<p><b>Worth paying</b> is <code>E[max(0, final% &minus; yours%)] &times; gold per 1%</code>: the odds it " +
@@ -2460,15 +2446,15 @@
       "worth nothing to you, not a debt. It is what the bracelet is worth to you at the gold rate set on the " +
       "Calculator, not what it sells for. With no bracelet of yours loaded, it is measured against none.</p>" +
 
-      "<p><b>Price per bracelet</b> starts at the GPD chart&rsquo;s estimate for a bracelet with these traits " +
-      "before it is rolled: a curve fitted to Shizu&rsquo;s listings, where the price rises with each stat and the " +
+      "<p><b>Price per bracelet</b> is the GPD chart&rsquo;s estimate for a bracelet with these traits " +
+      "before it is rolled, pheons included: a curve fitted to Shizu&rsquo;s listings, where the price rises with each stat and the " +
       "higher stat faster, set to the market level of " + PRICE_AS_OF + " &mdash; a pair with Crit sells on the " +
       "damage dealers&rsquo; market, Spec and Swiftness on the supports&rsquo; &mdash; plus 20 pheons, a fixed " +
       "floor. The tab asks that chart&rsquo;s own model rather than keeping a copy of it. It covers Ancient " +
-      "bracelets only. Type a price to use your own; <b>use estimate</b> goes back. " +
+      "bracelets only, and it is a read-out: the market level beneath it is the one knob. " +
       "<b>To beat yours</b> is <code>1 &divide; P(beat)</code>: how many such bracelets you " +
-      "would go through, on average, before one ends better than yours, each bought at the price in force &mdash; " +
-      "yours if you typed one, else the estimate &mdash; rolled out fully and thrown away if it falls short. It is a " +
+      "would go through, on average, before one ends better than yours, each bought at that price, " +
+      "rolled out fully and thrown away if it falls short. It is a " +
       "geometric expectation, so it often takes fewer: the median is about 0.69 &times; the average. The gold under " +
       "it is that price &times; that count. <b>Price vs worth</b> sets the same price against Worth paying, which " +
       "already counts the odds and how far " +
@@ -2482,8 +2468,9 @@
       "from one solve, moved to each pair by what its traits add on your character: exact for Specialization and " +
       "Swiftness, within a few hundredths of a point for Crit, whose worth bends near the crit cap. A cheaper pair " +
       "beats yours less often and a dearer one costs more each time; the pair where the two meet is the one to aim " +
-      "for. Rows past the point where the odds stop rising are dimmed. The table always prices pairs on the curve, " +
-      "even when a typed price is in force, because it compares pairs.</p>" +
+      "for. Rows past the point where the odds stop rising are dimmed. Until you move the trait slider or pick " +
+      "a row, the simulator&rsquo;s pair follows this recommendation, and <b>Reset to default</b> brings it back " +
+      "to it, with 7 rolls, 3 slots, not rolled yet and the market level at 1&times;.</p>" +
 
       "<p><b>Gold per 1%</b>, under Market level, is the rate every gold figure on this tab uses &mdash; Worth " +
       "paying, the Worth column and the lock table. It arrives with the character, from combat power, and it is " +
@@ -2580,24 +2567,22 @@
   function bind(pane) {
     pane.addEventListener("input", function (e) {
       var t = e.target, id = t.id || "", c;
-      // The price: take it once the hand stops, so "1.2" on its way to "1.2M"
-      // is never priced.
-      if (id === "av-price") { if (priceTimer) clearTimeout(priceTimer); priceTimer = setTimeout(function () { commitPrice(false); }, 300); return; }
       // The market level: no solve, only the prices and what reads them.
       if (id === "av-scale") {
         SIM.scale = scaleAt(t.value);
         saveSim();
         paintScale();
-        if (!(SIM.price > 0)) paintPrice();
+        paintPrice();
         paintCosts();
         return;
       }
       if (id === "av-each") {
         var r = eachRange(simGrade());
         SIM.each = clamp(Math.round(num(t.value, EACH_DEFAULT)), r[0], r[1]);
+        SIM.eachSet = true;                       // the reader's own pair from here on
         if ((c = $("av-each-chip"))) c.textContent = pairText(SIM.each);
         // The estimate moves with the traits; the cards wait for the solve.
-        if (!(SIM.price > 0)) paintPrice();
+        paintPrice();
         markAimCur();
         lastVerdict = null; retries = 0; saveSim(); schedule();
         return;
@@ -2627,7 +2612,8 @@
 
     pane.addEventListener("change", function (e) {
       var t = e.target, id = t.id || "", lk;
-      if (id === "av-price") { commitPrice(true); return; }
+      // The market level settled: the pair to aim for may have moved with it.
+      if (id === "av-scale") { maybeFollowAim(); return; }
       if (/^av-s-(fam|tier|val)-\d+$/.test(id)) {
         var flipped = simRowEvent(t);
         voidCut(); saveSim(); retries = 0;
@@ -2711,27 +2697,20 @@
       // A row of "which pair to buy" sets the simulator to that pair.
       var arow = t.closest ? t.closest("tr[data-avpair]") : null;
       if (arow && $("av-aim") && $("av-aim").contains(arow)) {
-        var rg = eachRange(simGrade());
-        SIM.each = clamp(Math.round(num(arow.getAttribute("data-avpair"), SIM.each)), rg[0], rg[1]);
-        lastVerdict = null; retries = 0; saveSim();
-        paintSim(); markAimCur(); schedule(true);
+        setEach(arow.getAttribute("data-avpair"), true);
         return;
       }
-      if (t.id === "av-price-est") {
-        SIM.price = null; priceErr = false; saveSim();
-        paintPrice(); paintOut();
+      if (t.id === "av-aim-use") {
+        var mm = aimRows();
+        aimFollowed = aimKeyNow();
+        if (mm && mm.best) setEach(mm.best.v, false);
         return;
       }
+      if (t.id === "av-reset") { resetSim(); return; }
       if (t.id === "av-check") { checkRoll(); return; }
       if (t.id === "av-apply-new") { applyVerdict(true); return; }
       if (t.id === "av-apply-keep") { applyVerdict(false); return; }
       if (t.id === "av-undo") { undo(); return; }
-    });
-
-    // Enter settles the price the way leaving the box does. A text box outside
-    // a form fires no change event on Enter, so it is caught here.
-    pane.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && e.target && e.target.id === "av-price") { e.preventDefault(); commitPrice(true); }
     });
 
     // toggle does not bubble; a capturing listener on the pane still hears it.

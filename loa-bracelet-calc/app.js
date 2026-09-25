@@ -1666,6 +1666,14 @@
       ".bc-tract{flex:0 0 74px;order:4;padding:4px 8px;font-size:11px;text-align:center}" +
       "@media(max-width:640px){.bc-sl.bc-trrow{gap:6px}.bc-trrow .lb{flex:0 0 62px}" +
         ".bc-trrow input[type=number]{flex:0 0 78px}.bc-trrow .bc-trw{flex:0 0 52px}.bc-tract{flex:0 0 66px}}" +
+      // ---- traits beside the slots ----
+      // The left column is the trait row's own width; the slot rows get the
+      // rest. Each column's heading is its first child, so .subh:first-child
+      // (styles.css) already drops its top margin and the grid carries it.
+      "#tab-calculator .bc-brgrid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:0 26px;align-items:start;margin-top:12px}" +
+      "#tab-calculator .bc-brgrid>.bc-brcol{min-width:0}" +
+      "@media(max-width:860px){#tab-calculator .bc-brgrid{grid-template-columns:minmax(0,1fr)}" +
+        "#tab-calculator .bc-brgrid>.bc-brcol+.bc-brcol{margin-top:12px}}" +
       // ---- headline cards ----
       "#tab-calculator .bc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px}" +
       "#tab-calculator .bc-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px}" +
@@ -1776,16 +1784,22 @@
       '    <div id="bc-slotshost"></div>' +
       '  </div>' +
       '  <div class="bc-sub" id="bc-slotnote"></div>' +
-      // THE TRAIT ROWS GET THE WHOLE WIDTH. The granted-slot count sat beside
-      // them from 2026-08-12 on the argument that the two say the same kind of
-      // thing — but a trait row is 326px of cells that cannot shrink, and in the
-      // Advisor's left column the box holding it is 261px, so it overflowed and
-      // printed under the slot pills. The count is in the cluster above now.
-      '  <div class="subh"><span id="bc-trhd">Combat traits</span></div>' +
-      '  <div id="bc-traits"></div>' +
-      '  <div class="subh"><span data-gloss="The lines the bracelet rolled. Leave every slot empty to grade a bracelet that has not been rolled yet.">Granted slots</span></div>' +
-      '  <div id="bc-slots"></div>' +
-      '  <div id="bc-fixed"></div>' +
+      // TRAITS LEFT, SLOTS RIGHT (Shizu, 2026-09-25: "granted slots doesn't need
+      // the whole rows, it can be to the right of combat traits"). A trait row
+      // is 326px of cells that cannot shrink, so the left column is fixed at
+      // that and the slot rows take the rest; under 860px the two stack again.
+      // The granted-slot COUNT is in the cluster above, with grade and rolls.
+      '  <div class="bc-brgrid">' +
+      '    <div class="bc-brcol">' +
+      '      <div class="subh"><span id="bc-trhd">Combat traits</span></div>' +
+      '      <div id="bc-traits"></div>' +
+      '    </div>' +
+      '    <div class="bc-brcol">' +
+      '      <div class="subh"><span data-gloss="The lines the bracelet rolled. Leave every slot empty to grade a bracelet that has not been rolled yet.">Granted slots</span></div>' +
+      '      <div id="bc-slots"></div>' +
+      '      <div id="bc-fixed"></div>' +
+      '    </div>' +
+      '  </div>' +
       // NO ECONOMY HERE any more (Shizu, 2026-09-25: "for the grader i feel like
       // we don't need economy, gold, worth, unrolled value"). The gold rate is
       // hosted by the Advisor under its price controls, and the baseline is that
