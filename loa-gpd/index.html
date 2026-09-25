@@ -209,7 +209,9 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
   ticked above, starting from the growth shop piece (one high line and two low flats): each rung is the piece a buyer
   moves to next, so every step costs more per 1% than the one before it. A rung marked "pheons only" is a market piece
   the calculator nets to nothing — it costs the pheons and the listing floor. On the DPS axis a flat level covers both
-  Attack Power+ and Weapon Power+ lines; the ladder takes whichever prices better.</div>
+  Attack Power+ and Weapon Power+ lines; the ladder takes whichever prices better. With sidegrades off, a rung must
+  raise a primary line and lower none — nobody sells a mid/high to buy a high/mid — until both lines are high, where
+  a better main stat or flat is the only step left.</div>
 </div>
 
 <h2>Every step, cheapest damage first</h2>
@@ -242,7 +244,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 <!-- live NA market prices for the material panel; unpinned, the 6-hour refresh
      (fetch_prices.py in refresh-data.yml) rewrites it in place -->
 <script src='prices.js'></script>
-<script src='lookup.js?v=3'></script>
+<script src='lookup.js?v=4'></script>
 <script src='https://www.loseii.com/loa-astrogem-calc/model/astrogem.js' defer></script>
 <script src='bible-oauth.js?v=20260922a'></script>
 <script>
@@ -573,24 +575,29 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
     if (!host.firstChild) {
       host.innerHTML = "<span class='acc-title'>Accessories</span>" +
         pillSeg("flat", "flat line", L.ACC_FLAT_OPTS) + pillSeg("stat", "main stat", L.ACC_STAT_OPTS) +
+        pillSeg("sidegrades", "sidegrades", ["allowed", "off"]) +
         "<span class='acc-hint' id='accHint'></span>";
       host.addEventListener("click", function (ev) {
         var pill = ev.target.closest ? ev.target.closest(".rk-pill") : null;
         if (!pill) return;
         var dim = pill.parentNode.getAttribute("data-dim"), val = pill.getAttribute("data-val");
+        if (dim === "sidegrades") { state.accFilter.sidegrades = val === "allowed"; render(); return; }
         var sel = state.accFilter[dim], i = sel.indexOf(val);
         if (i >= 0) sel.splice(i, 1); else sel.push(val);
         render();
       });
     }
     [].slice.call(host.querySelectorAll(".rk-pill")).forEach(function (p) {
-      var dim = p.parentNode.getAttribute("data-dim");
-      p.classList.toggle("on", state.accFilter[dim].indexOf(p.getAttribute("data-val")) >= 0);
+      var dim = p.parentNode.getAttribute("data-dim"), val = p.getAttribute("data-val");
+      p.classList.toggle("on", dim === "sidegrades"
+        ? (val === "allowed") === (state.accFilter.sidegrades !== false)
+        : state.accFilter[dim].indexOf(val) >= 0);
     });
     var off = !state.accFilter.flat.length || !state.accFilter.stat.length;
     el("accHint").textContent = off
       ? "accessories off — tick a flat line and a main stat to price them"
-      : "only the ticked families are priced";
+      : "only the ticked families are priced" +
+        (state.accFilter.sidegrades === false ? " · every step raises a primary line" : "");
   }
 
   function steps() { return L.steps(state); }
@@ -1256,7 +1263,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
       "measured from your own bracelet. Sorted by the NEXT step's price, so the top row is the buy; the last " +
       "step is what the rung you already stand on cost per 1%, at today's material prices. " +
       "The bracelet is scored by the <a href='" + BC_BASE + "'>bracelet calculator</a>'s own scorer. " +
-      "Accessory rungs are the chart's own chain for the families ticked above the plan — by " +
+      "Accessory rungs are the chart's own chain for the families and the sidegrades switch above the plan — by " +
       "default <b>no flat line, high main stat</b> — starting from the growth shop piece, and your " +
       "own piece is a rung on it, so both prices are measured against the piece you actually wear, " +
       "flat lines and main stat included.</div>" +

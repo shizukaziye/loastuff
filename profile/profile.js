@@ -78,7 +78,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=3";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=4";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
@@ -760,7 +760,12 @@
     var br = rec.bracelet, los = rec.loadouts || [];
     for (var i = 0; i < los.length; i++) if (los[i] && los[i].label === label && los[i].bracelet) { br = los[i].bracelet; break; }
     if (!br || (br.numRerolls == null && br.numTicketRerolls == null)) return null;
-    return { base: br.numRerolls || 0, ticket: br.numTicketRerolls || 0 };
+    // lostark.bible's two counts are the rolls USED against a fresh bracelet's 4
+    // and 3 (loa-bracelet-calc/docs/research/mechanics-bible-leaderboard.md), so
+    // 4 and 3 is a bracelet with nothing left. This page summed them as rolls
+    // left until 2026-09-25.
+    var base = br.numRerolls || 0, ticket = br.numTicketRerolls || 0;
+    return { base: base, ticket: ticket, left: Math.max(0, 4 - base) + Math.max(0, 3 - ticket) };
   }
   /** A board row, or scoreRecord()'s copy of one -> the bracelet overview. */
   function brPart(x, rec, onBoard) {
@@ -1294,13 +1299,13 @@
     if (!b.lines.length) h += '<div class="lp-line"><span class="lp-lname lp-dim">No effect lines</span><span></span><span></span></div>';
     h += "</div>";
     var traits = b.traits.length ? b.traits.map(function (t) { return esc(t.short || t.label) + " " + nf(t.value); }).join(" · ") : "—";
-    var rolls = b.rolls ? String(b.rolls.base + b.rolls.ticket) : "—";
+    var rolls = b.rolls ? String(b.rolls.left) : "—";
     h += '<div class="lp-kv">' +
       '<div' + gl(b.traitsGloss || "The record lists no combat traits for this bracelet.") + '><span class="k">Combat traits</span><span class="v">' + traits + "</span></div>" +
       '<div' + gl(sup ? "What one damage dealer next to this support gains from the bracelet, on the default support. The Support board ranks on it." :
         "What the whole bracelet adds to damage on the calculator's default character. The board ranks on it.") +
         '><span class="k">' + (sup ? "Per dealer" : "Damage") + '</span><span class="v lp-strong">' + (isNum(b.pct) ? fx(b.pct, 2) + "%" : "—") + "</span></div>" +
-      '<div' + gl(b.rolls ? b.rolls.base + " regular and " + b.rolls.ticket + " ticket rerolls, as lostark.bible reports them. The calculator reads them the same way."
+      '<div' + gl(b.rolls ? b.rolls.base + " of 4 regular and " + b.rolls.ticket + " of 3 ticket rerolls used, as lostark.bible reports them, so " + b.rolls.left + " left. The calculator reads them the same way."
         : "lostark.bible does not report the rerolls for this bracelet.") + '><span class="k">Rolls left</span><span class="v">' + rolls + "</span></div>" +
       '<div' + gl(b.loadoutNote || "") + '><span class="k">Loadout</span><span class="v">' + esc(b.loadout || "—") + "</span></div>" +
       "</div>";

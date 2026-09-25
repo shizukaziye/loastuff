@@ -238,6 +238,15 @@ shown as **pheons only**: it costs the pheons and the listing floor, not a price
 the model can name. Under the default switches that is one rung on most slots
 (a bare "high/— · no flat · high stat", or a "mid/mid" on the DPS market).
 
+**Sidegrades.** A step that swaps which line is high — mid/high to high/mid —
+or changes only the main stat is a sale and a purchase, not an upgrade in
+place, and some players will never make one (PrinceOfZamunda, 2026-09-24).
+They are allowed by default: sell the old piece, buy the next, the step's gold
+is the price difference. The switch above the plan turns them off; then a rung
+must raise a primary line and lower none, until both lines are high, where a
+better main stat or flat is the only step left. The lookup's next step obeys
+the same rule from the piece worn.
+
 A rung's `total` is the piece's market price; its `gold` is the difference from
 the rung before it, since you sell one piece and buy the next.
 

@@ -19,7 +19,8 @@ Systems charted:
 - **Accessories** — neck, earring and ring, built live from the accessory
   calculator's price lattice, starting from the growth shop piece (one high line,
   two low flats). Switches above the plan choose which flat-line and main-stat
-  families count; the default is no flat line, high main stat.
+  families count and whether sidegrades count; the default is no flat line,
+  high main stat, sidegrades allowed.
 - **Ark grid** — a simulated account cutting rares or epics, one ladder each,
   priced tier by tier from 250k to 100M gold per 1%.
 

@@ -8,7 +8,7 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=3"></script>
+ *   <script src="/loa-gpd/lookup.js?v=4"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
@@ -24,7 +24,7 @@
  * shaped like the chart's own state (the chart passes that object itself):
  *
  *   axis        "support" | "dps"
- *   accFilter   { flat: [...], stat: [...] }   the switches above the plan
+ *   accFilter   { flat: [...], stat: [...], sidegrades: bool }   the switches above the plan
  *   prices      { materialId: gold per ONE unit }  the material panel
  *   enabled     { materialId: bool, shards: bool } unticked = already bound
  *   gem8Price   the level-8 gem's auction price
@@ -126,7 +126,7 @@
   var GEM8_PRICE = 420000;
   var ACC_FLAT_OPTS = ["no", "low", "mid", "high"];
   var ACC_STAT_OPTS = ["min", "low", "mid", "high", "max"];
-  var ACC_FILTER = { flat: ["no"], stat: ["high"] };
+  var ACC_FILTER = { flat: ["no"], stat: ["high"], sidegrades: true };
 
   /** prices.js's answer: { date, region, perUnit: { slug: gold per ONE unit } }
    *  or null when the page has not loaded it (or it failed). */
@@ -167,7 +167,8 @@
       enabled[m.id] = m.on;
       if (m.kind === "shard_pouch") enabled.shards = false;
     });
-    return { accFilter: { flat: ACC_FILTER.flat.slice(), stat: ACC_FILTER.stat.slice() },
+    return { accFilter: { flat: ACC_FILTER.flat.slice(), stat: ACC_FILTER.stat.slice(),
+                          sidegrades: ACC_FILTER.sidegrades },
              prices: prices, enabled: enabled, gem8Price: GEM8_PRICE };
   }
 
@@ -241,12 +242,31 @@
              D: bare.D + (atk.D - bare.D) + (wpn.D - bare.D), gold: 0, label: label, shop: true };
   }
   function accFilterKey(f) {
-    return f.flat.join(",") + "/" + f.stat.join(",");
+    return f.flat.join(",") + "/" + f.stat.join(",") + (f.sidegrades === false ? "/strict" : "");
   }
   /** "atk-high" and "wpn-high" are both the high level; null is "no". */
   function accFlatLevel(flat) { return flat ? flat.replace(/^(atk|wpn)-/, "") : "no"; }
   function accAllowed(f, p) {
     return f.flat.indexOf(accFlatLevel(p.flat)) >= 0 && f.stat.indexOf(p.ms) >= 0;
+  }
+  // NO SIDEGRADES (PrinceOfZamunda, 2026-09-24; Shizu: "I'll add a toggle"):
+  // with the switch off, a step must raise a primary line and lower none —
+  // nobody sells a mid/high to buy a high/mid, and nobody rebuys a high/mid
+  // for its main stat. Once both primaries are high there is no line left to
+  // raise, so a better main stat or flat is the step. With it on (the
+  // default) any dearer, better piece is a step: sell the old one, buy the
+  // next, the gold is the difference.
+  var TIER_RANK = { low: 1, mid: 2, high: 3 };
+  function tierRank(t) { return t ? TIER_RANK[t] || 0 : 0; }
+  function allHigh(p) { return p.prim.every(function (t) { return t === "high"; }); }
+  function accStepsUp(from, to) {
+    var up = false;
+    for (var i = 0; i < to.prim.length; i++) {
+      var a = tierRank(from.prim[i]), b = tierRank(to.prim[i]);
+      if (b < a) return false;
+      if (b > a) up = true;
+    }
+    return up || (allHigh(from) && allHigh(to));
   }
   function accChain(ctx, axis, kind) {
     var f = ctx.accFilter;
@@ -279,6 +299,7 @@
         // a piece the calculator nets to nothing (gold 0) may still beat the
         // rung before it; it is allowed in at a zero slope
         if (p.D <= cur.D || p.gold < cur.gold) return;
+        if (f.sidegrades === false && !accStepsUp(cur, p)) return;
         var slope = (p.gold - cur.gold) / (p.D - cur.D);
         // equal slopes: take the further piece, the nearer one is the same buy
         if (slope < bestSlope - 1e-9 || (Math.abs(slope - bestSlope) <= 1e-9 && p.D > best.D)) {
@@ -623,6 +644,7 @@
                      gold: cfg.gold || 0, label: lkCfgLabel(cfg) };
     var next = null;
     for (i = belowAt + 1; i < fam.length; i++) {
+      if (ctx.accFilter.sidegrades === false && !accStepsUp(mineRung, fam[i])) continue;
       var st = lkAccStep(mineRung, fam[i], axis);
       if (st && (!next || st.gpd < next.gpd)) next = st;
     }
@@ -1304,9 +1326,11 @@
    *   input.astro     the astrogem-bible answer (or null)
    *   input.axis      "support" | "dps"; omitted, the class's own axis
    *                   (support iff a support class with a support gem set)
-   *   input.switches  { flat, stat, prices, enabled, gem8Price }, each
-   *                   optional: flat/stat replace the ticked accessory
+   *   input.switches  { flat, stat, sidegrades, prices, enabled, gem8Price },
+   *                   each optional: flat/stat replace the ticked accessory
    *                   families (default no flat line, high main stat);
+   *                   sidegrades false lets no accessory step lower a
+   *                   primary line (default true);
    *                   prices (gold per ONE unit) and enabled merge over the
    *                   material panel's defaults
    *   input.now       the clock, for "read from a pull N days old"
@@ -1339,7 +1363,8 @@
     for (var k in DATA) ctx[k] = DATA[k];            // the tables and their caches, shared
     ctx.axis = input.axis === "support" || input.axis === "dps" ? input.axis : c.role;
     ctx.accFilter = { flat: Array.isArray(sw.flat) ? sw.flat.slice() : d0.accFilter.flat,
-                      stat: Array.isArray(sw.stat) ? sw.stat.slice() : d0.accFilter.stat };
+                      stat: Array.isArray(sw.stat) ? sw.stat.slice() : d0.accFilter.stat,
+                      sidegrades: sw.sidegrades === false ? false : d0.accFilter.sidegrades };
     ctx.prices = d0.prices; ctx.enabled = d0.enabled;
     var id;
     for (id in sw.prices || {}) ctx.prices[id] = +sw.prices[id] || 0;
