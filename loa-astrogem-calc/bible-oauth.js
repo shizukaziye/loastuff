@@ -42,7 +42,7 @@
   // lostark.bible allows ONE APP PER ACCOUNT, so every tool reuses the app registered as
   // "Loseii Astrogem Calculator" (2026-07-22). Both clients are PUBLIC — no secret — and each
   // carries its own exact redirect-URI list (no wildcards, trailing slash included):
-  //   prod  https://www.loseii.com/loa-astrogem-calc/  /loa-bracelet-calc/  /loa-gpd/
+  //   prod  https://www.loseii.com/  /loa-astrogem-calc/  /loa-bracelet-calc/  /loa-gpd/
   //   dev   http://localhost:8080/   (the port `npm run serve` uses)
   // Running off localhost picks the dev client, so testing never touches the production
   // grant.
@@ -65,20 +65,23 @@
   var listeners = [];
   function emit() { listeners.forEach(function (fn) { try { fn(); } catch (e) {} }); }
 
-  // The redirect URI must match a registered one EXACTLY, trailing slash included: the
-  // tool's own folder, https://www.loseii.com/loa-astrogem-calc/ (or http://localhost:8080/
-  // under `npm run serve`). It is read off this script's own address rather than the page's,
-  // because the page may sit on a tab path (/loa-astrogem-calc/pipeline) that is not
-  // registered — and because a page OUTSIDE any tool (the hub) loads a tool's copy of this
-  // file precisely so its sign-in can come back through that tool's registered folder and
-  // then bounce home (see `back` below). Query and hash never travel.
+  // The redirect URI must match a registered one EXACTLY, trailing slash included. The
+  // registered folders on www.loseii.com are the hub root and the three tool folders
+  // (the hub root was added 2026-09-25); on localhost only http://localhost:8080/ is. A page
+  // in a registered folder comes back to itself. Any other page (a tab path such as
+  // /loa-astrogem-calc/pipeline is NOT registered) comes back through this script's own
+  // folder and is then bounced home (see `back` below). Query and hash never travel.
+  var REGISTERED = ["/", "/loa-astrogem-calc/", "/loa-bracelet-calc/", "/loa-gpd/"];
   var SELF_SRC = (document.currentScript && document.currentScript.src) || "";
+  function pageFolder() { return location.origin + location.pathname.replace(/[^\/]*$/, ""); }
   function redirectUri() {
+    if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return location.origin + "/";
+    var page = pageFolder();
+    if (REGISTERED.indexOf(page.slice(location.origin.length)) >= 0) return page;
     var src = SELF_SRC.split(/[?#]/)[0];
     if (src.indexOf(location.origin + "/") === 0) return src.replace(/[^\/]*$/, "");
-    return location.origin + location.pathname.replace(/[^\/]*$/, "");   // no script address: the page's folder
+    return page;   // no script address: the page's folder
   }
-  function pageFolder() { return location.origin + location.pathname.replace(/[^\/]*$/, ""); }
 
   // A PRERENDER IS NOT A VISIT. Chrome may load this page in the background when a link to
   // it is pointed at (speculation rules) and throw it away unseen, so nothing here calls

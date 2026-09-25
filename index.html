@@ -528,11 +528,10 @@
   host.innerHTML = h;
 })();
 </script>
-<!-- One lostark.bible session for the whole site. The astrogem copy of bible-oauth.js is
-     loaded on purpose: a sign-in started here returns through that tool's registered
-     callback folder and bounces back to the hub. Keep this pin in step with the one in
-     loa-astrogem-calc/index.html. -->
-<script src="/loa-astrogem-calc/bible-oauth.js?v=10" defer></script>
+<!-- One lostark.bible session for the whole site: the astrogem copy of bible-oauth.js,
+     which knows the hub root is a registered callback and signs in straight back here.
+     Keep this pin in step with the one in loa-astrogem-calc/index.html. -->
+<script src="/loa-astrogem-calc/bible-oauth.js?v=11" defer></script>
 <script>
 (function () {
   function init() {
@@ -551,6 +550,11 @@
     }
     O.onChange(paint);
     paint();
+    // Back from the consent screen: swap the code for the token, then repaint.
+    O.handleRedirect().then(function (r) {
+      if (r && !r.ok) { host.hidden = false; host.textContent = "Sign-in failed: " + r.error; }
+      else paint();
+    });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
