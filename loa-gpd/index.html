@@ -24,6 +24,23 @@
 a.lp-prof,a.lp-prof[data-gloss]{font-size:11.5px;font-weight:700;color:var(--accent,#66c7ff);text-decoration:none;white-space:nowrap;cursor:pointer}
 a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </style>
+<!-- This page only: keyboard focus rings, the loading skeleton, the load-failure
+     box, and the plan-card titles (h3 since the heading fix; same look as the old h4). -->
+<style>
+.card h3{margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.tab:focus-visible,.lk-view:focus-visible,.tgl:focus-visible,.rk-pill:focus-visible,.lg:focus-visible,
+.lg-ctl:focus-visible,th.sortable:focus-visible,.gpd-retry:focus-visible{outline:2px solid var(--accent,#66c7ff);outline-offset:2px}
+.gpd-loading,.gpd-failed{grid-column:1/-1}
+.gpd-loading .sk{display:block;height:12px;margin:10px auto 0;max-width:420px;border-radius:6px;
+  background:var(--panel2,#1b2030);animation:gpd-pulse 1.2s ease-in-out infinite}
+.gpd-loading .sk:nth-of-type(2){max-width:340px}
+.gpd-loading .sk:nth-of-type(3){max-width:260px}
+@keyframes gpd-pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.gpd-loading .sk{animation:none}}
+.gpd-retry{margin-top:14px;height:30px;padding:0 16px;border-radius:8px;border:1px solid var(--border,#2a3142);
+  background:var(--panel2,#1b2030);color:var(--text,#e7e9ee);font:inherit;font-weight:700;cursor:pointer}
+.gpd-retry:hover{border-color:var(--accent,#66c7ff);color:var(--accent,#66c7ff)}
+</style>
 <!-- The house tooltip for data-gloss (the "Profile →" link): the site's one copy. -->
 <script src='/shared/tip.js?v=1' defer></script>
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
@@ -158,28 +175,28 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 })();
 </script>
 
-<div class='tabbar'>
-  <button class='tab active' data-axis='support'>Support</button>
-  <button class='tab' data-axis='dps'>DPS</button>
+<div class='tabbar' role='tablist' aria-label='Role the chart prices damage for'>
+  <button class='tab active' data-axis='support' id='tab-support' role='tab' aria-selected='true' aria-controls='chartView'>Support</button>
+  <button class='tab' data-axis='dps' id='tab-dps' role='tab' aria-selected='false' aria-controls='chartView' tabindex='-1'>DPS</button>
 </div>
 
 <div class='inputs' id='matPanel'>
-  <div class='ihdr'><span class='tgl' id='matToggle'><span id='mat-caret'>▾</span> Material prices</span>
+  <div class='ihdr'><span class='tgl' id='matToggle' role='button' tabindex='0' aria-expanded='true' aria-controls='matGrid'><span id='mat-caret' aria-hidden='true'>▾</span> Material prices</span>
     <span class='note' style='margin:0'>untick anything you already have bound<span id='matDate'></span></span></div>
   <div class='mats' id='matGrid'></div>
 </div>
 
 <div class='panel' id='lookupPanel'>
   <div class='lk-row'>
-    <select id='lk-region'><option>NA</option><option>EU</option><option>KR</option></select>
-    <input id='lk-name' placeholder='character name' autocomplete='off'>
+    <select id='lk-region' aria-label='Region'><option>NA</option><option>EU</option><option>KR</option></select>
+    <input id='lk-name' placeholder='character name' aria-label='Character name' autocomplete='off'>
     <button id='lk-go'>Look up</button>
     <button id='lk-repull' style='display:none' title='fetch fresh data from lostark.bible'>Re-pull</button>
     <span class='lk-status' id='lk-status'></span>
   </div>
-  <div class='lk-views' id='lk-views' style='display:none'>
-    <button class='lk-view active' data-view='gear'>My gear</button>
-    <button class='lk-view' data-view='chart'>The chart</button>
+  <div class='lk-views' id='lk-views' style='display:none' role='group' aria-label='View'>
+    <button class='lk-view active' data-view='gear' aria-pressed='true'>My gear</button>
+    <button class='lk-view' data-view='chart' aria-pressed='false'>The chart</button>
   </div>
   <div class='lk-banner' id='lk-banner'></div>
 </div>
@@ -190,15 +207,16 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 <h2>What to buy at your gold per damage</h2>
 <div class='panel'>
   <div class='slider'>
-    <input type='range' id='gpd' min='0' max='100' value='45' step='any'>
+    <input type='range' id='gpd' min='0' max='100' value='45' step='any' aria-label='Gold per 1% damage you will pay'>
     <div class='gpdval' id='gpdOut'></div>
   </div>
   <div class='slider' id='cpRow' style='display:none'>
-    <input type='range' id='cpSlider' step='1'>
+    <input type='range' id='cpSlider' step='1' aria-label='Combat power to reach'>
     <div class='gpdval' id='cpOut'></div>
   </div>
   <div class='accctl' id='accCtl'></div>
-  <div class='plan' id='plan'></div>
+  <div class='plan' id='plan'><div class='placeholder gpd-loading' id='gpdLoading' role='status'><b>Loading the chart…</b>
+    <span class='sk'></span><span class='sk'></span><span class='sk'></span></div></div>
   <div class='totals' id='planTotals'></div>
   <div class='note'>Every step whose gold per 1% comes in under the slider, taken in order. Hover any card for what stops it.
   Accessory rungs come from the accessory calculator's price lattice, kept to the flat-line and main-stat families
@@ -533,6 +551,9 @@ document.addEventListener("DOMContentLoaded", function () {
         "<span class='nm'>" + m.name + (m.unit > 1 ? " <i>/" + m.unit + "</i>" : "") + "</span>" +
         "<input type='number' min='0' step='1' value='" + price + "'>";
       var box = row.querySelector("input[type=checkbox]"), num = row.querySelector("input[type=number]");
+      box.setAttribute("aria-label", "Buy " + m.fullName + " at market price (untick if you have it bound)");
+      num.setAttribute("aria-label", m.fullName + " price in gold" + (m.unit > 1 ? " per " + m.unit : ""));
+      row.querySelector(".ico").setAttribute("aria-hidden", "true");
       box.addEventListener("change", function () {
         state.enabled[m.id] = box.checked;
         if (m.kind === "shard_pouch") state.enabled.shards = box.checked;
@@ -551,9 +572,10 @@ document.addEventListener("DOMContentLoaded", function () {
     var gr = document.createElement("div");
     gr.className = "mat";
     gr.title = "Level 8 skill gem (auction house)";
-    gr.innerHTML = "<input type='checkbox' checked disabled style='visibility:hidden'>" +
+    gr.innerHTML = "<input type='checkbox' checked disabled style='visibility:hidden' aria-hidden='true' tabindex='-1'>" +
       "<span class='nm'>Lv 8 gem</span>" +
       "<input type='number' min='0' step='1000' value='" + state.gem8Price + "'>";
+    gr.querySelector("input[type=number]").setAttribute("aria-label", "Level 8 gem price in gold");
     gr.querySelector("input[type=number]").addEventListener("input", function () {
       state.gem8Price = parseFloat(this.value) || 0;
       render();
@@ -566,9 +588,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // accessory chain per slot live from the lattice, and the ark grid's
   // account rows. The switches above the plan pick the accessory families.
   function pillSeg(dim, label, opts) {
-    return "<span class='rk-seg' data-dim='" + dim + "'><span class='rk-lbl'>" + label + "</span>" +
+    return "<span class='rk-seg' data-dim='" + dim + "' role='group' aria-label='Accessory " + label + "'>" +
+      "<span class='rk-lbl' aria-hidden='true'>" + label + "</span>" +
       opts.map(function (o) {
-        return "<span class='rk-pill' data-val='" + o + "'>" + o + "</span>";
+        return "<span class='rk-pill' role='button' tabindex='0' aria-pressed='false' data-val='" + o + "'>" + o + "</span>";
       }).join("") + "</span>";
   }
   /** The switches above the plan. Built once; every render re-syncs the pills. */
@@ -594,6 +617,7 @@ document.addEventListener("DOMContentLoaded", function () {
       p.classList.toggle("on", dim === "sidegrades"
         ? (val === "allowed") === (state.accFilter.sidegrades !== false)
         : state.accFilter[dim].indexOf(val) >= 0);
+      p.setAttribute("aria-pressed", p.classList.contains("on") ? "true" : "false");
     });
     var off = !state.accFilter.flat.length || !state.accFilter.stat.length;
     el("accHint").textContent = off
@@ -863,8 +887,8 @@ document.addEventListener("DOMContentLoaded", function () {
       var eg = egHead ? "<div class='eg'>" + egHead + "</div>" : "";
       var chipRow = chips.length ? "<div class='chips'>" + chips.join("") + "</div>" : "";
       var totalDmg = last && last.totalDamage ? last.totalDamage : p.damage;
-      return "<div class='card' data-plan='" + key + "'><h4 style='color:" + SERIES[key].color + "'>" +
-        SERIES[key].label + "</h4>" +
+      return "<div class='card' data-plan='" + key + "'><h3 style='color:" + SERIES[key].color + "'>" +
+        SERIES[key].label + "</h3>" +
         "<div class='top'><div><div class='big'>" + pill(where) + "</div>" +
         (note ? "<div class='ilvl'>" + note + "</div>" : "") + "</div>" +
         eg + "</div>" + chipRow +
@@ -890,8 +914,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (arkLive(r)) return "";     // live series cards carry their own filling-in notes
         var done = p && p[r] ? p[r].done : 0;
         var prog = total ? " Progress: " + done + "/" + total + " tiers." : "";
-        return "<div class='card coming'><h4 style='color:" + SERIES[pair[1]].color + "'>" +
-          SERIES[pair[1]].label + "</h4>" +
+        return "<div class='card coming'><h3 style='color:" + SERIES[pair[1]].color + "'>" +
+          SERIES[pair[1]].label + "</h3>" +
           "<div class='big'>coming soon</div>" +
           "<div class='ilvl'>" + (state.axis === "dps" ? "the DPS run is under way" : "being recomputed end to end") + "</div>" +
           "<div class='sm2'>Exact cut distributions, simulated accounts, every grade priced. " +
@@ -929,7 +953,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (el("rk-toolbar")) return;
     el("ranked").innerHTML =
       "<div class='rk-toolbar' id='rk-toolbar'>" +
-      "<input class='rk-input' id='rk-q' type='text' placeholder='filter steps…'>" +
+      "<input class='rk-input' id='rk-q' type='text' placeholder='filter steps…' aria-label='Filter steps'>" +
       "<label class='rk-under'><input type='checkbox' id='rk-under'> under the slider only</label>" +
       "<span class='rk-count' id='rk-count'></span></div>" +
       "<div id='rk-table'></div>";
@@ -957,7 +981,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (TABLE.dir < 0) priced.reverse();
     function th(key, label, num) {
       var arrow = TABLE.sort === key ? (TABLE.dir > 0 ? " ▲" : " ▼") : "";
-      return "<th class='sortable" + (num ? " num" : "") + "' data-sort='" + key + "'>" +
+      var sorted = TABLE.sort === key
+        ? " aria-sort='" + (TABLE.dir > 0 ? "ascending" : "descending") + "'" : "";
+      return "<th class='sortable" + (num ? " num" : "") + "' data-sort='" + key + "' tabindex='0'" + sorted + ">" +
         label + arrow + "</th>";
     }
     // the gold-per-1% bar underlays the whole row: log scale from 1k, capped
@@ -983,10 +1009,11 @@ document.addEventListener("DOMContentLoaded", function () {
     el("rk-table").innerHTML = html + "</table>";
     [].slice.call(el("rk-table").querySelectorAll("th.sortable")).forEach(function (node) {
       node.addEventListener("click", function () {
-        var key = node.getAttribute("data-sort");
+        var key = node.getAttribute("data-sort"), had = document.activeElement === node;
         if (TABLE.sort === key) TABLE.dir = -TABLE.dir;
         else { TABLE.sort = key; TABLE.dir = 1; }
         renderRanked(ROWS); wireTips();
+        if (had) refocus(el("rk-table"), "th[data-sort='" + key + "']");
       });
     });
   }
@@ -1021,11 +1048,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return ROWS.some(function (r) { return r.series === k; });
     });
     el("legend").innerHTML =
-      "<div class='lg-ctls'><span class='lg-ctl' data-mode='all'>all</span>" +
-      "<span class='lg-ctl' data-mode='none'>none</span></div>" +
+      "<div class='lg-ctls'><span class='lg-ctl' data-mode='all' role='button' tabindex='0' aria-label='Show all systems'>all</span>" +
+      "<span class='lg-ctl' data-mode='none' role='button' tabindex='0' aria-label='Hide all systems'>none</span></div>" +
       "<div class='lg-grid'>" + keys.map(function (k) {
-        return "<span class='lg" + (TABLE.off[k] ? " lg-off" : "") + "' data-series='" + k + "'>" +
-          "<span class='swatch' style='background:" + SERIES[k].color + "'></span>" +
+        return "<span class='lg" + (TABLE.off[k] ? " lg-off" : "") + "' data-series='" + k + "'" +
+          " role='button' tabindex='0' aria-pressed='" + (TABLE.off[k] ? "false" : "true") + "'>" +
+          "<span class='swatch' aria-hidden='true' style='background:" + SERIES[k].color + "'></span>" +
           SERIES[k].label + "</span>";
       }).join("") + "</div>";
     var rerender = function () {
@@ -1033,17 +1061,20 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     [].slice.call(el("legend").querySelectorAll(".lg")).forEach(function (node) {
       node.addEventListener("click", function () {
-        var k = node.getAttribute("data-series");
+        var k = node.getAttribute("data-series"), had = document.activeElement === node;
         if (TABLE.off[k]) delete TABLE.off[k]; else TABLE.off[k] = true;
         rerender();
+        if (had) refocus(el("legend"), ".lg[data-series='" + k + "']");
       });
     });
     [].slice.call(el("legend").querySelectorAll(".lg-ctl")).forEach(function (node) {
       node.addEventListener("click", function () {
+        var mode = node.getAttribute("data-mode"), had = document.activeElement === node;
         TABLE.off = {};
-        if (node.getAttribute("data-mode") === "none")
+        if (mode === "none")
           keys.forEach(function (k) { TABLE.off[k] = true; });
         rerender();
+        if (had) refocus(el("legend"), ".lg-ctl[data-mode='" + mode + "']");
       });
     });
   }
@@ -1051,6 +1082,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function readBudget() {
     BUDGET = 250000 * Math.pow(100, el("gpd").value / 100);
     el("gpdOut").textContent = fmtGold(BUDGET) + " / 1%";
+    el("gpd").setAttribute("aria-valuetext", fmtGold(BUDGET) + " gold per 1% damage");
   }
 
   // ---- character lookup ------------------------------------------------
@@ -1458,19 +1490,52 @@ document.addEventListener("DOMContentLoaded", function () {
     })();
   }
 
+  // The chart's data arrives as one batch (the boot at the bottom). Until it
+  // lands, "Loading the chart…" (#gpdLoading) holds the plan area and a render
+  // only moves the budget readout; the first real render replaces it.
+  var DATA_STATE = "loading";      // "loading" | "ready" | "failed"
+  function showLoadFailed() {
+    var ld = el("gpdLoading"); if (ld) ld.parentNode.removeChild(ld);
+    el("plan").innerHTML = "<div class='placeholder gpd-failed' role='alert'>" +
+      "The chart's data did not load. Reload the page; if it keeps failing, the data files are being rebuilt." +
+      "<br><button type='button' class='gpd-retry' id='gpdRetry'>Reload</button></div>";
+    el("gpdRetry").addEventListener("click", function () { location.reload(); });
+    el("ranked").innerHTML = ""; el("planTotals").innerHTML = "";
+    el("systems").innerHTML = ""; el("legend").innerHTML = "";
+  }
+  /** Screen-reader state the class names carry: selected tab, pressed view, CP slider text. */
+  function syncAria() {
+    document.querySelectorAll(".tab").forEach(function (t) {
+      var on = t.classList.contains("active");
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.setAttribute("tabindex", on ? "0" : "-1");
+    });
+    document.querySelectorAll(".lk-view").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.classList.contains("active") ? "true" : "false");
+    });
+    var co = el("cpOut"), cs = el("cpSlider");
+    if (co && cs) cs.setAttribute("aria-valuetext", co.textContent.replace("≈", "about "));
+  }
+  /** Put focus back on the control a redraw replaced (found by selector in host). */
+  function refocus(host, sel) {
+    var again = host && host.querySelector(sel);
+    if (again) again.focus();
+  }
   function render() {
     readBudget();                 // the ark grid rows are priced at this budget
+    syncAria();
+    if (DATA_STATE === "loading") return;
+    var ld = el("gpdLoading"); if (ld) ld.parentNode.removeChild(ld);
     renderAccCtl();
     ROWS = steps();
     if (!ROWS.length) {
-      el("ranked").innerHTML = "<div class='placeholder'>The DPS chart is still being built.</div>";
-      el("plan").innerHTML = ""; el("planTotals").innerHTML = "";
-      el("systems").innerHTML = ""; el("legend").innerHTML = "";
+      showLoadFailed();
       renderGear(null);
       return;
     }
     renderLegend(); renderRanked(ROWS); renderSystems(ROWS); renderPlan(ROWS); wireTips();
     decorateSliders(); decorateLookup();
+    syncAria();
   }
 
   // ---- boot ------------------------------------------------------------
@@ -1479,14 +1544,38 @@ document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("active"); });
       t.classList.add("active");
       state.axis = t.getAttribute("data-axis");
+      syncAria();
 
       render();
     });
+  });
+  // Arrow keys, Home and End move between the two tabs (the ARIA tabs pattern).
+  document.querySelector(".tabbar").addEventListener("keydown", function (e) {
+    var tabs = [].slice.call(document.querySelectorAll(".tab"));
+    var i = tabs.indexOf(document.activeElement), j = -1;
+    if (i < 0) return;
+    if (e.key === "ArrowRight") j = (i + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") j = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") j = 0;
+    else if (e.key === "End") j = tabs.length - 1;
+    if (j < 0) return;
+    e.preventDefault();
+    tabs[j].focus(); tabs[j].click();
+  });
+  // Spans that act as buttons (role=button) and the sortable table headers
+  // answer Enter and Space the way a real button does.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+    var t = e.target;
+    if (!t || !t.matches || !t.matches("[role=button]:not(button), th.sortable")) return;
+    e.preventDefault();
+    t.click();
   });
   el("matToggle").addEventListener("click", function () {
     var g = el("matGrid"), open = g.style.display !== "none";
     g.style.display = open ? "none" : "";
     el("mat-caret").textContent = open ? "▸" : "▾";
+    this.setAttribute("aria-expanded", open ? "false" : "true");
   });
   el("gpd").addEventListener("input", render);
   document.querySelectorAll(".lk-view").forEach(function (b) {
@@ -1592,7 +1681,13 @@ document.addEventListener("DOMContentLoaded", function () {
     state.arkProgress = got["arkgrid-progress.json"];
     state.braceletByGpd = got["bracelet-vs-gpd.json"] ? got["bracelet-vs-gpd.json"].rows : null;
     if (state.honing) buildInputs(state.honing);
+    DATA_STATE = "ready";
     render();
+  }).catch(function (e) {
+    // a table that would not load, or one the page could not read
+    if (window.console) console.error("GPD chart: data load failed", e);
+    DATA_STATE = "failed";
+    showLoadFailed();
   });
 });
 </script>
