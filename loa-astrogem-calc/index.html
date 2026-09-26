@@ -64,6 +64,8 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 @media (pointer:coarse){
   .tab,.mbtn{min-height:40px}
 }
+/* Keyboard focus on the controls that are not native buttons (rows, handles, the toggle caret). */
+#tab-leaderboard tr[data-i]:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 </style>
 <!-- Pages this one links to are prerendered once a link to one is pointed at
      (Chromium; "moderate" is a short hover or a press), so crossing to the hub,
@@ -200,20 +202,20 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </script>
 
   <!-- Tab bar -->
-  <div class="tabbar" id="tabbar">
-    <button class="tab active" data-tab="grader" onclick="selectTab('grader')">Grader</button>
-    <button class="tab" data-tab="pipeline" onclick="selectTab('pipeline')">Pipeline</button>
-    <button class="tab" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
-    <button class="tab" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
-    <button class="tab" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
+  <div class="tabbar" id="tabbar" role="tablist" aria-label="Calculator sections">
+    <button class="tab active" type="button" role="tab" id="tabbtn-grader" aria-selected="true" aria-controls="tab-grader" data-tab="grader" onclick="selectTab('grader')">Grader</button>
+    <button class="tab" type="button" role="tab" id="tabbtn-pipeline" aria-selected="false" aria-controls="tab-pipeline" data-tab="pipeline" onclick="selectTab('pipeline')">Pipeline</button>
+    <button class="tab" type="button" role="tab" id="tabbtn-advisor" aria-selected="false" aria-controls="tab-advisor" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
+    <button class="tab" type="button" role="tab" id="tabbtn-leaderboard" aria-selected="false" aria-controls="tab-leaderboard" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
+    <button class="tab" type="button" role="tab" id="tabbtn-feedback" aria-selected="false" aria-controls="tab-feedback" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
   </div>
 
   <!-- Tab panes -->
-  <section id="tab-grader" class="tabpane active"></section>
-  <section id="tab-pipeline" class="tabpane"></section>
-  <section id="tab-advisor" class="tabpane"></section>
-  <section id="tab-leaderboard" class="tabpane"></section>
-  <section id="tab-feedback" class="tabpane"></section>
+  <section id="tab-grader" class="tabpane active" role="tabpanel" aria-labelledby="tabbtn-grader"></section>
+  <section id="tab-pipeline" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-pipeline"></section>
+  <section id="tab-advisor" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-advisor"></section>
+  <section id="tab-leaderboard" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-leaderboard"></section>
+  <section id="tab-feedback" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-feedback"></section>
 </div>
 
 <!-- Tab switching: toggle .active on the matching button + pane, and keep the
@@ -237,7 +239,7 @@ var LAZY_TABS = {
     "advisor-setup.js?v=50", "advisor-window.js?v=64",
     "advisor.js?v=96"
   ],
-  leaderboard: ["leaderboard.js?v=59"],
+  leaderboard: ["leaderboard.js?v=60"],
   feedback: ["feedback.js?v=1"]
 };
 // The Grader's "From screenshot" mode reads the in-game astrogem list. Its
@@ -298,9 +300,32 @@ function writeRoute(name, replace){
   if (!replace && href === location.pathname + location.search + location.hash) return;
   try { history[replace ? 'replaceState' : 'pushState']({ tab: name }, '', href); } catch (e) {}
 }
+// Keyboard: Enter/Space work on any non-native role="button" control, and the arrow
+// keys (plus Home/End) move between the tabs, as the ARIA tab pattern expects.
+document.addEventListener('keydown', function (e) {
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  if (t.getAttribute('role') === 'button' && t.tagName !== 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault(); t.click(); return;
+  }
+  if (t.getAttribute('role') === 'tab') {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('#tabbar [role="tab"]'));
+    var i = tabs.indexOf(t), n = tabs.length, j = -1;
+    if (e.key === 'ArrowRight') j = (i + 1) % n;
+    else if (e.key === 'ArrowLeft') j = (i - 1 + n) % n;
+    else if (e.key === 'Home') j = 0;
+    else if (e.key === 'End') j = n - 1;
+    if (j < 0 || i < 0) return;
+    e.preventDefault(); tabs[j].focus(); tabs[j].click();
+  }
+});
 function paintTab(name){
   var tabs = document.querySelectorAll('.tab');
-  for (var i=0;i<tabs.length;i++){ tabs[i].classList.toggle('active', tabs[i].dataset.tab===name); }
+  for (var i=0;i<tabs.length;i++){
+    var on = tabs[i].dataset.tab===name;
+    tabs[i].classList.toggle('active', on);
+    tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+  }
   var panes = document.querySelectorAll('.tabpane');
   for (var j=0;j<panes.length;j++){
     panes[j].classList.toggle('active', panes[j].id === ('tab-'+name));
@@ -528,8 +553,8 @@ function routeBoot(){
 <script src="bible-import.js?v=4" defer></script>
 <script src="/shared/bible-oauth.js?v=1" defer></script>
 <script src="gemlist.js?v=1" defer></script>
-<script src="grader.js?v=85" defer></script>
-<script src="pipeline.js?v=54" defer></script>
+<script src="grader.js?v=86" defer></script>
+<script src="pipeline.js?v=55" defer></script>
 <!-- Route boot. LAST of the app scripts on purpose: it runs after every module
      above has initialised, so a deep-linked tab activates exactly as a click just
      after load would (see ROUTES). A file, not inline, so it can wait its turn. -->
