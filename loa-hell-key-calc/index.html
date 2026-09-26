@@ -7,9 +7,9 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel='stylesheet' href='/shared/tokens.css?v=1'>
-<link rel='stylesheet' href='styles.css?v=7'>
+<link rel='stylesheet' href='styles.css?v=8'>
 <!-- Touch screens: finger-sized buttons. A mouse sees no change. -->
-<style>@media (pointer:coarse){.mbtn{min-height:40px}}</style>
+<style>@media (pointer:coarse){.mbtn,button.tgl{min-height:40px}}</style>
 </head><body>
 <div class='wrap'>
   <h1>Hell Key Calculator</h1>
@@ -17,11 +17,11 @@
 
   <div class='inputs'>
     <div class='ihdr'>
-      <span class='tgl' onclick='toggleInputs()'><span id='caret'>&#9662;</span> Inputs</span>
+      <button type='button' class='tgl' id='inTgl' aria-expanded='true' aria-controls='infields' onclick='toggleInputs()'><span id='caret' aria-hidden='true'>&#9662;</span> Inputs</button>
       <span>
         <span class='dim' style='text-transform:none;letter-spacing:0;font-weight:400'>Key</span>
-        <button class='mbtn active' data-k='hell1750' onclick='setKey("hell1750")'>1750</button>
-        <button class='mbtn' data-k='hell1730' onclick='setKey("hell1730")'>1730</button>
+        <button type='button' class='mbtn active' aria-pressed='true' data-k='hell1750' onclick='setKey("hell1750")'>1750</button>
+        <button type='button' class='mbtn' aria-pressed='false' data-k='hell1730' onclick='setKey("hell1730")'>1730</button>
       </span>
     </div>
     <div id='infields'>
@@ -31,40 +31,40 @@
 
       <div class='subh'>Season plan</div>
       <div class='ig'>
-        <div class='fld'><label>Weeks left</label><input id='pl_weeks' type='number' step='1'></div>
-        <div class='fld'><label>Rare / week</label><input id='pl_rare' type='number' step='0.1'></div>
-        <div class='fld'><label>Epic / week</label><input id='pl_epic' type='number' step='0.1'></div>
-        <div class='fld'><label>Legendary / week</label><input id='pl_legendary' type='number' step='0.1'></div>
-        <div class='fld'><label>Rare in stock</label><input id='pl_sRare' type='number' step='1'></div>
-        <div class='fld'><label>Epic in stock</label><input id='pl_sEpic' type='number' step='1'></div>
-        <div class='fld'><label>Legendary in stock</label><input id='pl_sLegendary' type='number' step='1'></div>
+        <div class='fld'><label for='pl_weeks'>Weeks left</label><input id='pl_weeks' type='number' step='1'></div>
+        <div class='fld'><label for='pl_rare'>Rare / week</label><input id='pl_rare' type='number' step='0.1'></div>
+        <div class='fld'><label for='pl_epic'>Epic / week</label><input id='pl_epic' type='number' step='0.1'></div>
+        <div class='fld'><label for='pl_legendary'>Legendary / week</label><input id='pl_legendary' type='number' step='0.1'></div>
+        <div class='fld'><label for='pl_sRare'>Rare in stock</label><input id='pl_sRare' type='number' step='1'></div>
+        <div class='fld'><label for='pl_sEpic'>Epic in stock</label><input id='pl_sEpic' type='number' step='1'></div>
+        <div class='fld'><label for='pl_sLegendary'>Legendary in stock</label><input id='pl_sLegendary' type='number' step='1'></div>
       </div>
 
       <div class='subh'>Mechanics</div>
       <div class='ig'>
-        <div class='fld'><label>Middle jump: big descent %</label><input id='m_midUp' type='number' step='1'></div>
-        <div class='fld'><label>Big descent min</label><input id='m_midUpMin' type='number' step='1'></div>
-        <div class='fld'><label>Big descent max</label><input id='m_midUpMax' type='number' step='1'></div>
-        <div class='fld'><label>Ascent min</label><input id='m_midDownMin' type='number' step='1'></div>
-        <div class='fld'><label>Ascent max</label><input id='m_midDownMax' type='number' step='1'></div>
-        <div class='fld'><label>Same-jump bonus gold</label><input id='m_bonusGold' type='number' step='1000'></div>
-        <div class='fld'><label>Same jumps needed</label><input id='m_bonusStreak' type='number' step='1'></div>
-        <div class='fld'><label>Chests shown</label><input id='m_chestsShown' type='number' step='1'></div>
-        <div class='fld'><label>Natural abundant %</label><input id='m_natAbundant' type='number' step='1'></div>
-        <div class='fld'><label>Abundant multiplier</label><input id='m_abundantMult' type='number' step='1'></div>
-        <div class='fld'><label>Altar weight: Descent +1</label><input id='m_w_desc' type='number' step='1'></div>
-        <div class='fld'><label>Altar weight: Chest +1</label><input id='m_w_chest' type='number' step='1'></div>
-        <div class='fld'><label>Altar weight: Wealth +1</label><input id='m_w_wealth' type='number' step='1'></div>
-        <div class='fld'><label>Altar weight: Rocket jump</label><input id='m_w_rocket' type='number' step='1'></div>
+        <div class='fld'><label for='m_midUp'>Middle jump: big descent %</label><input id='m_midUp' type='number' step='1'></div>
+        <div class='fld'><label for='m_midUpMin'>Big descent min</label><input id='m_midUpMin' type='number' step='1'></div>
+        <div class='fld'><label for='m_midUpMax'>Big descent max</label><input id='m_midUpMax' type='number' step='1'></div>
+        <div class='fld'><label for='m_midDownMin'>Ascent min</label><input id='m_midDownMin' type='number' step='1'></div>
+        <div class='fld'><label for='m_midDownMax'>Ascent max</label><input id='m_midDownMax' type='number' step='1'></div>
+        <div class='fld'><label for='m_bonusGold'>Same-jump bonus gold</label><input id='m_bonusGold' type='number' step='1000'></div>
+        <div class='fld'><label for='m_bonusStreak'>Same jumps needed</label><input id='m_bonusStreak' type='number' step='1'></div>
+        <div class='fld'><label for='m_chestsShown'>Chests shown</label><input id='m_chestsShown' type='number' step='1'></div>
+        <div class='fld'><label for='m_natAbundant'>Natural abundant %</label><input id='m_natAbundant' type='number' step='1'></div>
+        <div class='fld'><label for='m_abundantMult'>Abundant multiplier</label><input id='m_abundantMult' type='number' step='1'></div>
+        <div class='fld'><label for='m_w_desc'>Altar weight: Descent +1</label><input id='m_w_desc' type='number' step='1'></div>
+        <div class='fld'><label for='m_w_chest'>Altar weight: Chest +1</label><input id='m_w_chest' type='number' step='1'></div>
+        <div class='fld'><label for='m_w_wealth'>Altar weight: Wealth +1</label><input id='m_w_wealth' type='number' step='1'></div>
+        <div class='fld'><label for='m_w_rocket'>Altar weight: Rocket jump</label><input id='m_w_rocket' type='number' step='1'></div>
       </div>
       <div class='subh'>Transmutation outcome %</div>
       <div class='ig'>
-        <div class='fld'><label>Grade −2</label><input id='m_t_d2' type='number' step='1'></div>
-        <div class='fld'><label>Grade −1</label><input id='m_t_d1' type='number' step='1'></div>
-        <div class='fld'><label>Grade +1</label><input id='m_t_u1' type='number' step='1'></div>
-        <div class='fld'><label>Grade +2</label><input id='m_t_u2' type='number' step='1'></div>
-        <div class='fld'><label>Flame key</label><input id='m_t_flame' type='number' step='1'></div>
-        <div class='fld'><label>Frost key</label><input id='m_t_frost' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_d2'>Grade −2</label><input id='m_t_d2' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_d1'>Grade −1</label><input id='m_t_d1' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_u1'>Grade +1</label><input id='m_t_u1' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_u2'>Grade +2</label><input id='m_t_u2' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_flame'>Flame key</label><input id='m_t_flame' type='number' step='1'></div>
+        <div class='fld'><label for='m_t_frost'>Frost key</label><input id='m_t_frost' type='number' step='1'></div>
       </div>
       <div class='barrow'>
         <button onclick='recalc()'>Recalculate</button>
@@ -75,11 +75,11 @@
   </div>
 
   <div class='tabs'>
-    <button class='mbtn active' data-t='summary' onclick='setTab("summary")'>Summary</button>
-    <button class='mbtn' data-t='jump' onclick='setTab("jump")'>Jump strategy</button>
-    <button class='mbtn' data-t='altar' onclick='setTab("altar")'>Altar</button>
-    <button class='mbtn' data-t='plan' onclick='setTab("plan")'>Season plan</button>
-    <button class='mbtn' data-t='tables' onclick='setTab("tables")'>Reward tables</button>
+    <button type='button' class='mbtn active' aria-pressed='true' data-t='summary' onclick='setTab("summary")'>Summary</button>
+    <button type='button' class='mbtn' aria-pressed='false' data-t='jump' onclick='setTab("jump")'>Jump strategy</button>
+    <button type='button' class='mbtn' aria-pressed='false' data-t='altar' onclick='setTab("altar")'>Altar</button>
+    <button type='button' class='mbtn' aria-pressed='false' data-t='plan' onclick='setTab("plan")'>Season plan</button>
+    <button type='button' class='mbtn' aria-pressed='false' data-t='tables' onclick='setTab("tables")'>Reward tables</button>
   </div>
 
   <div class='tab active' id='tab_summary'>
@@ -92,9 +92,9 @@
     <h2>When to take the middle jump</h2>
     <div class='panel' style='margin-bottom:12px'>
       <div class='ig'>
-        <div class='fld'><label>Previous identical jumps</label>
+        <div class='fld'><label for='j_streak'>Previous identical jumps</label>
           <select id='j_streak' onchange='renderJump()'><option value='0'>none</option><option value='1'>1</option><option value='2'>2</option></select></div>
-        <div class='fld'><label>Their distance</label><select id='j_last' onchange='renderJump()'></select></div>
+        <div class='fld'><label for='j_last'>Their distance</label><select id='j_last' onchange='renderJump()'></select></div>
       </div>
     </div>
     <div class='panel' id='jumpText'></div>
@@ -140,7 +140,7 @@ EV(key) = V(0, D, no streak, no flags), by backward induction over descents left
 <script src='data.js?v=6' defer></script>
 <script src='prices.js?v=6' defer></script>
 <script src='model.js?v=6' defer></script>
-<script src='app.js?v=6' defer></script>
+<script src='app.js?v=7' defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body></html>

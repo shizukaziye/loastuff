@@ -1,6 +1,7 @@
 // app.js — DOM edges only: readParams() reads fields into P, renderX() writes results.
 "use strict";
 const $ = id => document.getElementById(id);
+function mark(b, on) { b.classList.toggle("active", !!on); b.setAttribute("aria-pressed", on ? "true" : "false"); }   // toggle button: look + announced state
 const gold = v => { const x = Math.round(v); if (Math.abs(x) >= 1e6) return (x / 1e6).toFixed(2) + "M"; if (Math.abs(x) >= 1e4) return (x / 1e3).toFixed(1) + "k"; return x.toLocaleString(); };
 const gfull = v => Math.round(v).toLocaleString();
 const pct = p => (p * 100).toFixed(1) + "%";
@@ -78,7 +79,7 @@ function buildUnitTable() {
   let h = "<table class='utab'><tr><th>Item</th><th class='num'>Gold value</th></tr>";
   for (const u of UNIT_SPEC) {
     const src = u.price && u.price !== "juice" ? `<div class='src'>market: ${PU[u.price]}</div>` : u.price === "juice" ? `<div class='src'>market: ${(PU["lavas-breath"] + 3 * PU["glaciers-breath"]).toFixed(0)}</div>` : "";
-    h += `<tr><td class='lbl'>${u.label}${src}</td><td class='num'><input id='u_${u.id}' type='number' step='any'></td></tr>`;
+    h += `<tr><td class='lbl'><label for='u_${u.id}'>${u.label}</label>${src}</td><td class='num'><input id='u_${u.id}' type='number' step='any'></td></tr>`;
   }
   $("unitTable").innerHTML = h + "</table>";
   $("priceNote").textContent = `Defaults are my valuations. Grey = NA East market, robust 14-day price, ${PRICES.date}.`;
@@ -152,9 +153,9 @@ async function recalc() {
   } finally { running = false; }
 }
 function renderAll() { renderSummary(); renderJump(); renderAltar(); renderPlan(); renderTables(); }
-function setKey(k) { curKey = k; document.querySelectorAll("[data-k]").forEach(b => b.classList.toggle("active", b.dataset.k === k)); if (R) renderAll(); }
-function setTab(t) { curTab = t; document.querySelectorAll("[data-t]").forEach(b => b.classList.toggle("active", b.dataset.t === t)); document.querySelectorAll(".tab").forEach(d => d.classList.toggle("active", d.id === "tab_" + t)); }
-function toggleInputs() { inputsCollapsed = !inputsCollapsed; $("infields").style.display = inputsCollapsed ? "none" : ""; $("caret").innerHTML = inputsCollapsed ? "&#9656;" : "&#9662;"; }
+function setKey(k) { curKey = k; document.querySelectorAll("[data-k]").forEach(b => mark(b, b.dataset.k === k)); if (R) renderAll(); }
+function setTab(t) { curTab = t; document.querySelectorAll("[data-t]").forEach(b => mark(b, b.dataset.t === t)); document.querySelectorAll(".tab").forEach(d => d.classList.toggle("active", d.id === "tab_" + t)); }
+function toggleInputs() { inputsCollapsed = !inputsCollapsed; $("infields").style.display = inputsCollapsed ? "none" : ""; $("caret").innerHTML = inputsCollapsed ? "&#9656;" : "&#9662;"; $("inTgl").setAttribute("aria-expanded", String(!inputsCollapsed)); }
 
 const keyObj = () => KEYS.find(k => k.id === curKey);
 const dpH = kid => R.hell[kid];
