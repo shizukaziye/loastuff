@@ -83,34 +83,18 @@
 // same way leaderboard.js does — never re-implement scoring here, import it.
 import AG from "../model/astrogem.js";
 
-// Exact-match CORS allowlist (was "*"). The site origins come first; the two lostark.bible
-// origins must stay listed because the "+ add to leaderboard" bookmarklet POSTs ?submit=1
-// FROM a lostark.bible character page (its JSON body forces a preflight, and the preflight
-// dies without an echoed Origin). Requests with no Origin (curl, the cron) are server-to-
-// server — CORS only constrains browsers — so they proceed with no CORS headers at all.
-const ALLOW_ORIGINS = [
-  "https://www.loseii.com",
-  "https://loseii.com",
-  "https://loastuff.pages.dev",
-  "https://shizukaziye.github.io",   // the GPD chart's character lookup (2026-08-19)
-  "https://lostark.bible",
-  "https://www.lostark.bible"
-];
-// Local dev servers too (any port — the repo is served from a handful of them). Only the
-// PUBLIC endpoints benefit: admin needs the X-Admin-Token header whatever the origin, and
-// everything a localhost page could read here is already public.
-const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
-// Branch previews of the site (https://<branch>.loastuff.pages.dev) — the profile
-// prototype is presented from one before it reaches www (2026-09-22). A string
-// check, not a regex: an Origin has no path, so "starts with https://, ends with
-// .loastuff.pages.dev, nothing after the host" is the whole test.
-function previewOrigin(o) {
-  return typeof o === "string" && o.indexOf("https://") === 0 &&
-    o.slice(-19) === ".loastuff.pages.dev" && o.indexOf("/", 8) === -1;
-}
-function originAllowed(origin) {
-  return ALLOW_ORIGINS.indexOf(origin) !== -1 || LOCAL_ORIGIN.test(origin) || previewOrigin(origin);
-}
+// CORS: the site/preview/localhost allowlist is shared with the data and verify workers
+// (cors.js). This worker alone also grants the two lostark.bible origins: the "+ add to
+// leaderboard" bookmarklet POSTs ?submit=1 FROM a lostark.bible character page (its JSON
+// body forces a preflight, and the preflight dies without an echoed Origin). Requests with
+// no Origin (curl, the cron) are server-to-server — CORS only constrains browsers — so they
+// proceed with no grant. Admin needs the X-Admin-Token header whatever the origin.
+import { corsHeaders } from "./cors.js";
+const CORS_OPTS = {
+  headers: "Content-Type, Authorization, X-Admin-Token",
+  expose: "ETag",   // ?list=1 and /board-slim send ETags
+  origins: ["https://lostark.bible", "https://www.lostark.bible"]
+};
 
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
@@ -235,20 +219,10 @@ function repairStoredGem(g) {
   return changed;
 }
 
-// CORS headers for one request's Origin: exact allowlist match -> echo it (+ Vary: Origin,
-// so a shared cache never serves one origin's grant to another); anything else -> none.
-// Applied ONCE, in the exported fetch(), to whatever response the router returns — every
-// response here is Worker-constructed, so its headers are mutable in place.
-function corsHeaders(origin) {
-  if (!origin || !originAllowed(origin)) return {};
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Vary": "Origin",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Token",
-    "Access-Control-Max-Age": "86400"
-  };
-}
+// CORS headers come from cors.js (corsHeaders(request, CORS_OPTS)): an allowed Origin is
+// echoed with Vary: Origin; anything else gets Vary: Origin and no grant. Applied ONCE, in
+// the exported fetch(), to whatever response the router returns — every response here is
+// Worker-constructed, so its headers are mutable in place.
 function json(body, status, extraHeaders) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
@@ -2232,7 +2206,7 @@ export default {
     // Origin (allowlist echo + Vary — see corsHeaders). One place to reason about, no way for a
     // route to forget it.
     const resp = await handleFetch(request, env, ctx);
-    const cors = corsHeaders(request.headers.get("Origin") || "");
+    const cors = corsHeaders(request, CORS_OPTS);
     for (const h in cors) resp.headers.set(h, cors[h]);
     return resp;
   },

@@ -35,15 +35,8 @@
  */
 "use strict";
 
-const ALLOW_ORIGINS = [
-  "https://www.loseii.com",          // canonical site (monorepo → Cloudflare Pages)
-  "https://loseii.com",              // apex (redirects to www, but be safe)
-  "https://shizukaziye.github.io",   // legacy standalone (redirect stub, kept for old tabs)
-  "http://localhost:8080",
-  "http://127.0.0.1:8080",
-  "http://localhost:8799",           // local verify server (this repo's test port)
-  "http://127.0.0.1:8799"
-];
+// The allowlist lives in cors.js, shared with the bible and verify workers.
+import { corsHeaders } from "./cors.js";
 // MEASURED 2026-07-19: bodies ≥6MB kill the free-tier isolate mid-read — Cloudflare
 // then serves an HTML 500 WITHOUT CORS headers, which browsers mask as a bare
 // "network error" (exactly how a night of Shizu's records died: a pre-crop client
@@ -151,15 +144,9 @@ async function handleAccuracy(req, env, u) {
   }, 200, req);
 }
 
+// An unknown Origin gets no Access-Control-Allow-Origin (it used to get www.loseii.com's).
 function cors(req) {
-  const origin = req.headers.get("Origin") || "";
-  const allow = ALLOW_ORIGINS.indexOf(origin) !== -1 ? origin : ALLOW_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token",
-    "Access-Control-Max-Age": "86400"
-  };
+  return corsHeaders(req, { headers: "Content-Type, X-Admin-Token" });
 }
 // Admin auth for the read routes: the ADMIN_TOKEN Worker secret as an X-Admin-Token header.
 // Fail-closed (secret unset -> nobody is admin), constant-time compare, header-only (a token
