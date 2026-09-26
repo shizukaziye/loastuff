@@ -38,14 +38,16 @@
  * the body, and why it needs no snapshot bookkeeping: a key is written only when
  * this origin does not have it.
  *
- * The deck's "Used the old address?" link forces the same round trip by hand,
- * with one difference: it overwrites. It is for anyone the automatic bounce
- * could not help — someone who opened the new site before this file existed, or
- * whose profile was already here and rightly left alone.
+ * The deck's manual "Used the old address?" link, which forced the same trip and
+ * overwrote, was retired on 2026-09-25. Its click handler is gone; styles.css
+ * hides the button profile.js still draws. A forced trip already under way when
+ * that shipped still finishes (forcePending below).
  *
  * Keys that travel (this tool's own, nothing else):
  *   loa-bracelet-calc.v1  profile.js — character + bracelet state, incl. roll history
- *   bc_favs               favorites.js — saved characters
+ *   bc_favs               the old saved characters. Favorites are one site-wide
+ *                         list now (/shared/favorites.js), so these go to its inbox,
+ *                         loseii_favs_inbox, and are unioned in; never clobbered
  *   bc_bible_oauth        bible-oauth.js — the old per-tool token key; bible-oauth.js
  *                         adopts it into the site-wide session (loseii_bible_oauth) on arrival
  *   bc_bi_last            bible-import.js — last {region, name} imported
@@ -77,6 +79,8 @@
     "bc_lb_class"
   ];
 
+  var FAV_INBOX = "loseii_favs_inbox";  // /shared/favorites.js unions this in, then deletes it
+
   var MAX_TRIES = 5;                    // unreachable old address: five goes, then never
   var PROBE_MS = 3000;                  // how long the reachability check may take
   var FORCE_MS = 10 * 60 * 1000;        // a forced trip older than this was abandoned
@@ -86,8 +90,6 @@
   var NOTE_OK = "Brought your saved profiles and favorites over from the old address.";
   var NOTE_DEAD = "The old address did not answer — try again later.";
   var NOTE_NONE = "The old address had nothing saved.";
-  var CONFIRM = "This replaces the profile, favorites and roll history on this site " +
-    "with the copy saved at the old address.";
 
   // Locally the old side is served on 127.0.0.1:8081 while this runs on
   // localhost:8080 — a DIFFERENT site, which is the point: same-port localhost
@@ -166,6 +168,10 @@
       if (!Object.prototype.hasOwnProperty.call(d, k)) continue;
       v = d[k];
       if (typeof v !== "string") continue;
+      // Favorites are one site-wide list now (/shared/favorites.js, key loseii_favs), and
+      // bc_favs is only its mirror, so "present" no longer means "the user's own work".
+      // The old list goes to the store's inbox instead, which it unions in at load.
+      if (k === "bc_favs") { if (lsSet(FAV_INBOX, v)) n++; continue; }
       if (!force && lsGet(k) !== null) continue;   // never clobber; see the header
       if (lsSet(k, v)) n++;                        // a full store costs one key, not the rest
     }
@@ -239,23 +245,6 @@
     try { fetch(OLD.handoff, { mode: "no-cors", cache: "no-store" }).then(go, fail); }
     catch (e) { fail(); }
   }
-
-  // ---- the manual link in the profile deck (profile.js draws it) ----
-  // Registered whatever the guards below decide, so it still works once the
-  // automatic bounce has been spent.
-  document.addEventListener("click", function (e) {
-    var t = e.target, btn;
-    if (!t || !t.closest) return;
-    btn = t.closest("[data-bchandoff]");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (OLD.origin === location.origin) { showNote(NOTE_NONE); return; }  // the mirror shares the store
-    if (!window.confirm(CONFIRM)) return;
-    if (!writable()) { showNote(NOTE_DEAD); return; }
-    lsSet(FORCE, String(Date.now()));
-    bounce(true);
-  }, false);
 
   // ---- what this load is ----
   var frag = fragment();

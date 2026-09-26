@@ -8,8 +8,8 @@
  * script load carries a ?v= pin. Each tool's own checker (loa-bracelet-calc's
  * check-cache-versions.mjs, loa-astrogem-calc's lint-pins.js) only sees pins
  * inside its own folder. But tools load each other's files: profile/profile.js
- * pins /loa-bracelet-calc/model/bracelet.js and /loa-gpd/lookup.js, the hub
- * pins /loa-astrogem-calc/bible-oauth.js, loa-gpd/lookup.js pins the bracelet
+ * pins /loa-bracelet-calc/model/bracelet.js and /loa-gpd/lookup.js, the hub and three
+ * tools pin /shared/bible-oauth.js, loa-gpd/lookup.js pins the bracelet
  * model through BC_BASE + BC_FILES + BC_PIN, the bracelet advisor pins
  * loa-gpd/model/bracelet-price.js. Change one of those files without touching
  * the loading side and returning browsers run the old copy for four hours.

@@ -5,6 +5,11 @@
  * containers without being clipped. Touch screens have no hover, so a TAP toggles the
  * same tooltip (tapping elsewhere hides) — deliberately no title= fallback, which would
  * double-tooltip on desktop. Distinct from the pipeline's data-tip / .pl-pop popup.
+ *
+ * One copy for the site, in /shared/ (the astrogem and bracelet tools each carried one
+ * until 2026-09-25). Load it as /shared/tip.js?v=N and bump every loader's pin together.
+ * _redirects still serves it at /loa-bracelet-calc/tip.js for the profile page, which
+ * loads it there; drop that rule once profile/index.html points here.
  */
 (function () {
   "use strict";

@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0c0e12" />
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/shared/tokens.css?v=1">
 <!--
   Cloudflare Pages serves this file, with a 404 status, for any path that has no
   file. It can be served at ANY depth (/a/b/c), so every link and asset here is
@@ -15,8 +16,9 @@
 -->
 <style>
   :root{
-    --bg:#0c0e12;--surface:#14171e;--surface-2:#1a1e27;--border:#262b36;
-    --text:#e7e9ee;--muted:#98a1b2;--faint:#6b7484;--gold:#e8b75c;--gold-dim:#a9802a;
+    --bg:var(--lx-hub-bg,#0c0e12);--surface:var(--lx-hub-surface,#14171e);--surface-2:var(--lx-hub-surface-2,#1a1e27);--border:var(--lx-hub-border,#262b36);
+    --text:var(--lx-text,#e7e9ee);--muted:var(--lx-hub-muted,#98a1b2);--faint:var(--lx-hub-faint,#6b7484);
+    --gold:var(--lx-gold,#e8b75c);--gold-light:var(--lx-gold-light,#f4d79a);--gold-dim:var(--lx-gold-dim,#a9802a);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
@@ -33,7 +35,7 @@
   .eyebrow{font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:16px}
   h1{
     font-size:clamp(64px,16vw,112px);font-weight:800;line-height:.95;letter-spacing:-.03em;
-    background:linear-gradient(180deg,#fff 0%,#f4d79a 55%,var(--gold) 100%);
+    background:linear-gradient(180deg,#fff 0%,var(--gold-light) 55%,var(--gold) 100%);
     -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:14px;
   }
   .tagline{color:var(--muted);font-size:clamp(15px,2.6vw,18px);max-width:520px;margin:0 auto}
@@ -52,7 +54,7 @@
   .find input:focus,.find select:focus{border-color:var(--gold)}
   .find button{
     flex:0 0 auto;height:50px;padding:0 18px;border:none;border-radius:12px;cursor:pointer;
-    background:linear-gradient(180deg,#f4d79a,var(--gold));color:#0c0e12;font:inherit;font-size:15px;font-weight:700;
+    background:linear-gradient(180deg,var(--gold-light),var(--gold));color:#0c0e12;font:inherit;font-size:15px;font-weight:700;
   }
   .find button:hover{filter:brightness(1.06)}
   .find button:focus-visible{outline:2px solid #fff3d6;outline-offset:2px}

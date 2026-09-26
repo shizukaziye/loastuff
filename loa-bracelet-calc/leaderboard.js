@@ -250,26 +250,16 @@
   }
 
   /**
-   * The class glyph. The 29 file names are spelled out because a class we have no
-   * file for must get NO icon rather than a wrong one — the same rule app.js
-   * follows. Matching ignores case and spacing, so "Guardian Knight" finds
-   * Guardianknight; onerror still hides a file that fails for any other reason.
+   * The class glyph, from the site's shared set (/shared/class-icon.js, loaded by
+   * index.html): a class with no file gets NO icon rather than a wrong one, and
+   * "Guardian Knight" finds Guardianknight. onerror still hides a file that fails
+   * for any other reason.
    */
-  var CLASS_ICONS = ("Aeromancer Arcanist Artillerist Artist Bard Berserker Breaker Deadeye Deathblade " +
-    "Destroyer Glaivier Guardianknight Gunlancer Gunslinger Machinist Paladin Reaper Scrapper " +
-    "Shadowhunter Sharpshooter Slayer Sorceress Souleater Soulfist Striker Summoner Valkyrie " +
-    "Wardancer Wildsoul").split(" ");
-  var CLASS_ICON_BY_KEY = (function () {
-    var m = {}, i;
-    for (i = 0; i < CLASS_ICONS.length; i++) m[CLASS_ICONS[i].toLowerCase()] = CLASS_ICONS[i];
-    return m;
-  })();
   function classIconHtml(cls) {
-    if (!cls) return "";
-    var file = CLASS_ICON_BY_KEY[String(cls).replace(/[^A-Za-z]/g, "").toLowerCase()];
-    if (!file) return "";
-    return '<img class="lb-classicon" width="20" height="20" src="assets/class-icons/' +
-      encodeURIComponent(file) + '.svg" alt="" aria-hidden="true" loading="lazy" ' +
+    var src = cls && window.classIconUrl ? window.classIconUrl(cls) : null;
+    if (!src) return "";
+    return '<img class="lb-classicon" width="20" height="20" src="' + src +
+      '" alt="" aria-hidden="true" loading="lazy" ' +
       'onerror="this.style.display=\'none\'">';
   }
 
