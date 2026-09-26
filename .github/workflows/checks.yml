@@ -32,6 +32,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Tool list vs nav, hub, pill and titles (tools/check-tools.mjs)
+        if: ${{ !cancelled() }}
+        run: node tools/check-tools.mjs
+
+      - name: Shared-file ?v= pins (tools/check-shared-pins.mjs)
+        if: ${{ !cancelled() }}
+        run: node tools/check-shared-pins.mjs
+
       - name: Cross-tool ?v= pins (tools/check-cross-pins.mjs)
         if: ${{ !cancelled() }}
         env:
