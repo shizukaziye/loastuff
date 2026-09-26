@@ -36,6 +36,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: node tools/check-tools.mjs
 
+      - name: "Page smoke test: paths, pins, ids, labels, head, chrome (tools/check-html.mjs)"
+        if: ${{ !cancelled() }}
+        run: node tools/check-html.mjs
+
       - name: Shared-file ?v= pins (tools/check-shared-pins.mjs)
         if: ${{ !cancelled() }}
         run: node tools/check-shared-pins.mjs

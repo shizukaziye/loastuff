@@ -6,8 +6,9 @@
   "scripts": {
     "build": "node tools/build-dist.mjs",
     "check-dist": "node tools/build-dist.mjs --check-only",
-    "check": "npm run check:tools && npm run check:shared-pins && npm run check:cross-pins && npm run check:bracelet && npm run check:astrogem-pins && npm run check:gpd && npm run check:py",
+    "check": "npm run check:tools && npm run check:html && npm run check:shared-pins && npm run check:cross-pins && npm run check:bracelet && npm run check:astrogem-pins && npm run check:gpd && npm run check:py",
     "check:tools": "node tools/check-tools.mjs",
+    "check:html": "node tools/check-html.mjs",
     "check:shared-pins": "node tools/check-shared-pins.mjs",
     "check:cross-pins": "node tools/check-cross-pins.mjs",
     "check:bracelet": "npm --prefix loa-bracelet-calc run check",
