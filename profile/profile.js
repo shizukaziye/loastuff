@@ -73,7 +73,7 @@
   var BR_MODEL = ["/loa-bracelet-calc/data/gear-data.js?v=4",
     "/loa-bracelet-calc/model/bracelet.js?v=14",
     "/loa-bracelet-calc/subrank.js?v=9"];
-  var ICONS = "/loa-bracelet-calc/assets/class-icons/";
+  var ICONS = "/shared/class-icons/";
   // The GPD chart's lookup. It is heavy (its models, eight tables and the
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
