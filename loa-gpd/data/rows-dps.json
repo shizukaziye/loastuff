@@ -811,7 +811,7 @@
    "from": "level 7",
    "to": "level 8",
    "gold": 3080000,
-   "damage": 4.83333,
+   "damage": 6.92872,
    "mats": [
     [
      "11 gems, two more lv7 each",
@@ -827,11 +827,16 @@
      "cooldown reduction",
      "18% → 20%",
      0
+    ],
+    [
+     "basic attack power",
+     "6.6% → 8.8%",
+     0
     ]
    ],
    "buy": "11 gems from level 7 to 8 — three of a level make one of the next, so two more each",
-   "odds": "no chance involved. 3.03% from the damage bucket and 1.75% from casting 2.50% more often, with 70% of damage on cooldown",
-   "minimum": "every gem at level 8 — 36% skill damage and 20% cooldown"
+   "odds": "no chance involved. 3.03% from the damage bucket, 1.75% from casting 2.50% more often with 70% of damage on cooldown, and 2.00% from the gems' basic attack power",
+   "minimum": "every gem at level 8 — 36% skill damage, 20% cooldown and 0.8% basic attack power a gem"
   },
   {
    "series": "gems",
@@ -839,7 +844,7 @@
    "from": "level 8",
    "to": "level 9",
    "gold": 9240000,
-   "damage": 4.78884,
+   "damage": 6.84229,
    "mats": [
     [
      "11 gems, two more lv8 each",
@@ -855,11 +860,16 @@
      "cooldown reduction",
      "20% → 22%",
      0
+    ],
+    [
+     "basic attack power",
+     "8.8% → 11.0%",
+     0
     ]
    ],
    "buy": "11 gems from level 8 to 9 — three of a level make one of the next, so two more each",
-   "odds": "no chance involved. 2.94% from the damage bucket and 1.79% from casting 2.56% more often, with 70% of damage on cooldown",
-   "minimum": "every gem at level 9 — 40% skill damage and 22% cooldown"
+   "odds": "no chance involved. 2.94% from the damage bucket, 1.79% from casting 2.56% more often with 70% of damage on cooldown, and 1.96% from the gems' basic attack power",
+   "minimum": "every gem at level 9 — 40% skill damage, 22% cooldown and 1.0% basic attack power a gem"
   },
   {
    "series": "gems",
@@ -867,7 +877,7 @@
    "from": "level 9",
    "to": "level 10",
    "gold": 27720000,
-   "damage": 4.75188,
+   "damage": 6.76515,
    "mats": [
     [
      "11 gems, two more lv9 each",
@@ -883,11 +893,16 @@
      "cooldown reduction",
      "22% → 24%",
      0
+    ],
+    [
+     "basic attack power",
+     "11.0% → 13.2%",
+     0
     ]
    ],
    "buy": "11 gems from level 9 to 10 — three of a level make one of the next, so two more each",
-   "odds": "no chance involved. 2.86% from the damage bucket and 1.84% from casting 2.63% more often, with 70% of damage on cooldown",
-   "minimum": "every gem at level 10 — 44% skill damage and 24% cooldown"
+   "odds": "no chance involved. 2.86% from the damage bucket, 1.84% from casting 2.63% more often with 70% of damage on cooldown, and 1.92% from the gems' basic attack power",
+   "minimum": "every gem at level 10 — 44% skill damage, 24% cooldown and 1.2% basic attack power a gem"
   },
   {
    "series": "bracelet",

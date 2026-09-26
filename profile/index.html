@@ -45,7 +45,7 @@
 -->
 <link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
 <link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
-<link rel="stylesheet" href="/profile/profile.css?v=7">
+<link rel="stylesheet" href="/profile/profile.css?v=8">
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
      press), so the next page opens already drawn. profile.js holds every side
      effect until the page is shown. The favorite/recent chips are left out: they
@@ -217,6 +217,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
               </tbody>
             </table>
           </div>
+          <div class="lp-gsc"><div class="lp-gsch"><span class="sk" style="width:15em"></span></div><div class="lp-gscsk"></div></div>
         </div>
       </a>
     </section>
@@ -228,6 +229,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
       <p><b>Class place.</b> The line under each rank: the same board cut to the character&rsquo;s own class. &ldquo;Top 12% of Reapers (of 431)&rdquo; means 431 Reapers are on that board and this one&rsquo;s place among them, divided by 431, is 12%. It follows the rank: marked &asymp; while the board does not hold the character yet, and as fresh as the board, which rebuilds every 10 minutes (bracelet) or 30 (astrogems).</p>
       <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The page reads the rank from the Worker&rsquo;s slim board index (<code>/board-slim</code>: each character&rsquo;s class and the two boards&rsquo; sort keys, about 270 KB), not the whole board. The average grade, the Order and Chaos figures and the grid damage are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
       <p><b>Gold per 1% damage.</b> The GPD chart&rsquo;s own lookup (<code>/loa-gpd/lookup.js</code>), run here on the same two lostark.bible answers as the bracelet and astrogem overviews: the three cheapest next steps, each with your rung and what it costs per 1% damage at the chart&rsquo;s default prices and switches (no flat line, high main stat); the chart itself shows every ladder. A support is graded on the support ladders, where gold per 1% counts the buff on all three dealers. Only a step under 25M per 1% can be the pick. It loads after the bracelet and astrogem overviews, so it never holds them up.</p>
+      <p><b>Loseii Score (beta).</b> The character&rsquo;s damage on the in-game Combat Power scale, so it reads like CP but orders and spaces characters by what they actually deal. On the GPD chart&rsquo;s own ladders, each system the pull carries &mdash; honing piece by piece, karma, every skill gem, the stone, the bracelet (the bracelet calculator&rsquo;s own score), each accessory, the ark grid, and Master &mdash; is scored as damage against the chart&rsquo;s reference character; the multipliers are multiplied together and scaled by one constant, set so the median NA character on a calibration panel of real characters scores its own in-game CP. DPS: the character&rsquo;s own damage, no support buffs, with a fixed dummy attack buff on the attack-power term. Support: the buffs measured on a fixed reference dealer. Honing is read piece by piece on the gear set it is on (the 1590 or the 1675 set), from the game&rsquo;s own stat tables. A system the pull does not carry is taken at the reference&rsquo;s level and named under the breakdown; engravings, skills, cards and the ark passive past tier-1 evolution and Master are never in the pull and never scored. The score is a beta: it tracks damage, and damage grows more slowly than in-game CP as a character progresses. Where the score and your CP disagree, the game&rsquo;s own weighting and real damage disagree &mdash; or an unscored system is doing the work. Method: the GPD chart&rsquo;s <a href="/loa-gpd/docs/METHODOLOGY.md">METHODOLOGY.md</a>, &ldquo;Loseii Score&rdquo;.</p>
       <p><b>Calculators assume.</b> The raid loadout&rsquo;s item level, weapon power and main stat as lostark.bible reports them: the figures the bracelet calculator imports into its character panel. Update reads the bracelet record again; astrogems are pulled from the Astrogem Calculator, which needs a lostark.bible sign-in.</p>
       <p><b>The overviews.</b> Each tile opens its overview; the address keeps the one on show (#bracelet, #astrogems, #gpd) and this browser remembers the last one. An overview is a summary: click it to open the calculator it comes from, with this character loaded.</p>
       <p><b>Where the data comes from.</b> Public lostark.bible character pages, as their owners last synced them &mdash; it can be weeks behind the game. Raid statistics are never read. Not affiliated with Smilegate, Amazon Games or lostark.bible.</p>
@@ -238,7 +240,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
 <script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
 <script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
 <script src="/shared/tip.js?v=1" defer></script>
-<script src="/profile/profile.js?v=9" defer></script>
+<script src="/profile/profile.js?v=10" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

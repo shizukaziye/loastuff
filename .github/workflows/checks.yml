@@ -65,6 +65,11 @@ jobs:
         working-directory: loa-gpd
         run: node tools/verify.js
 
+      - name: GPD chart, Loseii Score (tools/verify-loseii-score.js, with its Python twin)
+        if: ${{ !cancelled() }}
+        working-directory: loa-gpd
+        run: node tools/verify-loseii-score.js
+
       - name: Shared market maths (tools/marketlib.py self-test)
         if: ${{ !cancelled() }}
         run: python tools/marketlib.py

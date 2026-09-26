@@ -1,0 +1,130 @@
+{
+ "name": "Shizukaziye",
+ "region": "NA",
+ "class": "Reaper",
+ "itemLevel": 1781,
+ "bracelet": {
+  "type": "bracelet",
+  "stats": [
+   {
+    "type": 2,
+    "index": 16,
+    "id": 213400023,
+    "value": 67,
+    "fixed": true
+   },
+   {
+    "type": 2,
+    "index": 15,
+    "id": 213400023,
+    "value": 84,
+    "fixed": true
+   },
+   {
+    "type": 3,
+    "index": 11013,
+    "id": 213400023,
+    "value": 5,
+    "fixed": false
+   },
+   {
+    "type": 2,
+    "index": 76,
+    "id": 213400023,
+    "value": 840,
+    "fixed": false
+   },
+   {
+    "type": 3,
+    "index": 11042,
+    "id": 213400023,
+    "value": 5,
+    "fixed": false
+   }
+  ],
+  "numRerolls": 4,
+  "numTicketRerolls": 3
+ },
+ "profile": {
+  "itemLevel": 1781.6661,
+  "combatPower": 7101.09,
+  "honing": {
+   "weapon": 23,
+   "head": 21,
+   "chest": 21,
+   "pants": 21,
+   "gloves": 21,
+   "shoulder": 21
+  },
+  "advancedHoning": {
+   "weapon": 40,
+   "head": 40,
+   "chest": 40,
+   "pants": 40,
+   "gloves": 40,
+   "shoulder": 40
+  },
+  "apPoints": {
+   "enlightenment": 101,
+   "evolution": 140,
+   "leap": 70
+  },
+  "master": true,
+  "gemLevels": [
+   10,
+   10,
+   10,
+   10,
+   10,
+   10,
+   10,
+   10,
+   10,
+   10,
+   10
+  ],
+  "raw": {
+   "loadoutCombatPower": 6958.28,
+   "combatPowerSource": "estimatedMaxCombatPower",
+   "accessoryBySlot": {
+    "neck": {
+     "mainStat": 17563,
+     "flatAP": 0,
+     "flatWP": 0
+    },
+    "ear1": {
+     "mainStat": 13702,
+     "flatAP": 0,
+     "flatWP": 0
+    },
+    "ear2": {
+     "mainStat": 13785,
+     "flatAP": 0,
+     "flatWP": 0
+    },
+    "finger1": {
+     "mainStat": 12839,
+     "flatAP": 0,
+     "flatWP": 480
+    },
+    "finger2": {
+     "mainStat": 12065,
+     "flatAP": 80,
+     "flatWP": 0
+    }
+   },
+   "karma": {
+    "evolution": 25,
+    "enlightenment": 29,
+    "leap": 25
+   },
+   "stoneNodes": [
+    9,
+    7,
+    1
+   ]
+  }
+ },
+ "loadout": "Raid",
+ "pulledAt": 1790376605010
+}
