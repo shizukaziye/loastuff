@@ -114,7 +114,3 @@ th.bh .gloss,th .gloss{text-decoration-color:var(--dim)}
   box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s ease}
 #gm-tip.on{opacity:1;visibility:visible}
 
-/* The manual "Used the old address? Bring your saved profiles over" link is retired
-   (2026-09-25; the automatic carry-over in handoff.js stays). profile.js still draws
-   it until that file drops its HANDOFF_LINK; until then it stays hidden here. */
-[data-bchandoff]{display:none !important}

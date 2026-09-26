@@ -596,29 +596,23 @@
   }
 
   /**
-   * The class glyph, from assets/class-icons/<Class>.svg — the same 29 files the
-   * astrogem calculator ships. Spelled out because an unknown class must get NO
-   * icon rather than a wrong one or a broken image. app.js and leaderboard.js each
-   * keep their own copy for the same reason the scorer is duplicated above.
+   * The class glyph, from the site's shared set (/shared/class-icon.js, loaded by
+   * index.html): a class with no file gets NO icon rather than a wrong one.
    */
-  var CLASS_ICONS = ("Aeromancer Arcanist Artillerist Artist Bard Berserker Breaker Deadeye Deathblade " +
-    "Destroyer Glaivier Guardianknight Gunlancer Gunslinger Machinist Paladin Reaper Scrapper " +
-    "Shadowhunter Sharpshooter Slayer Sorceress Souleater Soulfist Striker Summoner Valkyrie " +
-    "Wardancer Wildsoul").split(" ");
-  var CLASS_ICON_BY_KEY = (function () {
-    var m = {}, i;
-    for (i = 0; i < CLASS_ICONS.length; i++) m[CLASS_ICONS[i].toLowerCase()] = CLASS_ICONS[i];
-    return m;
-  })();
-  function classIconFile(cls) {
-    if (!cls) return null;
-    return CLASS_ICON_BY_KEY[String(cls).replace(/[^A-Za-z]/g, "").toLowerCase()] || null;
-  }
   function classIconHtml(cls) {
-    var f = classIconFile(cls);
-    if (!f) return "";
-    return '<img class="bi-classicon" src="assets/class-icons/' + encodeURIComponent(f) +
-      '.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
+    var src = cls && window.classIconUrl ? window.classIconUrl(cls) : null;
+    if (!src) return "";
+    return '<img class="bi-classicon" src="' + src +
+      '" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
+  }
+
+  /** Raw error text ("Failed to fetch", "http_502") means nothing to a player; say it plainly. */
+  function plainError(e) {
+    var m = String((e && (e.error || e.message)) || e || "");
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) return "the server could not be reached";
+    var h = /^http_(\d+)$/.exec(m);
+    if (h) return "the server answered with an error (" + h[1] + ")";
+    return m || "no answer";
   }
 
   // ------------------------------------------------------------------
@@ -1370,9 +1364,9 @@
       '    <div class="bi-pullgrid">' +
       '      <div class="bi-pullleft">' +
       '        <div class="bi-pullctl">' +
-      '          <div class="fld fld-region"><label>Region</label><select id="bi-region">' +
+      '          <div class="fld fld-region"><label for="bi-region">Region</label><select id="bi-region">' +
                    regionOptions((last && last.region) || "NA") + '</select></div>' +
-      '          <div class="fld fld-name"><label>Character name</label>' +
+      '          <div class="fld fld-name"><label for="bi-name">Character name</label>' +
       '            <input id="bi-name" type="text" placeholder="e.g. White" autocomplete="off" value="' +
                    esc((last && last.name) || "") + '"></div>' +
       '        </div>' +
@@ -1969,8 +1963,8 @@
       renderMsg();
       if (d.degraded) setFreeStatus(true);
     }).catch(function (e) {
-      setPullStatus("Request failed: " + ((e && e.message) || e), "err");
-      state.error = { kind: "worker", detail: (e && e.message) || "no answer", who: name };
+      setPullStatus("The lookup failed: " + plainError(e) + ".", "err");
+      state.error = { kind: "worker", detail: plainError(e), who: name };
       renderMsg();
     }).then(function () { setBusy(false); });
   }
@@ -2284,7 +2278,7 @@
         }
         state.error = { kind: "reauth-failed" };
       } else {
-        state.error = { kind: "api", detail: (e && (e.error || e.message)) || "no answer" };
+        state.error = { kind: "api", detail: plainError(e) };
       }
       setPullStatus("Couldn't load your roster.", "err");
       render();
