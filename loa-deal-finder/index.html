@@ -34,7 +34,7 @@ h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--acce
 .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
 .mbtn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--dim)}
 .mbtn.active{color:#06121f;background:var(--accent)}
-.chip{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--dim)}
+.chip{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--dim);font-family:inherit}
 .chip.active{color:#06121f;background:var(--accent)}
 .ninp{width:64px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-family:inherit}
 .hl{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:10px 13px;font-size:13px;margin-bottom:10px}
@@ -66,6 +66,14 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
 .foot .disc{display:block;max-width:560px;margin:6px auto 0;opacity:.8}
 @media(max-width:680px){ .wrap{padding:14px 10px 70px} table{font-size:12px} th,td{padding:6px 7px} h1{font-size:20px} }
 @media(max-width:420px){ .bar{gap:8px 12px;padding:10px} .mbtn{padding:7px 11px} .chip{padding:6px 11px} .ninp{width:72px;padding:6px 7px} }
+.sel{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+button.tgl,button.sortbtn,button.mlink,button.pathpick{background:none;border-radius:0;padding:0;margin:0;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:inherit;cursor:pointer}
+button.tgl,button.sortbtn,button.mlink{color:inherit;border:0}
+button:focus-visible,select:focus-visible,summary:focus-visible,tr[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Phones: the filter bar wraps to ~200px, so a sticky bar would cover the table. Let it scroll away. */
+@media(max-width:480px){ .bar{position:static} }
+/* Touch screens: finger-sized controls. A mouse sees no change. */
+@media(pointer:coarse){ .chip,.mbtn,.sel,.ninp,button.sortbtn{min-height:40px} }
 </style>
 </head><body>
 <div class='wrap'>
@@ -75,19 +83,18 @@ details.method p,details.method li{font-size:13px;color:var(--text)}
   <div class='xlink'>Crafting something? Try the companion <a href='https://www.loseii.com/loa-crafting-calculator/'>Stronghold Crafting Profit Calculator &rarr;</a></div>
 
   <div class='bar'>
-    <span class='grp'><span class='lbl'>Region</span>
-      <button class='mbtn active' data-rg='nae' onclick='setRegion("nae")'>NA East</button>
-      <button class='mbtn' data-rg='euc' onclick='setRegion("euc")'>EU Central</button></span>
-    <span class='grp'><span class='lbl'>Show</span>
-      <button class='mbtn active' data-vw='liquid' onclick='setView("liquid")'>Liquid</button>
-      <button class='mbtn' data-vw='all' onclick='setView("all")'>Everything</button></span>
-    <span class='grp' id='catchips'><span class='lbl'>Type</span>
-      <span class='chip active' data-ct='all' onclick='setCat("all")'>All</span>
-      <span class='chip' data-ct='mats' onclick='setCat("mats")'>Mats</span>
-      <span class='chip' data-ct='honing' onclick='setCat("honing")'>Honing</span>
-      <span class='chip' data-ct='fusion' onclick='setCat("fusion")'>Fusion</span>
-      <span class='chip' data-ct='meal' onclick='setCat("meal")'>Cooking</span></span>
-    <span class='grp' id='minwrap'><span class='lbl'>Min value</span><input id='minv' type='number' min='0' step='10' class='ninp' oninput='render()'> <span class='lbl'>g</span></span>
+    <span class='grp'><label class='lbl' for='rgsel'>Region</label>
+      <select id='rgsel' class='sel' onchange='setRegion(this.value)'><option value='nae'>NA East</option><option value='euc'>EU Central</option></select></span>
+    <span class='grp' role='group' aria-labelledby='lbl-show'><span class='lbl' id='lbl-show'>Show</span>
+      <button type='button' class='mbtn active' aria-pressed='true' data-vw='liquid' onclick='setView("liquid")'>Liquid</button>
+      <button type='button' class='mbtn' aria-pressed='false' data-vw='all' onclick='setView("all")'>Everything</button></span>
+    <span class='grp' id='catchips' role='group' aria-labelledby='lbl-type'><span class='lbl' id='lbl-type'>Type</span>
+      <button type='button' class='chip active' data-ct='all' onclick='setCat("all")' aria-pressed='true'>All</button>
+      <button type='button' class='chip' data-ct='mats' onclick='setCat("mats")' aria-pressed='false'>Mats</button>
+      <button type='button' class='chip' data-ct='honing' onclick='setCat("honing")' aria-pressed='false'>Honing</button>
+      <button type='button' class='chip' data-ct='fusion' onclick='setCat("fusion")' aria-pressed='false'>Fusion</button>
+      <button type='button' class='chip' data-ct='meal' onclick='setCat("meal")' aria-pressed='false'>Cooking</button></span>
+    <span class='grp' id='minwrap'><label class='lbl' for='minv'>Min value</label><input id='minv' type='number' min='0' step='10' class='ninp' oninput='render()'> <span class='lbl'>g</span></span>
   </div>
 
   <div class='hl stale' id='stalewarn' style='display:none'></div>
@@ -141,6 +148,8 @@ async function loadMarket(){
   }catch(e){ mktSrc='fallback'; console.warn('Deal Finder: market file unavailable, using the baked fallback:',e.message); }
 }
 const $=id=>document.getElementById(id);
+function mark(b,on){b.classList.toggle('active',!!on);b.setAttribute('aria-pressed',on?'true':'false');}   // toggle button: look + announced state
+function refocusSort(k){const b=document.querySelector('.sortbtn[data-k="'+k+'"]');if(b)b.focus();}   // the header is rebuilt on sort; keep keyboard focus on it
 const g=v=>Math.round(v).toLocaleString('en-US');
 const sgn=f=>(f>0?'+':'')+Math.round(f*100)+'%';
 const dataTs=()=>mktTs;      // when the market data itself last changed
@@ -208,9 +217,9 @@ function rows(){
   }
   return out;
 }
-function setRegion(r){region=r;LS('df_region',r);document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===r));render();}
-function setView(v){view=v;LS('df_view',v);document.querySelectorAll('[data-vw]').forEach(b=>b.classList.toggle('active',b.dataset.vw===v));$('catchips').style.opacity=v==='liquid'?'1':'.4';$('minwrap').style.opacity=v==='liquid'?'1':'.4';$('minv').disabled=v!=='liquid';render();}
-function setCat(c){cat=c;LS('df_cat',c);document.querySelectorAll('[data-ct]').forEach(b=>b.classList.toggle('active',b.dataset.ct===c));render();}
+function setRegion(r){region=r;LS('df_region',r);$('rgsel').value=r;render();}
+function setView(v){view=v;LS('df_view',v);document.querySelectorAll('[data-vw]').forEach(b=>mark(b,b.dataset.vw===v));$('catchips').style.opacity=v==='liquid'?'1':'.4';$('minwrap').style.opacity=v==='liquid'?'1':'.4';$('minv').disabled=v!=='liquid';render();}
+function setCat(c){cat=c;LS('df_cat',c);document.querySelectorAll('[data-ct]').forEach(b=>mark(b,b.dataset.ct===c));render();}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==='gap')?1:(k==='n'||k==='c')?1:-1;}render();}
 
 function render(){
@@ -227,7 +236,7 @@ function render(){
   const rgName={nae:'NA East',euc:'EU Central'}[region]||region.toUpperCase();
   $('summary').innerHTML=`<b class='accent'>${r.length}</b> ${view==='liquid'?'liquid':'total'} items &middot; <b class='good'>${buys}</b> currently below fair (buys) &middot; <b>${rgName}</b> &middot; prices as of ${fmtWhen(dataTs())}. Cheapest vs. fair first.`;
   const cols=[['n','Item'],['c','Type'],['fair','Fair',1],['s','Spot',1],['gap','Deal',1],['h','14-day']];
-  let h='<tr>'+cols.map(([k,l,n])=>k==='h'?`<th style='cursor:default'>${l}</th>`:`<th class='${n?'num':''}' onclick='sortBy("${k}")'>${l}${sortKey===k?(sortDir<0?' ▾':' ▴'):''}</th>`).join('')+'</tr>';
+  let h='<tr>'+cols.map(([k,l,n])=>k==='h'?`<th style='cursor:default'>${l}</th>`:`<th class='${n?'num':''}'${sortKey===k?` aria-sort='${sortDir<0?'descending':'ascending'}'`:''}><button type='button' class='sortbtn' data-k='${k}' onclick='sortBy("${k}");refocusSort("${k}")'>${l}${sortKey===k?`<span aria-hidden='true'>${sortDir<0?' ▾':' ▴'}</span>`:''}</button></th>`).join('')+'</tr>';
   if(!r.length){
     h+=`<tr><td colspan='${cols.length}' style='text-align:center;color:var(--dim);padding:26px 10px;white-space:normal'>`
       +`No items match these filters.<br><span style='font-size:12px'>Try lowering <b>Min value</b>, picking a different <b>Type</b>, or switching to <b>Everything</b>.</span></td></tr>`;
@@ -245,9 +254,9 @@ async function boot(){
   region=LS('df_region')||'nae'; view=LS('df_view')||'liquid'; cat=LS('df_cat')||'all';
   $('minv').value=LS('df_minv')!=null?LS('df_minv'):10;
   $('minv').addEventListener('input',()=>LS('df_minv',$('minv').value));
-  document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===region));
-  document.querySelectorAll('[data-vw]').forEach(b=>b.classList.toggle('active',b.dataset.vw===view));
-  document.querySelectorAll('[data-ct]').forEach(b=>b.classList.toggle('active',b.dataset.ct===cat));
+  $('rgsel').value=region;
+  document.querySelectorAll('[data-vw]').forEach(b=>mark(b,b.dataset.vw===view));
+  document.querySelectorAll('[data-ct]').forEach(b=>mark(b,b.dataset.ct===cat));
   $('catchips').style.opacity=view==='liquid'?'1':'.4';
   $('minwrap').style.opacity=view==='liquid'?'1':'.4'; $('minv').disabled=view!=='liquid';
   if(mktSrc==='fallback'){ const w=$('stalewarn');

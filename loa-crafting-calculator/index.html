@@ -146,6 +146,12 @@ td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:7
   td.barcell{justify-content:space-between;position:static}
   td.barcell .dbar{display:none}
 }
+.sel{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 7px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+button.tgl,button.sortbtn,button.mlink,button.pathpick{background:none;border-radius:0;padding:0;margin:0;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:inherit;cursor:pointer}
+button.tgl,button.sortbtn,button.mlink{color:inherit;border:0}
+button:focus-visible,select:focus-visible,summary:focus-visible,tr[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Touch screens: finger-sized controls. A mouse sees no change. */
+@media(pointer:coarse){ .mbtn,.sel,button.tgl,button.sortbtn{min-height:40px} }
 </style>
 </head><body>
 <div class='wrap'>
@@ -158,26 +164,25 @@ td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:7
   <!-- INPUTS: sticky, collapsible, default collapsed -->
   <div class='inputs'>
     <div class='ihdr'>
-      <span class='tgl' onclick='toggleInputs()'><span id='caret'>&#9662;</span> Inputs &amp; settings</span>
+      <button type='button' class='tgl' id='inTgl' aria-expanded='true' aria-controls='infields' onclick='toggleInputs()'><span id='caret' aria-hidden='true'>&#9662;</span> Inputs &amp; settings</button>
       <span id='syncStatus' class='note' style='margin:0'></span>
     </div>
     <div id='infields'>
       <div class='toprow'>
-        <span><span class='lbl'>Region</span>
-          <button class='mbtn active' data-rg='nae' onclick='setRegion("nae")'>NA East</button>
-          <button class='mbtn' data-rg='euc' onclick='setRegion("euc")'>EU Central</button></span>
-        <span><span class='lbl'>Great Success</span>
-          <button class='mbtn active' id='gsBtn' onclick='toggleGS()'>On</button></span>
+        <span><label class='lbl' for='rgsel'>Region</label>
+          <select id='rgsel' class='sel' onchange='setRegion(this.value)'><option value='nae'>NA East</option><option value='euc'>EU Central</option></select></span>
+        <span><span class='lbl' id='lbl-gs'>Great Success</span>
+          <button type='button' class='mbtn active' id='gsBtn' aria-pressed='true' aria-labelledby='lbl-gs gsBtn' onclick='toggleGS()'>On</button></span>
         <span><span class='lbl'>Pricing</span>
-          <button class='mbtn active' data-bs='m' onclick='setBasis("m")'>Robust (14d)</button>
-          <button class='mbtn' data-bs='y' onclick='setBasis("y")'>Yesterday</button>
-          <button class='mbtn' data-bs='s' onclick='setBasis("s")'>Spot (now)</button></span>
+          <button type='button' class='mbtn active' aria-pressed='true' data-bs='m' onclick='setBasis("m")'>Robust (14d)</button>
+          <button type='button' class='mbtn' aria-pressed='false' data-bs='y' onclick='setBasis("y")'>Yesterday</button>
+          <button type='button' class='mbtn' aria-pressed='false' data-bs='s' onclick='setBasis("s")'>Spot (now)</button></span>
         <span><button onclick='syncPrices()'>&#8635; Sync live prices</button></span>
       </div>
       <div class='toprow' style='margin-top:8px'>
         <span class='lbl'>Robust price</span>
-        <span class='knob'><span class='lbl' style='margin:0'>drop hi/lo</span><input id='p_trim' type='number' min='0' step='1' class='ninp' oninput='setRobustParams()'></span>
-        <span class='knob'><span class='lbl' style='margin:0'>decay</span><input id='p_decay' type='number' min='0.5' max='1' step='0.01' class='ninp' oninput='setRobustParams()'></span>
+        <span class='knob'><label class='lbl' style='margin:0' for='p_trim'>drop hi/lo</label><input id='p_trim' type='number' min='0' step='1' class='ninp' oninput='setRobustParams()'></span>
+        <span class='knob'><label class='lbl' style='margin:0' for='p_decay'>decay</label><input id='p_decay' type='number' min='0.5' max='1' step='0.01' class='ninp' oninput='setRobustParams()'></span>
         <span class='note' id='decayNote' style='margin:0'></span>
       </div>
 
@@ -186,21 +191,21 @@ td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:7
         <div class='note' style='margin:2px 0 8px'>General stacks onto the category-specific column. Edits apply instantly.</div>
         <div class='redux'>
           <div class='rc'><h4>General</h4>
-            <div class='fld'><label>Cost</label><input id='r_general_cost' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Time</label><input id='r_general_time' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Great Success</label><input id='r_general_gs' type='number' step='1' oninput='recalc()'></div></div>
+            <div class='fld'><label for='r_general_cost'>Cost</label><input id='r_general_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_general_time'>Time</label><input id='r_general_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_general_gs'>Great Success</label><input id='r_general_gs' type='number' step='1' oninput='recalc()'></div></div>
           <div class='rc'><h4>Battle</h4>
-            <div class='fld'><label>Cost</label><input id='r_battle_cost' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Time</label><input id='r_battle_time' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Great Success</label><input id='r_battle_gs' type='number' step='1' oninput='recalc()'></div></div>
+            <div class='fld'><label for='r_battle_cost'>Cost</label><input id='r_battle_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_battle_time'>Time</label><input id='r_battle_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_battle_gs'>Great Success</label><input id='r_battle_gs' type='number' step='1' oninput='recalc()'></div></div>
           <div class='rc'><h4>Cooking</h4>
-            <div class='fld'><label>Cost</label><input id='r_cooking_cost' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Time</label><input id='r_cooking_time' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Great Success</label><input id='r_cooking_gs' type='number' step='1' oninput='recalc()'></div></div>
+            <div class='fld'><label for='r_cooking_cost'>Cost</label><input id='r_cooking_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_cooking_time'>Time</label><input id='r_cooking_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_cooking_gs'>Great Success</label><input id='r_cooking_gs' type='number' step='1' oninput='recalc()'></div></div>
           <div class='rc'><h4>Special (fusion)</h4>
-            <div class='fld'><label>Cost</label><input id='r_special_cost' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Time</label><input id='r_special_time' type='number' step='1' oninput='recalc()'></div>
-            <div class='fld'><label>Great Success</label><input id='r_special_gs' type='number' step='1' oninput='recalc()'></div></div>
+            <div class='fld'><label for='r_special_cost'>Cost</label><input id='r_special_cost' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_special_time'>Time</label><input id='r_special_time' type='number' step='1' oninput='recalc()'></div>
+            <div class='fld'><label for='r_special_gs'>Great Success</label><input id='r_special_gs' type='number' step='1' oninput='recalc()'></div></div>
         </div>
         <div class='barrow'><button onclick='resetDefaults();recalc()' style='background:var(--panel2);color:var(--text)'>Reset reductions &amp; robust knobs</button></div>
       </details>
@@ -214,7 +219,7 @@ td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:7
         <div class='pxgrid' id='pxCraft'></div>
         <div class='subh'>Live-sync proxy (optional)</div>
         <div class='ig' style='grid-template-columns:1fr'>
-          <div class='fld'><label>Proxy URL &mdash; paste your CORS worker for in-browser "Sync live prices" (see Method). Blank = use the baked snapshot or edit by hand.</label><input id='p_proxy' type='text' placeholder='https://your-worker.workers.dev/v1/prices/latest'></div>
+          <div class='fld'><label for='p_proxy'>Proxy URL &mdash; paste your CORS worker for in-browser "Sync live prices" (see Method). Blank = use the baked snapshot or edit by hand.</label><input id='p_proxy' type='text' placeholder='https://your-worker.workers.dev/v1/prices/latest'></div>
         </div>
       </details>
     </div>
@@ -226,13 +231,13 @@ td.barcell .dv{position:relative;font-variant-numeric:tabular-nums;font-weight:7
   <h2>All crafts &mdash; ranked</h2>
   <div class='toprow' style='margin:0 0 8px'>
     <span><span class='lbl'>Show</span>
-      <button class='mbtn active' data-ft='all' onclick='setFilter("all")'>All</button>
-      <button class='mbtn' data-ft='cooking' onclick='setFilter("cooking")'>Cooking</button>
-      <button class='mbtn' data-ft='special' onclick='setFilter("special")'>Fusion</button>
-      <button class='mbtn' data-ft='battle' onclick='setFilter("battle")'>Battle</button></span>
+      <button type='button' class='mbtn active' aria-pressed='true' data-ft='all' onclick='setFilter("all")'>All</button>
+      <button type='button' class='mbtn' aria-pressed='false' data-ft='cooking' onclick='setFilter("cooking")'>Cooking</button>
+      <button type='button' class='mbtn' aria-pressed='false' data-ft='special' onclick='setFilter("special")'>Fusion</button>
+      <button type='button' class='mbtn' aria-pressed='false' data-ft='battle' onclick='setFilter("battle")'>Battle</button></span>
     <span><span class='lbl'>Columns</span>
-      <button class='mbtn active' data-cm='simple' onclick='setColMode("simple")'>Simple</button>
-      <button class='mbtn' data-cm='advanced' onclick='setColMode("advanced")'>Advanced</button></span>
+      <button type='button' class='mbtn active' aria-pressed='true' data-cm='simple' onclick='setColMode("simple")'>Simple</button>
+      <button type='button' class='mbtn' aria-pressed='false' data-cm='advanced' onclick='setColMode("advanced")'>Advanced</button></span>
     <span class='note' style='margin:0'>Click a row for the full material breakdown.</span>
   </div>
   <div class='panel'><table id='table'></table></div>
@@ -323,6 +328,9 @@ async function loadMarket(){
 }
 // ====== helpers ======
 const $=id=>document.getElementById(id);
+function mark(b,on){b.classList.toggle('active',!!on);b.setAttribute('aria-pressed',on?'true':'false');}   // toggle button: look + announced state
+function keyClick(e){if(e.target!==e.currentTarget)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();e.currentTarget.click();}}   // Enter/Space on a clickable row
+function refocusSort(k){const b=document.querySelector('.sortbtn[data-k="'+k+'"]');if(b)b.focus();}   // the header is rebuilt on sort; keep keyboard focus on it
 const g=v=>Math.round(v).toLocaleString('en-US');                 // gold, integer w/ commas (force en-US so it's never locale '1.416')
 const sg=v=>(v>=0?'+':'')+g(v);                                  // signed gold
 const pct=v=>(v*100).toFixed(1)+'%';
@@ -518,9 +526,9 @@ const COLS=[
   ['perHr','Net / hr',true,false,'Profit per hour of craft time'],
   ['roi','ROI',true,false,'Profit ÷ total cost']
 ];
-function setColMode(m){ colMode=m; document.querySelectorAll('[data-cm]').forEach(b=>b.classList.toggle('active',b.dataset.cm===m)); recalc(); }
+function setColMode(m){ colMode=m; document.querySelectorAll('[data-cm]').forEach(b=>mark(b,b.dataset.cm===m)); recalc(); }
 function pathCell(r,e){ return r.materialOptions.length>1
-  ? `<span class='pathpick${e.auto?'':' ov'}' title='${e.auto?'Cheapest path — click to switch':'Manually set — click to switch'}' onclick='cyclePath("${r.id}",event)'>${e.path} &#8644;</span>`
+  ? `<button type='button' class='pathpick${e.auto?'':' ov'}' title='${e.auto?'Cheapest path — click to switch':'Manually set — click to switch'}' onclick='cyclePath("${r.id}",event)'>${e.path} <span aria-hidden='true'>&#8644;</span></button>`
   : `<span class='dim'>${e.path==='default'?'—':e.path}</span>`; }
 function barCell(v,maxAbs){ const w=maxAbs>0?Math.max(3,Math.min(100,Math.abs(v)/maxAbs*100)):0;
   return `<span class='dbar${v<0?' neg':''}' style='width:${Math.round(w)}%'></span><span class='dv ${v>=0?'good':'bad'}'>${sg(v)}</span>`; }
@@ -550,11 +558,11 @@ function renderTable(rows){
   });
   const maxHr=Math.max(1,...view.map(x=>Math.abs(x.e.perHr)));
   let head='<tr>';
-  for(const c of cols) head+=`<th class='so${c[2]?' num':''}${sortKey===c[0]?' act':''}' title='${c[4]||''}' onclick='sortBy("${c[0]}")'>${c[1]}${sortKey===c[0]?(sortDir<0?' ▾':' ▴'):''}</th>`;
+  for(const c of cols) head+=`<th class='so${c[2]?' num':''}${sortKey===c[0]?' act':''}' title='${c[4]||''}'${sortKey===c[0]?` aria-sort='${sortDir<0?'descending':'ascending'}'`:''}><button type='button' class='sortbtn' data-k='${c[0]}' onclick='sortBy("${c[0]}");refocusSort("${c[0]}")'>${c[1]}${sortKey===c[0]?`<span aria-hidden='true'>${sortDir<0?' ▾':' ▴'}</span>`:''}</button></th>`;
   head+='</tr>';
   let body='';
   for(const {r,e} of view){
-    body+=`<tr class='click${selId===r.id?' sel':''}' onclick='selectRow("${r.id}")'>`;
+    body+=`<tr class='click${selId===r.id?' sel':''}' tabindex='0'${selId===r.id?" aria-current='true'":''} onclick='selectRow("${r.id}")' onkeydown='keyClick(event)'>`;
     for(const c of cols) body+=cellFor(c[0],r,e,maxHr);
     body+='</tr>';
   }
@@ -591,7 +599,7 @@ function renderBreakdown(id){
     h+=`<div class='subh' style='display:flex;gap:8px;align-items:baseline;flex-wrap:wrap'>Gathering paths <span class='note' style='margin:0;font-weight:400;text-transform:none;letter-spacing:0'>&mdash; click a row to use that path${ov?` &middot; <span class='mlink' onclick='setPath("${r.id}",null)'>reset to cheapest</span>`:' &middot; cheapest auto-selected'}</span></div>`;
     h+=`<table><tr><th>Path</th><th class='num'>Material cost</th><th class='num'>vs cheapest</th></tr>`;
     ps.forEach(o=>{ const used=o.cat===bo.cat, extra=o.cost-ps[0].cost;
-      h+=`<tr class='click${used?' sel':''}' onclick='setPath("${r.id}","${o.cat}")'><td>${o.cat}${used?` <span class='accent'>&larr; used${bo.auto?' &middot; cheapest':''}</span>`:''}</td><td class='num'>${g(o.cost)}</td><td class='num dim'>${extra<1?'&mdash;':'+'+g(extra)}</td></tr>`; });
+      h+=`<tr class='click${used?' sel':''}' tabindex='0'${used?" aria-current='true'":''} onclick='setPath("${r.id}","${o.cat}")' onkeydown='keyClick(event)'><td>${o.cat}${used?` <span class='accent'>&larr; used${bo.auto?' &middot; cheapest':''}</span>`:''}</td><td class='num'>${g(o.cost)}</td><td class='num dim'>${extra<1?'&mdash;':'+'+g(extra)}</td></tr>`; });
     h+=`</table>`;
   }
   h+=`<div class='subh'>Materials (${bo.cat==='default'?'recipe':bo.cat+' path'})</div>`;
@@ -600,7 +608,7 @@ function renderBreakdown(id){
     const up=unitPrice(it.id,PRICES), di=dealInfo(ITEMS[it.id].slug);
     const ann=(di.fair && di.cls!=='dim') ? ` <span class='${di.cls}' style='font-size:11px' title='spot ${g(di.spot)} vs fair ${g(di.fair)}${di.rb?' · '+di.rb:''}'>${di.mark} ${di.verdict} ${di.spotGap>0?'+':''}${Math.round(di.spotGap*100)}%</span>` : '';
     const yvf=moveTag(di.yestGap);
-    h+=`<tr><td><span class='mlink' onclick='showMatDetail("${it.id}")'>${ITEMS[it.id].name}</span>${ann}</td><td class='num'>${it.quantity}</td><td class='num dim'>${u2(up)}</td><td class='num'>${g(it.quantity*up)}</td><td class='num'>${yvf}</td></tr>`;
+    h+=`<tr><td><button type='button' class='mlink' onclick='showMatDetail("${it.id}")'>${ITEMS[it.id].name}</button>${ann}</td><td class='num'>${it.quantity}</td><td class='num dim'>${u2(up)}</td><td class='num'>${g(it.quantity*up)}</td><td class='num'>${yvf}</td></tr>`;
   }
   h+=`<tr><td class='dim'>Crafting gold (after cost reduction)</td><td class='num'></td><td class='num'></td><td class='num dim'>${g(e.gold)}</td><td class='num'></td></tr>`;
   h+=`<tr><td><b>Total cost</b></td><td class='num'></td><td class='num'></td><td class='num'><b>${g(e.total)}</b></td><td class='num'></td></tr></table>`;
@@ -632,7 +640,7 @@ function shortName(id){ let n=ITEMS[id].name; const t=RMAP[id]&&RMAP[id].type;
   if(t==='special') n=n.replace(/ Fusion Material$/,'');
   else if(t==='cooking') n=n.replace(/ Steak Meal$/,'').replace(/ Meal$/,'');
   return n; }
-function fldCell(id,disp){ return `<div class='fld'><label title='${ITEMS[id].name.replace(/'/g,'&#39;')}'>${disp||ITEMS[id].name}</label>`+
+function fldCell(id,disp){ return `<div class='fld'><label for='px_${ITEMS[id].slug}' title='${ITEMS[id].name.replace(/'/g,'&#39;')}'>${disp||ITEMS[id].name}</label>`+
   `<input id='px_${ITEMS[id].slug}' type='number' step='1' oninput='editPrice("${ITEMS[id].slug}",this.value)'></div>`; }
 function renderGroups(elId,groups){                                 // one labeled card per group; cards flow & pack
   $(elId).innerHTML = groups.filter(g=>g.ids.length).map(g=>
@@ -680,9 +688,9 @@ function editPrice(slug,v){ PRICES[slug]=+v||0; recalc(); }                     
 function updatePxSummary(){ $('pxSummary').innerHTML=`Market prices (editable) &mdash; ${curRegion.toUpperCase()}, <b>${basis==='m'?('robust: drop '+trimEach+' hi/lo, decay '+decay):basis==='y'?"yesterday's avg":'spot (now)'}</b> &middot; data ${new Date(dataTs()*1000).toLocaleDateString()}`; }
 
 // ====== toggles ======
-function setRegion(rg){ document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===rg));
+function setRegion(rg){ $('rgsel').value=rg;
   loadRegion(rg); setPriceInputs(); recalc(); }
-function setBasis(b){ basis=b; document.querySelectorAll('[data-bs]').forEach(x=>x.classList.toggle('active',x.dataset.bs===b)); buildPrices(); setPriceInputs(); updatePxSummary(); recalc(); }
+function setBasis(b){ basis=b; document.querySelectorAll('[data-bs]').forEach(x=>mark(x,x.dataset.bs===b)); buildPrices(); setPriceInputs(); updatePxSummary(); recalc(); }
 function setRobustParams(){
   trimEach=Math.max(0,Math.round(+$('p_trim').value||0));
   decay=Math.min(1,Math.max(0.5,+$('p_decay').value||0.9));
@@ -690,9 +698,9 @@ function setRobustParams(){
   const dn=$('decayNote'); if(dn) dn.innerHTML='weight halves '+(isFinite(hl)?'~'+hl.toFixed(1)+' days back':'never');
   buildPrices(); setPriceInputs(); updatePxSummary(); recalc();
 }
-function setFilter(f){ curFilter=f; document.querySelectorAll('[data-ft]').forEach(b=>b.classList.toggle('active',b.dataset.ft===f)); recalc(); }
-function toggleGS(){ enableGS=!enableGS; $('gsBtn').classList.toggle('active',enableGS); $('gsBtn').textContent=enableGS?'On':'Off'; recalc(); }
-function toggleInputs(){ inputsCollapsed=!inputsCollapsed; $('infields').style.display=inputsCollapsed?'none':''; $('caret').innerHTML=inputsCollapsed?'&#9656;':'&#9662;'; }
+function setFilter(f){ curFilter=f; document.querySelectorAll('[data-ft]').forEach(b=>mark(b,b.dataset.ft===f)); recalc(); }
+function toggleGS(){ enableGS=!enableGS; mark($('gsBtn'),enableGS); $('gsBtn').textContent=enableGS?'On':'Off'; recalc(); }
+function toggleInputs(){ inputsCollapsed=!inputsCollapsed; $('infields').style.display=inputsCollapsed?'none':''; $('caret').innerHTML=inputsCollapsed?'&#9656;':'&#9662;'; $('inTgl').setAttribute('aria-expanded',String(!inputsCollapsed)); }
 
 // ====== live sync via user-supplied CORS proxy ======
 async function syncPrices(){
@@ -729,12 +737,12 @@ function loadSettings(){
   if(typeof s.trim==='number') trimEach=s.trim;
   if(typeof s.gs==='boolean') enableGS=s.gs;
   if(s.paths && typeof s.paths==='object') pathOverride=s.paths;
-  if(s.cm){ colMode=s.cm; document.querySelectorAll('[data-cm]').forEach(b=>b.classList.toggle('active',b.dataset.cm===colMode)); }
+  if(s.cm){ colMode=s.cm; document.querySelectorAll('[data-cm]').forEach(b=>mark(b,b.dataset.cm===colMode)); }
   if(s.red) for(const k in s.red){ const el=$('r_'+k); if(el) el.value=s.red[k]; }
   $('p_trim').value=trimEach; $('p_decay').value=decay;
-  document.querySelectorAll('[data-rg]').forEach(b=>b.classList.toggle('active',b.dataset.rg===curRegion));
-  document.querySelectorAll('[data-bs]').forEach(b=>b.classList.toggle('active',b.dataset.bs===basis));
-  const gb=$('gsBtn'); if(gb){ gb.classList.toggle('active',enableGS); gb.textContent=enableGS?'On':'Off'; }
+  { const rs=$('rgsel'); if(rs) rs.value=curRegion; }
+  document.querySelectorAll('[data-bs]').forEach(b=>mark(b,b.dataset.bs===basis));
+  const gb=$('gsBtn'); if(gb){ mark(gb,enableGS); gb.textContent=enableGS?'On':'Off'; }
   const hl=decay<1?Math.log(0.5)/Math.log(decay):Infinity, dn=$('decayNote'); if(dn) dn.innerHTML='weight halves '+(isFinite(hl)?'~'+hl.toFixed(1)+' days back':'never');
 }
 function boot(){
