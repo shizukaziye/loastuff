@@ -9,7 +9,8 @@
  * BEFORE the modules that call window.Favorites at init time.
  *
  * Persistence: localStorage `loseii_favs` = JSON.stringify(list), where `list` is an
- * array of { region, name } (region upper-cased, CE healed to EU; name as entered). The
+ * array of { region, name } (region upper-cased, CE healed to EU; name as entered). Any
+ * other field a page stored on an entry (a class, say) is kept through every merge. The
  * list is unlimited. Identity (has / add dedupe / remove / toggle): same region and same
  * name, both compared case-insensitive and trimmed.
  *
@@ -19,14 +20,17 @@
  * a same-name cookie (it hit the ~4KB header cap at ~60 characters); a browser that still
  * has only the cookie gets it imported here, then the cookie is deleted.
  *
- * THE bc_favs MIRROR (until profile/profile.js reads `loseii_favs`). The profile page
- * reads and toggles `bc_favs` itself, so every write here also writes the same list to
- * `bc_favs`. When `bc_favs` no longer matches, the profile page (or another old writer)
- * changed it, and the two are reconciled at load and on the `storage` event:
- *   - it differs by at most one removal: take it as it is (a profile-page toggle);
+ * THE bc_favs MIRROR. Every write here also writes the same list to `bc_favs`, for the
+ * pages that still read it: profile/profile.js before v8 (a returning browser can hold
+ * that copy for four hours) reads and toggles only `bc_favs`; v8 reads `loseii_favs` and
+ * writes both. SIG remembers the exact text last written to the mirror. When the mirror
+ * no longer matches SIG, another page changed it, and it is reconciled at load and on
+ * the `storage` event:
+ *   - it differs from our list by at most one removal: take it as it is (a toggle);
  *   - otherwise: add what it has that we lack, remove nothing (an old tab that knew only
  *     half the list must not wipe the other half).
- * Once profile.js reads `loseii_favs`, delete MIRROR and reconcile().
+ * A mirror that still matches SIG is ours and stale only if `loseii_favs` moved on, so
+ * `loseii_favs` wins. Drop MIRROR, SIG and reconcile() once nothing reads `bc_favs`.
  *
  * THE INBOX. handoff.js (the bracelet tool's one-time carry-over from its old address)
  * drops the old address's list in `loseii_favs_inbox`; it is unioned in at load, then
@@ -47,7 +51,8 @@
   "use strict";
 
   var KEY = "loseii_favs";
-  var MIRROR = "bc_favs";                 // TODO: drop once profile/profile.js reads KEY
+  var MIRROR = "bc_favs";                 // written alongside KEY for older readers
+  var SIG = "loseii_favs_mirror";         // the text this file last wrote to MIRROR
   var OLD_AG = "astrogem_favs";           // the astrogem list (and, before 2026-07-25, its cookie)
   var INBOX = "loseii_favs_inbox";        // handoff.js's delivery from the old address
 
@@ -86,8 +91,18 @@
     return -1;
   }
 
-  // Parse a raw JSON list into a clean list of {region, name}. Tolerates malformed input,
-  // stray entries and duplicates (a hand-edited store, or one an older build wrote).
+  // Copy the fields `from` has and `to` lacks (a class, a star, anything a page stored
+  // beside region and name), so merging two copies of an entry loses nothing.
+  function fill(to, from) {
+    for (var k in from) {
+      if (Object.prototype.hasOwnProperty.call(from, k) && !Object.prototype.hasOwnProperty.call(to, k)) to[k] = from[k];
+    }
+    return to;
+  }
+
+  // Parse a raw JSON list into a clean list: region upper-cased (CE healed to EU), name
+  // kept, any other fields kept. Tolerates malformed input, stray entries and duplicates
+  // (a hand-edited store, or one an older build wrote); a duplicate adds only its fields.
   function parseList(raw) {
     if (!raw) return [];
     var parsed;
@@ -96,18 +111,20 @@
     var out = [];
     for (var i = 0; i < parsed.length; i++) {
       var it = parsed[i];
-      if (!it || it.name == null || norm(it.name) === "") continue;
+      if (!it || typeof it !== "object" || it.name == null || norm(it.name) === "") continue;
       var region = String(it.region == null ? "" : it.region).toUpperCase();
       if (region === "CE") region = "EU"; // bible's code for EU Central; the site says EU
-      var name = String(it.name);
-      if (indexOf(out, region, name) === -1) out.push({ region: region, name: name });
+      var e = fill({ region: region, name: String(it.name) }, it);
+      var at = indexOf(out, e.region, e.name);
+      if (at === -1) out.push(e); else fill(out[at], e);
     }
     return out;
   }
   function union(a, b) {
-    var out = a.slice();
+    var out = a.map(function (it) { return fill({}, it); });
     for (var i = 0; i < b.length; i++) {
-      if (indexOf(out, b[i].region, b[i].name) === -1) out.push(b[i]);
+      var at = indexOf(out, b[i].region, b[i].name);
+      if (at === -1) out.push(fill({}, b[i])); else fill(out[at], b[i]);
     }
     return out;
   }
@@ -118,7 +135,7 @@
 
   // Fold a changed mirror into `list` (see the header).
   function reconcile(list, mirrorRaw) {
-    if (mirrorRaw == null || mirrorRaw === ser(list)) return list;
+    if (mirrorRaw == null || mirrorRaw === ser(list) || mirrorRaw === lsGet(SIG)) return list;
     var m = parseList(mirrorRaw);
     return missingFrom(list, m).length <= 1 ? m : union(list, m);
   }
@@ -127,6 +144,7 @@
     var s = ser(list);
     lsSet(KEY, s);
     lsSet(MIRROR, s);
+    lsSet(SIG, s);
   }
 
   // Hydrate, migrating once, and write back only when something changed.
@@ -161,7 +179,7 @@
   // on hover and throw it away, so the migration's writes wait until it is really shown.
   whenShown(function () {
     var s = ser(items);
-    if (hasLS && (lsGet(KEY) !== s || lsGet(MIRROR) !== s)) write(items);
+    if (hasLS && (lsGet(KEY) !== s || lsGet(MIRROR) !== s || lsGet(SIG) !== s)) write(items);
     lsDel(OLD_AG);
     lsDel(INBOX);
     if (readCookie()) deleteCookie();
@@ -175,8 +193,8 @@
     }
   }
 
-  // Another tab changed the list: follow it. KEY carries a full list from this file;
-  // MIRROR is the profile page's toggle, which is reconciled and written back.
+  // Another tab changed the list: follow it. KEY carries a full list (from this file or
+  // the profile page); a MIRROR change that is not ours is reconciled and written back.
   if (typeof window !== "undefined" && window.addEventListener) {
     window.addEventListener("storage", function (e) {
       if (e.key === KEY) {
@@ -186,7 +204,7 @@
         items = next;
         notify();
       } else if (e.key === MIRROR) {
-        if (e.newValue == null || e.newValue === ser(items)) return;
+        if (e.newValue == null || e.newValue === ser(items) || e.newValue === lsGet(SIG)) return;
         items = reconcile(items, e.newValue);
         write(items);
         notify();
