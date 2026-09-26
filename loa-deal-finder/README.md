@@ -34,9 +34,14 @@ mistaken for a deal). We don't label per-unit vs per-stack for every item, but t
 
 ## Data & refresh
 
-A GitHub Action (`.github/workflows/refresh-data.yml` at the repo root) bakes prices
-into `index.html` as a snapshot and **refreshes them every 6 hours** (`refresh_deals.py`,
-both regions). To refresh locally: `python3 refresh_deals.py` then reload.
+The page reads spot + 14-day history for both regions from the site's shared market
+file, `../market/prices.json`, when it loads. A GitHub Action
+(`.github/workflows/refresh-data.yml` at the repo root) re-bakes that file **every 6
+hours** with `tools/bake-market.py`; its schema is in `market/README.md`.
+
+The `const DEALS` baked into `index.html` is only a fallback for when that fetch fails
+(the page then says so above the table), and it supplies each item's name and category.
+CI no longer rewrites it; to freshen it by hand: `python3 refresh_deals.py`.
 
 ## Where it lives
 

@@ -299,6 +299,27 @@ const SNAP_TS=1790370848;
 // 0/"" until the first refresh bakes them; the page then falls back to SNAP_TS / relative labels.
 const DATA_TS=1790369192;
 const DATA_DAY="2026-09-25";
+// ====== live market file ======
+// Prices come from ../market/prices.json, which tools/bake-market.py re-bakes every 6 hours
+// (schema: market/README.md). SNAPSHOT above is only the FALLBACK — used whole when that fetch
+// fails, and per item when the file lacks one. CI no longer rewrites it; refresh_prices.py does, by hand.
+let MKT=SNAPSHOT, mktTs=DATA_TS||SNAP_TS, mktFetched=SNAP_TS, mktDay={nae:DATA_DAY,euc:DATA_DAY}, mktSrc='baked';
+async function loadMarket(){
+  try{
+    const r=await fetch('../market/prices.json',{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const m=await r.json(), slugs=new Set(Object.values(ITEMS).map(v=>v.slug)), out={}; let ts=0, n=0;
+    for(const reg in SNAPSHOT){
+      const mr=(m.regions||{})[reg]; out[reg]=Object.assign({},SNAPSHOT[reg]); if(!mr) continue;
+      for(const slug of slugs){ const it=(mr.items||{})[slug];
+        if(!it||!(it.spot>0)) continue;                    // keep the baked entry for this one
+        out[reg][slug]={s:it.spot,h:(it.history||[]).map(p=>p[1])}; n++; }   // history: [[ts,price]] newest-first
+      ts=Math.max(ts,mr.dataTs||0); if(mr.dataDay) mktDay[reg]=mr.dataDay;
+    }
+    if(!n) throw new Error('no priced items');
+    MKT=out; mktTs=ts||m.bakedAt||mktTs; mktFetched=m.bakedAt||mktFetched; mktSrc='live';
+  }catch(e){ mktSrc='fallback'; console.warn('Crafting calculator: market file unavailable, using the baked fallback:',e.message); }
+}
 // ====== helpers ======
 const $=id=>document.getElementById(id);
 const g=v=>Math.round(v).toLocaleString('en-US');                 // gold, integer w/ commas (force en-US so it's never locale '1.416')
@@ -312,9 +333,9 @@ const LS_get=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
 const LS_set=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
 // signed % colored by direction (up=high, down=low, small=dim) — one consistent token
 const moveTag=(f,thr)=>{const c=Math.abs(f)>=(thr||0.08)?(f>0?'--high':'--low'):'--dim';return `<span style='color:var(${c})'>${f>0?'+':''}${Math.round(f*100)}%</span>`;};
-// real calendar date for history point h[daysAgo] (h[0] = DATA_DAY); null before the first DATA_DAY bake
-function histDate(daysAgo){ if(!DATA_DAY) return null;
-  const d=new Date(DATA_DAY+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-daysAgo);
+// real calendar date for history point h[daysAgo] (h[0] = the region's newest history day); null without one
+function histDate(daysAgo){ const day=mktDay[curRegion]; if(!day) return null;
+  const d=new Date(day+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-daysAgo);
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); }
 function histLabel(daysAgo){ const dt=histDate(daysAgo);
   return dt?(daysAgo===0?dt+' (newest)':dt):(daysAgo===0?'today (live)':daysAgo===1?'yesterday':daysAgo+' days ago'); }
@@ -411,16 +432,16 @@ function recalc(){
 }
 
 // ====== render ======
-// when the market data itself last changed (falls back to the fetch stamp before the first DATA_TS bake)
-const dataTs=()=>DATA_TS||SNAP_TS;
+// when the market data itself last changed (from the market file, or the baked fallback's stamps)
+const dataTs=()=>mktTs;
 // freshness of the market data, in friendly relative form
 function freshness(){ const s=Date.now()/1000-dataTs(); if(s<60)return'just now'; if(s<3600)return Math.round(s/60)+'m ago'; if(s<172800)return Math.round(s/3600)+'h ago'; return Math.round(s/86400)+'d ago'; }
 // prominent status badge: which price basis + region + how fresh (exact times in the tooltip)
 function renderBadge(){ const u=$('updated'); if(!u) return;
   const stale=(Date.now()/1000-dataTs())>8*3600, reg=curRegion==='nae'?'NA East':'EU Central';
   u.className='badge'+(stale?' stale':'');
-  u.title='Market data: '+new Date(dataTs()*1000).toLocaleString()+' · fetched '+new Date(SNAP_TS*1000).toLocaleString()+' (your local time) · refresh checks every 6h';
-  u.innerHTML=`<span class='dot'></span> Pricing: <b>${basis==='m'?'robust 14-day':basis==='y'?'yesterday':'spot (live)'}</b> &middot; ${reg} &middot; ${stale?`<span class='warn'>data ${freshness().replace(' ago','')} old</span>`:`updated ${freshness()}`}${(P&&!P.enable)?` &middot; <span class='warn'>great success off</span>`:''}`;
+  u.title='Market data: '+new Date(dataTs()*1000).toLocaleString()+' · fetched '+new Date(mktFetched*1000).toLocaleString()+' (your local time) · refresh checks every 6h'+(mktSrc==='fallback'?" · the market file didn't load, so these are the built-in prices":'');
+  u.innerHTML=`<span class='dot'></span> Pricing: <b>${basis==='m'?'robust 14-day':basis==='y'?'yesterday':'spot (live)'}</b> &middot; ${reg} &middot; ${stale?`<span class='warn'>data ${freshness().replace(' ago','')} old</span>`:`updated ${freshness()}`}${mktSrc==='fallback'?` &middot; <span class='warn'>built-in prices</span>`:''}${(P&&!P.enable)?` &middot; <span class='warn'>great success off</span>`:''}`;
 }
 function renderSummary(rows){
   const prof=rows.filter(x=>x.e.net>0).length;
@@ -652,7 +673,7 @@ function spotOf(slug){ const dd=SNAP[slug]; return dd?dd.s:0; }
 function yestOf(slug){ const dd=SNAP[slug]; if(!dd) return 0; const h=dd.h||[]; return (h.length>1?h[1]:(h[0]??dd.s))||dd.s||0; }  // most recent COMPLETED day's avg
 function priceAt(slug){ return basis==='s'?spotOf(slug):basis==='y'?yestOf(slug):robustOf(slug); }   // active basis value
 function buildPrices(){ PRICES={}; for(const s in SNAP) PRICES[s]=priceAt(s); }          // active flat map
-function loadRegion(region){ curRegion=region; SNAP=JSON.parse(JSON.stringify(SNAPSHOT[region]||{})); buildPrices(); updatePxSummary(); }
+function loadRegion(region){ curRegion=region; SNAP=JSON.parse(JSON.stringify(MKT[region]||{})); buildPrices(); updatePxSummary(); }
 function setPriceInputs(){ for(const id in ITEMS){ const f=$('px_'+ITEMS[id].slug); if(f) f.value=PRICES[ITEMS[id].slug]??0; } }
 function editPrice(slug,v){ PRICES[slug]=+v||0; recalc(); }                             // transient override; resets on region/basis switch
 function updatePxSummary(){ $('pxSummary').innerHTML=`Market prices (editable) &mdash; ${curRegion.toUpperCase()}, <b>${basis==='m'?('robust: drop '+trimEach+' hi/lo, decay '+decay):basis==='y'?"yesterday's avg":'spot (now)'}</b> &middot; data ${new Date(dataTs()*1000).toLocaleDateString()}`; }
@@ -723,7 +744,7 @@ function boot(){
     priceFields();
     loadRegion(curRegion); setPriceInputs();
   }catch(e){
-    if(!Object.keys(PRICES).length){ SNAP=SNAPSHOT[curRegion]||{}; buildPrices(); } // ensure results still compute
+    if(!Object.keys(PRICES).length){ SNAP=MKT[curRegion]||{}; buildPrices(); } // ensure results still compute
     const st=$('syncStatus'); if(st) st.innerHTML="<span class='warn'>Startup notice: "+e.message+"</span>";
   }
   try{ recalc(); }catch(e){ const s=$('summary'); if(s) s.innerHTML="<span class='bad'>Couldn't render: "+e.message+"</span>"; }
@@ -731,7 +752,9 @@ function boot(){
   try{ syncPrices(); }catch(e){}     // auto-refresh only if a proxy is configured
 }
 // run now if the document is already parsed (script is at end of body), else on load
-if(document.readyState==='loading') window.addEventListener('DOMContentLoaded',boot); else boot();
+// load the market file first (it never throws; a failure falls back to the baked SNAPSHOT), then boot
+const start=()=>loadMarket().then(boot);
+if(document.readyState==='loading') window.addEventListener('DOMContentLoaded',start); else start();
 </script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>

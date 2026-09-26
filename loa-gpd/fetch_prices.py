@@ -1,93 +1,70 @@
 """Bake NA-East market prices for the GPD chart's material panel into prices.js.
 
-Same feed and robust price as loa-hell-key-calc/fetch_prices.py (see the
-loa-market-data skill): drop today's still-open day, trim the 2 highest and 2
-lowest completed days, then a recency-weighted mean (decay 0.9) of the rest,
-falling back to the live spot price. Writes gold per ONE unit; lookup.js
-multiplies by each material's market unit (100 for the crystallized stones).
+Prices come from the shared market bake (/market/prices.json, written by
+tools/bake-market.py earlier in the same refresh run); run on its own, or when
+that bake did not land this run, it fetches the loa-buddy feed directly. The
+robust price is tools/marketlib.py's (see the loa-market-data skill): drop
+today's still-open day, trim the 2 highest and 2 lowest completed days, then a
+recency-weighted mean (decay 0.9) of the rest, falling back to the live spot
+price. Writes gold per ONE unit; lookup.js multiplies by each material's market
+unit (100 for the crystallized stones).
 
 A slug the feed does not price this run keeps its value from the last
-prices.js, and a total outage leaves the file alone, so the 6-hour refresh
-never blanks the panel. Stdlib only; runs in GitHub Actions.
-"""
-import json, os, sys, urllib.request, datetime
+prices.js, and a total outage leaves the file alone (exit 1), so the 6-hour
+refresh never blanks the panel. Stdlib only; runs in GitHub Actions.
 
-API = "https://marketdata-api.yrzhao1068589.workers.dev/v1/prices"
-# the API 403s urllib's own User-Agent
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Content-Type": "application/json"}
+    python fetch_prices.py            # shared bake if fresh, else the feed
+    python fetch_prices.py --live     # always the feed
+"""
+import datetime, json, pathlib, sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "tools"))
+import marketlib  # noqa: E402
+
+REGION = "nae"
 # the six materials the panel prices by default (lookup.js MAT_SLUG maps ids to these)
 SLUGS = ["superior-abidos-fusion-material", "destiny-crystallized-destruction-stone",
          "destiny-crystallized-guardian-stone", "great-destiny-leapstone",
          "lavas-breath", "glaciers-breath"]
 # the feed prices these per stack of 100
 PER_STACK = {"destiny-crystallized-destruction-stone": 100, "destiny-crystallized-guardian-stone": 100}
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prices.js")
-
-
-def post(path, body):
-    r = urllib.request.Request(API + path, data=json.dumps(body).encode(), headers=UA)
-    return json.load(urllib.request.urlopen(r, timeout=30))
-
-
-def get(path):
-    r = urllib.request.Request(API + path, headers=UA)
-    return json.load(urllib.request.urlopen(r, timeout=30))
-
-
-def robust(avgs):
-    """avgs newest-first; None when fewer than 5 completed days."""
-    comp = avgs[1:]                      # drop the live day
-    if len(comp) < 5:
-        return None
-    srt = sorted(comp)
-    keep = [v for v in comp if v not in srt[:2] + srt[-2:]] or comp
-    w = [0.9 ** i for i in range(len(keep))]
-    return sum(v * wi for v, wi in zip(keep, w)) / sum(w)
+OUT = HERE / "prices.js"
 
 
 def previous():
     try:
-        txt = open(OUT, encoding="utf-8").read()
+        txt = OUT.read_text(encoding="utf-8")
         return json.loads(txt[txt.index("{"):txt.rindex("}") + 1]).get("perUnit", {})
     except Exception:
         return {}
 
 
-def main():
+def main(argv):
     try:
-        latest = {x["item_slug"]: x for x in post("/latest", {"region_slug": "nae", "item_slugs": SLUGS})}
+        items = marketlib.get_market(SLUGS, (REGION,), live="--live" in argv)["regions"][REGION]["items"]
     except Exception as e:
-        print("latest error", e)
-        latest = {}
-    end = datetime.date.today()
-    start = end - datetime.timedelta(days=15)
+        sys.exit(f"market feed failed ({e}) — prices.js left as it was.")
     old = previous()
     per_unit, fresh = {}, 0
     for s in SLUGS:
-        try:
-            h = get(f"/historical/nae/{s}?start_date={start}&end_date={end}")
-        except Exception as e:
-            print(s, "hist error", e)
-            h = []
-        avgs = [d["avg_price"] for d in sorted(h, key=lambda d: d["day"], reverse=True)]
-        rb = robust(avgs)
-        spot = latest.get(s, {}).get("price")
-        price = rb if rb is not None else spot
-        if price:
+        it = items.get(s) or {}
+        price = it.get("robust") or it.get("spot")
+        if price and price > 0:
             per_unit[s] = round(price / PER_STACK.get(s, 1), 3)
             fresh += 1
         elif s in old:
             per_unit[s] = old[s]
             print(s, "no price this run; kept", old[s])
-        print(f"{s:42s} spot={spot!s:>8} robust={rb and round(rb, 2)!s:>10} days={len(avgs)}")
+        print(f"{s:42s} spot={it.get('spot')!s:>8} robust={it.get('robust')!s:>10} days={len(it.get('history', []))}")
     if not fresh:
-        print("no prices fetched; prices.js left as it was")
-        return
+        sys.exit("no prices fetched; prices.js left as it was")
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write("// generated by fetch_prices.py (NA East, robust 14-day price, gold per ONE unit); do not hand-edit\n")
-        f.write("window.GPD_PRICES=" + json.dumps({"date": str(end), "region": "nae", "perUnit": per_unit}) + ";\n")
+        f.write("window.GPD_PRICES=" + json.dumps({"date": str(datetime.date.today()), "region": REGION,
+                                                  "perUnit": per_unit}) + ";\n")
     print("wrote prices.js")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

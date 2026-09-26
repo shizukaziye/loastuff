@@ -1,0 +1,73 @@
+name: Checks
+
+# The offline checks every tool already has, run on every push and PR, plus the
+# whole-repo cross-tool pin checker. Nothing here touches the network: the
+# astrogem eval gate needs the OCR corpus that lives only on the desktop PC,
+# and the live-worker tests need a deploy, so neither runs here.
+# Every step runs even when an earlier one fails, so one red run shows all of
+# them. `npm run check` at the repo root runs the same list locally.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the pin checkers diff against a base commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cross-tool ?v= pins (tools/check-cross-pins.mjs)
+        if: ${{ !cancelled() }}
+        env:
+          CROSS_PINS_BEFORE: ${{ github.event.before }}
+        run: node tools/check-cross-pins.mjs
+
+      - name: Bracelet calculator (npm run check)
+        if: ${{ !cancelled() }}
+        working-directory: loa-bracelet-calc
+        run: npm ci && npm run check
+
+      - name: Astrogem calculator pins (tools/lint-pins.js)
+        if: ${{ !cancelled() }}
+        working-directory: loa-astrogem-calc
+        run: node tools/lint-pins.js
+
+      - name: GPD chart (tools/verify.js)
+        if: ${{ !cancelled() }}
+        working-directory: loa-gpd
+        run: node tools/verify.js
+
+      - name: Shared market maths (tools/marketlib.py self-test)
+        if: ${{ !cancelled() }}
+        run: python tools/marketlib.py
+
+      - name: Astrogem calculator (verify.py)
+        if: ${{ !cancelled() }}
+        working-directory: loa-astrogem-calc
+        run: python verify.py
+
+      - name: Crafting calculator (verify.py)
+        if: ${{ !cancelled() }}
+        working-directory: loa-crafting-calculator
+        run: python verify.py
+
+      - name: Hell key calculator (verify.py)
+        if: ${{ !cancelled() }}
+        working-directory: loa-hell-key-calc
+        run: python verify.py

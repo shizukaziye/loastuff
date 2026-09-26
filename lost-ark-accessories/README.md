@@ -3,7 +3,8 @@
 An interactive, from-first-principles model for pricing cut accessories
 (necklace / earring / ring) under the Ark Passive system.
 
-**Live site:** `index.html` — open it locally or via GitHub Pages. Everything
+**Live site:** https://www.loseii.com/lost-ark-accessories/ (Cloudflare Pages,
+from the loastuff monorepo), or open `index.html` locally. Everything
 computes in-browser; edit the inputs and hit **Recalculate**.
 
 ## What it does

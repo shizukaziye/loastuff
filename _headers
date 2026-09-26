@@ -24,3 +24,7 @@
   Cache-Control: no-cache
 /loa-hell-key-calc/prices.js
   Cache-Control: no-cache
+# Shared market bake (tools/bake-market.py, every 6h) is rewritten in place
+# without a pin; the deal finder and crafting calculator fetch it at runtime.
+/market/*
+  Cache-Control: no-cache
