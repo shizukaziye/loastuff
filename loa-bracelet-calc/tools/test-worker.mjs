@@ -805,5 +805,49 @@ ok("the lookup throttle keys on the IP", lookupKey("1.2.3.4") === "look:1.2.3.4"
 ok("a missing IP still lands in one bucket, never an empty key", lookupKey("") === "look:0.0.0.0");
 
 // ---------------------------------------------------------------------------
+console.log("\n5. the re-pull sweep");
+// The weekly plan, from the stored entry list: the DPS board's top overall and
+// each class's top, a support class by its support reading, priority
+// min(overall rank, 10 × class rank). Four rows are enough to see the rule:
+// Sup2 out-damages Sup1 as a dealer, but Sup1 is the better support, and both
+// orders show in the plan.
+function rpEntry(name, cls, dps, sup) {
+  const supWon = !!(sup && sup.won);
+  return { region: "NA", name: name, "class": cls, itemLevel: 1700, pulledAt: 1, grade: "ancient",
+    role: supWon ? "support" : "dps",
+    read: { pct: supWon ? sup.pct : dps, linesPct: 0, score: 50, isPerfect: false },
+    alt: sup ? { pct: supWon ? dps : sup.pct, score: 50 } : null,
+    traits: [], lines: [], unmapped: 0, loadouts: null, altBracelet: null };
+}
+const rpList = [
+  rpEntry("Dealer1", "Sorceress", 20, null), rpEntry("Dealer2", "Sorceress", 19, null),
+  rpEntry("Sup1", "Bard", 5, { pct: 2.0, won: true }), rpEntry("Sup2", "Bard", 15, { pct: 1.0, won: false })
+];
+const rpKV = stubKV({});
+await rpKV.put(__test.SNAPSHOT_SRC_KEY, await __test.gzipString(JSON.stringify({ fmt: SNAPSHOT_FMT, entries: rpList })));
+const rpBuilt = await __test.buildRepullPlan({ CHARS: rpKV });
+const rpPlan = JSON.parse(rpKV.store.get(__test.REPULL_PLAN_KEY) || "null");
+ok("the sweep's plan is built from the stored entries",
+  rpBuilt === true && Array.isArray(rpPlan) && rpPlan.length === 4, JSON.stringify(rpPlan));
+ok("the DPS board's head leads it, and a support class ranks by its support reading behind that",
+  JSON.stringify(rpPlan.map(p => p[1])) === JSON.stringify(["Dealer1", "Dealer2", "Sup2", "Sup1"]), JSON.stringify(rpPlan));
+const rpSt0 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("the state starts at the head of the plan", rpSt0 && rpSt0.cursor === 0 && rpSt0.planLen === 4, JSON.stringify(rpSt0));
+// Fresh, gone and unpublished entries are skipped without a fetch: three of the
+// four are fresh, the fourth has no record at all.
+for (const p of rpPlan.slice(0, 3)) {
+  await rpKV.put(__test.charKey(p[0], p[1]), JSON.stringify({ region: p[0], name: p[1], pulledAt: Date.now(), published: true, stats: [] }));
+}
+await __test.runRepullTick({ CHARS: rpKV }, Date.now() + 5000);
+const rpSt1 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("fresh and missing entries are skipped without a fetch, and the cursor moves past them",
+  rpSt1 && rpSt1.cursor === 4 && rpSt1.skipped === 4 && rpSt1.fetched === 0, JSON.stringify(rpSt1));
+ok("the drain lock is released afterwards", !rpKV.store.get("drain:lock"));
+await __test.runRepullTick({ CHARS: rpKV }, Date.now() + 5000);
+const rpSt2 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("a finished sweep waits out the week rather than starting over",
+  rpSt2 && rpSt2.cursor === 4 && rpSt2.builtAt === rpSt0.builtAt, JSON.stringify(rpSt2));
+
+// ---------------------------------------------------------------------------
 console.log("\n" + (fail ? "FAILED" : "PASSED") + " — " + pass + " checks passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);

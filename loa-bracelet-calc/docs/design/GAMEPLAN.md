@@ -159,6 +159,21 @@ board; the profile page and the calculator's baked fallback port the same
 pick. `SNAPSHOT_FMT` 3 → 4 forces one from-scratch rebuild (the cron runs
 every minute, 750 records a tick). Wire format stays v3.
 
+## The re-pull sweep (2026-09-26)
+
+Shizu: "the astrogem calculator periodically updates top ranked individuals
+right? do the same with bracelets." The astrogem Worker's sweep, ported into
+`worker/bracelet.js`: a weekly plan from the stored entry list — the DPS
+board's top 1000 by damage % plus every class's top 100 (a support class by
+its support reading), priority min(overall rank, 10 × class rank) — walked at
+ONE upstream fetch per cron minute, only on a minute the queue drain left
+idle, skipping anything pulled within 7 days, gone, or unpublished. Fetches
+use the `BIBLE_TOKEN` secret, take the drain lock, honour the 3 s floor and
+the monthly budget, and land through `loadCharacter` (record + dirty marker),
+so the next snapshot rebuild carries them. State under `rp:plan` / `rp:state`,
+visible as `repull` in `GET /admin/metrics`. A refused token pauses only the
+sweep for 6 h; a site block trips the breaker like the drain's.
+
 ## Debts (2026-09-24)
 
 - The Leaderboard tab and the profile page each fetch `/list` themselves;
