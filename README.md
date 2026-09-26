@@ -19,12 +19,14 @@ Site-wide:
   - Edit one, bump its pin in every page that loads it; `tools/check-shared-pins.mjs` catches a split or a missed bump.
 - `_headers`, `_redirects` — Pages config: no-cache rules, old-URL redirects, and the 200 rewrites that serve tool tabs (`/loa-bracelet-calc/advisor`), character profiles (`/NA/<Name>`) and files that moved to `shared/` at their old addresses
 - `404.html` — Pages serves it for any path with no file; `favicon.svg` / `favicon.ico` — the site icon
-- `profile/` — the character profile app behind `www.loseii.com/<REGION>/<Name>`; it loads the bracelet, astrogem and GPD models from their tool folders
+- `profile/` — the character profile app behind `www.loseii.com/<REGION>/<Name>`; it loads the bracelet, astrogem and GPD models from their tool folders, tooltips and class icons from `shared/`, and the astrogem rank from the `astrogem-bible` Worker's `/board-slim`
 - `chrome-cache-worker/` — the `loseii-chrome-cache` Worker, which serves `nav.js`, `social-bar.js` and the two `prices.js` files no-cache (the zone caches other `.js` for 4 hours)
 - `market/` — the shared market bake, `prices.json` (see [market/README.md](market/README.md))
 - `tools/` — repo-wide scripts: `bake-market.py` and `marketlib.py` (market feed + robust price), `check-cross-pins.mjs` (cross-tool `?v=` pin checker), `check-tools.mjs` (the tool list), `check-shared-pins.mjs` (`shared/` pins), `build-dist.mjs` (the optional minified build, below)
 - `package.json` — `npm run check` runs every offline check locally; `npm run build` makes the minified copy
 - `.github/workflows/` — `refresh-data.yml` (market refresh) and `checks.yml` (CI checks)
+- `docs/` — [ARCHITECTURE.md](docs/ARCHITECTURE.md) (the site's moving parts on one page) and `design/PROFILE-GAMEPLAN.md`; each tool keeps its own `docs/`
+- `og.png` — the link-preview image the hub's `og:image` names
 
 Tools (each folder is served at `/<folder>/`):
 
@@ -55,7 +57,7 @@ Each step can fail on its own without blocking the others. A bake that sees a de
 `.github/workflows/checks.yml` runs on every push and PR, and `npm run check` runs the same list locally:
 
 - `tools/check-tools.mjs` — fails when nav.js, the hub or a tool page's `<title>` disagrees with `shared/tools.js`
-- `tools/check-shared-pins.mjs` — fails when two pages load a `shared/` file at different pins, or nav.js's `OAUTH_V` differs from theirs
+- `tools/check-shared-pins.mjs` — fails when two pages load a `shared/` file at different pins, a pin names a missing file, nav.js's `OAUTH_V` differs from theirs, or a `shared/` file changed and its pin did not
 - `tools/check-cross-pins.mjs` — fails when a file that another tool pins with `?v=` changed and the pin did not
 - `loa-bracelet-calc`: `npm ci && npm run check` (JS and Python model parity, worker tests, its own pin checker)
 - `loa-astrogem-calc`: `tools/lint-pins.js` and `verify.py`
