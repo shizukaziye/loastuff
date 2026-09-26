@@ -83,11 +83,11 @@
       '.bar{opacity:1;translate:0 0}' +
     '}' +
     '</style>' +
-    '<div class="bar" part="bar">' +
-      '<a class="ico twitch" href="' + LINKS.twitch + '" target="_blank" rel="noopener" aria-label="Watch on Twitch">' + ICONS.twitch + '</a>' +
-      '<a class="ico youtube" href="' + LINKS.youtube + '" target="_blank" rel="noopener" aria-label="Watch on YouTube">' + ICONS.youtube + '</a>' +
+    '<div class="bar" part="bar" role="navigation" aria-label="Shizukaziye\'s channels">' +
+      '<a class="ico twitch" href="' + LINKS.twitch + '" target="_blank" rel="noopener" aria-label="Shizukaziye on Twitch (opens in a new tab)">' + ICONS.twitch + '</a>' +
+      '<a class="ico youtube" href="' + LINKS.youtube + '" target="_blank" rel="noopener" aria-label="Shizukaziye on YouTube (opens in a new tab)">' + ICONS.youtube + '</a>' +
       '<span class="sep"></span>' +
-      '<a class="kofi" href="' + LINKS.kofi + '" target="_blank" rel="noopener" aria-label="Support me on Ko-fi">' + ICONS.kofi + '<span>Support</span></a>' +
+      '<a class="kofi" href="' + LINKS.kofi + '" target="_blank" rel="noopener" aria-label="Support Shizukaziye on Ko-fi (opens in a new tab)">' + ICONS.kofi + '<span>Support</span></a>' +
     '</div>';
 
   // Keep the page's last rows clear of the bar, the way nav.js keeps the top

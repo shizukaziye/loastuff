@@ -32,6 +32,16 @@
  * A mirror that still matches SIG is ours and stale only if `loseii_favs` moved on, so
  * `loseii_favs` wins. Drop MIRROR, SIG and reconcile() once nothing reads `bc_favs`.
  *
+ * THE SIGNED-IN ROSTER (v2, 2026-09-25). When the site's lostark.bible session is signed in
+ * (window.BibleOAuth: signedIn() now, or later through its onChange), every character on
+ * the user's own rosters joins the list, as the astrogem Grader's roster pull does, so the
+ * hub's "Yours" chips fill in after a sign-in on any page. One rosters() call per browser
+ * session: the sessionStorage flag ROSTER_FLAG is set before the call, dropped when the
+ * call fails (the next page tries again) and on sign-out (the next sign-in pulls again).
+ * A roster character the list lacks is added as { region, name, class } (class only when
+ * the roster has one); one it already holds only gains a missing class; nothing is
+ * removed. Nothing happens in a prerender, and nothing here throws.
+ *
  * THE INBOX. handoff.js (the bracelet tool's one-time carry-over from its old address)
  * drops the old address's list in `loseii_favs_inbox`; it is unioned in at load, then
  * deleted.
@@ -254,6 +264,84 @@
       };
     }
   };
+
+  // ---- the signed-in roster (see the header) ----
+  var ROSTER_FLAG = "loseii_favs_roster";
+  var rosterAsked = false;              // this page's copy of the flag, for a blocked sessionStorage
+  function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  function ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+
+  // The rosters payload as [{region, name, cls}]. Its shape is not documented; this reads
+  // it the way the Grader's flattenRosters does (loa-astrogem-calc/grader.js).
+  function rosterChars(j) {
+    var rosters = Array.isArray(j) ? j : (j && (j.rosters || j.data)) || [];
+    var out = [];
+    (Array.isArray(rosters) ? rosters : []).forEach(function (ros) {
+      var chars = (ros && (ros.characters || ros.chars)) || [];
+      (Array.isArray(chars) ? chars : []).forEach(function (c) {
+        if (!c || typeof c !== "object") return;
+        var region = String(c.region || ros.region || "").trim().toUpperCase();
+        if (region === "CE") region = "EU";
+        var name = String(c.name || c.characterName || "").trim();
+        if (region && name) out.push({ region: region, name: name, cls: c["class"] || c.className || "" });
+      });
+    });
+    return out;
+  }
+
+  function addRoster(j) {
+    var changed = false;
+    rosterChars(j).forEach(function (c) {
+      var at = indexOf(items, c.region, c.name);
+      if (at === -1) {
+        var e = { region: c.region, name: c.name };
+        if (c.cls) e["class"] = String(c.cls);
+        items.push(e);
+        changed = true;
+      } else if (c.cls && items[at]["class"] == null) {
+        items[at]["class"] = String(c.cls);
+        changed = true;
+      }
+    });
+    if (changed) { write(items); notify(); }
+  }
+
+  function syncRoster() {
+    try {
+      if (hasDoc && document.prerendering) return;
+      var O = window.BibleOAuth;
+      if (!O || typeof O.signedIn !== "function") return;
+      if (!O.signedIn()) { rosterAsked = false; ssDel(ROSTER_FLAG); return; }
+      if (rosterAsked || ssGet(ROSTER_FLAG) || typeof O.rosters !== "function") return;
+      rosterAsked = true;
+      ssSet(ROSTER_FLAG, "1");
+      Promise.resolve(O.rosters()).then(addRoster).catch(function () {
+        rosterAsked = false;
+        ssDel(ROSTER_FLAG);
+      });
+    } catch (e) {}
+  }
+
+  var rosterHooked = false;
+  function hookRoster() {
+    try {
+      var O = window.BibleOAuth;
+      if (!O || rosterHooked) return;
+      rosterHooked = true;
+      if (typeof O.onChange === "function") O.onChange(syncRoster);
+      syncRoster();
+    } catch (e) {}
+  }
+  // bible-oauth.js loads after this file on the hub and in the tools, so look for it now,
+  // when the document is parsed, and when the page has loaded — whichever finds it first.
+  if (hasDoc && typeof window !== "undefined" && window.addEventListener) {
+    whenShown(function () {
+      hookRoster();
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", hookRoster);
+      if (document.readyState !== "complete") window.addEventListener("load", hookRoster);
+    });
+  }
 
   if (typeof window !== "undefined") window.Favorites = Favorites;
   if (typeof module !== "undefined" && module.exports) module.exports = Favorites;

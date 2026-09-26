@@ -112,8 +112,10 @@
 
   var groupsHTML = GROUPS.map(function (g) {
     var links = g.items.map(function (it) {
-      var active = isHere(it.url) ? " active" : "";
-      return '<a class="item' + active + '" href="' + esc(it.url) + '">' + esc(it.name) + "</a>";
+      // .active paints this page's tool; aria-current says the same to a screen reader.
+      var on = isHere(it.url);
+      return '<a class="item' + (on ? " active" : "") + '" href="' + esc(it.url) + '"' +
+        (on ? ' aria-current="page"' : "") + ">" + esc(it.name) + "</a>";
     }).join("");
     return '<div class="group"><div class="ghead">' + esc(g.label) + "</div>" + links + "</div>";
   }).join("");
@@ -181,16 +183,16 @@
     ".item.active{color:" + GOLD + ";background:#191d27}" +
     "@media (prefers-reduced-motion:reduce){.caret,.panel{transition:none}}" +
     "</style>" +
-    '<nav class="bar" part="bar">' +
+    '<nav class="bar" part="bar" aria-label="Loseii">' +
       '<a class="brand" href="' + HOME + '">' +
         "<svg class='gem' viewBox='0 0 32 32' aria-hidden='true'><path d='M16 3 29 12 16 29 3 12z' fill='#e8b75c'/><path d='M3 12h26M16 3v26' stroke='#fff3d6' stroke-opacity='.5' stroke-width='.8'/></svg>" +
         "Loseii" +
       "</a>" +
       '<div class="right">' +
         '<button class="auth" type="button" hidden></button>' +
-        '<button class="menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="loseii-nav-panel">' +
+        '<button class="menu-btn" type="button" aria-expanded="false" aria-controls="loseii-nav-panel">' +
           "Tools" +
-          "<svg class='caret' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>" +
+          "<svg class='caret' aria-hidden='true' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>" +
         "</button>" +
       "</div>" +
     "</nav>" +
@@ -218,7 +220,7 @@
       btn.hidden = false;
       if (O.signedIn()) {
         btn.innerHTML = '<span class="who">Signed in</span> · Sign out';
-        btn.setAttribute("aria-label", "Signed in to lostark.bible. Sign out");
+        btn.setAttribute("aria-label", "Signed in to lostark.bible \u2014 sign out");
         btn.title = "Signed in to lostark.bible on every Loseii page. Click to sign out.";
       } else {
         btn.innerHTML = '<span class="long">Sign in with lostark.bible</span><span class="short">Sign in</span>';
@@ -266,14 +268,20 @@
       e.stopPropagation();
       setOpen(!panel.classList.contains("open"));
     });
-    // Close on outside click or Escape.
+    // The Tools button is a disclosure (aria-expanded + aria-controls), not a menu: the
+    // panel is a plain list of links. It closes on an outside click, on Escape (focus goes
+    // back to the button) and when keyboard focus leaves the bar and panel for the page.
     document.addEventListener("click", function () { setOpen(false); });
+    root.addEventListener("focusout", function (e) {
+      var to = e.relatedTarget;
+      if (to && !root.contains(to)) setOpen(false);
+    });
     root.addEventListener("click", function (e) { e.stopPropagation(); });
     panel.addEventListener("click", function (e) {
       if (e.target.closest(".item")) setOpen(false);
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && panel.classList.contains("open")) {
+      if ((e.key === "Escape" || e.key === "Esc") && panel.classList.contains("open")) {
         setOpen(false);
         btn.focus();
       }

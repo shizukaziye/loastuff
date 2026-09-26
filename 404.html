@@ -21,7 +21,7 @@
     --gold:var(--lx-gold,#e8b75c);--gold-light:var(--lx-gold-light,#f4d79a);--gold-dim:var(--lx-gold-dim,#a9802a);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
+  html{-webkit-text-size-adjust:100%;scroll-padding-top:var(--loseii-nav-offset,0px)}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:
@@ -80,7 +80,7 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<main class="wrap">
   <header>
     <div class="eyebrow">Page not found</div>
     <h1>404</h1>
@@ -89,8 +89,8 @@
     <!-- The hub's search: straight to /REGION/Name. Without script the form
          still lands on /profile/?region=&name=, which the profile page moves
          to the same address. -->
-    <form class="find" id="find" action="/profile/" method="get" role="search" autocomplete="off">
-      <div class="label">Look up a character</div>
+    <form class="find" id="find" action="/profile/" method="get" role="search" aria-labelledby="find-label" autocomplete="off">
+      <div class="label" id="find-label">Look up a character</div>
       <div class="row">
         <label class="vh" for="find-region">Region</label>
         <select id="find-region" name="region">
@@ -116,7 +116,7 @@
     <a href="/loa-hell-key-calc/">Hell Key Calculator <span>&rarr;</span></a>
   </nav>
   <p class="home"><a href="/">Every tool on the Loseii home page</a></p>
-</div>
+</main>
 
 <script>
 (function () {
