@@ -1,11 +1,22 @@
 {
   "name": "loseii-site",
   "version": "0.1.0",
-  "description": "www.loseii.com (Cloudflare Pages). The site itself needs no build; `npm run build` makes an optional minified copy in dist/.",
+  "description": "www.loseii.com (Cloudflare Pages). The site itself needs no build; `npm run build` makes an optional minified copy in dist/. `npm run check` runs the same offline checks as CI (.github/workflows/checks.yml).",
   "private": true,
   "scripts": {
     "build": "node tools/build-dist.mjs",
-    "check-dist": "node tools/build-dist.mjs --check-only"
+    "check-dist": "node tools/build-dist.mjs --check-only",
+    "check": "npm run check:cross-pins && npm run check:bracelet && npm run check:astrogem-pins && npm run check:gpd && npm run check:py",
+    "check:cross-pins": "node tools/check-cross-pins.mjs",
+    "check:bracelet": "npm --prefix loa-bracelet-calc run check",
+    "check:astrogem-pins": "node loa-astrogem-calc/tools/lint-pins.js",
+    "check:gpd": "node loa-gpd/tools/verify.js",
+    "check:py": "npm run check:py:market && npm run check:py:astrogem && npm run check:py:crafting && npm run check:py:hellkey",
+    "check:py:market": "python tools/marketlib.py",
+    "check:py:astrogem": "cd loa-astrogem-calc && python verify.py",
+    "check:py:crafting": "cd loa-crafting-calculator && python verify.py",
+    "check:py:hellkey": "cd loa-hell-key-calc && python verify.py",
+    "bake-market": "python tools/bake-market.py"
   },
   "devDependencies": {
     "csso": "^5.0.5",

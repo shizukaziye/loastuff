@@ -31,18 +31,21 @@ Open `index.html` in a browser (or `python3 -m http.server` in this folder). The
 
 ## Live price sync (optional)
 
-Prices ship as a baked snapshot. For one-click live refresh, the page needs a CORS
+Prices come from the site's shared market file, `../market/prices.json`, which the
+page reads when it loads and a GitHub Action re-bakes every 6 hours (schema in
+`market/README.md`). The `const SNAPSHOT` baked into `index.html` is only a fallback
+for when that fetch fails (the status badge then says "built-in prices"), or for an
+item the file lacks. For one-click live refresh of spot prices, the page needs a CORS
 proxy because the market API only answers loa-buddy's own domain:
 
 1. Deploy `worker.js` as a free Cloudflare Worker (dash.cloudflare.com → Workers → Create).
 2. Paste your worker URL (ending `/v1/prices/latest`) into the **Proxy URL** field.
 3. Hit **Sync live prices**. The URL is remembered locally.
 
-**No-cloud refresh (recommended if you don't want a worker):** run
-`python3 refresh_prices.py` — it pulls current prices for every item (both regions)
-and rewrites the baked snapshot in `index.html` in place. Reload the page and
-you're current. The browser can't call the market API directly (CORS), but this
-script (server-side) can, so it's 100% reliable with zero setup.
+**Refreshing the fallback:** `python3 refresh_prices.py` rewrites the baked
+snapshot in `index.html` in place, from the shared market file when it was baked
+in the last few hours, else straight from the feed (server-side, so CORS does not
+apply). CI no longer runs it.
 
 You can also just edit any price cell in the page by hand.
 
@@ -80,7 +83,7 @@ python3 verify.py
   can't sway it. The window/weights are tunable live in the page (**drop hi/lo** and
   **recency decay**; defaults: drop 2 each, decay 0.90 ≈ "halves ~6.6 days back").
   The breakdown flags any item whose spot is ≥15% off its robust price (⚠). Toggle
-  **Pricing → Spot** for live lowest prices. `refresh_prices.py` bakes the daily
+  **Pricing → Spot** for live lowest prices. The market file carries the daily
   history; the app computes the robust value client-side so the knobs are instant.
 - **Craft times:** Virtuoso's Striploin is a confirmed 54 min; Specialist's Beef
   is an assumed 60 min (marked `*`) — per-hour only.
@@ -94,7 +97,7 @@ python3 verify.py
 
 This folder is part of the loastuff monorepo. Cloudflare Pages deploys it from
 `main` at https://www.loseii.com/loa-crafting-calculator/. A GitHub Action
-(`.github/workflows/refresh-data.yml` at the repo root) runs `refresh_prices.py`
-every 6 hours and commits the new bake.
+(`.github/workflows/refresh-data.yml` at the repo root) runs `tools/bake-market.py`
+every 6 hours and commits the new `market/prices.json`, which this page reads.
 
 Price data comes from the same community market feed loa-buddy uses.

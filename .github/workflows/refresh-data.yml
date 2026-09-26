@@ -1,10 +1,15 @@
 name: Refresh baked market data
 
-# The deal finder bakes its market data into loa-deal-finder/index.html, and the
-# crafting calculator bakes a price snapshot into loa-crafting-calculator/index.html.
-# The hell key calculator and the GPD chart each bake a prices.js beside their page.
-# These used to run in the standalone repos; now that both tools live in this
-# monorepo, the refresh runs here and commits back (which redeploys via Pages).
+# One fetch of the loa-buddy market feed per run:
+#   1. tools/bake-market.py writes market/prices.json (both regions, spot + 14-day
+#      history + robust price for every item any tool prices). The deal finder and
+#      the crafting calculator read that file at runtime.
+#   2. The hell key calculator and the GPD chart turn it into their prices.js.
+# Whatever changed is committed back, which redeploys the site via Pages.
+#
+# Each bake step may fail on its own (continue-on-error) without skipping the
+# others or the commit. The job fails at the end only when EVERY bake failed, so
+# a dead feed shows up red in the Actions tab while one flaky tool does not.
 on:
   schedule:
     - cron: "0 */6 * * *"   # every 6 hours
@@ -20,38 +25,45 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Refresh deal finder (bakes const DEALS into index.html)
-        working-directory: loa-deal-finder
-        run: python3 refresh_deals.py
-
-      - name: Refresh crafting price snapshot
-        working-directory: loa-crafting-calculator
-        run: python3 refresh_prices.py
+      - name: Bake the shared market file (market/prices.json)
+        id: market
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python3 tools/bake-market.py
 
       - name: Refresh Hell key market reference prices (prices.js)
+        id: hellkey
+        continue-on-error: true
+        timeout-minutes: 5
         working-directory: loa-hell-key-calc
         run: python3 fetch_prices.py
 
       - name: Refresh GPD chart material prices (prices.js)
+        id: gpd
+        continue-on-error: true
+        timeout-minutes: 5
         working-directory: loa-gpd
         run: python3 fetch_prices.py
 
-      - name: Commit refreshed data if changed
+      - name: Commit whatever changed
+        if: always()
         run: |
-          if git diff --quiet -- loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js loa-gpd/prices.js; then
+          git add -- market/prices.json loa-hell-key-calc/prices.js loa-gpd/prices.js
+          if git diff --cached --quiet; then
             echo "No data changes."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add loa-deal-finder/index.html loa-crafting-calculator/index.html loa-hell-key-calc/prices.js loa-gpd/prices.js
-          git commit -m "Auto-refresh baked market data (deal finder + crafting + hell keys + GPD)"
+          changed=$(git diff --cached --name-only | tr '\n' ' ')
+          git commit -m "Auto-refresh market data: ${changed}"
           # A push can race a manual push to main (it has: run 2026-07-22 08:31
           # failed non-fast-forward and that refresh was lost). Rebase and retry.
           for i in 1 2 3; do
@@ -59,3 +71,19 @@ jobs:
             git pull --rebase origin main
           done
           git push
+
+      - name: Fail if every bake failed
+        if: always()
+        env:
+          MARKET: ${{ steps.market.outcome }}
+          HELLKEY: ${{ steps.hellkey.outcome }}
+          GPD: ${{ steps.gpd.outcome }}
+        run: |
+          echo "market=$MARKET hellkey=$HELLKEY gpd=$GPD"
+          [ "$MARKET" = success ]  || echo "::warning::market/prices.json bake ended $MARKET"
+          [ "$HELLKEY" = success ] || echo "::warning::hell key prices.js bake ended $HELLKEY"
+          [ "$GPD" = success ]     || echo "::warning::GPD prices.js bake ended $GPD"
+          if [ "$MARKET" != success ] && [ "$HELLKEY" != success ] && [ "$GPD" != success ]; then
+            echo "::error::every bake step failed - the market feed is probably down"
+            exit 1
+          fi

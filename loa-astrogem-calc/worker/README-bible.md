@@ -50,8 +50,10 @@ and constant — is documented in
 - Files: [`astrogem-bible.js`](./astrogem-bible.js),
   [`wrangler.bible.toml`](./wrangler.bible.toml) (the KV + ratelimit + cron
   config lives here).
-- This is **separate** from the Workers-AI vision Worker
-  (`astrogem-vision.js` / `wrangler.toml`); they deploy independently.
+- This is **separate** from the other two Workers in this folder, the
+  `/collect` store (`astrogem-data.js` / `wrangler-data.toml`) and the
+  Workers-AI field verifier (`astrogem-verify.js` / `wrangler-verify.toml`);
+  each deploys on its own.
 
 ## Deploy
 

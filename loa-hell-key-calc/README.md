@@ -15,7 +15,7 @@ Reward quantities: sekwahar's data-mined Season 4 tables (via the Hell Reward Pi
 - `index.html`, `styles.css`, `app.js`: the page. No build step, no dependencies.
 - `model.js`: the pure model. `verify.py` mirrors it in Python and checks parity against numbers captured from the live page (`python verify.py`).
 - `data.js` / `data/rewards.json`: reward tables, from `tools/build_data.py` and the picker dump.
-- `prices.js`: baked market reference prices, from `fetch_prices.py`.
+- `prices.js`: baked market reference prices, from `fetch_prices.py`. In the 6-hour refresh it reads the shared bake (`market/prices.json`, fetched once per run by `tools/bake-market.py`); run alone it fetches the feed itself. If the feed fails or any item has no price it leaves `prices.js` untouched and exits 1.
 - `tools/ablation.js`, `tools/compare_sheet.js`: how much the bonus and middle jumps add; comparison with Ple0k's sheet.
 
 ## Sources

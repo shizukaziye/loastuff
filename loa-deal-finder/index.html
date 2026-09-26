@@ -116,10 +116,33 @@ const DEALS_TS=1790370837;
 // 0/"" until the first refresh bakes them; the page then falls back to DEALS_TS / relative labels.
 const DATA_TS=1790369192;
 const DATA_DAY="2026-09-25";
+// ---- live market file ----
+// The page prices from ../market/prices.json, which tools/bake-market.py re-bakes every 6 hours
+// (schema: market/README.md). DEALS above is only the FALLBACK for when that fetch fails, and it
+// also supplies each item's name and category. CI no longer rewrites it; refresh_deals.py does, by hand.
+let MARKET=DEALS, mktTs=DATA_TS||DEALS_TS, mktDay={nae:DATA_DAY,euc:DATA_DAY}, mktSrc='baked';
+async function loadMarket(){
+  try{
+    const r=await fetch('../market/prices.json',{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const m=await r.json(), meta={}, out={}; let ts=0;
+    for(const reg in DEALS) for(const slug in DEALS[reg]) meta[slug]=DEALS[reg][slug];
+    for(const reg in (m.regions||{})){
+      const mr=m.regions[reg], items=mr.items||{}, d={};
+      for(const slug in items){ const it=items[slug], mt=meta[slug];
+        if(!mt||!(it.spot>0)) continue;                    // unknown to this page, or no live listing
+        d[slug]={n:mt.n,c:mt.c,s:it.spot,h:(it.history||[]).map(p=>p[1])}; }   // history: [[ts,price]] newest-first
+      if(!Object.keys(d).length) continue;
+      out[reg]=d; ts=Math.max(ts,mr.dataTs||0); if(mr.dataDay) mktDay[reg]=mr.dataDay;
+    }
+    if(!Object.keys(out).length) throw new Error('no priced items');
+    MARKET=Object.assign({},DEALS,out); mktTs=ts||m.bakedAt||mktTs; mktSrc='live';
+  }catch(e){ mktSrc='fallback'; console.warn('Deal Finder: market file unavailable, using the baked fallback:',e.message); }
+}
 const $=id=>document.getElementById(id);
 const g=v=>Math.round(v).toLocaleString('en-US');
 const sgn=f=>(f>0?'+':'')+Math.round(f*100)+'%';
-const dataTs=()=>DATA_TS||DEALS_TS;      // when the market data itself last changed (falls back to fetch time)
+const dataTs=()=>mktTs;      // when the market data itself last changed
 const fmtWhen=ts=>new Date(ts*1000).toLocaleString([],{dateStyle:'short',timeStyle:'short'});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TYPE={gather:'mat',honing:'honing',fusion:'fusion',meal:'cooking',craft:'craft',engraving:'engraving',battle:'consumable',tool:'tool',other:'other'};
@@ -139,9 +162,9 @@ function robust(h,te,d){
 // count (each trade moves real gold); cheap items must trade tightly. Capped at 3.6 so dead-tier-
 // but-expensive junk (T1/T2 stones) can't sneak back in. No true volume in the API, so value is the proxy.
 function volTol(fair){ return Math.max(1.2, Math.min(3.6, 0.6 + 0.9*Math.log10(Math.max(fair,1)))); }
-// real calendar date for history point h[daysAgo] (h[0] = DATA_DAY); null before the first DATA_DAY bake
-function histDate(daysAgo){ if(!DATA_DAY) return null;
-  const d=new Date(DATA_DAY+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-daysAgo);
+// real calendar date for history point h[daysAgo] (h[0] = the region's newest history day); null without one
+function histDate(daysAgo){ const day=mktDay[region]; if(!day) return null;
+  const d=new Date(day+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()-daysAgo);
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); }
 function histLabel(daysAgo){ const dt=histDate(daysAgo);
   return dt?(daysAgo===0?dt+' (newest)':dt):(daysAgo===0?'today (live)':daysAgo===1?'yesterday':daysAgo+' days ago'); }
@@ -175,7 +198,7 @@ let region='nae', view='liquid', cat='all', sortKey='gap', sortDir=1;
 const LS=(k,v)=>{try{return v===undefined?localStorage.getItem(k):localStorage.setItem(k,v);}catch(e){return null;}};
 
 function rows(){
-  const d=DEALS[region]||{}, out=[];
+  const d=MARKET[region]||{}, out=[];
   for(const slug in d){
     const it=d[slug], fair=robust(it.h,2,0.9)||it.s, gap=fair?(it.s-fair)/fair:0;
     const comp=(it.h.length>1?it.h.slice(1):it.h).filter(v=>v>0).sort((a,b)=>a-b);   // completed history, sorted
@@ -216,7 +239,8 @@ function render(){
   }
   $('tbl').innerHTML=h;
 }
-function boot(){
+async function boot(){
+  await loadMarket();
   region=LS('df_region')||'nae'; view=LS('df_view')||'liquid'; cat=LS('df_cat')||'all';
   $('minv').value=LS('df_minv')!=null?LS('df_minv'):10;
   $('minv').addEventListener('input',()=>LS('df_minv',$('minv').value));
@@ -225,7 +249,9 @@ function boot(){
   document.querySelectorAll('[data-ct]').forEach(b=>b.classList.toggle('active',b.dataset.ct===cat));
   $('catchips').style.opacity=view==='liquid'?'1':'.4';
   $('minwrap').style.opacity=view==='liquid'?'1':'.4'; $('minv').disabled=view!=='liquid';
-  if(Date.now()/1000-dataTs()>12*3600){ const w=$('stalewarn');
+  if(mktSrc==='fallback'){ const w=$('stalewarn');
+    w.innerHTML=`&#9888; Couldn't load the latest market file &mdash; showing the built-in prices from <b>${fmtWhen(dataTs())}</b>.`; w.style.display=''; }
+  else if(Date.now()/1000-dataTs()>12*3600){ const w=$('stalewarn');
     w.innerHTML=`&#9888; Market feed hasn't updated since <b>${fmtWhen(dataTs())}</b> &mdash; prices may be stale.`; w.style.display=''; }
   render();
 }

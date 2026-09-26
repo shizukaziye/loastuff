@@ -4,3 +4,6 @@ node_modules/
 loa-hell-key-calc/prices_raw.json
 loa-hell-key-calc/__pycache__/
 dist/
+__pycache__/
+market/.verified
+market/*.tmp
