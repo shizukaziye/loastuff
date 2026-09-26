@@ -721,7 +721,7 @@
   /**
    * The v3 payload -> the board. leaderboard.js's fromSnapshot(), field for
    * field: [region, name, ilvl, classIdx, pulledAt, grade, role, [pct, score,
-   * isPerfect], alt, traits, lines, unmapped, loadouts]. Slot 6 says which
+   * isPerfect], alt, traits, lines, unmapped, loadouts, altBracelet]. Slot 6 says which
    * reading the Worker's better-letter rule showed, slot 7 is that one and slot
    * 8 the other, so the two are filed by AXIS, as the leaderboard files them.
    */
@@ -745,6 +745,11 @@
         sup: supWon ? won : lost,
         pct: shown.pct, score: shown.score, isPerfect: shown.isPerfect,
         traits: boardTraits(a[9]), lines: boardLines(a[10]), unmapped: a[11] || 0,
+        // Slot 13 (2026-09-26): the other board's bracelet when that board's
+        // reading came off a different one; null otherwise. Carried for parity
+        // with the leaderboard's decoder — nothing on this tab draws it yet.
+        altBracelet: (a[13] && a[13].length >= 4) ? { grade: a[13][0] === 1 ? "relic" : "ancient", traits: boardTraits(a[13][1]),
+          lines: boardLines(a[13][2]), unmapped: a[13][3] || 0, best: typeof a[13][4] === "number" && a[13][4] >= 0 ? a[13][4] : 0 } : null,
         source: "board", ord: i,
         loadouts: null                  // a summary, not a record: runPull asks the Worker
       });
@@ -829,14 +834,20 @@
     }
     var cand = (los.length >= 2 && nDistinct >= 2) ? los : [los[chosen]];
     if (cand.length === 1) chosen = 0;
-    var best = null, bestPct = -Infinity;
+    // Each board's own best bracelet (the Worker's snapshotEntry, 2026-09-26):
+    // the DPS board's is the loadout that reads highest as a damage dealer, the
+    // Support board's the one that reads highest as a support, and on a support
+    // class the two can be different bracelets.
+    var supCls = isSupportClass(rec["class"]), best = null, bestPct = -Infinity, bestSup = null, bestSupPct = -Infinity;
     for (i = 0; i < cand.length; i++) {
       var s = boardReading(cand[i].stats, "dps");
-      if (!s) continue;
-      if (s.pct > bestPct + 1e-9 || (Math.abs(s.pct - bestPct) < 1e-9 && i === chosen)) { best = { s: s, stats: cand[i].stats }; bestPct = s.pct; }
+      if (s && (s.pct > bestPct + 1e-9 || (Math.abs(s.pct - bestPct) < 1e-9 && i === chosen))) { best = s; bestPct = s.pct; }
+      if (!supCls) continue;
+      var u = boardReading(cand[i].stats, "support");
+      if (u && (u.pct > bestSupPct + 1e-9 || (Math.abs(u.pct - bestSupPct) < 1e-9 && i === chosen))) { bestSup = u; bestSupPct = u.pct; }
     }
     if (!best) return null;
-    var dps = best.s, sup = isSupportClass(rec["class"]) ? boardReading(best.stats, "support") : null;
+    var dps = best, sup = bestSup;
     var supWins = !!(sup && sup.score != null && dps.score != null &&
       SR.of(sup.score, "support").i < SR.of(dps.score, "dps").i);
     var shown = supWins ? sup : dps;
@@ -847,7 +858,7 @@
     var rd = reading(dps, !supWins), rs = reading(sup, supWins), rw = supWins ? rs : rd;
     return {
       region: rec.region, name: rec.name, "class": rec["class"] || null,
-      itemLevel: rec.itemLevel, pulledAt: rec.pulledAt, grade: dps.grade,
+      itemLevel: rec.itemLevel, pulledAt: rec.pulledAt, grade: shown.grade,
       role: shown.role, dps: rd, sup: rs,
       pct: rw.pct, score: rw.score, isPerfect: rw.isPerfect
     };

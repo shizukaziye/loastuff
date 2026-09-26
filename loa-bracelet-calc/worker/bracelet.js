@@ -259,11 +259,12 @@ const SNAPSHOT_SRC_KEY = "lb:chars:gz";     // the MUTATION source: the same cha
                                             // tables; keeping the objects is cheaper than unpacking.
 const SNAPSHOT_V = 3;                       // the WIRE format (payload.v). 2 added the per-row loadouts;
                                             // 3 dropped every raw bracelet and sends finished numbers.
-const SNAPSHOT_FMT = 3;                     // the ENTRY shape stored in SNAPSHOT_SRC_KEY. Bump it whenever
+const SNAPSHOT_FMT = 4;                     // the ENTRY shape stored in SNAPSHOT_SRC_KEY. Bump it whenever
                                             // snapshotEntry() starts carrying a new field: the incremental
                                             // rebuild only rewrites the rows a dirty marker points at, so a
                                             // widened row would otherwise reach the board one takedown at a
                                             // time. A mismatch forces ONE from-scratch build and clears.
+                                            // 4 (2026-09-26): altBracelet, the other board's own bracelet.
 const SNAPSHOT_FMT_KEY = "lb:snapshot:fmt"; // the SNAPSHOT_FMT the stored source was built with
 const SNAPSHOT_MIN_INTERVAL_MS = 10 * 60 * 1000;  // Shizu's number: rebuild at most every 10 minutes
 const REBUILD_CURSOR_KEY = "lb:rebuild:cursor";   // { c } — present while a from-scratch build is in flight
@@ -2508,10 +2509,13 @@ function packStats(stats) {
  * value), and — for the >1-bracelet marker alone — a label and a percentage per
  * loadout. Anything that needs the bracelet itself asks GET /character for it.
  *
- * WHICH LOADOUT THE BOARD RANKS. The highest RE-SCORED one, ties to the record's
- * own chosen index — which is the rule the page has always applied to the list it
- * was sent, and it is not pickBestLoadout's (that ranks linesPct first, and it
- * disagrees on 1 of the 67 stored characters). The rule moved; it did not change.
+ * WHICH LOADOUT THE BOARD RANKS. On each board, the loadout that re-scores
+ * highest ON THAT BOARD'S LADDER, ties to the record's own chosen index. The DPS
+ * board reads every loadout as a damage dealer; the Support board reads a
+ * support class's loadouts as a support, and the two picks can be different
+ * bracelets (xin's report, 2026-09-26: an Artist who raids as a support and runs
+ * chaos as a dealer). The row is filed on whichever reading bands better and
+ * carries the other board's bracelet as `altBracelet` when it differs.
  *
  * A character with fewer than two DISTINCT brackets carries no loadout block at
  * all: the marker only draws on ≥2, so a list that would collapse to one is a
@@ -2544,54 +2548,80 @@ function snapshotEntry(rec) {
   }) : [{ label: "Bracelet", stats: rec.stats }];
   if (!multi) chosen = 0;
 
-  // Score every candidate as a DAMAGE DEALER and rank on that, for everyone. The
-  // support reading is a DISPLAY choice made afterwards, on the bracelet this
-  // pick already settled — the same order the page ran them in.
-  let best = -Infinity, bestI = -1;
+  // Score every candidate as a DAMAGE DEALER and, on a support class, as a
+  // SUPPORT too, and pick the best candidate ON EACH LADDER. The two picks can
+  // be different bracelets: an Artist who raids as a support and runs chaos as
+  // a dealer wears a support bracelet in one loadout and a damage bracelet in
+  // the other, and until 2026-09-26 the support reading was taken off the
+  // dealer-best bracelet — so the Support board graded her chaos bracelet's
+  // damage lines as F- F- F- and put her at F 0.0 (xin's report on Xinnywinny).
+  // Each board ranks the bracelet that is best on ITS ladder now, and the row
+  // carries both bracelets when they differ (altBracelet).
+  const supCls = isSupportClass(rec["class"]);
+  let bestD = -Infinity, bdI = -1, bestS = -Infinity, bsI = -1;
   for (let i = 0; i < cand.length; i++) {
-    let s = null;
+    let s = null, u = null;
     try { s = boardScore(cand[i].stats, "dps"); } catch (e) { s = null; }
-    cand[i].s = s;
+    if (supCls) { try { u = boardScore(cand[i].stats, "support"); } catch (e) { u = null; } }
+    cand[i].s = s; cand[i].u = u;
     const p = (s && isFinite(s.pct)) ? s.pct : null;
     cand[i].pct = p;
-    if (p != null && (p > best + 1e-9 || (Math.abs(p - best) < 1e-9 && i === chosen))) { best = p; bestI = i; }
+    if (p != null && (p > bestD + 1e-9 || (Math.abs(p - bestD) < 1e-9 && i === chosen))) { bestD = p; bdI = i; }
+    const q = (u && isFinite(u.pct)) ? u.pct : null;
+    if (q != null && (q > bestS + 1e-9 || (Math.abs(q - bestS) < 1e-9 && i === chosen))) { bestS = q; bsI = i; }
   }
-  const b = cand[bestI >= 0 ? bestI : chosen];
-  if (!b || !b.s) return null;                          // nothing decoded: no row rather than a wrong one
+  const bd = cand[bdI >= 0 ? bdI : chosen];
+  if (!bd || !bd.s) return null;                        // nothing decoded: no row rather than a wrong one
+  const bs = bsI >= 0 ? cand[bsI] : null;               // support classes only, and only when a candidate decoded
 
-  // THE BETTER-LETTER RULE (Shizu, 2026-08-14). A support class is read a second
-  // time on the support profile and the support ladder, and the board shows
-  // whichever reading BANDS better — the smaller band index. A tie keeps the
-  // damage-dealer reading, because that is what every other row is comparable to.
-  // Both readings ship whichever way it goes: the Grade tooltip names the loser.
-  let sup = null;
-  if (isSupportClass(rec["class"])) {
-    try { sup = boardScore(b.stats, "support"); } catch (e) { sup = null; }
+  // THE BETTER-LETTER RULE (Shizu, 2026-08-14). A support class is read on the
+  // support ladder as well, and the board shows whichever reading BANDS better
+  // — the smaller band index. A tie keeps the damage-dealer reading, because
+  // that is what every other row is comparable to. Both readings ship
+  // whichever way it goes: the Grade tooltip names the loser, and the other
+  // board ranks on it.
+  const sup = (bs && bs.u) ? bs.u : null;
+  const supWins = !!sup && Subrank.of(sup.score, "support").i < Subrank.of(bd.s.score, "dps").i;
+  const shownC = supWins ? bs : bd, shown = supWins ? sup : bd.s;
+  const otherC = supWins ? bd : bs, other = supWins ? bd.s : sup;
+  const dpsI = bdI >= 0 ? bdI : chosen;
+  const shownI = supWins ? bsI : dpsI;
+  const otherI = otherC ? (supWins ? dpsI : bsI) : -1;
+  // The decode is role-blind — a bracelet's families, tiers and trait values
+  // are the item, not the reader — so the dealer reading's decode serves both
+  // readings of one bracelet.
+  function bracelet(c) {
+    return {
+      grade: c.s.grade,
+      traits: c.s.traitLines.map(function (l) { return [l.family, l.value]; }),
+      lines: c.s.lines.map(function (l) {
+        return { cat: l.cat, family: l.family, tier: l.tier || null,
+          value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
+      }),
+      unmapped: c.s.unmapped
+    };
   }
-  const supWins = !!sup && Subrank.of(sup.score, "support").i < Subrank.of(b.s.score, "dps").i;
-  const shown = supWins ? sup : b.s;
-  const other = supWins ? b.s : sup;
+  const own = bracelet(shownC);
 
   return {
     region: rec.region, name: rec.name,
     itemLevel: rec.itemLevel == null ? null : rec.itemLevel,
     "class": rec["class"] || null,
     pulledAt: rec.pulledAt || 0,
-    grade: b.s.grade,
+    grade: own.grade,
     role: shown.role,
     read: { pct: shown.pct, linesPct: shown.linesPct, score: shown.score, isPerfect: shown.isPerfect },
     alt: other ? { pct: other.pct, score: other.score } : null,
-    // The decode is role-blind — a bracelet's families, tiers and trait values are
-    // the item, not the reader — so ONE copy serves both readings.
-    traits: b.s.traitLines.map(function (l) { return [l.family, l.value]; }),
-    lines: b.s.lines.map(function (l) {
-      return { cat: l.cat, family: l.family, tier: l.tier || null,
-        value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
-    }),
-    unmapped: b.s.unmapped,
+    traits: own.traits,
+    lines: own.lines,
+    unmapped: own.unmapped,
+    // The OTHER board's bracelet, when its reading came off a different one —
+    // null when both readings are of the bracelet above (one loadout, or one
+    // bracelet best on both ladders). `idx` is its place in `loadouts`.
+    altBracelet: (otherC && otherC !== shownC) ? Object.assign(bracelet(otherC), { idx: otherI }) : null,
     loadouts: multi ? {
       distinct: nDistinct,
-      best: bestI >= 0 ? bestI : chosen,
+      best: shownI,                                     // the loadout ranked on the row's own board
       items: cand.map(function (c) { return { label: c.label, pct: c.pct }; })
     } : null
   };
@@ -2718,6 +2748,18 @@ function encodeSnapshot(builtAt, entries) {
       for (const it of e.loadouts.items) items.push(li(it.label), r2(it.pct));
       lo = [e.loadouts.distinct, e.loadouts.best, items];
     }
+    // Slot 13, the OTHER board's bracelet — 0 when the alt reading is of the
+    // bracelet in slots 9-11. Appended, so a reader of the v3 row from before
+    // it existed simply never looks this far: [grade, traits, lines, unmapped,
+    // its loadout index].
+    let ab = 0;
+    if (e.altBracelet) {
+      const at = [], al = [];
+      for (const t of (e.altBracelet.traits || [])) at.push(TRAIT_CODE[t[0]] == null ? -1 : TRAIT_CODE[t[0]], t[1]);
+      for (const l of (e.altBracelet.lines || [])) al.push(CAT_CODE[l.cat] == null ? 0 : CAT_CODE[l.cat], famCode(l), slot2(l), l.fixed ? 1 : 0);
+      ab = [GRADE_CODE[e.altBracelet.grade] || 0, at, al, e.altBracelet.unmapped || 0,
+        typeof e.altBracelet.idx === "number" ? e.altBracelet.idx : -1];
+    }
     return [
       e.region, e.name, e.itemLevel,
       ci(e["class"]), e.pulledAt || 0,
@@ -2727,7 +2769,8 @@ function encodeSnapshot(builtAt, entries) {
       e.alt ? [r2(e.alt.pct), r3(e.alt.score)] : 0,
       traits, lines,
       e.unmapped || 0,
-      lo
+      lo,
+      ab
     ];
   });
   return { v: SNAPSHOT_V, builtAt: builtAt, classes: classes, labels: labels, characters: characters };

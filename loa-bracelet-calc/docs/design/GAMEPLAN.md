@@ -144,6 +144,21 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   a bar the odds fill), every grade from the last certain band to the first
   unreachable one, worst on the left.
 
+## Fix of 2026-09-26 — two bracelets, two boards
+
+xin's report: Xinnywinny (NA, Artist) raids as a support and runs chaos as a
+dealer, so her raid loadout wears a support bracelet and her chaos loadout a
+damage one. `snapshotEntry` scored every loadout as a dealer, kept the best,
+and read THAT bracelet on the support ladder — F- F- F-, F 0.0 on the Support
+board. Now each board ranks the loadout that is best on its own ladder; the
+row is filed on the better-banding reading, `loadouts.best` is the loadout
+ranked on the row's own board, and packed slot 13 carries the other board's
+bracelet (`altBracelet`: grade, traits, lines, unmapped, loadout index) when
+it differs. The leaderboard's `applyMode` swaps the display bracelet per
+board; the profile page and the calculator's baked fallback port the same
+pick. `SNAPSHOT_FMT` 3 → 4 forces one from-scratch rebuild (the cron runs
+every minute, 750 records a tick). Wire format stays v3.
+
 ## Debts (2026-09-24)
 
 - The Leaderboard tab and the profile page each fetch `/list` themselves;

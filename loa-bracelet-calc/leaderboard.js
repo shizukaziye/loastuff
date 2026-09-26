@@ -84,7 +84,7 @@
   // needs a new URL. It moved to 4 when the file's SHAPE changed, which is the
   // one bump that cannot be skipped: a v3 client reading a cached v2 seed would
   // read percentages out of a stat index.
-  var SEED_URL = "data/leaderboard-seed.json?v=4";
+  var SEED_URL = "data/leaderboard-seed.json?v=5";
 
   // The whole characters, baked — raw stat lines and every loadout, ~940KB.
   // Fetched ONCE, and only when a row click needs a bracelet and no Worker
@@ -469,7 +469,19 @@
       var lost = (alt && typeof alt[0] === "number")
         ? { pct: alt[0], score: typeof alt[1] === "number" ? alt[1] : null, isPerfect: false }
         : null;
-      var supWon = a[6] === 1;
+      var supWon = a[6] === 1, home = supWon ? "support" : "dps";
+      // The bracelet the row is filed on, and — slot 13, since 2026-09-26 — the
+      // OTHER board's bracelet when that board's reading came off a different
+      // one: a support class with a damage bracelet in one loadout and a support
+      // one in another. applyMode() puts the active board's into the display
+      // fields.
+      var own = { grade: grade, traits: untraits(a[9]), lines: unlines(a[10], grade), unmapped: a[11] || 0, best: 0 };
+      var ab = a[13], altBr = null;
+      if (ab && ab.length >= 4) {
+        var ag = ab[0] === 1 ? "relic" : "ancient";
+        altBr = { grade: ag, traits: untraits(ab[1]), lines: unlines(ab[2], ag), unmapped: ab[3] || 0,
+          best: typeof ab[4] === "number" && ab[4] >= 0 ? ab[4] : 0 };
+      }
       var c = {
         name: a[1],
         region: normRegion(a[0]),
@@ -486,16 +498,20 @@
         _pct: null,
         _score: null,
         _isPerfect: false,
-        _traits: untraits(a[9]),
-        _lines: unlines(a[10], grade),
-        _unmapped: a[11] || 0,
+        _traits: own.traits,
+        _lines: own.lines,
+        _unmapped: own.unmapped,
+        _home: home,
+        _own: own,
+        _alt: altBr,
         loadouts: null,
         best: 0,
         distinctBrackets: 1
       };
-      if (lo && lo.length === 3) {
+      if (lo && lo.length >= 3) {
         c.distinctBrackets = lo[0] || 1;
-        c.best = lo[1] || 0;
+        own.best = lo[1] || 0;
+        c.best = own.best;
         c.loadouts = [];
         for (var i = 0; i + 1 < lo[2].length; i += 2) {
           c.loadouts.push({
@@ -552,6 +568,11 @@
     c._pct = r ? r.pct : null;
     c._score = r ? r.score : null;
     c._isPerfect = !!(r && r.isPerfect);
+    // THE BOARD'S OWN BRACELET. A row filed on one board carries the other
+    // board's bracelet when that reading came off a different one, so the
+    // pills, the grade anchors and the ranked loadout follow the board.
+    var b = (c._alt && c._home && mode !== c._home) ? c._alt : c._own;
+    if (b) { c._grade = b.grade; c._traits = b.traits; c._lines = b.lines; c._unmapped = b.unmapped; c.best = b.best; }
   }
 
   // ------------------------------------------------------------------

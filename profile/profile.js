@@ -446,9 +446,15 @@
         ilvl: isNum(a[2]) ? a[2] : null, pulledAt: isNum(a[4]) ? a[4] : null,
         grade: a[5] === 1 ? "relic" : "ancient", role: supWon ? "support" : "dps",
         dps: supWon ? lost : won, sup: supWon ? won : lost,
-        traits: untraits(a[9]), lines: unlines(a[10]), unmapped: a[11] || 0, lo: null
+        traits: untraits(a[9]), lines: unlines(a[10]), unmapped: a[11] || 0, lo: null,
+        // Slot 13 (2026-09-26): the other board's bracelet when that board's
+        // reading came off a different one, else null. Carried for parity with
+        // the leaderboard's decoder; the overview draws the bracelet the row is
+        // filed on.
+        altBr: (a[13] && a[13].length >= 4) ? { grade: a[13][0] === 1 ? "relic" : "ancient", traits: untraits(a[13][1]),
+          lines: unlines(a[13][2]), unmapped: a[13][3] || 0, best: isNum(a[13][4]) && a[13][4] >= 0 ? a[13][4] : 0 } : null
       };
-      if (lo && lo.length === 3) {
+      if (lo && lo.length >= 3) {
         row.lo = { distinct: lo[0] || 1, best: lo[1] || 0, items: [] };
         for (j = 0; j + 1 < lo[2].length; j += 2) {
           row.lo.items.push({ label: (lo[2][j] >= 0 && labels[lo[2][j]]) || ("Loadout " + (row.lo.items.length + 1)),
@@ -637,30 +643,45 @@
       return { label: l.label || loadoutLabel(l.classification) || ("Loadout " + (k + 1)), stats: l.bracelet.stats };
     }) : [{ label: "Bracelet", stats: recStats }];
     if (!multi) chosen = 0;
-    var best = -Infinity, bestI = -1;
+    // Each board's own best bracelet (the Worker's snapshotEntry, 2026-09-26):
+    // every candidate as a damage dealer, and on a support class as a support
+    // too; the row is filed on whichever reading bands better and carries the
+    // other board's bracelet when it differs.
+    var supCls = isSupportCls(d["class"]), bestD = -Infinity, bdI = -1, bestS = -Infinity, bsI = -1;
     for (i = 0; i < cand.length; i++) {
-      var s = null;
+      var s = null, u = null;
       try { s = boardScore(cand[i].stats, "dps"); } catch (e) { s = null; }
-      cand[i].s = s;
-      var p = (s && isFinite(s.pct)) ? s.pct : null;
+      if (supCls) { try { u = boardScore(cand[i].stats, "support"); } catch (e2) { u = null; } }
+      cand[i].s = s; cand[i].u = u;
+      var p = (s && isFinite(s.pct)) ? s.pct : null, q = (u && isFinite(u.pct)) ? u.pct : null;
       cand[i].pct = p;
-      if (p != null && (p > best + 1e-9 || (Math.abs(p - best) < 1e-9 && i === chosen))) { best = p; bestI = i; }
+      if (p != null && (p > bestD + 1e-9 || (Math.abs(p - bestD) < 1e-9 && i === chosen))) { bestD = p; bdI = i; }
+      if (q != null && (q > bestS + 1e-9 || (Math.abs(q - bestS) < 1e-9 && i === chosen))) { bestS = q; bsI = i; }
     }
-    var b = cand[bestI >= 0 ? bestI : chosen];
-    if (!b || !b.s) return null;
-    var sup = null;
-    if (isSupportCls(d["class"])) { try { sup = boardScore(b.stats, "support"); } catch (e) { sup = null; } }
-    var supWins = !!sup && SR.of(sup.score, "support").i < SR.of(b.s.score, "dps").i;
+    var bd = cand[bdI >= 0 ? bdI : chosen];
+    if (!bd || !bd.s) return null;
+    var bs = bsI >= 0 ? cand[bsI] : null, sup = bs ? bs.u : null;
+    var supWins = !!sup && SR.of(sup.score, "support").i < SR.of(bd.s.score, "dps").i;
+    var shownC = supWins ? bs : bd, otherC = supWins ? bd : bs, dpsI = bdI >= 0 ? bdI : chosen;
+    var shownI = supWins ? bsI : dpsI, otherI = otherC ? (supWins ? dpsI : bsI) : -1;
     function reading(x, won) { return x ? { pct: r2(x.pct), score: r3(x.score), isPerfect: won ? !!x.isPerfect : false } : null; }
+    function bracelet(c) {
+      return {
+        grade: c.s.grade,
+        traits: c.s.traitLines.map(function (l) { return { family: l.family, value: l.value }; }),
+        lines: c.s.lines.map(function (l) {
+          return { cat: l.cat, family: l.family, tier: l.tier || null, value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
+        }),
+        unmapped: c.s.unmapped
+      };
+    }
+    var own = bracelet(shownC);
     return {
-      grade: b.s.grade, role: supWins ? "support" : "dps",
-      dps: reading(b.s, !supWins), sup: reading(sup, supWins),
-      traits: b.s.traitLines.map(function (l) { return { family: l.family, value: l.value }; }),
-      lines: b.s.lines.map(function (l) {
-        return { cat: l.cat, family: l.family, tier: l.tier || null, value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
-      }),
-      unmapped: b.s.unmapped,
-      lo: multi ? { distinct: nDistinct, best: bestI >= 0 ? bestI : chosen,
+      grade: own.grade, role: supWins ? "support" : "dps",
+      dps: reading(bd.s, !supWins), sup: reading(sup, supWins),
+      traits: own.traits, lines: own.lines, unmapped: own.unmapped,
+      altBr: (otherC && otherC !== shownC) ? extend(bracelet(otherC), { best: otherI }) : null,
+      lo: multi ? { distinct: nDistinct, best: shownI,
         items: cand.map(function (c) { return { label: c.label, pct: r2(c.pct) }; }) } : null
     };
   }
