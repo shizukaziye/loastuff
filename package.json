@@ -19,7 +19,8 @@
     "check:py:astrogem": "cd loa-astrogem-calc && python verify.py",
     "check:py:crafting": "cd loa-crafting-calculator && python verify.py",
     "check:py:hellkey": "cd loa-hell-key-calc && python verify.py",
-    "bake-market": "python tools/bake-market.py"
+    "bake-market": "python tools/bake-market.py",
+    "optimize-images": "node tools/optimize-images.mjs"
   },
   "devDependencies": {
     "csso": "^5.0.5",
