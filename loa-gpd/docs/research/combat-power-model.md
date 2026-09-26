@@ -1,5 +1,10 @@
 # Combat power — how lostark.bible breaks it down, and the chart's estimator
 
+> **Retired 2026-09-25.** The chart's Combat power card, `model/combat-power.js`,
+> `data/cp-grid-dps.json` and `tools/build-cp-grid-dps.js` were removed when the
+> Loseii Score replaced the card (docs/METHODOLOGY.md, "Loseii Score"); they are
+> in git history. The breakdown below still describes how lostark.bible reports CP.
+
 Sources: lostark.bible character route (SvelteKit `__data.json`, session-authed
 via Shizu's own OAuth grant — rosters scope, own characters only), the site's
 route module `17.D03QyhWy.js` (parts → category percentages), and six roster

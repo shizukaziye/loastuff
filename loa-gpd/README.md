@@ -30,6 +30,19 @@ lives in `lookup.js`, which the loseii profile pages load too:
 `await GpdLookup.ready()`, then `GpdLookup.place({ record, astro, axis })`. An
 edit to it bumps its `?v=` pin on every page that loads it.
 
+**Loseii Score** — the plan's build, and on the profile pages a looked-up
+character, as damage on the in-game Combat Power scale: every system's damage
+against the chart's reference character, multiplied, times one constant fitted
+so the median NA character scores its own CP. `model/loseii-score.js` (Python
+twin `model/loseii_score.py`); `GpdLookup.score({ record, astro, axis })` is the
+one call. Check it with
+
+    node tools/verify-loseii-score.js            # panel, scale, cases, invariants, Python parity
+    node tools/verify-loseii-score.js --capture  # after an intended model or table change
+
+and `node tools/verify.js` for the chart's model. Method, what is not scored,
+and the check against lopec.kr: [docs/METHODOLOGY.md](docs/METHODOLOGY.md#loseii-score).
+
 Game tables come from Maxroll's planner feed and are re-baked by
 `python tools/fetch-game-data.py`, which cross-checks itself against bebkok's
 gear sheet. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).

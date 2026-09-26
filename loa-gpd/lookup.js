@@ -8,7 +8,7 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=4"></script>
+ *   <script src="/loa-gpd/lookup.js?v=6"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
@@ -60,7 +60,8 @@
   var VERSION = (SELF.match(/[?&]v=([^&#]*)/) || [])[1] || null;
   // file -> the global it defines; the pins are index.html's
   var MODELS = [["model/support.js?v=20260922a", "Support"], ["model/gear.js?v=20260922a", "Gear"],
-                ["model/honing.js?v=20260922a", "Honing"], ["model/karma.js?v=20260922a", "Karma"]];
+                ["model/honing.js?v=20260922a", "Honing"], ["model/karma.js?v=20260922a", "Karma"],
+                ["model/loseii-score.js?v=20260925b", "LoseiiScore"]];
   // The astrogem calculator's model, at the pin loa-astrogem-calc/index.html
   // uses: the same URL is one cached copy for the calculator, the chart and this
   // file. It MUST follow the astrogem pin (and the chart's tag in index.html).
@@ -76,7 +77,10 @@
   // the baked tables the rows are built from, under data/
   var DATA_FILES = ["honing-t4upper.json", "karma.json", "rows.json", "rows-dps.json",
                     "arkgrid-rows-epic.json", "arkgrid-rows-rare.json",
-                    "arkgrid-rows-dps-epic.json", "arkgrid-rows-dps-rare.json"];
+                    "arkgrid-rows-dps-epic.json", "arkgrid-rows-dps-rare.json",
+                    // the Loseii Score's calibration panel (model/loseii-score.js)
+                    // and the lower (1590) gear track it prices honing on
+                    "loseii-panel.json", "honing-t4lower.json"];
 
   var LIBS = {};
   function lib(name) { return LIBS[name] || root[name]; }
@@ -1012,6 +1016,7 @@
       name: d.name, ilvl: d.itemLevel ? Math.round(d.itemLevel) : null, cls: d.class,
       minGem: gems.length ? Math.min.apply(null, gems) : null,
       gemCount: gems.length,
+      gemLevels: gems.slice(),
       acc: bySlot,
       gems: d.gems || null,
       // exact per-piece honing when the record carries it; ilvl approximation
@@ -1021,6 +1026,15 @@
       honeArmor: armExact ? eq.armorMin : lkHoning(d.itemLevel),
       honeWeapon: wpnExact ? eq.weapon : lkHoning(d.itemLevel),
       honeExact: armExact && wpnExact,
+      ilvlExact: d.itemLevel || null,
+      // advanced honing: the astrogem pull reads the weapon's alone
+      advPieces: eq && eq.weaponAdv != null ? { weapon: eq.weaponAdv } : null,
+      // every armour piece, for the Loseii Score; the astrogem worker lists
+      // them head, chest, pants, gloves, shoulders
+      armorPieces: eq && Array.isArray(eq.armor) && eq.armor.length === 5 &&
+        eq.armor.every(function (v) { return typeof v === "number"; })
+        ? { head: eq.armor[0], torso: eq.armor[1], legs: eq.armor[2], hands: eq.armor[3], shoulders: eq.armor[4] }
+        : null,
       karma: d.karma ? d.karma.enlightenment : null,
       stone: d.stone ? d.stone.a + "-" + d.stone.b : null,
       region: d.region || null,
@@ -1041,6 +1055,8 @@
         d.bracelet.stats[0] && typeof d.bracelet.stats[0] === "object"
         ? d.bracelet.stats : null) || (prev ? prev.braceletRaw : null),
       mainStat: prev ? prev.mainStat : null,
+      master: prev ? prev.master : null,
+      apPoints: prev ? prev.apPoints : null,
       bcNote: prev ? prev.bcNote : null,
       pulledAt: d.pulledAt || null
     };
@@ -1111,9 +1127,19 @@
           c.honeArmor = Math.min.apply(null, arm);
           c.honeWeapon = pr.honing.weapon;
           c.honeExact = true;
+          c.armorPieces = { head: pr.honing.head, torso: pr.honing.chest, legs: pr.honing.pants,
+                            hands: pr.honing.gloves, shoulders: pr.honing.shoulder };
+          var ah = pr.advancedHoning || {};
+          c.advPieces = { weapon: ah.weapon, head: ah.head, torso: ah.chest, legs: ah.pants,
+                          hands: ah.gloves, shoulders: ah.shoulder };
+          if (pr.itemLevel || d.itemLevel) c.ilvlExact = pr.itemLevel || d.itemLevel;
           c.stamp.honing = { src: "bracelet", ts: ts, exact: true };
         }
       }
+      // the Master ark-passive node (1032200), read off the same loadout
+      if (typeof pr.master === "boolean") c.master = pr.master;
+      // the ark passive trees' points (evolution / enlightenment / leap)
+      if (pr.apPoints && typeof pr.apPoints === "object") c.apPoints = pr.apPoints;
       if (raw && raw.karma && raw.karma.enlightenment != null && fresher("karma")) {
         c.karma = raw.karma.enlightenment;
         c.stamp.karma = { src: "bracelet", ts: ts };
@@ -1273,11 +1299,14 @@
     ctx.arkgridRows.epic = got["arkgrid-rows-epic.json"];
     ctx.arkgridRows.rare = got["arkgrid-rows-rare.json"];
     ctx.honing = got["honing-t4upper.json"]; ctx.karma = got["karma.json"];
+    if (got["honing-t4lower.json"]) ctx.honingLower = got["honing-t4lower.json"];
     ctx.rows = ctx.rows || {};
     ctx.rows.support = got["rows.json"] ? got["rows.json"].rows : [];
     ctx.rows.dps = dps ? dps.rows : null;
     ctx.dpsDamage = dps && dps.honingDamage
       ? { honing: dps.honingDamage, karma: dps.karmaDamage } : null;
+    if (got["loseii-panel.json"]) ctx.loseiiPanel = got["loseii-panel.json"];
+    ctx._scoreT = {}; ctx._scoreC = {};
     return ctx;
   }
 
@@ -1375,7 +1404,281 @@
     var pos = lkPositions(ctx, c, steps(ctx), input.now);
     pos.axis = ctx.axis;
     pos.role = c.role;
+    pos.region = c.region || (record && record.region) || null;
+    // what the Loseii Score reads, taken from the same record (score() below)
+    var sr = lkScoreReadings(ctx, c);
+    pos.readings = sr.readings;
+    pos.readingsWhy = sr.why;
     return pos;
+  }
+
+  // ---- the Loseii Score ------------------------------------------------------
+  // model/loseii-score.js does the arithmetic; this file hands it what only a
+  // page with the tables can: the character's readings, the ladder tables off
+  // the chart's own rows, the reference character's lattice and grid damage,
+  // and the scale fitted on the calibration panel.
+  //
+  // THE READINGS are the exact figures where the pull carries them (every
+  // armour piece, every gem, the bracelet scorer's total, each accessory's
+  // lattice damage, the ark grid's gridDamage) and nothing where it does not.
+  function lkGridD(c, axis) {
+    var A = lib("Astrogem");
+    if (!A || !c || !c.gems || !c.gems.length) return null;
+    var valid = c.gems.filter(function (g) {
+      try { return !A.validateConfig || A.validateConfig(g).valid; } catch (e) { return false; }
+    });
+    if (!valid.length) return null;
+    try { var D = A.gridDamage(valid, axis); return isFinite(D) ? { D: D, n: valid.length } : null; }
+    catch (e) { return null; }
+  }
+  // WHICH GEAR SET EACH PIECE IS. T4 gear comes in two sets: the lower one
+  // (1590, "Destined Hellfire"), where item level is 1590 + 5 x honing +
+  // advanced honing, and the upper one (1675, "Destined Tremor"), 1675 + 5 x
+  // honing. The pull gives each piece's +N and advanced honing but not its set,
+  // so the set is whichever assignment of the six pieces reproduces the
+  // character's item level (they are 40+ levels apart, so it is never close).
+  var LK_GEAR = ["weapon", "head", "torso", "legs", "hands", "shoulders"];
+  function lkTracks(c) {
+    var P = [], i, lv = c.ilvlExact;
+    var adv = c.advPieces || {};
+    for (i = 0; i < LK_GEAR.length; i++) {
+      var sl = LK_GEAR[i], h = sl === "weapon" ? c.honeWeapon : c.armorPieces && c.armorPieces[sl];
+      if (h == null) return null;
+      var a = adv[sl] != null ? adv[sl] : (adv.weapon != null ? adv.weapon : 0);
+      P.push({ slot: sl, h: h, adv: a, up: 1675 + 5 * h, lo: Math.min(1755, 1590 + 5 * h + a) });
+    }
+    var best = null;
+    for (var m = 0; m < 64; m++) {
+      var sum = 0;
+      for (i = 0; i < 6; i++) sum += (m >> i) & 1 ? P[i].lo : P[i].up;
+      var err = lv ? Math.abs(sum / 6 - lv) : (m ? 1 : 0);
+      // ties go to the assignment with fewer lower pieces
+      var nLo = 0; for (i = 0; i < 6; i++) nLo += (m >> i) & 1;
+      if (!best || err < best.err - 1e-9 || (Math.abs(err - best.err) <= 1e-9 && nLo < best.nLo)) best = { m: m, err: err, nLo: nLo };
+    }
+    var out = { tracks: {}, adv: {}, err: best.err };
+    for (i = 0; i < 6; i++) {
+      out.tracks[P[i].slot] = (best.m >> i) & 1 ? "lower" : "upper";
+      out.adv[P[i].slot] = P[i].adv;
+    }
+    return out;
+  }
+  function lkScoreReadings(ctx, c) {
+    var axis = ctx.axis, rd = {}, why = {};
+    var tk = c.armorPieces && c.honeWeapon != null ? lkTracks(c) : null;
+    if (c.armorPieces) {
+      rd.armor = { pieces: c.armorPieces };
+      if (tk) {
+        rd.armor.tracks = {}; rd.armor.adv = {};
+        ["head", "torso", "legs", "hands", "shoulders"].forEach(function (sl) {
+          rd.armor.tracks[sl] = tk.tracks[sl]; rd.armor.adv[sl] = tk.adv[sl];
+        });
+      }
+    } else if (c.honeArmor != null) rd.armor = { level: c.honeArmor };
+    else why.armor = "no honing in the pull";
+    if (c.honeWeapon != null) {
+      rd.weapon = c.honeWeapon;
+      if (tk) { rd.weaponTrack = tk.tracks.weapon; rd.weaponAdv = tk.adv.weapon; }
+    } else why.weapon = "no honing in the pull";
+    if (tk && tk.err > 3) rd.honingNote = "no split of the six pieces across the two gear sets matches the item level";
+    if (!c.honeExact && (c.honeArmor != null || c.honeWeapon != null)) {
+      rd.honingNote = "estimated from " + (c.ilvl || "?") + " ilvl";
+    }
+    if (c.karma != null) rd.karma = c.karma; else why.karma = "no karma in the pull";
+    if (c.gemLevels && c.gemLevels.length) rd.gems = c.gemLevels.slice(); else why.gems = "no skill gems in the pull";
+    if (c.stone) rd.stone = c.stone; else why.stone = "no ability stone in the pull";
+    var br = c.braceletRaw ? lkBraceletGrade(c.braceletRaw, axis) : null;
+    if (br && isFinite(br.total)) {
+      rd.bracelet = { D: br.total, label: br.band + " · score " + br.score.toFixed(1) };
+    } else why.bracelet = c.braceletRaw ? "the bracelet calculator's scorer did not load"
+      : (c.bcNote || "no bracelet in the pull");
+    rd.acc = {};
+    ACC_KINDS.forEach(function (kind) {
+      var pieces = lkAccPieces(ctx, c, kind, axis);
+      (pieces || []).forEach(function (p) {
+        if (!p.cfg) return;
+        rd.acc[p.slot] = { D: p.cfg.D, label: lkCfgLabel(p.cfg),
+          note: p.cfg.msRead ? null : "main stat not in the pull, taken as mid" };
+      });
+      if (!pieces || !pieces.length) {
+        why[kind] = c.noAstro ? "the accessory lines come with the astrogem pull, and there is none"
+          : "no " + accNoun(kind) + " in the pull";
+      } else if (!pieces.some(function (p) { return p.cfg; })) why[kind] = "the accessory damage table did not load";
+    });
+    var g = lkGridD(c, axis);
+    if (g) {
+      var band = lkGrid(c, axis);
+      rd.grid = { D: g.D, label: (band && band.band ? band.band + " · " : "") + g.n + " gems" };
+    } else {
+      why.grid = c.noAstro ? "the ark grid gems come with the astrogem pull, and there is none"
+        : (lib("Astrogem") ? "the ark grid gems did not parse" : "the astrogem model did not load");
+    }
+    if (c.apPoints && c.apPoints.evolution != null) rd.evolution = c.apPoints.evolution;
+    else why.arkPassive = "the ark passive points come with the bracelet pull, and there is none";
+    if (axis === "dps") {
+      if (typeof c.master === "boolean") rd.master = c.master;
+      else why.master = "the Master node comes with the bracelet pull, and there is none";
+    }
+    return { readings: rd, why: why };
+  }
+
+  /** The main stat and weapon power a character carries beside its six gear
+   *  pieces, on each axis's reference: DPS, the bracelet model's reference raw
+   *  main stat less the reference armour (accessories, roster, level) and its
+   *  flat weapon power; support, gear.js's flats. The honing ladder's damage
+   *  is a function of the gear pieces' stats plus these. */
+  function lkStatC(axis) {
+    var G = lib("Gear"), B = lib("Bracelet"), S = lib("LoseiiScore");
+    if (axis === "support") {
+      var o = G && G.DEFAULTS;
+      return o ? { msC: o.accessoryMainStat + o.rosterMainStat + o.levelMainStat + o.foodMainStat,
+                   wpC: o.accessoryWpFlat + o.arkGridWpFlat + o.feastWpFlat + o.braceletWpFlat } : { msC: null, wpC: null };
+    }
+    var P = B && B.DEFAULT_PROFILE, H = DATA.honing;
+    if (!P || !H || !S) return { msC: null, wpC: null };
+    var ref = S.REFERENCE.armor.pieces, A = 0;
+    ["head", "shoulders", "torso", "legs", "hands"].forEach(function (sl) { A += H.armor.mainStat[sl][ref[sl]].base; });
+    return { msC: P.mainStatRaw - A, wpC: P.flatWP || 0 };
+  }
+  /** The fixed dummy support buff on a dealer's attack power, worked out
+   *  from the models (model/loseii-score.js DUMMY_SUPPORT_AP carries it frozen;
+   *  tools/verify-loseii-score.js checks the two agree): support.js's ap
+   *  channel for its reference support, on gear.js's stats at +21 armour and
+   *  +25 weapon, buffing support.js's default dealer — the chart's reference
+   *  character. */
+  function lkDummySupportAp() {
+    var Su = lib("Support"), G = lib("Gear"), H = DATA.honing;
+    if (!Su || !G || !H) return null;
+    var P = Su.DEFAULTS, g = G.stats(H, {}, 21, 25);
+    var sup = Su.baseAtk(g.wp, g.ms) * (1 + g.apPct), share = Su.AP_BUFF_SHARE * (1 + P.allyAtkEnh / 100);
+    var own = Su.baseAtk(P.dpsWP, P.dpsMS) * (1 + P.dpsAtkPct) + P.dpsFlatAtk;
+    var up = (own + sup * share * (1 + P.dpsAtkPct)) / own;
+    return 1 + P.upAp / 100 * (up - 1);
+  }
+  /** One tier-1 evolution level (50 of a combat stat) on the axis: the
+   *  bracelet model's own trait pricing, specialization on the axis's profile
+   *  (the model prices crit, spec and swiftness alike on DPS). */
+  function lkApT1(axis) {
+    var B = lib("Bracelet");
+    if (!B || !B.traitDamage) return null;
+    return B.traitDamage({ spec: 50 }, axis === "support" ? lkSupportProfile() : B.normalizeProfile({}));
+  }
+  /** Master's damage on the DPS reference: +7% additional damage (the bracelet
+   *  model's MASTER_ADD_DAMAGE) on its additional-damage pool. */
+  function lkMasterD() {
+    var B = lib("Bracelet");
+    if (!B || !B.addDamagePool || !B.DEFAULT_PROFILE || !(B.MASTER_ADD_DAMAGE > 0)) return null;
+    var pool = B.addDamagePool(B.DEFAULT_PROFILE);
+    return 100 * Math.log(1 + B.MASTER_ADD_DAMAGE / (1 + pool));
+  }
+  /** The ladder tables for one axis, off the rows the chart draws for it.
+   *  Damage never depends on prices, so one set per axis is kept on the
+   *  context (the chart's state, or this file's own tables). Master's damage
+   *  is the panel file's captured figure (tools/verify-loseii-score.js checks
+   *  it against the bracelet model), so the tables never change shape when the
+   *  bracelet model happens to load late. */
+  function scoreTables(ctx, axis) {
+    var S = lib("LoseiiScore");
+    ctx = ctx || DATA;
+    axis = axis || ctx.axis || "dps";
+    if (!S || !ctx.honing || !ctx.karma) return null;
+    var P = ctx.loseiiPanel && ctx.loseiiPanel[axis];
+    var mD = axis !== "dps" ? null : P && isFinite(P.masterD) ? P.masterD : lkMasterD();
+    var key = axis + "|" + (mD == null ? "-" : "m");
+    ctx._scoreT = ctx._scoreT || {};
+    if (ctx._scoreT[key]) return ctx._scoreT[key];
+    var sub = {};
+    for (var k in ctx) sub[k] = ctx[k];
+    sub.axis = axis;
+    if (!sub.prices || !sub.enabled) { var d0 = defaults(ctx.honing); sub.prices = d0.prices; sub.enabled = d0.enabled; }
+    if (sub.gem8Price == null) sub.gem8Price = GEM8_PRICE;
+    if (!sub.accFilter) sub.accFilter = { flat: ACC_FILTER.flat.slice(), stat: ACC_FILTER.stat.slice(), sidegrades: true };
+    var t = S.tables(steps(sub), ctx.honing, axis, { masterD: mD, lower: ctx.honingLower,
+      msC: P && P.msC != null ? P.msC : lkStatC(axis).msC, wpC: P && P.wpC != null ? P.wpC : lkStatC(axis).wpC,
+      apT1: { perLevel: P && P.apT1 != null ? P.apT1 : lkApT1(axis) } });
+    if (!t.bracelet || t.bracelet.floor == null) return t;       // the rows have not landed; do not cache
+    return (ctx._scoreT[key] = t);
+  }
+  // The reference character's ark grid: 60 levels on each of the axis's three
+  // side nodes, every core at 20 points.
+  var LK_GRID_NODES = { dps: ["Attack Power", "Additional Damage", "Boss Damage"],
+                        support: ["Ally Attack Enh.", "Brand Power", "Ally Damage Enh."] };
+  var LK_CORES = ["Order Sun", "Order Moon", "Order Star", "Chaos Sun", "Chaos Moon", "Chaos Star"];
+  /** gridDamage of a grid given as its three node levels and six core point
+   *  totals (in LK_CORES order), for a grid known only by those readings. */
+  function lkSynthGridD(axis, nodes, corePoints) {
+    var A = lib("Astrogem");
+    if (!A || !A.gridDamage) return null;
+    var gems = LK_CORES.map(function (slot, i) {
+      return { slot: slot, orderLevel: corePoints[i], effect1: null, effect1Level: 0, effect2: null, effect2Level: 0 };
+    });
+    LK_GRID_NODES[axis].forEach(function (name, i) {
+      gems.push({ slot: LK_CORES[0], orderLevel: 0, effect1: name, effect1Level: nodes[i], effect2: null, effect2Level: 0 });
+    });
+    return A.gridDamage(gems, axis);
+  }
+  /** The reference character's accessory damage per slot kind (its lattice
+   *  point) and grid damage, for the breakdown's "vs reference" column. */
+  function scoreReferenceLive(ctx, axis) {
+    var S = lib("LoseiiScore");
+    ctx = ctx || DATA;
+    if (!S) return null;
+    var out = { acc: {} };
+    ACC_KINDS.forEach(function (kind) {
+      var cfg = S.REFERENCE.acc[axis][kind], idx = lkAccIndex(ctx, axis, kind);
+      var D = idx && idx[lkCfgKey(cfg.prim, cfg.flat, cfg.ms)];
+      if (D != null) out.acc[kind] = D;
+    });
+    var R = S.REFERENCE.grid;
+    out.grid = lkSynthGridD(axis, [R.nodes, R.nodes, R.nodes], LK_CORES.map(function () { return R.corePoints; }));
+    return out;
+  }
+  /** The same figures as captured in data/loseii-panel.json (the verify
+   *  checks the two agree), so a page scores before — and without — the
+   *  accessory lattice or the astrogem model loading. */
+  function scoreReference(ctx, axis) {
+    ctx = ctx || DATA;
+    var P = ctx.loseiiPanel && ctx.loseiiPanel[axis];
+    return P && P.reference ? P.reference : scoreReferenceLive(ctx, axis);
+  }
+  /** The scale for one axis: calibrate() over data/loseii-panel.json's
+   *  members, on this context's tables. Kept per axis on the context. */
+  function scoreCalib(ctx, axis) {
+    var S = lib("LoseiiScore");
+    ctx = ctx || DATA;
+    var P = ctx.loseiiPanel && ctx.loseiiPanel[axis];
+    var T = scoreTables(ctx, axis);
+    if (!S || !P || !T) return null;
+    ctx._scoreC = ctx._scoreC || {};
+    var key = axis + "|" + (T.master == null ? "-" : "m");
+    if (ctx._scoreC[key]) return ctx._scoreC[key];
+    var c = S.calibrate(T, axis, P.members, scoreReference(ctx, axis));
+    if (!(c.K > 0)) return null;
+    return (ctx._scoreC[key] = c);
+  }
+  /**
+   * The Loseii Score of one character — the one line a page needs:
+   *
+   *   GpdLookup.score({ record, astro, axis })  or  GpdLookup.score({ placed: <place()'s answer> })
+   *
+   * Returns model/loseii-score.js score()'s answer ({ score, display, parts,
+   * unscored, K, ... }), { score: null, why } when the region or the pull
+   * cannot be scored, or null until ready() has landed the tables.
+   */
+  function score(input) {
+    input = input || {};
+    var S = lib("LoseiiScore");
+    if (!S) return null;
+    var pos = input.placed || place(input);
+    if (!pos) return null;
+    var axis = pos.axis === "support" ? "support" : "dps";
+    if (String(pos.region || "").toUpperCase() === "KR") {
+      return { score: null, axis: axis, why: "KR is not scored: the ladders and the calibration panel are the global " +
+        "(NA/EU) patch, and KR runs its own balance patches" };
+    }
+    var T = scoreTables(DATA, axis), cal = scoreCalib(DATA, axis);
+    if (!T || !cal) return { score: null, axis: axis, why: "the Loseii Score's tables did not load" };
+    return S.score(S.fromLookup(pos, { tables: T, calib: cal, reference: scoreReference(DATA, axis) }));
   }
 
   var api = {
@@ -1387,6 +1690,13 @@
     absorb: absorb, grab: grab, use: use, data: function () { return DATA; },
     // the one call
     place: place,
+    // the Loseii Score (model/loseii-score.js): score() is the one line; the
+    // chart builds its card from the tables, the scale and the reference
+    score: score, scoreTables: scoreTables, scoreCalib: scoreCalib, scoreReference: scoreReference,
+    scoreReferenceLive: scoreReferenceLive, masterD: lkMasterD, statC: lkStatC, apT1: lkApT1, tracks: lkTracks,
+    dummySupportAp: lkDummySupportAp,
+    scoreReadings: function (ctx, c) { return lkScoreReadings(ctx, c); }, synthGridD: lkSynthGridD,
+    accChain: function (ctx, axis, kind) { return accChain(ctx, axis, kind); },
     // the pieces the chart puts together itself
     steps: steps, positions: lkPositions, readAstro: lkReadAstro, readBracelet: lkReadBracelet,
     hasRecord: lkHasRecord, roleOf: lkRoleOf, defaults: defaults, materials: materials,

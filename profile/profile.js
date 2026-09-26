@@ -29,6 +29,9 @@
  *               graded (the chart's rule), default switches. Loaded after the
  *               bracelet and astrogem overviews have painted; the third rank tile
  *               is its cheapest step.
+ *   Loseii      GpdLookup.score() on that same placement (loa-gpd/model/
+ *   Score       loseii-score.js): the header's figure and the breakdown under
+ *               the GPD table. Saved with the GPD part.
  *
  * SPEED (docs/design/PROFILE-GAMEPLAN.md §2)
  *   - the skeleton is static HTML at its final size, painted before any script;
@@ -78,7 +81,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=5";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=6";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
@@ -99,7 +102,7 @@
   var K_FAVS_OLD = "bc_favs";
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 4;   // 3: bracelet lines carry their raw form and traits their family; 4: both ranks carry a class place
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 5;   // 3: bracelet lines carry their raw form and traits their family; 4: both ranks carry a class place; 5: the GPD part carries the Loseii Score
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -1150,6 +1153,11 @@
       if (h.cls) bits.push('<span' + gl(isSupportCls(h.cls) ?
         "A support class: the bracelet and astrogem boards can read it as a support." :
         "A damage-dealer class: the boards read it as a damage dealer.") + ">" + esc(CLASS_LABEL[h.cls] || h.cls) + "</span>");
+      // the Loseii Score arrives with the GPD overview, after everything else;
+      // until then the line simply does not carry it
+      var sc = m.gpd && m.gpd.st === "ok" && m.gpd.score && m.gpd.score.st === "ok" ? m.gpd.score : null;
+      if (sc) bits.push('<span class="lp-hscore"' + gl(scoreGloss(sc)) + ">Loseii Score " + nf(sc.v) +
+        (sc.miss.length ? " (beta, partial)" : " (beta)") + "</span>");
       sub = bits.join(" · ");
     } else if (h.st === "loading") {
       sub = regionHtml + ' · <span class="sk" style="width:11em"></span>';
@@ -1650,6 +1658,57 @@
       cheap: pos.cheapest ? { text: pos.cheapest.text, price: pos.cheapest.price } : null, rows: rows };
   }
 
+  // ---- the Loseii Score (loa-gpd/model/loseii-score.js, through lookup.js) ----
+  /** GpdLookup.score()'s answer, cut down to what the header and the
+   *  breakdown draw; saved with the GPD part. */
+  function scorePart(sc) {
+    if (!sc) return { st: "error", msg: "The Loseii Score's tables did not load." };
+    if (sc.score == null) return { st: "none", msg: sc.why || "Nothing in the pull could be scored." };
+    return { st: "ok", v: Math.round(sc.score), axis: sc.axis, n: sc.panel ? sc.panel.n : null,
+      K: Math.round(sc.K), mult: r3(sc.mult),
+      parts: sc.parts.map(function (p) {
+        return { k: p.system, label: p.label, rung: p.rung, mult: Math.round(p.mult * 1e4) / 1e4, note: p.note || null };
+      }),
+      miss: sc.unscored.filter(function (u) { return !u.always; }).map(function (u) { return { label: u.label, why: u.why }; }),
+      always: sc.unscored.filter(function (u) { return u.always; }).map(function (u) { return u.label; }) };
+  }
+  function scoreAxisWords(axis) {
+    return axis === "support" ? "Support: the buffs measured on a fixed reference dealer (the GPD chart's reference character)"
+      : "DPS: the character's own damage, no support buffs, with a fixed dummy attack buff on the attack-power term";
+  }
+  function scoreGloss(sc) {
+    return "Loseii Score (beta). " + scoreAxisWords(sc.axis) + ". On the in-game Combat Power scale, calibrated on the measured CP of " +
+      (sc.n || "the panel's") + " NA characters; differences from your CP are where the game's weighting and real damage disagree. " +
+      "It multiplies each system's damage against the GPD chart's reference character (ilvl 1785, level-9 gems, high/high " +
+      "accessories) and scales the product so the median NA character scores its own CP." +
+      (sc.miss.length ? " Not in this pull, so taken at the reference's level: " +
+        sc.miss.map(function (u) { return u.label.toLowerCase(); }).join(", ") + "." : "") +
+      " Never scored: " + sc.always.join(", ").toLowerCase() + ". The GPD overview lists every part.";
+  }
+  function scoreHtml(sc) {
+    if (!sc) return "";
+    if (sc.st !== "ok") return '<div class="lp-gsc"><div class="lp-cmsg">No Loseii Score: ' + esc(sc.msg || "") + "</div></div>";
+    var h = '<div class="lp-gsc"><div class="lp-gsch"><b' + gl(scoreGloss(sc)) + ">Loseii Score " + nf(sc.v) + " (beta)</b>" +
+      '<span class="lp-dim"' + gl("The damage multiplier against the GPD chart's reference character, times the scale " +
+        "fitted so the median NA character scores its own in-game CP.") + "> &nbsp;×" + fx(sc.mult, 3) + " the reference · scale " +
+      nf(sc.K) + "</span></div>" +
+      '<div class="lp-tw"><table class="gr-ptab lp-gsctab"><thead><tr>' +
+      "<th" + gl("The systems the score reads, one ladder each.") + ">System</th>" +
+      '<th class="r"' + gl("That system's damage against the reference character's: above 1 deals more, below 1 less.") +
+      ">× damage</th>" +
+      "<th" + gl("Where the pull puts you on that ladder.") + ">Yours</th></tr></thead><tbody>";
+    sc.parts.forEach(function (p) {
+      h += "<tr><td>" + esc(p.label) + '</td><td class="r' + (p.mult >= 1 ? "" : " lp-dim") + '">×' + fx(p.mult, 3) + "</td>" +
+        "<td" + gl(p.note ? gpdCap(p.note) + "." : "") + '><span class="lp-gcut">' + esc(p.rung) + "</span></td></tr>";
+    });
+    h += "</tbody></table></div>";
+    var bits = [];
+    if (sc.miss.length) bits.push("<b>Not in this pull</b>, taken at the reference's level: " +
+      sc.miss.map(function (u) { return '<span' + gl(gpdCap(u.why) + ".") + ">" + esc(u.label.toLowerCase()) + "</span>"; }).join(", ") + ".");
+    bits.push("<b>Never scored</b> (not in the lostark.bible pull, or no model prices it): " + esc(sc.always.join(", ").toLowerCase()) + ".");
+    return h + '<div class="lp-gscnote">' + bits.join(" ") + "</div></div>";
+  }
+
   var gpdLib = null;   // one load per page: { L: GpdLookup, st: ready()'s answer }
   function loadAstrogemModel() { return window.Astrogem ? Promise.resolve() : loadScripts([AG_MODEL_JS]); }
   function loadGpd() {
@@ -1699,11 +1758,16 @@
       var axis = gpdAxis(ctx), pos = null, c0 = pnow();
       try { pos = g.L.place({ record: ctx.brRec, astro: ctx.agRec, axis: axis }); }
       catch (e) { gpdFailed(ctx, "The GPD lookup could not read this character."); return; }
+      // the Loseii Score, on the same placement; a failure costs the score only
+      var sc = null;
+      try { sc = pos && g.L.score ? g.L.score({ placed: pos }) : null; } catch (e) { sc = null; }
       var computeMs = pnow() - c0;
       ctx.model.gpd = pos ? gpdPart(pos, g.L, axis)
         : { st: "none", msg: "No lostark.bible pull to place on the GPD ladders yet." };
+      if (pos) ctx.model.gpd.score = scorePart(sc);
       renderGpd(ctx);
       renderStrip(ctx);
+      renderHead(ctx);
       mark("gpd");
       if (nav) (nav.gpd = nav.gpd || []).push({ loadMs: Math.round(loadMs), computeMs: Math.round(computeMs * 10) / 10 });
       persist(ctx);
@@ -1789,7 +1853,8 @@
       h += '<tr class="lp-gnote"><td colspan="4"' + gl("The GPD chart's gear list shows every ladder, with what the pull reads on each.") + ">" +
         (priced.length ? "Nothing else to price" : "Nothing to price") + (bits.length ? ": " + bits.join("; ") : "") + ".</td></tr>";
     }
-    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap lp-gpd3"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>");
+    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap lp-gpd3"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>" +
+      scoreHtml(g.score));
     setText("lp-gpd-src", g.axis === "support" ? "Support ladders" : "DPS ladders");
     setGloss("lp-gpd-src", gpdAxisWords(g.axis));
   }

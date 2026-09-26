@@ -210,9 +210,9 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
     <input type='range' id='gpd' min='0' max='100' value='45' step='any' aria-label='Gold per 1% damage you will pay'>
     <div class='gpdval' id='gpdOut'></div>
   </div>
-  <div class='slider' id='cpRow' style='display:none'>
-    <input type='range' id='cpSlider' step='1' aria-label='Combat power to reach'>
-    <div class='gpdval' id='cpOut'></div>
+  <div class='slider' id='scoreRow' style='display:none'>
+    <input type='range' id='scoreSlider' step='1' aria-label='Loseii Score to reach'>
+    <div class='gpdval' id='scoreOut'></div>
   </div>
   <div class='accctl' id='accCtl'></div>
   <div class='plan' id='plan'><div class='placeholder gpd-loading' id='gpdLoading' role='status'><b>Loading the chart…</b>
@@ -225,7 +225,12 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
   the calculator nets to nothing — it costs the pheons and the listing floor. On the DPS axis a flat level covers both
   Attack Power+ and Weapon Power+ lines; the ladder takes whichever prices better. With sidegrades off, a rung must
   raise a primary line and lower none — nobody sells a mid/high to buy a high/mid — until both lines are high, where
-  a better main stat or flat is the only step left.</div>
+  a better main stat or flat is the only step left.
+  The Loseii Score card is the plan's build — every rung under the slider — as damage on the in-game Combat Power
+  scale (beta): the product of each system's damage against the chart's reference character, times one constant set so
+  the median NA character scores its own CP. DPS: the character's own damage, no support buffs, with a fixed dummy
+  attack buff on the attack-power term. Support: the buffs measured on a fixed reference dealer. Engravings, skills, cards and the ark passive past tier-1 evolution and
+  Master are not in the pull, so they are not in the score; an accessory rung is worn on both pieces of a pair.</div>
 </div>
 
 <h2>Every step, cheapest damage first</h2>
@@ -251,7 +256,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 
 <script src='model/support.js?v=20260922a' defer></script>
 <script src='model/gear.js?v=20260922a' defer></script>
-<script src='model/combat-power.js?v=20260922a' defer></script>
+<script src='model/loseii-score.js?v=20260925b' defer></script>
 <script src='model/honing.js?v=20260922a' defer></script>
 <script src='model/karma.js?v=20260922a' defer></script>
 <script src='model/gems.js?v=20260922a' defer></script>
@@ -259,7 +264,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
      (fetch_prices.py in refresh-data.yml) rewrites it in place. It is served
      no-cache (_headers, and the loseii-chrome-cache worker on www). -->
 <script src='prices.js' defer></script>
-<script src='lookup.js?v=5' defer></script>
+<script src='lookup.js?v=6' defer></script>
 <!-- The astrogem calculator's model. The pin MUST follow the one in
      loa-astrogem-calc/index.html (and ASTROGEM_JS in lookup.js): the same URL
      there and here is one cached copy for both pages. -->
@@ -360,148 +365,121 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var i = 0; i < ts.length; i++) if (ts[i].gpd <= budget) pick = ts[i];
     return pick;
   }
-  // The 12th cell: estimated in-game Combat Power of the build the plan
-  // assembles at this budget. Anchor-swap on a real bard's measured bible
-  // breakdown (model/combat-power.js, docs/research/combat-power-model.md):
-  // honing, gems, bracelet stats and the ark grid tier move the estimate;
-  // accessories, stone and the skill block ride the anchor.
-  function cpEstimateAt(budget) {
-    var plan = planAt(ROWS, budget);
-    var armor = plan.armor && plan.armor.taken ? parseInt(String(plan.armor.last.to || "+11").slice(1), 10) : 11;
-    var weapon = plan.weapon && plan.weapon.taken ? parseInt(String(plan.weapon.last.to || "+11").slice(1), 10) : 11;
-    var g = Gear.stats(state.honing, {}, armor, weapon);
-    var gemLevel = plan.gems && plan.gems.taken
-      ? (parseInt(String(plan.gems.last.to).replace(/[^0-9]/g, ""), 10) || 7) : 7;
-    // bracelet pair: best TIER unlocked at or below the budget (base-hold —
-    // a richer player never equips the downgrade). Both axes read the
-    // bracelet series rungs; the old support path read the example ROLLS,
-    // whose stats hover in the same band at every budget, so the stat feed
-    // never moved.
-    var pair = 181;
-    var bestPair = 0;
-    ROWS.forEach(function (r) {
-      if (r.series !== "bracelet" || !isFinite(r.gpd) || r.gpd > budget) return;
-      if (r.hit && r.hit.stats) {
-        var st = String(r.hit.stats).split("/");
-        bestPair = Math.max(bestPair, (+st[0] || 0) + (+st[1] || 0));
-      }
+  // The 12th cell: the Loseii Score of the build the plan assembles at this
+  // budget (model/loseii-score.js, docs/METHODOLOGY.md "Loseii Score"): every
+  // ladder's rung under the slider, scored on the same tables and scale as a
+  // looked-up character. It replaced the Combat Power estimate on 2026-09-25.
+  function scoreAt(budget) {
+    var S = window.LoseiiScore;
+    var T = S && L.scoreTables(state, state.axis), cal = T && L.scoreCalib(state, state.axis);
+    if (!T || !cal) return null;
+    var plan = planAt(ROWS, budget), accBase = {}, grid = null;
+    ["neck", "earring", "ring"].forEach(function (k) {
+      var ch = L.accChain(state, state.axis, k);
+      if (ch && ch.base) accBase[k] = ch.base.D;
     });
-    if (bestPair) pair = bestPair;
-    // budget notch (0..100) drives the model's skill curve and whale ramp
-    var vNotch = Math.max(0, Math.min(100, 100 * Math.log(budget / 250000) / Math.log(100)));
-    var tier = arkTierAt("epic", budget);
-    // DPS: until the dd-dps sweep publishes real rows, fall back to the
-    // spot-anchor grid feed so the grid does not ride the anchor's near-max
-    if (!tier && state.axis === "dps" && state.cpGridDps && state.cpGridDps.tiers) {
-      var cts = state.cpGridDps.tiers;
-      tier = cts[0];
-      for (var ci = 0; ci < cts.length; ci++) if (cts[ci].gpd <= budget) tier = cts[ci];
-    }
-    var est;
-    if (state.axis === "dps") {
-      var nl = null;
-      if (tier && tier.nodes && tier.nodes.length === 3) {
-        nl = { atk: tier.nodes[0][1], add: tier.nodes[1][1], boss: tier.nodes[2][1] };
-      }
-      est = CombatPower.estimateDps({
-        weaponPower: g.wp, mainStat: g.ms,
-        battleStatTotal: CombatPower.ANCHOR_DPS.battleStatTotal + (pair - 181),
-        gemLevel: gemLevel, notch: vNotch,
-        corePoints: tier ? tier.perCore : null,
-        nodeLevels: nl
-      });
-    } else {
-      est = CombatPower.estimate({
-        weaponPower: g.wp, mainStat: g.ms,
-        battleStatTotal: CombatPower.ANCHOR.battleStatTotal + (pair - 181),
-        karmaRank: 6, gemLevel: gemLevel, notch: vNotch,
-        corePoints: tier ? tier.perCore : null,
-        nodeLevels: tier ? tier.nodes.reduce(function (s, n) { return s + n[1]; }, 0) : null
-      });
-    }
-    return { est: est, armor: armor, weapon: weapon, g: g, gemLevel: gemLevel, pair: pair, tier: tier };
+    // the grid the plan holds: the better of the two supplies' simulated
+    // accounts at this budget; nothing cut yet is an empty grid
+    [["arkgridEpic", "epic"], ["arkgridRare", "rare"]].forEach(function (p) {
+      var t = plan[p[0]] && plan[p[0]].taken ? arkTierAt(p[1], budget) : null;
+      if (t && (!grid || t.damage > grid.D)) grid = { D: t.damage, label: t.meanBand + " · cutting " + p[1] + "s" };
+    });
+    var rd = S.fromPlan(plan, { accBase: accBase, braceletFloor: T.bracelet.floor,
+                                gridD: grid ? grid.D : 0, gridLabel: grid ? grid.label : "ungraded" });
+    return S.score({ axis: state.axis, tables: T, calib: cal, readings: rd,
+                     reference: L.scoreReference(state, state.axis) });
   }
 
-  // The whole CP-vs-budget curve, sampled at every slider notch, and the
-  // interpolated budget where each PERFECT hundred is first crossed. The
-  // card's bands come from these crossings — "the band starts where the
-  // build really reaches 4,400", not where a slider notch happens to land.
-  // Budgets are geometric, so interpolation runs on ln(budget).
-  var _cpCurve = null, _cpCurveKey = "";
-  function cpCrossings() {
+  // The score against the budget, one rung per purchase (Shizu, 2026-08-19,
+  // for the CP card this replaced): every priced row, ranked by gold per 1%
+  // and taken one at a time. Its own slider rides these rungs.
+  var _scoreCurve = null, _scoreCurveKey = "";
+  function scoreCurve() {
     var key = state.axis + "|" + ROWS.length + "|" + L.accFilterKey(state.accFilter) + "|" + JSON.stringify(state.prices) + "|" +
       (state.arkgridRows.epic ? state.arkgridRows.epic.maxGpd : 0);
-    if (_cpCurve && _cpCurveKey === key) return _cpCurve;
-    // ONE RUNG PER UPGRADE (Shizu, 2026-08-19): every priced row in every
-    // category, ranked by gpd and applied one at a time — the ladder IS the
-    // purchase sequence. Each rung carries its row so the card can document
-    // the exact upgrade; purchases outside the CP model show a flat step
-    // and say so rather than being hidden.
+    if (_scoreCurve && _scoreCurveKey === key) return _scoreCurve;
     var buys = ROWS.filter(function (r) {
-      // the gpd slider spans 250k..25M; rungs outside it cannot be landed
-      // on and would lie about their own value. Sub-250k purchases fold
-      // into the floor state (the chart's floor build already owns them).
+      // the gpd slider spans 250k..25M; cheaper purchases fold into the floor build
       return r.gpd != null && isFinite(r.gpd) && r.gpd > 25e4 && r.gpd <= 25e6;
     }).slice().sort(function (a, b) { return a.gpd - b.gpd; });
-    var base = cpEstimateAt(25e4).est.profileCp;   // the floor build
-    var rungs = [{ cp: Math.round(base), b: 25e4, row: null }];
-    var run = base;
+    var base = scoreAt(25e4);
+    if (!base || base.score == null) return null;
+    var rungs = [{ s: base.score, b: 25e4, row: null }], run = base.score;
     buys.forEach(function (r) {
-      var cp = cpEstimateAt(r.gpd).est.profileCp;
-      run = Math.max(run, cp);                  // purchases never regress
-      rungs.push({ cp: Math.round(run), b: r.gpd, row: r });
+      var x = scoreAt(r.gpd);
+      if (x && x.score != null) run = Math.max(run, x.score);       // purchases never regress
+      rungs.push({ s: run, b: r.gpd, row: r });
     });
-    _cpCurve = { pts: null, rungs: rungs, floor: Math.round(base) };
-    _cpCurveKey = key;
-    return _cpCurve;
+    _scoreCurve = { rungs: rungs };
+    _scoreCurveKey = key;
+    return _scoreCurve;
   }
 
-  function cpCard() {
-    try { return cpCardInner(); }
+  var SCORE_GLOSS = "on the in-game Combat Power scale, calibrated on the measured CP of %n NA characters; " +
+    "differences from your CP are where the game's weighting and real damage disagree";
+  function scoreCard() {
+    try { return scoreCardInner(); }
     catch (e) {
-      var r0 = el("cpRow"); if (r0) r0.style.display = "none";
+      var r0 = el("scoreRow"); if (r0) r0.style.display = "none";
       return "";
     }
   }
-  function cpCardInner() {
-    var cpRow = el("cpRow");
-    if (!window.CombatPower || !state.honing) {
-      if (cpRow) cpRow.style.display = "none";
+  var SCORE_NOW = null;
+  function scoreCardInner() {
+    var row = el("scoreRow"), now = scoreAt(BUDGET), curve = now ? scoreCurve() : null;
+    SCORE_NOW = now;
+    if (!now || now.score == null || !curve) {
+      if (row) row.style.display = "none";
       return "";
     }
-    var at = cpEstimateAt(BUDGET), est = at.est;
-    var curve = cpCrossings();
-    // the band: the highest rung whose interpolated crossing budget is at
-    // or below the slider (epsilon forgives float error when the CP slider
-    // lands the budget exactly on a crossing)
-    var idx = 0, next = null;
-    for (var ci = 0; ci < curve.rungs.length; ci++) {
-      if (curve.rungs[ci].b <= BUDGET * 1.000001) idx = ci;
-      else { next = curve.rungs[ci]; break; }
+    var idx = 0;
+    for (var ci = 0; ci < curve.rungs.length; ci++) if (curve.rungs[ci].b <= BUDGET * 1.000001) idx = ci;
+    if (row) {
+      row.style.display = "";
+      var ss = el("scoreSlider");
+      ss.min = 0;
+      ss.max = Math.max(0, curve.rungs.length - 1);
+      if (+ss.value !== idx) ss.value = idx;
+      el("scoreOut").textContent = LoseiiScore.fmt(now.score) + " Loseii Score (beta)";
     }
-    var shown = curve.rungs[idx].cp;
-    // the CP slider rides the rung ladder by index; each position lands the
-    // gpd slider on the budget that first reaches that rung
-    if (cpRow) {
-      cpRow.style.display = "";
-      var cs = el("cpSlider");
-      cs.min = 0;
-      cs.max = Math.max(0, curve.rungs.length - 1);
-      if (+cs.value !== idx) cs.value = idx;
-      el("cpOut").innerHTML = "&asymp;" + shown.toLocaleString() + " CP";
-    }
-    // audit hook: inputs, ratios, and the crossing table, inspectable from
-    // the console as __cpDebug
-    window.__cpDebug = { budget: BUDGET, armor: at.armor, weapon: at.weapon,
-      wp: at.g.wp, ms: at.g.ms, gemLevel: at.gemLevel, pair: at.pair,
-      tier: at.tier ? { gpd: at.tier.gpd, perCore: at.tier.perCore, nodes: at.tier.nodes } : null,
-      est: est, shown: shown, next: next, rungs: curve.rungs };
-    return "<div class='card'><h4 style='color:#9ad0f0'>Combat power</h4>" +
-      "<div class='top'><div><div class='big'>&asymp;" + shown.toLocaleString() + "</div>" +
-      "<div class='ilvl'>estimated profile CP</div></div></div>" +
-      "<div class='sm2'>My recommendations are based on damage, not CP — " +
-      "especially with supports, CP can be very inaccurate, so your CP may " +
-      "look very different from this estimate.</div></div>";
+    return "<div class='card' data-plan='__score'><h3 style='color:#9ad0f0'>Loseii Score <span style='margin-left:4px;padding:0 4px;border:1px solid currentColor;border-radius:4px;font-size:9px;opacity:.8'>beta</span></h3>" +
+      "<div class='top'><div><div class='big'>" + LoseiiScore.fmt(now.score) + "</div>" +
+      "<div class='ilvl'>" + (state.axis === "support" ? "party damage" : "damage") + " on the CP scale</div></div></div>" +
+      "<div class='sm2'>Beta. The build this plan buys, " + SCORE_GLOSS.replace("%n", now.panel.n) + ". " +
+      (state.axis === "dps" ? "DPS: the character's own damage, no support buffs, with a fixed dummy attack buff on the attack-power term"
+                            : "Support: the buffs measured on a fixed reference dealer") +
+      ". Hover for each system's part and what is not scored.</div></div>";
+  }
+  /** The looked-up character's own Loseii Score, for the score card's "yours" line. */
+  function lookupScoreText(c) {
+    try {
+      var S = window.LoseiiScore, T = S && L.scoreTables(state, state.axis), cal = T && L.scoreCalib(state, state.axis);
+      if (!T || !cal) return L.NOT_READ;
+      var sr = L.scoreReadings(state, c);
+      var sc = S.score({ axis: state.axis, tables: T, calib: cal, readings: sr.readings, why: sr.why,
+                         reference: L.scoreReference(state, state.axis) });
+      if (!sc || sc.score == null) return "not scored";
+      var miss = sc.unscored.filter(function (u) { return !u.always; }).length;
+      return S.fmt(sc.score) + (miss ? " (beta, partial)" : " (beta)");
+    } catch (e) { return L.NOT_READ; }
+  }
+  /** The score card's hover: each system's rung and multiplier, and what the
+   *  score leaves out. */
+  function scoreTipHtml() {
+    var x = SCORE_NOW;
+    if (!x || x.score == null) return "<b>Loseii Score</b>";
+    var h = "<b>Loseii Score " + LoseiiScore.fmt(x.score) + " (beta)</b><table>";
+    x.parts.forEach(function (p) {
+      h += num(p.label, colourTiers(p.rung) + " <span class='per'>×" + p.mult.toFixed(3) + "</span>");
+    });
+    h += num("Against the reference", "×" + x.mult.toFixed(3), "var(--good)");
+    h += num("Scale", LoseiiScore.fmt(x.K) + " × the multiplier");
+    h += "</table><span class='k'>not scored</span>" +
+      x.unscored.map(function (u) { return u.label; }).join(", ") + "." +
+      "<span class='sm'>Multipliers are against the reference character (ilvl 1785, level-9 gems, high/high " +
+      "accessories, 9-7 stone, karma 21, a 60/60/60 grid). The scale is set so the median NA character scores its " +
+      "own in-game CP.</span>";
+    return h;
   }
   // "filling in" the moment the slider passes the highest tier this series
   // has finished — inside coverage the rungs are final and say nothing
@@ -781,8 +759,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .concat([].slice.call(document.querySelectorAll(".card[data-plan]")))
       .forEach(function (node) {
         node.addEventListener("mouseenter", function () {
-          tip.innerHTML = node.hasAttribute("data-plan")
-            ? planTipHtml(node.getAttribute("data-plan")) : tipHtml(ROWS[+node.getAttribute("data-tip")]);
+          var plan = node.getAttribute("data-plan");
+          tip.innerHTML = plan === "__score" ? scoreTipHtml()
+            : plan ? planTipHtml(plan) : tipHtml(ROWS[+node.getAttribute("data-tip")]);
           tip.style.display = "block";
         });
         node.addEventListener("mousemove", function (e) {
@@ -921,7 +900,7 @@ document.addEventListener("DOMContentLoaded", function () {
           "<div class='sm2'>Exact cut distributions, simulated accounts, every grade priced. " +
           "Rungs appear tier by tier as the run completes." + prog + "</div></div>";
       }).join("");
-    })() + cpCard();
+    })() + scoreCard();
     el("planTotals").innerHTML =
       "<div><span>total gold</span>" + fmtGold(gold) + "</div>" +
       "<div><span>" + dmgLabel().toLowerCase() + "</span>" + dmg.toFixed(2) + "%</div>" +
@@ -1154,7 +1133,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (old) old.remove();
       var div = document.createElement("div");
       div.className = "lk-yours";
-      div.innerHTML = "<span>yours</span> " + esc(pos.labels[key] || L.NOT_READ);
+      div.innerHTML = "<span>yours</span> " + esc(key === "__score" ? lookupScoreText(c) : (pos.labels[key] || L.NOT_READ));
       card.appendChild(div);
       card.classList.toggle("hl-next", key === pos.bestKey);
     });
@@ -1503,7 +1482,7 @@ document.addEventListener("DOMContentLoaded", function () {
     el("ranked").innerHTML = ""; el("planTotals").innerHTML = "";
     el("systems").innerHTML = ""; el("legend").innerHTML = "";
   }
-  /** Screen-reader state the class names carry: selected tab, pressed view, CP slider text. */
+  /** Screen-reader state the class names carry: selected tab, pressed view, score slider text. */
   function syncAria() {
     document.querySelectorAll(".tab").forEach(function (t) {
       var on = t.classList.contains("active");
@@ -1513,8 +1492,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".lk-view").forEach(function (b) {
       b.setAttribute("aria-pressed", b.classList.contains("active") ? "true" : "false");
     });
-    var co = el("cpOut"), cs = el("cpSlider");
-    if (co && cs) cs.setAttribute("aria-valuetext", co.textContent.replace("≈", "about "));
+    var co = el("scoreOut"), cs = el("scoreSlider");
+    if (co && cs) cs.setAttribute("aria-valuetext", co.textContent);
   }
   /** Put focus back on the control a redraw replaced (found by selector in host). */
   function refocus(host, sel) {
@@ -1651,9 +1630,9 @@ document.addEventListener("DOMContentLoaded", function () {
       dropParam();
     });
   })();
-  el("cpSlider").addEventListener("input", function () {
-    if (!window.CombatPower || !state.honing) return;
-    var curve = cpCrossings();
+  el("scoreSlider").addEventListener("input", function () {
+    var curve = state.honing ? scoreCurve() : null;
+    if (!curve) return;
     var idx = Math.max(0, Math.min(curve.rungs.length - 1, Math.round(+this.value)));
     var b = curve.rungs[idx].b;
     var v = Math.min(100, Math.max(0,
@@ -1667,14 +1646,13 @@ document.addEventListener("DOMContentLoaded", function () {
   // The tables lookup.js builds the rows from, then the ones only this page
   // draws; all of them land on the state at once, with the lattice.
   var PAGE_FILES = ["bracelet-vs-gpd.json", "arkgrid-progress.json", "bracelet-lines.json",
-                    "bracelet-crit-eq.json", "arkgrid-progress-dps.json", "cp-grid-dps.json"];
+                    "bracelet-crit-eq.json", "arkgrid-progress-dps.json"];
   var FILES = L.DATA_FILES.concat(PAGE_FILES);
   Promise.all(FILES.map(function (f) { return grab("data/" + f); })
                    .concat([lkLoadLattice()])).then(function (all) {
     var got = {};
     FILES.forEach(function (f, i) { got[f] = all[i]; });
     L.absorb(state, got);
-    state.cpGridDps = got["cp-grid-dps.json"];
     state.braceletLines = got["bracelet-lines.json"];
     state.braceletCritEq = got["bracelet-crit-eq.json"];
     state.arkProgressDps = got["arkgrid-progress-dps.json"];

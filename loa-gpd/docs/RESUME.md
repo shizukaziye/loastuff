@@ -79,7 +79,7 @@ rare 250k, epic 250k, rare 1.09M, epic 1.09M, rare 3.96M.
    `http://localhost:8080/` only, so to sign in locally serve the TOOL dir on
    8080 (`python -m http.server 8080 --directory C:/Users/Shizu/loastuff/loa-gpd`);
    the `loa-gpd` launch config on 8734 cannot sign in.
-4. **CP model has two cheap open measurements** (docs/research/combat-power-model.md):
+4. **CP model has two cheap open measurements** (docs/research/combat-power-model.md) — retired 2026-09-25, the Loseii Score replaced the CP card:
    one bracelet swapped, and one gem dropped a level, each read off the
    profile screen. They would retire the last assumed weights.
 

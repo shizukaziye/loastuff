@@ -50,6 +50,22 @@ ARMOR_SLOTS = ["head", "shoulders", "torso", "legs", "hands"]
 BASE_ILVL = 1675
 ILVL_PER_LEVEL = 5
 
+# T4 lower (1590) gear — "Destined Hellfire", the Ancient set a character hones
+# before moving to the upper set (the Relic 1590 set reads the same numbers).
+# On this track advanced honing raises item level one for one and the stats
+# follow item level, so the table is keyed by item level, 1590..1755 (+25 with
+# advanced 40). The Loseii Score reads it (model/loseii-score.js).
+T4_LOWER = {
+    "weapon": "134611110",
+    "head": "134613111",
+    "torso": "134613112",
+    "legs": "134613113",
+    "hands": "134613114",
+    "shoulders": "134613115",
+}
+LOWER_BASE_ILVL = 1590
+LOWER_MAX_ILVL = 1755
+
 # Material rows the calculator shows for T4 Upper, with the unit each price is
 # quoted in. Order matches the tool's own layout.
 MATERIALS = [
@@ -221,7 +237,30 @@ def main():
             "levels": levels,
         }
 
+    # ---- the lower (1590) track, keyed by item level ----------------------
+    def lower_curve(slot, want):
+        item = items[T4_LOWER[slot]]
+        return {ilvl: stats_of(item_level.get(f"{item['levelOption']}#{ilvl}"), want)
+                for ilvl in range(LOWER_BASE_ILVL, LOWER_MAX_ILVL + 1)}
+
+    lower = {
+        "source": {
+            "feed": BASE,
+            "patch": "July 2026 (per maxroll's upgrade calculator)",
+            "mode": "T4 lower (1590) — item level is 1590 + 5 x honing + advanced honing",
+            "set": items[T4_LOWER["weapon"]]["name"].rsplit(" ", 1)[0],
+        },
+        "baseIlvl": LOWER_BASE_ILVL,
+        "maxIlvl": LOWER_MAX_ILVL,
+        "ilvlPerLevel": ILVL_PER_LEVEL,
+        "weapon": {"weaponPower": lower_curve("weapon", "WEAPON_DAM")},
+        "armor": {"slots": ARMOR_SLOTS, "mainStat": {s: lower_curve(s, main_stat) for s in ARMOR_SLOTS}},
+    }
+
     os.makedirs(DATA, exist_ok=True)
+    with open(os.path.join(DATA, "honing-t4lower.json"), "w", encoding="utf-8") as f:
+        json.dump(lower, f, indent=1, sort_keys=True)
+    print(f"wrote {os.path.join(DATA, 'honing-t4lower.json')}")
     with open(os.path.join(DATA, "karma.json"), "w", encoding="utf-8") as f:
         json.dump(karma, f, indent=1, sort_keys=True)
     print(f"wrote {os.path.join(DATA, 'karma.json')}")
