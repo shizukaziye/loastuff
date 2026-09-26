@@ -547,8 +547,14 @@
    * bracelet would only clutter a board they are not competing on. Within one
    * subrank, or with the dealer reading ahead, they stay on both boards. Band
    * index 0 is S+, so "above" is a SMALLER index.
+   *
+   * UNLESS THEY CARRY A SEPARATE DAMAGE BRACELET (2026-09-26). The rule keeps a
+   * support bracelet read as a dealer's off the DPS board; a row whose dealer
+   * reading is its own damage bracelet (the other board's bracelet, slot 13)
+   * is competing there for real, and stays.
    */
   function isSupportMain(c) {
+    if (c._alt) return false;
     if (!SR || !c._sup || !c._dps || c._sup.score == null || c._dps.score == null) return false;
     return SR.of(c._dps.score, "dps").i - SR.of(c._sup.score, "support").i >= 2;
   }

@@ -417,8 +417,9 @@
     var SR = window.Subrank;
     return (SR && isNum(score)) ? SR.of(score, axis === "support" ? "support" : "dps") : null;
   }
-  /** leaderboard.js isSupportMain: support reading two or more subranks above the dealer one. */
+  /** leaderboard.js isSupportMain: support reading two or more subranks above the dealer one — unless the dealer reading is a separate damage bracelet (2026-09-26). */
   function brSupportMain(r) {
+    if (r.altBr) return false;
     if (!r.sup || !r.dps || r.sup.score == null || r.dps.score == null) return false;
     var d = srOf(r.dps.score, "dps"), s = srOf(r.sup.score, "support");
     return !!(d && s && d.i - s.i >= 2);

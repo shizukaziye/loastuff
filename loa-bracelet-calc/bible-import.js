@@ -777,10 +777,12 @@
 
   /**
    * leaderboard.js isSupportMain(): a support class whose support reading lands
-   * two or more subranks above its damage-dealer one leaves the DPS board.
+   * two or more subranks above its damage-dealer one leaves the DPS board —
+   * unless its dealer reading is a separate damage bracelet (2026-09-26).
    */
   function supportMain(r) {
     var SR = root.Subrank;
+    if (r.altBracelet) return false;
     if (!SR || !r.sup || !r.dps || r.sup.score == null || r.dps.score == null) return false;
     return SR.of(r.dps.score, "dps").i - SR.of(r.sup.score, "support").i >= 2;
   }
