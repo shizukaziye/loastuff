@@ -2216,26 +2216,18 @@
       btns.innerHTML = '<span class="bi-who">Import is switched off: no lostark.bible app is configured for this build.</span>';
       return;
     }
+    // Signing in and out is the site nav's one control (nav.js); this row only loads.
     if (!OA.signedIn()) {
-      btns.innerHTML = '<button class="mbtn" id="bi-auth-in" type="button">Sign in with lostark.bible</button>';
-      $("bi-auth-in").onclick = function () {
-        try { OA.login(); } catch (e) { setPullStatus(String((e && e.message) || e), "err"); }
-      };
+      state.chars = null; state.user = null; state.raw = null;   // signed out in the nav or another tab
+      btns.innerHTML = '<span class="bi-who">Sign in with lostark.bible at the top right of the page to import your roster.</span>';
       return;
     }
     var who = state.user && (state.user.username || state.user.name || state.user.globalName || state.user.id);
     btns.innerHTML =
       (who ? '<span class="bi-who">signed in as <b>' + esc(who) + "</b></span>" : "") +
       '<button class="mbtn" id="bi-auth-load" type="button"' + (state.busy ? " disabled" : "") + ">" +
-        (state.busy ? "Loading…" : "Load my characters") + "</button>" +
-      '<button class="mbtn" id="bi-auth-out" type="button">Sign out</button>';
+        (state.busy ? "Loading…" : "Load my characters") + "</button>";
     $("bi-auth-load").onclick = function () { loadRosters(true); };
-    $("bi-auth-out").onclick = function () {
-      state.chars = null; state.user = null; state.raw = null;
-      state.note = null; state.noteGloss = null; state.error = null;
-      OA.logout().then(render);       // logout() forgets locally first, so render is already right
-      render();
-    };
   }
 
   /**

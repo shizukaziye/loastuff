@@ -1,6 +1,15 @@
 /astrogem-calculator/* /loa-astrogem-calc/:splat 301
 /astrogem-calculator /loa-astrogem-calc/ 301
 
+# Files that moved to /shared/ (2026-09-25), still served at their old addresses for
+# code that loads them there and is owned elsewhere: profile/index.html loads the
+# tooltip from the bracelet folder, and the bracelet app.js and bible-import.js and
+# profile/profile.js build class-icon paths under the bracelet folder. The astrogem
+# path covers tabs opened before the move. Drop a rule once nothing names its path.
+/loa-bracelet-calc/tip.js /shared/tip.js 200
+/loa-bracelet-calc/assets/class-icons/* /shared/class-icons/:splat 200
+/loa-astrogem-calc/assets/class-icons/* /shared/class-icons/:splat 200
+
 # Tool tabs as real URLs (Shizu, 2026-09-22). Each tab path serves its tool's one
 # page, which picks the tab out of the address. The target is the FOLDER, not
 # index.html: Pages strips "index.html" with a 308, so a rewrite to it answers

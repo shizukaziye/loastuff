@@ -1,0 +1,56 @@
+/*
+ * tokens.css — the site's colours and radii, in one place.
+ *
+ * Every page loads this first (/shared/tokens.css?v=N) and its own stylesheet routes the
+ * same values through these variables, always with the old value as the fallback:
+ *     --accent: var(--lx-blue, #66c7ff);
+ * so a page that fails to load this file looks exactly as it did. Change a colour here
+ * and every page follows (bump every loader's ?v= pin; `npm run check` at the repo root
+ * compares them).
+ *
+ * The --lx- prefix keeps these clear of each page's own short names (--bg, --accent …).
+ * Custom properties cross the shadow root, so nav.js reads them too.
+ */
+:root{
+  /* Brand: the hub's gold (wordmark, gem, headings, the hub's buttons). */
+  --lx-gold:#e8b75c;
+  --lx-gold-light:#f4d79a;
+  --lx-gold-dim:#a9802a;
+
+  /* Data and actions in the tools: links, focus, the selected tab, chart lines. */
+  --lx-blue:#66c7ff;
+
+  /* Text, shared by the hub and the tools. */
+  --lx-text:#e7e9ee;
+
+  /* Tool surfaces (every calculator's dark theme). */
+  --lx-bg:#0d1017;
+  --lx-panel:#161a24;
+  --lx-panel-2:#1b2030;
+  --lx-border:#2a3142;
+  --lx-dim:#97a0b4;
+
+  /* Tool scale colours: grade tiers, good and bad. */
+  --lx-high:#ffb86b;
+  --lx-mid:#c78cff;
+  --lx-low:#6ad4ff;
+  --lx-none:#4f5666;
+  --lx-useless:#707788;
+  --lx-good:#6ee7a8;
+  --lx-bad:#ff7f7f;
+
+  /* Hub surfaces (the hub, the 404 page and the nav bar). */
+  --lx-hub-bg:#0c0e12;
+  --lx-hub-surface:#14171e;
+  --lx-hub-surface-2:#1a1e27;
+  --lx-hub-border:#262b36;
+  --lx-hub-muted:#98a1b2;
+  --lx-hub-faint:#6b7484;
+  --lx-hub-blue:#62c6df;
+  --lx-hub-green:#5fd08a;
+
+  /* Radii. */
+  --lx-radius:14px;       /* cards, panels, the nav's dropdown */
+  --lx-radius-sm:8px;     /* small controls */
+  --lx-radius-pill:999px; /* pills and round buttons */
+}

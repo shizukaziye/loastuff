@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Astrogem Calculator</title>
+<title>Astrogem Calculator — Loseii</title>
 <!-- Link previews (Discord/Reddit/Twitter cards) + icons. og:image must be an absolute URL. -->
 <meta name="description" content="Lost Ark astrogem tools: grade any character's astrogem loadout in % damage, cut/fuse/throw EV tables, a processing advisor, and a cross-region leaderboard.">
 <meta name="theme-color" content="#0d1017">
@@ -33,8 +33,8 @@
   Scripts load in two sets:
     EAGER (bottom of <body>, in order): model/astrogem.js (the deterministic core
     on window.Astrogem — grade / gemRank / damagePercent / tierExpectedValue …),
-    then gate.js, favorites.js, tip.js, loadout-econ.js, bible-import.js,
-    bible-oauth.js, gemlist.js (the Grader's "From screenshot" mode; its OCR
+    then gate.js, /shared/favorites.js, /shared/tip.js, /shared/class-icon.js,
+    loadout-econ.js, bible-import.js, /shared/bible-oauth.js, gemlist.js (the Grader's "From screenshot" mode; its OCR
     files load from LAZY_GEMLIST on first use), grader.js (#tab-grader) and
     pipeline.js (#tab-pipeline, which also feeds the grader's plan section via
     pipelineReady).
@@ -45,7 +45,8 @@
   Styling lives in styles.css (shared dark theme + tab styling); each tab module
   carries its own scoped <style> for module-specific bits.
 -->
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="/shared/tokens.css?v=1">
+<link rel="stylesheet" href="styles.css?v=6">
 <!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
      the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
      tools: change one, change all three. -->
@@ -62,8 +63,6 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 <style>
 @media (pointer:coarse){
   .tab,.mbtn{min-height:40px}
-  #astro-banner{padding-right:48px}
-  body #astro-banner .ab-x{min-width:40px;min-height:40px;top:0;right:0}
 }
 </style>
 <!-- Pages this one links to are prerendered once a link to one is pointed at
@@ -238,7 +237,7 @@ var LAZY_TABS = {
     "advisor-setup.js?v=50", "advisor-window.js?v=64",
     "advisor.js?v=96"
   ],
-  leaderboard: ["leaderboard.js?v=57"],
+  leaderboard: ["leaderboard.js?v=58"],
   feedback: ["feedback.js?v=1"]
 };
 // The Grader's "From screenshot" mode reads the in-game astrogem list. Its
@@ -521,15 +520,15 @@ function routeBoot(){
 })();
 </script>
 <script src="model/astrogem.js?v=62" defer></script>
-<script src="banner.js?v=8" defer></script>
 <script src="gate.js?v=39" defer></script>
-<script src="favorites.js?v=40" defer></script>
-<script src="tip.js?v=2" defer></script>
+<script src="/shared/favorites.js?v=1" defer></script>
+<script src="/shared/tip.js?v=1" defer></script>
+<script src="/shared/class-icon.js?v=1" defer></script>
 <script src="loadout-econ.js?v=8" defer></script>
 <script src="bible-import.js?v=4" defer></script>
-<script src="bible-oauth.js?v=11" defer></script>
+<script src="/shared/bible-oauth.js?v=1" defer></script>
 <script src="gemlist.js?v=1" defer></script>
-<script src="grader.js?v=84" defer></script>
+<script src="grader.js?v=85" defer></script>
 <script src="pipeline.js?v=54" defer></script>
 <!-- Route boot. LAST of the app scripts on purpose: it runs after every module
      above has initialised, so a deep-linked tab activates exactly as a click just

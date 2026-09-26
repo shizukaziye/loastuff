@@ -1,14 +1,23 @@
 /**
  * bible-oauth.js — "Sign in with lostark.bible" (OAuth 2.0 Authorization Code + PKCE).
  *
- * ONE SESSION FOR THE WHOLE SITE (2026-09-25). This file ships as three byte-identical
- * copies — loa-astrogem-calc/, loa-bracelet-calc/ and loa-gpd/ — and the hub page loads the
- * astrogem copy. Every page on www.loseii.com is one origin, so they all share one
- * localStorage; the only thing that ever kept their sign-ins apart was each copy keeping
- * its own storage key and scope set. Now they share both: sign in on any page and every
- * page is signed in; sign out anywhere and every page is signed out. Open tabs follow along
- * through the `storage` event. Keep the three copies identical (diff them before shipping)
- * and bump each tool's ?v= pin when this file changes.
+ * ONE SESSION FOR THE WHOLE SITE (2026-09-25). One copy, here in /shared/ (until
+ * 2026-09-25 it shipped as three identical copies inside the tools). The hub, the astrogem,
+ * bracelet and GPD tools load it by absolute path, /shared/bible-oauth.js?v=N, and nav.js
+ * loads it on every other page of the site. nav.js keeps the same pin in its OAUTH_V
+ * constant: bump every pin together when this file changes (`npm run check` at the repo
+ * root fails when they disagree). Every page on www.loseii.com is one origin, so they all
+ * share one localStorage key and one scope set: sign in on any page and every page is
+ * signed in; sign out anywhere and every page is signed out. Open tabs follow along
+ * through the `storage` event.
+ *
+ * The sign-in control lives in the shared nav (nav.js). A page only calls handleRedirect()
+ * once at load, where a trip to the consent screen can come back to.
+ *
+ * LOCAL DEV: /shared/ sits at the site root, so a tool served on its own (`npm run serve`
+ * inside a tool folder) cannot load this file. Serve the whole site instead:
+ * `npx wrangler pages dev . --port 8788` from the repo root. The dev OAuth client accepts
+ * only http://localhost:8080/, so a real round trip to the consent screen needs that port.
  *
  * lostark.bible asked us to stop pulling their pages, so character data comes through their
  * opt-in OAuth flow (https://lostark.bible/help/oauth-api): a user signs in and grants US
@@ -68,19 +77,20 @@
   // The redirect URI must match a registered one EXACTLY, trailing slash included. The
   // registered folders on www.loseii.com are the hub root and the three tool folders
   // (the hub root was added 2026-09-25); on localhost only http://localhost:8080/ is. A page
-  // in a registered folder comes back to itself. Any other page (a tab path such as
-  // /loa-astrogem-calc/pipeline is NOT registered) comes back through this script's own
-  // folder and is then bounced home (see `back` below). Query and hash never travel.
+  // in a registered folder comes back to itself (a tab path such as
+  // /loa-astrogem-calc/pipeline sits in its tool's folder, so it counts). Any other page (the
+  // hell key tool, a profile at /NA/Name) comes back through CALLBACK and is then bounced
+  // home (see `back` below). CALLBACK is the astrogem folder, the app's first registered
+  // address, whose page calls handleRedirect() at load. Where this script itself lives
+  // plays no part, so it works from /shared/ or anywhere else. Query and hash never travel.
   var REGISTERED = ["/", "/loa-astrogem-calc/", "/loa-bracelet-calc/", "/loa-gpd/"];
-  var SELF_SRC = (document.currentScript && document.currentScript.src) || "";
+  var CALLBACK = "/loa-astrogem-calc/";
   function pageFolder() { return location.origin + location.pathname.replace(/[^\/]*$/, ""); }
   function redirectUri() {
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return location.origin + "/";
     var page = pageFolder();
     if (REGISTERED.indexOf(page.slice(location.origin.length)) >= 0) return page;
-    var src = SELF_SRC.split(/[?#]/)[0];
-    if (src.indexOf(location.origin + "/") === 0) return src.replace(/[^\/]*$/, "");
-    return page;   // no script address: the page's folder
+    return location.origin + CALLBACK;
   }
 
   // A PRERENDER IS NOT A VISIT. Chrome may load this page in the background when a link to

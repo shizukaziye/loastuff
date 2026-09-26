@@ -28,8 +28,9 @@
 
   Scripts load in two sets:
     EAGER (bottom of <body>, in order): data/bracelet-data.js and
-    data/gear-data.js (the official tables), model/bracelet.js (the core), tip.js
-    (the shared tooltip), favorites.js (the saved-character spine), profile.js
+    data/gear-data.js (the official tables), model/bracelet.js (the core),
+    /shared/tip.js (the site's tooltip), /shared/favorites.js (the site's
+    saved-character spine), /shared/class-icon.js (the class glyphs), profile.js
     (state + control deck), then app.js (the Calculator tab).
     LAZY (the LAZY_TABS map below): heavier per-tab modules load on FIRST
     activation of their tab. A module that is not on disk yet fails its <script>
@@ -43,7 +44,8 @@
   Deploy note: bump a file's ?v= whenever you edit it — the loseii edge caches
   JS for 4h and browsers cache-bust on that query.
 -->
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="/shared/tokens.css?v=1">
+<link rel="stylesheet" href="styles.css?v=4">
 <!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
      the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
      tools: change one, change all three. -->
@@ -220,7 +222,7 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
      nothing boots on defaults and nothing of the user's is overwritten. Silent,
      self-limiting, one round trip per browser, and gone for good once it has
      run. -->
-<script src="handoff.js?v=5" defer></script>
+<script src="handoff.js?v=6" defer></script>
 
 <!-- Tab switching: toggle .active on the matching button + pane, and keep the
      tab in the address bar (ROUTES below). -->
@@ -236,7 +238,7 @@ var LAZY_TABS = {
   // no tab mounts it since 2026-09-24. The files stay in the repo for a return.
   reader: ['advisor-capture.js?v=3', 'advisor-glue.js?v=2'],
   tierlist: ['tierlist.js?v=21'],
-  leaderboard: ['leaderboard.js?v=22'],
+  leaderboard: ['leaderboard.js?v=23'],
   method: ['method.js?v=10'],
   feedback: ['feedback.js?v=2']
 };
@@ -500,8 +502,9 @@ function routeBoot(){
 <script src="data/bracelet-data.js?v=2" defer></script>
 <script src="data/gear-data.js?v=4" defer></script>
 <script src="model/bracelet.js?v=14" defer></script>
-<script src="tip.js?v=1" defer></script>
-<script src="favorites.js?v=1" defer></script>
+<script src="/shared/tip.js?v=1" defer></script>
+<script src="/shared/favorites.js?v=1" defer></script>
+<script src="/shared/class-icon.js?v=1" defer></script>
 <!-- The shared character lookup + ★ strip. EAGER, though it mounts lazily: the
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
@@ -512,8 +515,8 @@ function routeBoot(){
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
-<script src="bible-oauth.js?v=4" defer></script>
-<script src="bible-import.js?v=24" defer></script>
+<script src="/shared/bible-oauth.js?v=1" defer></script>
+<script src="bible-import.js?v=25" defer></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
      tab activates exactly as a click just after load would (see ROUTES).

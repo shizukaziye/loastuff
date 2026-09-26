@@ -378,15 +378,15 @@
     return "https://lostark.bible/character/" + encodeURIComponent(region || "") + "/" + encodeURIComponent(name || "");
   }
 
-  // Class ICON for the loadout header. The class name maps 1:1 to a file in
-  // assets/class-icons/<ClassName>.svg (the same files the Leaderboard uses); we render
-  // it ourselves from that convention rather than depending on leaderboard.js. The
-  // brightness/invert tints the dark glyph to match the theme; onerror hides a missing
-  // file. KR loadouts (className == null) get no icon (item level only).
+  // Class ICON for the loadout header, from the site's shared glyphs
+  // (/shared/class-icon.js: "Guardian Knight" finds Guardianknight.svg, an unknown class
+  // gets none). The brightness/invert tints the dark glyph to match the theme; onerror
+  // hides a file that fails to load. KR loadouts (className == null) get no icon.
   function classIconHtml(className) {
-    if (!className) return "";
-    return '<img class="gr-classicon" src="assets/class-icons/' + encodeURIComponent(className) +
-      '.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
+    var src = className && window.classIconUrl ? window.classIconUrl(className) : null;
+    if (!src) return "";
+    return '<img class="gr-classicon" src="' + src +
+      '" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
   }
 
   // ---------------- markup ----------------
@@ -1727,8 +1727,8 @@ presetToggleHtml(data) +
       if (d.unavailable) { renderLookupPanel("paused"); setPullStatus(d.error || "Lookups are temporarily unavailable.", "err"); return; }  // still paused -> amber warning + inline error
       if (d.needSignIn) {   // not signed in: a fresh pull needs the visitor's own lostark.bible token
         renderLookupPanel("back");
-        setPullStatus("Sign in with lostark.bible to look up a character.", "err");
-        $("gr-result").innerHTML = '<div class="panel"><div class="gr-status err">Sign in with lostark.bible to look up <b>' + esc(name) + '</b>. Already-cached characters and the Bookmarklet work without signing in.</div></div>';
+        setPullStatus("Sign in with lostark.bible (top right of the page) to look up a character.", "err");
+        $("gr-result").innerHTML = '<div class="panel"><div class="gr-status err">Sign in with lostark.bible (top right of the page) to look up <b>' + esc(name) + '</b>. Already-cached characters and the Bookmarklet work without signing in.</div></div>';
         return;
       }
       // The cached loadout to SHOW (if any): from this response (Grade loadout on a cached char),
@@ -2003,29 +2003,15 @@ presetToggleHtml(data) +
         '(Already-cached characters still load normally.)</div>' +
         '<button type="button" class="gr-unavail-btn" id="gr-unavail-bm">&#9889; Use the Bookmarklet instead</button>';
     } else {
-      el.className = "gr-unavail blue";
-      el.innerHTML =
-        '<div class="gr-unavail-hd">Character lookups are back &mdash; sign in with lostark.bible</div>' +
-        '<div class="gr-unavail-bd">lostark.bible now asks that character pages be read on behalf of a signed-in account. ' +
-        'Sign in once and you can look up <b>the characters in your roster</b> by name, the same as before.</div>' +
-        '<ol class="gr-unavail-steps">' +
-          '<li>Click <b>Sign in with lostark.bible</b> and approve the access request.</li>' +
-          '<li>You land back here signed in &mdash; nothing else to set up.</li>' +
-          '<li>Pick a <b>region</b>, type a <b>character name</b> from your roster, and hit <b>Grade loadout</b>.</li>' +
-        '</ol>' +
-        '<div class="gr-unavail-note">Only your own linked roster is readable, and only to look up gems &mdash; we never see anyone else’s characters. ' +
-        'For a character outside your roster, use the <b>Bookmarklet</b>: it reads the loadout from a lostark.bible page open in your own browser. ' +
-        'Already-cached characters keep loading for everyone, signed in or not.</div>' +
-        '<button type="button" class="gr-unavail-btn" id="gr-unavail-in">Sign in with lostark.bible</button>' +
-        '<button type="button" class="gr-unavail-btn ghost" id="gr-unavail-bm">Use the Bookmarklet</button>';
+      // Signed out while lookups work: one line. The sign-in control is the site nav's.
+      el.className = "";
+      el.innerHTML = '<div class="gr-freenote" style="margin:0 0 12px">To look up a character from your own roster, ' +
+        'sign in with lostark.bible at the top right of the page. For anyone else, use the ' +
+        '<a href="#" id="gr-unavail-bm">Bookmarklet</a>.</div>';
     }
     el.style.display = "";
-    var si = $("gr-unavail-in");
-    if (si) si.addEventListener("click", function () {
-      if (window.BibleOAuth && window.BibleOAuth.login) window.BibleOAuth.login();
-    });
     var b = $("gr-unavail-bm");
-    if (b) b.addEventListener("click", function () { selectMode("bookmarklet"); });
+    if (b) b.addEventListener("click", function (e) { e.preventDefault(); selectMode("bookmarklet"); });
   }
   // The panel is no longer a "we're broken" warning tied to the drain being paused — it's the
   // standing explanation of how lookups work now. Show it whenever the visitor isn't signed in;
@@ -2075,29 +2061,24 @@ presetToggleHtml(data) +
     weather_artist: "Aeromancer", yinyangshi: "Artist"
   };
 
-  // Sign-in / load / sign-out live in the mode-toggle row. There is no separate roster list:
-  // every roster character is saved as a favorite, so the existing saved-characters row is
-  // the one place they appear.
+  // "Load my characters" lives in the mode-toggle row. Signing in and out is the site nav's
+  // one control (nav.js), so this row only loads the roster. There is no separate roster
+  // list: every roster character is saved as a favorite, so the existing saved-characters
+  // row is the one place they appear.
   function renderAuth() {
     var btns = $("gr-authbtns"), el = $("gr-auth");
     if (!btns) return;
     var O = window.BibleOAuth;
     if (!O || !O.configured()) { btns.innerHTML = ""; if (el) el.innerHTML = ""; return; }
-    if (!O.signedIn()) {
-      btns.innerHTML = '<button class="mbtn" id="gr-auth-in" type="button">Sign in with lostark.bible</button>';
-      if (el) el.innerHTML = "";
-      $("gr-auth-in").addEventListener("click", function () {
-        try { window.BibleOAuth.login(); } catch (e) { setPullStatus(String(e.message || e), "err"); }
-      });
-      return;
-    }
-    btns.innerHTML =
-      '<button class="mbtn" id="gr-auth-load" type="button">Load my characters</button>' +
-      '<button class="mbtn" id="gr-auth-out" type="button">Sign out</button>';
+    if (!O.signedIn()) authRosters = null;          // signed out in the nav, here or in another tab
+    btns.innerHTML = '<button class="mbtn" id="gr-auth-load" type="button">Load my characters</button>';
     if (el) el.innerHTML = "";
-    $("gr-auth-load").addEventListener("click", loadRosters);
-    $("gr-auth-out").addEventListener("click", function () {
-      window.BibleOAuth.logout().then(function () { authRosters = null; renderAuth(); });
+    $("gr-auth-load").addEventListener("click", function () {
+      if (!window.BibleOAuth.signedIn()) {
+        setPullStatus("Sign in with lostark.bible at the top right of the page first, then load your characters.", "err");
+        return;
+      }
+      loadRosters();
     });
   }
 

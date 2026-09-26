@@ -112,51 +112,15 @@
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
-  // Class-icon files live in assets/class-icons/<ClassName>.svg (extracted from
-  // lostark.bible's class silhouettes — see assets note). Repo-relative paths so
-  // GitHub Pages serves them. Keys are the English class names the Worker returns.
-  // SVGs use fill="currentColor", so they inherit the cell's text color.
-  var CLASS_ICON = {
-    "Berserker": "Berserker.svg",
-    "Destroyer": "Destroyer.svg",
-    "Gunlancer": "Gunlancer.svg",
-    "Paladin": "Paladin.svg",
-    "Slayer": "Slayer.svg",
-    "Valkyrie": "Valkyrie.svg",
-    "Artist": "Artist.svg",
-    "Arcanist": "Arcanist.svg",
-    "Summoner": "Summoner.svg",
-    "Bard": "Bard.svg",
-    "Sorceress": "Sorceress.svg",
-    "Wardancer": "Wardancer.svg",
-    "Scrapper": "Scrapper.svg",
-    "Soulfist": "Soulfist.svg",
-    "Glaivier": "Glaivier.svg",
-    "Striker": "Striker.svg",
-    "Breaker": "Breaker.svg",
-    "Deathblade": "Deathblade.svg",
-    "Shadowhunter": "Shadowhunter.svg",
-    "Reaper": "Reaper.svg",
-    "Souleater": "Souleater.svg",
-    "Sharpshooter": "Sharpshooter.svg",
-    "Deadeye": "Deadeye.svg",
-    "Artillerist": "Artillerist.svg",
-    "Machinist": "Machinist.svg",
-    "Gunslinger": "Gunslinger.svg",
-    "Aeromancer": "Aeromancer.svg",
-    "Wildsoul": "Wildsoul.svg",
-    "Guardianknight": "Guardianknight.svg"
-  };
-
   // Class ICON only (no name) — shown at the START of the Character cell, just before
-  // the name link. Empty string when the character has no class (KR characters:
-  // c.class === null) or we have no icon file for it, so the name shows alone.
-  // Graceful: a missing icon file degrades away (onerror hides the <img>).
+  // the name link, from the site's shared glyphs (/shared/class-icon.js, loaded by
+  // index.html; the SVGs use fill="currentColor", so they take the cell's text color).
+  // Empty string when the character has no class (KR characters: c.class === null) or
+  // no file matches it, so the name shows alone. onerror hides a file that fails to load.
   function classIcon(className) {
-    if (!className) return '';
-    var file = CLASS_ICON[className];
-    if (!file) return '';
-    return '<img class="lb-class-icon" width="20" height="20" src="assets/class-icons/' + encodeURIComponent(file) +
+    var src = className && window.classIconUrl ? window.classIconUrl(className) : null;
+    if (!src) return '';
+    return '<img class="lb-class-icon" width="20" height="20" src="' + src +
       '" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display=\'none\'">';
   }
 
