@@ -45,7 +45,7 @@
   JS for 4h and browsers cache-bust on that query.
 -->
 <link rel="stylesheet" href="/shared/tokens.css?v=1">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 <!-- The "Back to <Name>'s profile" bar and the "Profile →" link (LoseiiBack, under
      the title). The same rules, byte for byte, in the bracelet, astrogem and GPD
      tools: change one, change all three. -->
@@ -192,26 +192,26 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </script>
 
   <!-- Tab bar -->
-  <div class="tabbar" id="tabbar">
-    <button class="tab active" data-tab="calculator" onclick="selectTab('calculator')">Calculator</button>
-    <button class="tab" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
-    <button class="tab" data-tab="tierlist" onclick="selectTab('tierlist')">Tier List</button>
-    <button class="tab" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
-    <button class="tab" data-tab="method" onclick="selectTab('method')">Method</button>
-    <button class="tab" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
+  <div class="tabbar" id="tabbar" role="tablist">
+    <button class="tab active" id="tabbtn-calculator" role="tab" aria-selected="true" aria-controls="tab-calculator" data-tab="calculator" onclick="selectTab('calculator')">Calculator</button>
+    <button class="tab" id="tabbtn-advisor" role="tab" aria-selected="false" aria-controls="tab-advisor" data-tab="advisor" onclick="selectTab('advisor')">Advisor</button>
+    <button class="tab" id="tabbtn-tierlist" role="tab" aria-selected="false" aria-controls="tab-tierlist" data-tab="tierlist" onclick="selectTab('tierlist')">Tier List</button>
+    <button class="tab" id="tabbtn-leaderboard" role="tab" aria-selected="false" aria-controls="tab-leaderboard" data-tab="leaderboard" onclick="selectTab('leaderboard')">Leaderboard</button>
+    <button class="tab" id="tabbtn-method" role="tab" aria-selected="false" aria-controls="tab-method" data-tab="method" onclick="selectTab('method')">Method</button>
+    <button class="tab" id="tabbtn-feedback" role="tab" aria-selected="false" aria-controls="tab-feedback" data-tab="feedback" onclick="selectTab('feedback')">Feedback</button>
   </div>
 
   <!-- Tab panes -->
-  <section id="tab-calculator" class="tabpane active"></section>
-  <section id="tab-advisor" class="tabpane"></section>
-  <section id="tab-tierlist" class="tabpane">
+  <section id="tab-calculator" class="tabpane active" role="tabpanel" aria-labelledby="tabbtn-calculator"></section>
+  <section id="tab-advisor" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-advisor"></section>
+  <section id="tab-tierlist" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-tierlist">
     <div class="placeholder"><b>Tier list</b>Not built yet. It will rank every effect family and every roll by the same % damage figure the Calculator reports, live against your own settings.</div>
   </section>
-  <section id="tab-leaderboard" class="tabpane">
+  <section id="tab-leaderboard" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-leaderboard">
     <div class="placeholder"><b>Leaderboard</b>Not built yet. It will rank bracelets by the same % damage figure the Calculator reports, scored on the default character.</div>
   </section>
-  <section id="tab-method" class="tabpane"></section>
-  <section id="tab-feedback" class="tabpane">
+  <section id="tab-method" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-method"></section>
+  <section id="tab-feedback" class="tabpane" role="tabpanel" aria-labelledby="tabbtn-feedback">
     <div class="placeholder"><b>Feedback</b>Not built yet. A wrong number, a missing effect or an idea will all land here.</div>
   </section>
 </div>
@@ -293,7 +293,7 @@ function writeRoute(name, replace){
 }
 function paintTab(name){
   var tabs = document.querySelectorAll('.tab');
-  for (var i=0;i<tabs.length;i++){ tabs[i].classList.toggle('active', tabs[i].dataset.tab===name); }
+  for (var i=0;i<tabs.length;i++){ var on = tabs[i].dataset.tab===name; tabs[i].classList.toggle('active', on); tabs[i].setAttribute('aria-selected', on ? 'true' : 'false'); }
   var panes = document.querySelectorAll('.tabpane');
   for (var j=0;j<panes.length;j++){
     panes[j].classList.toggle('active', panes[j].id === ('tab-'+name));
@@ -509,14 +509,14 @@ function routeBoot(){
      Advisor and the Tier List both mount it, and neither should have to know
      whether the other has already loaded it. -->
 <script src="char-picker.js?v=6" defer></script>
-<script src="profile.js?v=27" defer></script>
+<script src="profile.js?v=28" defer></script>
 <script src="subrank.js?v=9" defer></script>
-<script src="app.js?v=54" defer></script>
+<script src="app.js?v=55" defer></script>
 <!-- lostark.bible import. AFTER app.js: bible-import.js mounts into the Bracelet
      panel app.js has just built, and hands what it decodes to
      window.BraceletApp.applyImport. Both degrade to nothing if the site is down. -->
 <script src="/shared/bible-oauth.js?v=1" defer></script>
-<script src="bible-import.js?v=25" defer></script>
+<script src="bible-import.js?v=26" defer></script>
 <!-- Route boot. LAST of the app scripts on purpose: its DOMContentLoaded
      listener runs after every module above has initialised, so a deep-linked
      tab activates exactly as a click just after load would (see ROUTES).

@@ -723,19 +723,6 @@
   var RESET_GLOSS = "Puts every setting back to the calculator's defaults. Your role, the character, " +
     "the bracelet, the gold rate and the baseline are left alone.";
 
-  // ONE-TIME, for the move off shizukaziye.github.io: the way back for anyone
-  // the automatic carry-over could not help — someone who opened this site
-  // before it shipped, or whose profile was already here and rightly left
-  // alone. Only the link lives here. handoff.js catches the click on
-  // [data-bchandoff], asks first, and owns the whole round trip; delete the two
-  // together once the move is old news.
-  var HANDOFF_LINK = '<button type="button" data-bchandoff="1" data-gloss="' +
-    'Fetches the profile, favorites and roll history saved at the old address (shizukaziye.github.io) ' +
-    'and puts them here, over what this site has. It asks first."' +
-    ' style="background:none;border:none;padding:0;font:inherit;font-size:11px;color:var(--dim);' +
-    'text-decoration:underline;text-underline-offset:3px;white-space:normal;cursor:pointer;flex:0 1 auto"' +
-    '>Used the old address? Bring your saved profiles over.</button>';
-
   function charControlsHtml() {
     var loaded = hasCharacter();
     var who = loaded ? esc(S.char.name) : "", can = loaded && canImportStats();
@@ -746,7 +733,7 @@
         ' data-gloss="No character is loaded. Look one up above and this fills the panel with their own honing,' +
         ' accessories, gems, karma and the rest.">Import Character Stats</button>' +
         '<button type="button" class="mbtn" data-bcreset="defaults" data-gloss="' + esc(RESET_GLOSS) +
-        '">Reset to Default</button>' + HANDOFF_LINK + '</div>';
+        '">Reset to Default</button></div>';
     }
     h += '<button type="button" class="mbtn"' + (can ? "" : ' aria-disabled="true"') +
       ' data-bcimport="1" data-gloss="' + (can
@@ -758,7 +745,6 @@
       '">Import Character Stats</button>';
     h += '<button type="button" class="mbtn" data-bcreset="defaults" data-gloss="' + esc(RESET_GLOSS) +
       '">Reset to Default</button>';
-    h += HANDOFF_LINK;
     return h + "</div>";
   }
 
@@ -1882,7 +1868,7 @@
   // can put the cursor back where it was.
   function fldId(path) { return "bc-fld-" + path.replace(/\./g, "-"); }
   function fldNum(path, label, step, gloss) {
-    return '<div class="fld"><label' + (gloss ? ' data-gloss="' + esc(gloss) + '"' : "") + ">" + esc(label) + "</label>" +
+    return '<div class="fld"><label for="' + fldId(path) + '"' + (gloss ? ' data-gloss="' + esc(gloss) + '"' : "") + ">" + esc(label) + "</label>" +
       '<input id="' + fldId(path) + '" type="number" step="' + (step || "any") + '" data-k="' + path + '" data-t="num" value="' + esc(getPath(S, path)) + '"></div>';
   }
   function fldChk(path, label, gloss) {
@@ -2296,14 +2282,14 @@
     for (i = 0; i < S.skills.length; i++) {
       var s = S.skills[i];
       h += '<div class="bc-skill">' +
-        '<div class="fld"><label>Name</label>' +
-        '<input type="text" data-sk="' + i + '" data-f="name" value="' + esc(s.name || "") + '" placeholder="name" aria-label="Skill name"></div>' +
-        '<div class="fld"><label data-gloss="How much of your damage this skill deals. The shares always add to exactly 100 — type one and the others move to make room. With a single skill it is locked at 100.">Share %</label>' +
+        '<div class="fld"><label for="bc-sk-name-' + i + '">Name</label>' +
+        '<input id="bc-sk-name-' + i + '" type="text" data-sk="' + i + '" data-f="name" value="' + esc(s.name || "") + '" placeholder="name" aria-label="Skill name"></div>' +
+        '<div class="fld"><label for="bc-sk-share-' + i + '" data-gloss="How much of your damage this skill deals. The shares always add to exactly 100 — type one and the others move to make room. With a single skill it is locked at 100.">Share %</label>' +
         '<input id="bc-sk-share-' + i + '" type="number" step="1" min="0" max="100" data-sk="' + i + '" data-f="share" value="' + esc(s.share) + '"' +
         (one ? " disabled" : "") + "></div>" +
-        '<div class="fld"><label data-gloss="This skill\'s crit rate before any bracelet line. Crit past 100% keeps its substitution value — the model assumes you rebalance rather than waste it.">Crit rate %</label>' +
+        '<div class="fld"><label for="bc-sk-cr-' + i + '" data-gloss="This skill\'s crit rate before any bracelet line. Crit past 100% keeps its substitution value — the model assumes you rebalance rather than waste it.">Crit rate %</label>' +
         '<input id="bc-sk-cr-' + i + '" type="number" step="0.1" data-sk="' + i + '" data-f="cr" value="' + esc(s.cr) + '"></div>' +
-        '<div class="fld"><label data-gloss="What a crit deals, as a multiple. 280% means a crit hits for 2.8 times, not 3.8.">Crit dmg %</label>' +
+        '<div class="fld"><label for="bc-sk-cd-' + i + '" data-gloss="What a crit deals, as a multiple. 280% means a crit hits for 2.8 times, not 3.8.">Crit dmg %</label>' +
         '<input id="bc-sk-cd-' + i + '" type="number" step="1" data-sk="' + i + '" data-f="cd" value="' + esc(s.cd) + '"></div>' +
         '<button class="bc-x" type="button" data-delsk="' + i + '"' + (one ? " disabled" : "") +
         ' title="Remove this skill">&times;</button>' +
