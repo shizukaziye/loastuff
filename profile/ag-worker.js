@@ -8,7 +8,7 @@
  * make, copied from the two pages that make them:
  *
  *   loa-astrogem-calc/leaderboard.js  validGemsOf, valueToGrade, the board's two
- *       axes, its filters and its sort -> the board quality and the board rank.
+ *       axes -> the board quality (the rank comes from the Worker, below).
  *   loa-astrogem-calc/grader.js  gGrade / gRank / gRel and the core grouping ->
  *       each gem's grade, letter and % damage, the per-core figures, the plain
  *       average grade and the "Total % dmg" (gridDamage) the grader shows.
@@ -18,15 +18,19 @@
  * core's points. The model adds those parts up in its total (a sum of
  * 100·ln terms), so the parts sum to the total exactly, and no formula is copied.
  *
- * WHY A WORKER. The board is the ?list=1&fmt=2 snapshot: ~2.5 MB gzipped, 12 MB
- * of JSON, ~24,000 characters, all of which have to be scored to know one rank.
- * That costs ~0.3 s of CPU, which would freeze the page. It is reduced here to a
- * per-region INDEX (each board's names in board order and each board's sort
- * key), kept 30 minutes in memory and in the Cache API; the board itself
- * rebuilds at most every 30 minutes.
+ * THE RANK comes from the Worker's slim board index, GET /board-slim?region=
+ * (~270 KB gzipped per region, where the whole ?list=1 snapshot this worker
+ * used to score itself was 2.6 MB): each row's name, class and the two boards'
+ * sort keys, already scored by the Worker with the same model calls. This
+ * worker only sorts it into the two boards, per region, and keeps that 30
+ * minutes in memory and in the Cache API; the board rebuilds at most every 30
+ * minutes. It still runs off the main thread: the grid table (job 1) and a
+ * 600 KB parse are no work for the page's own thread.
  *
  * Messages in:  {id, type:"score", gems, cls}
  *               {id, type:"rank", region, name, cls, cur:{dmg,pdmg,supportMain}, maxAgeMs, offline}
+ *               -> {region, builtAt, fetchedAt, source, stale, timings, dps, sup}, each board
+ *               {rank, count, estimated, key, cls:{name, rank, count}|null} or null
  *               offline:true (a prerendered page) answers from memory or the Cache
  *               API only and never downloads; with nothing cached it fails with
  *               {deferred:true} and the page asks again once it is shown.
@@ -39,16 +43,15 @@ importScripts("/loa-astrogem-calc/model/astrogem.js?v=62", "/loa-astrogem-calc/l
 
 var A = self.Astrogem;
 var ECON = self.LoadoutEcon || null;
-var LIST_URL = "https://astrogem-bible.shizukaziye.workers.dev/?list=1&fmt=2";
+var SLIM_URL = "https://astrogem-bible.shizukaziye.workers.dev/board-slim?region=";
 var CACHE_NAME = "loseii-profile-v1";
 var INDEX_TTL_MS = 30 * 60 * 1000;
-var INDEX_V = 1;
+var INDEX_V = 2;       // 2: built from /board-slim, with each row's class
 var REGIONS = ["NA", "EU"];     // the regions the profile serves; the board's KR chip is not one of them
 
 // ---- copied from loa-astrogem-calc/leaderboard.js --------------------------
 
 var SUPPORT_CLASSES = { "Bard": 1, "Paladin": 1, "Artist": 1, "Valkyrie": 1 };
-function isSupportClass(c) { return !!(c && c.cls && SUPPORT_CLASSES[c.cls]); }
 var SUBRANK_ORDINAL = { "F-": 0, "F": 1, "F+": 2, "D-": 3, "D": 4, "D+": 5, "C-": 6, "C": 7, "C+": 8,
   "B-": 9, "B": 10, "B+": 11, "A-": 12, "A": 13, "A+": 14, "S-": 15, "S": 16, "S+": 17 };
 function supRank(g) { return A.supportRankFromGrade ? A.supportRankFromGrade(g) : A.rankFromGrade(g); }
@@ -66,7 +69,6 @@ function valueToGrade(v, zero, anchor) {
   var g = 100 * (v - zero) / (anchor - zero);
   return Math.round(Math.max(0, Math.min(110, g)) * 10) / 10;
 }
-var V2_SLOT = { 1: "Order Sun", 2: "Order Moon", 3: "Order Star", 4: "Chaos Sun", 5: "Chaos Moon", 6: "Chaos Star" };
 
 // The model's two anchors per axis are constants; read them once.
 var DPS_ZERO = A.valueBounds().min, DPS_ANCHOR = A.valueAnchor();
@@ -251,115 +253,100 @@ function scoreOne(gems, cls) {
 // ---- job 2: the board index --------------------------------------------------
 
 /**
- * The snapshot -> {NA:index, EU:index}. The board's own order of operations:
- * decode every row, score both axes, then per board filter and sort. The sort
- * is Array.prototype.sort, stable, over rows in payload order: the board's
- * exact tie-break (the snapshot holds ~250 exact ties per region).
+ * One region's /board-slim answer -> its two boards, each as parallel arrays
+ * of lower-cased names, sort keys and class indexes. The contract (§9b of
+ * loa-astrogem-calc/docs/how-the-queue-and-drain-work.md): the DPS board is the
+ * rows with a dps key that are not support mains, the Support board the rows
+ * with a sup key, each stable-sorted by its key, highest first. The rows come
+ * in snapshot order, which is the board's tie-break (~250 exact ties per
+ * region), and Array.prototype.sort is stable, so the order is the board's.
  */
-function buildIndexes(data, fetchedAt) {
-  var classes = data.classes || [], effects = data.effects || [];
-  function eff(i) { return (typeof i === "number" && i > 0) ? (effects[i - 1] || null) : null; }
-  var byRegion = {}, r;
-  for (r = 0; r < REGIONS.length; r++) byRegion[REGIONS[r]] = [];
-  var rows = data.characters || [];
-  for (var i = 0; i < rows.length; i++) {
+function buildIndex(data, fetchedAt) {
+  var rows = data.rows || [], dps = [], sup = [], i;
+  for (i = 0; i < rows.length; i++) {
     var a = rows[i];
-    var list = byRegion[a[0]];
-    if (!list) continue;                         // KR, a stray CE row the board shows under no chip, junk
-    var cls = (a[3] != null && a[3] >= 0) ? classes[a[3]] : null;
-    var t5 = a[5] || [], gems = [];
-    for (var j = 0; j < t5.length; j++) {
-      var t = t5[j], core = t[0] | 0;
-      gems.push({
-        slot: core ? V2_SLOT[core] : null, coreBase: core ? 10000 + core : null,
-        baseCost: t[1], gemType: t[2] ? "chaos" : "order",
-        willpowerLevel: t[3], orderLevel: t[4],
-        effect1: eff(t[5]), effect1Level: t[6], effect2: eff(t[7]), effect2Level: t[8]
-      });
-    }
-    var valid = validGemsOf(gems);
-    var c = { n: String(a[1] || "").toLowerCase(), cls: cls, avg: null, dmg: null, savg: null, pdmg: null };
-    // The support axis only matters for the four support classes: the DPS board
-    // asks isSupportMain() of them alone, and the Support board holds no one else.
-    if (valid.length) {
-      var ax = axes(valid, !!SUPPORT_CLASSES[cls]);
-      c.avg = ax.avg; c.dmg = ax.dmg; c.savg = ax.savg; c.pdmg = ax.pdmg;
-    }
-    list.push(c);
+    if (!a) continue;
+    var c = { n: String(a[0] || "").toLowerCase(), c: typeof a[1] === "number" ? a[1] : -1,
+      d: typeof a[2] === "number" ? a[2] : null, s: typeof a[3] === "number" ? a[3] : null };
+    if (c.d != null && !a[4]) dps.push(c);
+    if (c.s != null) sup.push(c);
   }
-  var out = {};
-  for (r = 0; r < REGIONS.length; r++) {
-    var reg = REGIONS[r], all = byRegion[reg];
-    var dps = all.filter(function (c) {
-      if (c.avg == null) return false;
-      if (isSupportClass(c) && isSupportMain(c)) return false;
-      return true;
-    });
-    dps.sort(function (x, y) { return (y.dmg == null ? -Infinity : y.dmg) - (x.dmg == null ? -Infinity : x.dmg); });
-    var sup = all.filter(function (c) { return isSupportClass(c) && c.savg != null; });
-    sup.sort(function (x, y) { return (y.pdmg == null ? -Infinity : y.pdmg) - (x.pdmg == null ? -Infinity : x.pdmg); });
-    out[reg] = {
-      v: INDEX_V, region: reg, builtAt: data.builtAt || 0, fetchedAt: fetchedAt,
-      dps: { n: dps.map(function (c) { return c.n; }), v: dps.map(function (c) { return c.dmg; }) },
-      sup: { n: sup.map(function (c) { return c.n; }), v: sup.map(function (c) { return c.pdmg; }) }
-    };
+  dps.sort(function (x, y) { return y.d - x.d; });
+  sup.sort(function (x, y) { return y.s - x.s; });
+  function cols(list, key) {
+    return { n: list.map(function (c) { return c.n; }), v: list.map(function (c) { return c[key]; }),
+      c: list.map(function (c) { return c.c; }) };
   }
-  return out;
+  return {
+    v: INDEX_V, region: data.region, builtAt: data.builtAt || 0, fetchedAt: fetchedAt,
+    classes: Array.isArray(data.classes) ? data.classes : [],
+    dps: cols(dps, "d"), sup: cols(sup, "s")
+  };
+}
+function readableSlim(d, region) {
+  return !!(d && d.v === 1 && d.region === region && Array.isArray(d.rows) && d.rows.length);
 }
 
 var mem = {};           // region -> index
-var inflight = null;    // the one download in progress, shared by every caller
-var lastFetchMs = null; // timings of the last download, for the page's perf readout
+var inflight = {};      // region -> the one download in progress, shared by every caller
+var lastFetchMs = {};   // region -> timings of its last download, for the page's perf readout
 
-function cacheKey(region) { return new Request("/profile/__cache/ag-index-" + region); }
+function cacheKey(region) { return new Request("/profile/__cache/ag-slim-" + region); }
 function cacheOpen() {
   try { return self.caches ? self.caches.open(CACHE_NAME) : Promise.resolve(null); }
   catch (e) { return Promise.resolve(null); }
 }
+/** The saved /board-slim answer for a region, rebuilt into its index. */
 function readCached(region) {
   return cacheOpen().then(function (c) {
     return c ? c.match(cacheKey(region)) : null;
   }).then(function (resp) {
-    return resp ? resp.json() : null;
-  }).then(function (idx) {
-    return (idx && idx.v === INDEX_V && idx.dps && idx.sup) ? idx : null;
+    if (!resp) return null;
+    var at = Number(resp.headers.get("X-Fetched-At")) || 0;
+    return resp.json().then(function (data) { return readableSlim(data, region) ? buildIndex(data, at) : null; });
   }).catch(function () { return null; });
 }
-function writeCached(idx) {
+function writeCached(region, txt, at) {
   return cacheOpen().then(function (c) {
     if (!c) return;
-    return c.put(cacheKey(idx.region), new Response(JSON.stringify(idx), { headers: { "Content-Type": "application/json" } }));
+    // the full-board index this worker kept until 2026-09-25; it is never read again
+    c.delete(new Request("/profile/__cache/ag-index-" + region)).catch(function () {});
+    return c.put(cacheKey(region), new Response(txt, { headers: { "Content-Type": "application/json", "X-Fetched-At": String(at) } }));
   }).catch(function () {});
 }
 
-/** Download the snapshot and rebuild every region's index. One at a time. */
-function download() {
-  if (inflight) return inflight;
+/**
+ * Download one region's slim index. `cache: "no-cache"` makes the browser
+ * revalidate its HTTP-cache copy with the ETag the Worker sent (a bodiless 304
+ * when the board has not rebuilt) rather than trust max-age: this worker has
+ * already decided its own copy is too old. The browser adds If-None-Match
+ * itself; the page may not (the Worker's CORS allowlist has no such header, so
+ * setting it here would cost a preflight that fails).
+ */
+function download(region) {
+  if (inflight[region]) return inflight[region];
   var t0 = Date.now(), tf = 0, tp = 0;
-  inflight = fetch(LIST_URL).then(function (resp) {
+  var p = fetch(SLIM_URL + region, { cache: "no-cache" }).then(function (resp) {
     return resp.text().then(function (txt) {
       tf = Date.now();
       var data = null;
       try { data = JSON.parse(txt); } catch (e) {}
-      txt = null;
-      if (!resp.ok || !data || !Array.isArray(data.characters) || !data.characters.length) {
-        var err = new Error((data && data.error) || ("The astrogem board answered " + resp.status + "."));
-        err.rateLimited = !!(data && data.rateLimited);
+      if (!resp.ok || !readableSlim(data, region)) {
+        var err = new Error((data && (data.error || data.message)) || ("The astrogem board answered " + resp.status + "."));
+        err.rateLimited = !!(data && data.rateLimited) || resp.status === 429;
         throw err;
       }
       tp = Date.now();
-      var idx = buildIndexes(data, Date.now());
-      data = null;
-      lastFetchMs = { fetch: tf - t0, parse: tp - tf, score: Date.now() - tp };
-      for (var i = 0; i < REGIONS.length; i++) {
-        mem[REGIONS[i]] = idx[REGIONS[i]];
-        writeCached(idx[REGIONS[i]]);
-      }
+      var at = Date.now(), idx = buildIndex(data, at);
+      lastFetchMs[region] = { fetch: tf - t0, parse: tp - tf, score: Date.now() - tp, chars: txt.length, rows: data.rows.length };
+      mem[region] = idx;
+      writeCached(region, txt, at);
       return idx;
     });
   });
-  inflight.then(function () { inflight = null; }, function () { inflight = null; });
-  return inflight;
+  inflight[region] = p;
+  p.then(function () { inflight[region] = null; }, function () { inflight[region] = null; });
+  return p;
 }
 
 /**
@@ -373,7 +360,7 @@ function getIndex(region, maxAgeMs, offline) {
   function age(idx) { return Date.now() - (idx.fetchedAt || 0); }
   function refreshBehind() {
     if (offline) return;
-    download().then(function () { self.postMessage({ type: "index-updated", region: region }); }, function () {});
+    download(region).then(function () { self.postMessage({ type: "index-updated", region: region }); }, function () {});
   }
   var m = mem[region];
   if (m) {
@@ -391,33 +378,64 @@ function getIndex(region, maxAgeMs, offline) {
       err.deferred = true;
       throw err;
     }
-    return download().then(function (all) {
-      return { idx: all[region], source: "network", stale: false };
+    return download(region).then(function (idx) {
+      return { idx: idx, source: "network", stale: false };
     });
   });
 }
 
-/** One board, one name: its place in board order, or where its value would land. */
-function place(board, nameLower, mine) {
-  var i = board.n.indexOf(nameLower);
-  if (i >= 0) return { rank: i + 1, count: board.n.length, estimated: false, key: board.v[i] };
+/** A class name as a key: "Guardian Knight" and "Guardianknight" are one class. */
+function classKey(s) { return String(s == null ? "" : s).replace(/[^A-Za-z]/g, "").toLowerCase(); }
+function classIndexOf(idx, cls) {
+  var k = classKey(cls);
+  if (!k) return -1;
+  for (var i = 0; i < idx.classes.length; i++) if (classKey(idx.classes[i]) === k) return i;
+  return -1;
+}
+
+/**
+ * One board, one name: its place in board order, or where its value would land.
+ * cls: the character's place among the rows of its own class on the same board
+ * {name, rank, count}, or null when there is no class to go by.
+ */
+function place(idx, board, nameLower, mine, clsIdx) {
+  var i = board.n.indexOf(nameLower), k, ci, cRank = 0, cCount = 0;
+  if (i >= 0) {
+    ci = board.c[i];
+    if (ci >= 0) {
+      for (k = 0; k < board.c.length; k++) if (board.c[k] === ci) { cCount++; if (k <= i) cRank++; }
+    }
+    return { rank: i + 1, count: board.n.length, estimated: false, key: board.v[i],
+      cls: ci >= 0 ? { name: idx.classes[ci] || null, rank: cRank, count: cCount } : null };
+  }
   if (typeof mine !== "number" || !isFinite(mine)) return null;
+  // Not on the board yet: every row keeps its place and this one goes in behind
+  // the rows strictly above it. (The rebuild appends a new character, so on the
+  // board it would lose an exact tie; its key is computed here in the browser
+  // and the board's on the Worker, which can differ in the last bit, so an
+  // exact tie cannot be told apart here and this one takes the better place.)
   var better = 0;
-  for (var k = 0; k < board.v.length; k++) if (board.v[k] != null && board.v[k] > mine) better++;
-  return { rank: better + 1, count: board.n.length + 1, estimated: true, key: mine };
+  ci = typeof clsIdx === "number" ? clsIdx : -1;
+  for (k = 0; k < board.v.length; k++) {
+    var up = board.v[k] != null && board.v[k] > mine;
+    if (up) better++;
+    if (ci >= 0 && board.c[k] === ci) { cCount++; if (up) cRank++; }
+  }
+  return { rank: better + 1, count: board.n.length + 1, estimated: true, key: mine,
+    cls: ci >= 0 ? { name: idx.classes[ci] || null, rank: cRank + 1, count: cCount + 1 } : null };
 }
 
 function rankOne(m) {
   var region = REGIONS.indexOf(m.region) >= 0 ? m.region : "NA";
   var nameLower = String(m.name || "").toLowerCase();
   return getIndex(region, m.maxAgeMs, !!m.offline).then(function (got) {
-    var idx = got.idx, cur = m.cur || {};
+    var idx = got.idx, cur = m.cur || {}, ci = classIndexOf(idx, m.cls);
     return {
       region: region, builtAt: idx.builtAt, fetchedAt: idx.fetchedAt, source: got.source, stale: got.stale,
-      timings: got.source === "network" ? lastFetchMs : null,
+      timings: got.source === "network" ? (lastFetchMs[region] || null) : null,
       // A support main is not on the DPS board, so it gets no estimated place there either.
-      dps: cur.supportMain && idx.dps.n.indexOf(nameLower) < 0 ? null : place(idx.dps, nameLower, cur.dmg),
-      sup: SUPPORT_CLASSES[m.cls] ? place(idx.sup, nameLower, cur.pdmg) : null
+      dps: cur.supportMain && idx.dps.n.indexOf(nameLower) < 0 ? null : place(idx, idx.dps, nameLower, cur.dmg, ci),
+      sup: SUPPORT_CLASSES[m.cls] ? place(idx, idx.sup, nameLower, cur.pdmg, ci) : null
     };
   });
 }

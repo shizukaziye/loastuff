@@ -412,11 +412,18 @@ keeps answering while the site is degraded: it is one small KV read.
   row) are in no region's index, as on the board.
 
 Checked 2026-09-25 against the live snapshot: both boards, both regions, names and keys, are
-identical to `profile/ag-worker.js`'s own `buildIndexes`.
+identical to what `profile/ag-worker.js` built from the full snapshot before it switched to this
+route (keys agree to 1e-9; the Worker's and the browser's floating point differ in the last bit).
+
+**Who reads it.** The character profile (`profile/ag-worker.js`, since 2026-09-25): one region per
+request, kept 30 minutes in memory and the Cache API, plus each row's class for the tiles' "top X%
+of <class>" line.
 
 **Caching.** `Cache-Control: public, max-age=1800` and `ETag: "bs1-<REGION>-<builtAt>"`. Send
 `If-None-Match` to get a bodiless `304`. The ETag changes only when the snapshot is rebuilt (at most
-every ~30 min).
+every ~30 min). From a browser page, leave that header to the browser (`fetch(url, {cache:
+"no-cache"})` revalidates with the stored ETag): the CORS allowlist has no `If-None-Match` and does
+not expose `ETag`, so a page that sets the header itself gets a failed preflight.
 
 **How it is built.** `rebuildSnapshotIfChanged` writes one gzipped key per region
 (`lb:slim:gz:<REGION>`, metadata `{ builtAt, v, rows }`) right after it stores the snapshot, from the

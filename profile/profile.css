@@ -92,13 +92,18 @@ option{background:var(--panel2);color:var(--text)}
 
 /* ---- rank strip ---- */
 .lp-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
-.lp-tile{height:104px}
+.lp-tile{height:124px}
 .lp-thd{display:flex;align-items:center;justify-content:space-between;height:16px}
 .lp-thl{display:inline-flex;align-items:center;gap:6px;height:16px;line-height:16px}
 .lp-thd .lp-axis{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);line-height:16px}
 .lp-go-board{font-size:11px;color:var(--dim);text-decoration:none}
 .lp-go-board:hover{color:var(--accent)}
-.lp-tbody{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:14px;align-items:center;height:56px;margin-top:6px}
+.lp-tbody{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:56px 18px;column-gap:14px;row-gap:2px;
+  align-items:center;height:76px;margin-top:6px}
+/* each tile's third line, always there so no tile changes height: the class place
+   on the two rank tiles, the rung you hold on the GPD one */
+.lp-tfoot{grid-column:1/-1;grid-row:2;min-width:0;text-align:right;font-size:12px;color:var(--dim);line-height:18px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lp-tmsg{grid-column:1/-1;color:var(--dim);font-size:13px;line-height:18px;overflow:hidden;max-height:54px}
 .lp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:22px;padding:0 6px;border-radius:6px;
   font-weight:900;font-size:13px;line-height:1;letter-spacing:-.02em;vertical-align:middle}
@@ -111,6 +116,7 @@ option{background:var(--panel2);color:var(--text)}
 .lp-trk{font-size:15px;font-weight:700;line-height:28px;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* the GPD tile: the price on the left, the step it buys beside it (two lines at most) */
 .lp-gbody{grid-template-columns:auto minmax(0,1fr)}
+.lp-gbody .lp-tfoot{grid-column:2;text-align:left}
 .lp-tscore.lp-tsm{font-size:15px}
 .lp-gstep{min-width:0}
 .lp-gtext{font-size:13.5px;font-weight:700;line-height:18px;height:36px;overflow:hidden;display:-webkit-box;

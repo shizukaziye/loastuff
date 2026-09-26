@@ -11,7 +11,8 @@
 <meta property="og:title" content="Character profiles — Loseii">
 <meta property="og:description" content="Bracelet and astrogem grades and ranks for any NA or EU Lost Ark character.">
 <meta property="og:image" content="https://www.loseii.com/og.png">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 12 16 29 3 12z' fill='%23e8b75c'/%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <!--
   loseii character profiles. _redirects serves this one page for /NA/*, /EU/* and
   /CE/* (and their lower-case forms); profile.js reads the region and the name
@@ -44,7 +45,7 @@
 -->
 <link rel="preconnect" href="https://bracelet-bible.shizukaziye.workers.dev" crossorigin>
 <link rel="preconnect" href="https://astrogem-bible.shizukaziye.workers.dev" crossorigin>
-<link rel="stylesheet" href="/profile/profile.css?v=6">
+<link rel="stylesheet" href="/profile/profile.css?v=7">
 <!-- Chromium builds a hovered site page before the click (moderate = on hover or
      press), so the next page opens already drawn. profile.js holds every side
      effect until the page is shown. The favorite/recent chips are left out: they
@@ -124,6 +125,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
           <span class="lp-badge big sk-badge sk"></span>
           <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
           <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+          <div class="lp-tfoot"><span class="sk" style="width:11em"></span></div>
         </div>
       </div>
       <div class="panel lp-tile" id="lp-tile-ag" role="tab" aria-controls="lp-ov-ag" aria-selected="false" tabindex="-1" data-view="astrogems" data-gloss="Opens the astrogem overview below.">
@@ -132,13 +134,15 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
           <span class="lp-badge big sk-badge sk"></span>
           <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.6em"></span></div><div class="lp-tsub"><span class="sk" style="width:8em"></span></div></div>
           <div class="lp-trank"><div class="lp-trk"><span class="sk" style="width:8em"></span></div><div class="lp-tsub"><span class="sk" style="width:6.5em"></span></div></div>
+          <div class="lp-tfoot"><span class="sk" style="width:11em"></span></div>
         </div>
       </div>
       <div class="panel lp-tile" id="lp-tile-gpd" role="tab" aria-controls="lp-ov-gpd" aria-selected="false" tabindex="-1" data-view="gpd" data-gloss="Opens the gold-per-damage overview below.">
         <div class="lp-thd"><span class="lp-thl"><span class="subh" data-gloss="The GPD chart&rsquo;s pick for this character: the next step with the lowest gold per 1% damage, of the steps under 25M per 1%.">Cheapest next 1%</span> <span class="lp-axis" id="lp-tile-gpd-axis"></span></span><a class="lp-go-board" id="lp-go-gpd" href="/loa-gpd/" data-gloss="Opens the GPD chart with this character looked up.">GPD chart &rarr;</a></div>
         <div class="lp-tbody lp-gbody" id="lp-tile-gpd-body">
           <div class="lp-tnum"><div class="lp-tscore"><span class="sk" style="width:2.8em"></span></div><div class="lp-tsub"><span class="sk" style="width:5.5em"></span></div></div>
-          <div class="lp-gstep"><div class="lp-gtext"><span class="sk" style="width:11em"></span></div><div class="lp-tsub"><span class="sk" style="width:9em"></span></div></div>
+          <div class="lp-gstep"><div class="lp-gtext"><span class="sk" style="width:11em"></span></div></div>
+          <div class="lp-tfoot"><span class="sk" style="width:6em"></span></div>
         </div>
       </div>
     </div>
@@ -221,7 +225,8 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
       <summary>How this page works out its numbers</summary>
       <p><b>Bracelet.</b> The grade (0&ndash;100), its letter and the damage figure are the bracelet leaderboard&rsquo;s own: the bracelet-bible Worker scores every pulled bracelet on the calculator&rsquo;s default character, and the letter comes from the same subrank ladder the board uses. A character with more than one bracelet across its lostark.bible loadouts is ranked on the best one, as on the board. The figure beside each line, and the split under Damage, come from the calculator&rsquo;s model on that same default character: each effect line and each combat trait priced on its own, as the calculator&rsquo;s &ldquo;Line by line&rdquo; table prices them. Lines multiply rather than add, and crit pools across them, so the parts land a shade off the total. Under Rolls left are the regular and ticket rerolls used; under Loadout, each loadout&rsquo;s own bracelet reading when the character wears more than one.</p>
       <p><b>Bracelet rank.</b> The character&rsquo;s place on its region&rsquo;s board, in the board&rsquo;s own order. The DPS board ranks everyone by damage %, less support mains; the Support board ranks Bard, Paladin, Artist and Valkyrie by what one damage dealer gains. A support class shows on the board the Worker reads it on. Top X% is the place divided by the number on that board. The board rebuilds at most every 10 minutes; a character it has not picked up yet (a new pull, or one just updated) is scored here with the calculator&rsquo;s own model, and its place is marked &asymp; until the board catches up.</p>
-      <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The average grade, the Order and Chaos figures and the grid damage are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
+      <p><b>Class place.</b> The line under each rank: the same board cut to the character&rsquo;s own class. &ldquo;Top 12% of Reapers (of 431)&rdquo; means 431 Reapers are on that board and this one&rsquo;s place among them, divided by 431, is 12%. It follows the rank: marked &asymp; while the board does not hold the character yet, and as fresh as the board, which rebuilds every 10 minutes (bracelet) or 30 (astrogems).</p>
+      <p><b>Astrogems.</b> Every figure comes from the astrogem calculator&rsquo;s model. Quality and the rank are the astrogem leaderboard&rsquo;s: a geometric mean of the gems&rsquo; values, and the place on the region&rsquo;s board by total grid damage (party damage on the Support board), which rebuilds at most every 30 minutes. The page reads the rank from the Worker&rsquo;s slim board index (<code>/board-slim</code>: each character&rsquo;s class and the two boards&rsquo; sort keys, about 270 KB), not the whole board. The average grade, the Order and Chaos figures and the grid damage are the Grader&rsquo;s, on the axis the Grader opens this character on: Support for a support class whose gems carry mostly support effects, DPS otherwise. A gem&rsquo;s grade is the game&rsquo;s: its four levels add up to 4&ndash;15 for Legendary, 16&ndash;18 for Relic and 19&ndash;20 for Ancient.</p>
       <p><b>Gold per 1% damage.</b> The GPD chart&rsquo;s own lookup (<code>/loa-gpd/lookup.js</code>), run here on the same two lostark.bible answers as the bracelet and astrogem overviews: the three cheapest next steps, each with your rung and what it costs per 1% damage at the chart&rsquo;s default prices and switches (no flat line, high main stat); the chart itself shows every ladder. A support is graded on the support ladders, where gold per 1% counts the buff on all three dealers. Only a step under 25M per 1% can be the pick. It loads after the bracelet and astrogem overviews, so it never holds them up.</p>
       <p><b>Calculators assume.</b> The raid loadout&rsquo;s item level, weapon power and main stat as lostark.bible reports them: the figures the bracelet calculator imports into its character panel. Update reads the bracelet record again; astrogems are pulled from the Astrogem Calculator, which needs a lostark.bible sign-in.</p>
       <p><b>The overviews.</b> Each tile opens its overview; the address keeps the one on show (#bracelet, #astrogems, #gpd) and this browser remembers the last one. An overview is a summary: click it to open the calculator it comes from, with this character loaded.</p>
@@ -233,7 +238,7 @@ d.className+=(ok?" lp-char":" lp-find")+" lp-v-"+v;})();
 <script src="/loa-bracelet-calc/data/bracelet-data.js?v=2" defer></script>
 <script src="/loa-bracelet-calc/subrank.js?v=9" defer></script>
 <script src="/loa-bracelet-calc/tip.js?v=1" defer></script>
-<script src="/profile/profile.js?v=7" defer></script>
+<script src="/profile/profile.js?v=8" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

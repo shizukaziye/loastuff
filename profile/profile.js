@@ -66,7 +66,7 @@
 
   var BR_API = "https://bracelet-bible.shizukaziye.workers.dev";
   var AG_API = "https://astrogem-bible.shizukaziye.workers.dev";
-  var AG_WORKER = "/profile/ag-worker.js?v=2";
+  var AG_WORKER = "/profile/ag-worker.js?v=3";
   // The bracelet calculator's own model, for a character the board does not hold
   // yet. subrank.js is loaded again AFTER the model: it captures window.Bracelet
   // when it runs, and the copy index.html loaded ran before the model existed.
@@ -78,7 +78,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=4";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=5";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
@@ -92,10 +92,14 @@
   var CACHE_NAME = "loseii-profile-v1";
 
   var K_RECENT = "lp_recent";
-  var K_FAVS = "bc_favs";                     // the bracelet tool's favourites, same shape
+  // Favourites: loseii_favs is the site's merged store (astrogem_favs and bc_favs
+  // together, same entry shape); bc_favs is the bracelet tool's older one, read
+  // when the merged store is not there yet and kept in step when it is.
+  var K_FAVS = "loseii_favs";
+  var K_FAVS_OLD = "bc_favs";
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 3;   // 3: bracelet lines carry their raw form and traits their family
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 4;   // 3: bracelet lines carry their raw form and traits their family; 4: both ranks carry a class place
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -263,11 +267,18 @@
     return { kind: "char", region: region, name: name };
   }
 
-  // ------------------------------------------------------------------ favourites (bc_favs) and recents
+  // ------------------------------------------------------------------ favourites (loseii_favs, else bc_favs) and recents
 
+  /** The raw favourites array: the merged store first, else the bracelet tool's. */
+  function favRaw() {
+    var raw = lsJson(K_FAVS);
+    if (Array.isArray(raw)) return raw;
+    raw = lsJson(K_FAVS_OLD);
+    return Array.isArray(raw) ? raw : null;
+  }
   /** favorites.js parseList: [{region, name}], CE healed to EU, case-insensitive de-dupe. */
   function favList() {
-    var raw = lsJson(K_FAVS), out = [];
+    var raw = favRaw(), out = [];
     if (!Array.isArray(raw)) return out;
     for (var i = 0; i < raw.length; i++) {
       var it = raw[i];
@@ -286,12 +297,28 @@
     return -1;
   }
   function favHas(region, name) { return favIndex(favList(), region, name) !== -1; }
+  /**
+   * Add or drop one favourite. It edits the stored array itself, so the other
+   * entries keep any fields the tools gave them. It writes the store it read
+   * from, and bc_favs as well while the merged store is in use (the tools
+   * mirror it there too), so neither copy falls behind.
+   */
   function favToggle(region, name) {
-    var list = favList(), i = favIndex(list, region, name);
-    if (i === -1) list.push({ region: String(region).toUpperCase(), name: String(name) });
-    else list.splice(i, 1);
-    lsSet(K_FAVS, JSON.stringify(list));
-    return i === -1;
+    var merged = Array.isArray(lsJson(K_FAVS));
+    var raw = (favRaw() || []).slice(), had = false;
+    raw = raw.filter(function (it) {
+      if (!it || it.name == null) return true;
+      var r = String(it.region == null ? "" : it.region).toUpperCase();
+      if (r === "CE") r = "EU";
+      var hit = nkey(r) === nkey(region) && nkey(it.name) === nkey(name);
+      if (hit) had = true;
+      return !hit;
+    });
+    if (!had) raw.push({ region: String(region).toUpperCase(), name: String(name) });
+    var txt = JSON.stringify(raw);
+    if (merged) lsSet(K_FAVS, txt);
+    lsSet(K_FAVS_OLD, txt);
+    return !had;
   }
   function recentList() {
     var raw = lsJson(K_RECENT);
@@ -803,10 +830,16 @@
     var reading = axis === "support" ? row.sup : row.dps;
     var oAxis = axis === "support" ? "dps" : "support", oList = lists[oAxis], oi = oList.indexOf(row);
     var oRead = oAxis === "support" ? row.sup : row.dps;
+    var cls = null;
+    if (i >= 0 && row.cls) {
+      var ck = classKey(row.cls), cRank = 0, cCount = 0;
+      for (var k = 0; k < list.length; k++) if (classKey(list[k].cls) === ck) { cCount++; if (k <= i) cRank++; }
+      cls = { name: row.cls, rank: cRank, count: cCount };
+    }
     return extend(badgeFor(reading && reading.score, axis, reading && reading.isPerfect), {
       st: i >= 0 ? "ok" : "none", msg: i >= 0 ? "" : "Not on the board",
       axis: axis, score: reading ? reading.score : null, pct: reading ? reading.pct : null,
-      rank: i + 1, count: list.length, region: region, estimated: false,
+      rank: i + 1, count: list.length, region: region, estimated: false, cls: cls,
       other: (oi >= 0 && oRead) ? { axis: oAxis, rank: oi + 1, count: oList.length,
         key: (srOf(oRead.score, oAxis) || { key: "?" }).key, pct: oRead.pct } : null,
       builtAt: B.builtAt, stale: !!B.stale
@@ -819,30 +852,63 @@
    * tie ahead of the old row's place (or any tie, for a character new to the
    * board) sorts in front.
    */
-  function brRankEstimate(B, region, name, x) {
+  function brRankEstimate(B, region, name, x, recCls) {
     var axis = x.role === "support" ? "support" : "dps";
     var reading = axis === "support" ? x.sup : x.dps;
     var out = extend(badgeFor(reading && reading.score, axis, reading && reading.isPerfect), {
       st: "ok", axis: axis, score: reading ? reading.score : null, pct: reading ? reading.pct : null,
-      rank: null, count: null, region: region, estimated: true, other: null,
+      rank: null, count: null, region: region, estimated: true, other: null, cls: null,
       builtAt: B ? B.builtAt : 0, stale: !!(B && B.stale)
     });
     if (!B || !reading || reading.pct == null) return out;
     var list = (B.lists[region] || {})[axis] || [], n = String(name).toLowerCase(), better = 0, count = 0;
     var own = B.byKey[region + "|" + n] || null;
+    var clsName = recCls || (own && own.cls) || null, ck = classKey(clsName), cBetter = 0, cCount = 0;
     for (var i = 0; i < list.length; i++) {
       if (list[i].n === n) continue;
       count++;
       var v = pctKey(axis === "support" ? list[i].sup : list[i].dps);
-      if (v > reading.pct || (v === reading.pct && (!own || list[i].ord < own.ord))) better++;
+      var up = v > reading.pct || (v === reading.pct && (!own || list[i].ord < own.ord));
+      if (up) better++;
+      if (ck && classKey(list[i].cls) === ck) { cCount++; if (up) cBetter++; }
     }
     out.rank = better + 1;
     out.count = count + 1;
+    if (ck) out.cls = { name: clsName, rank: cBetter + 1, count: cCount + 1 };
     return out;
   }
 
   // ------------------------------------------------------------------ header + stats from the record
 
+  /** A class name as a key: "Guardian Knight" and "Guardianknight" are one class. */
+  function classKey(s) { return String(s == null ? "" : s).replace(/[^A-Za-z]/g, "").toLowerCase(); }
+  /** A class in the plural, for the tiles: "Reapers", "Sorceresses", "Guardian Knights". */
+  function classPlural(cls) {
+    var key = classIconFile(cls) || String(cls || ""), label = CLASS_LABEL[key] || key;
+    return /ss$/.test(label) ? label + "es" : label + "s";
+  }
+  /**
+   * A tile's class line and its gloss, from a rank part's cls {name, rank, count}:
+   * the place among the rows of the same class on the same board.
+   * null when the board or the record names no class.
+   */
+  function clsLine(r, what, board, everyMin) {
+    var c = r && r.cls;
+    if (!c || !c.name || !c.count || !c.rank) return null;
+    var pl = classPlural(c.name);
+    return {
+      txt: (r.estimated ? "≈ " : "") + topPct(c.rank, c.count) + " of " + pl + " (of " + nf(c.count) + ")",
+      gloss: (r.estimated
+        ? "Where this " + what + " would place among the " + pl + " on the " + r.region + " " + board + " board, which does not hold it yet: #" +
+          nf(c.rank) + " of " + nf(c.count) + ", counting it."
+        : "#" + nf(c.rank) + " of the " + nf(c.count) + " " + pl + " on the " + r.region + " " + board + " board.") +
+        " The percent is that place divided by " + nf(c.count) + ": the share of " + pl + " at or above this " + what +
+        ". The board rebuilds at most every " + everyMin + " minutes."
+    };
+  }
+  function tfootHtml(line) {
+    return '<div class="lp-tfoot"' + (line ? gl(line.gloss) + ">" + esc(line.txt) : ">") + "</div>";
+  }
   function classIconFile(cls) {
     return cls ? (CLASS_ICON_BY_KEY[String(cls).replace(/[^A-Za-z]/g, "").toLowerCase()] || null) : null;
   }
@@ -1170,19 +1236,20 @@
       score: isNum(r.score) ? fx(r.score, 1) : "—",
       pct: (isNum(r.pct) ? fx(r.pct, 2) + "%" : "—") + (sup ? " per dealer" : " damage"),
       rankTxt: r.rank ? (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region : "Rank unavailable",
-      sub2: r.rank ? topPct(r.rank, r.count) + " · " + board + " board" : board + " board"
+      sub2: r.rank ? topPct(r.rank, r.count) + " · " + board + " board" : board + " board",
+      cls: r.rank ? clsLine(r, "bracelet", board, 10) : null
     };
   }
   function brTileHtml(ctx) {
     var r = ctx.model.brRank;
     if (!r || r.st === "loading") return SKEL["lp-tile-br-body"];
-    if (r.st !== "ok") return '<div class="lp-tmsg">' + esc(r.msg || "No bracelet rank.") + "</div>";
+    if (r.st !== "ok") return '<div class="lp-tmsg">' + esc(r.msg || "No bracelet rank.") + "</div>" + tfootHtml(null);
     var b = brBits(ctx);
     return badgeHtml(r.key, r.bg, r.fg, r.cls, b.badgeGloss, true) +
       '<div class="lp-tnum"><div class="lp-tscore"' + gl(b.scoreGloss) + ">" + b.score + "</div>" +
       '<div class="lp-tsub"' + gl(b.pctGloss) + ">" + b.pct + "</div></div>" +
       '<div class="lp-trank"><div class="lp-trk"' + gl(b.rankGloss) + ">" + b.rankTxt + "</div>" +
-      '<div class="lp-tsub"' + gl(b.topGloss) + ">" + esc(b.sub2) + "</div></div>";
+      '<div class="lp-tsub"' + gl(b.topGloss) + ">" + esc(b.sub2) + "</div></div>" + tfootHtml(b.cls);
   }
   /** The bracelet overview's headline: letter · grade · damage · place. */
   function brFigHtml(ctx) {
@@ -1197,12 +1264,13 @@
   function agTileHtml(ctx) {
     var a = ctx.model.ag, r = ctx.model.agRank;
     if (!a || a.st === "loading") return SKEL["lp-tile-ag-body"];
-    if (a.st !== "ok") return '<div class="lp-tmsg">' + esc(a.msg || "No astrogem data.") + "</div>";
+    if (a.st !== "ok") return '<div class="lp-tmsg">' + esc(a.msg || "No astrogem data.") + "</div>" + tfootHtml(null);
     var sup = a.axis === "support";
     var badgeGloss = agBadgeGloss(a);
-    var rankBlock;
+    var rankBlock, foot = tfootHtml(null);
     if (!r || r.st === "loading") {
       rankBlock = '<div class="lp-trk"><span class="sk" style="width:7.5em"></span></div><div class="lp-tsub"><span class="sk" style="width:6em"></span></div>';
+      foot = '<div class="lp-tfoot"><span class="sk" style="width:11em"></span></div>';
     } else if (r.st !== "ok") {
       rankBlock = '<div class="lp-trk lp-dim"' + gl("The astrogem board could not be read just now.") + ">Rank unavailable</div>" +
         '<div class="lp-tsub">' + esc(r.msg || "") + "</div>";
@@ -1211,11 +1279,12 @@
       rankBlock = '<div class="lp-trk"' + gl(agRankGloss(r)) + ">" + (r.estimated ? "≈ #" : "#") + nf(r.rank) + " of " + nf(r.count) + " " + r.region + "</div>" +
         '<div class="lp-tsub"' + gl("#" + nf(r.rank) + " divided by " + nf(r.count) + ": the share of the board at or above this grid.") + ">" +
         topPct(r.rank, r.count) + " · " + rb + " board</div>";
+      foot = tfootHtml(clsLine(r, "grid", rb, 30));
     }
     return badgeHtml(a.letter, a.bg, a.fg, "", badgeGloss, true) +
       '<div class="lp-tnum"><div class="lp-tscore"' + gl(agQualityGloss()) + ">" + fx(a.quality, 1) + "</div>" +
       '<div class="lp-tsub"' + gl(agDmgGloss(sup)) + ">" + fx(a.dmg, 2) + "%" + (sup ? " party dmg" : " grid dmg") + "</div></div>" +
-      '<div class="lp-trank">' + rankBlock + "</div>";
+      '<div class="lp-trank">' + rankBlock + "</div>" + foot;
   }
   function agBadgeGloss(a) {
     var sup = a.axis === "support";
@@ -1653,7 +1722,7 @@
   function gpdTileHtml(ctx) {
     var g = ctx.model.gpd;
     if (!g || g.st === "loading") return SKEL["lp-tile-gpd-body"];
-    if (g.st !== "ok") return '<div class="lp-tmsg">' + esc(g.msg || "No GPD reading.") + "</div>";
+    if (g.st !== "ok") return '<div class="lp-tmsg">' + esc(g.msg || "No GPD reading.") + "</div>" + tfootHtml(null);
     var per = "per 1% " + (g.axis === "support" ? "party " : "") + "dmg";
     var best = g.best ? gpdRow(g, g.best) : null;
     if (best && best.next) {
@@ -1661,20 +1730,20 @@
       return '<div class="lp-tnum"' + gl(gpdPriceGloss(best, g.axis)) + '><div class="lp-tscore' + (n.price.length > 6 ? " lp-tsm" : "") + '">' +
           esc(n.price) + '</div><div class="lp-tsub">' + per + "</div></div>" +
         '<div class="lp-gstep"><div class="lp-gtext"' + gl(gpdNextGloss(best)) + '><span class="lp-gdot" style="background:' + esc(best.color) + '"></span>' +
-          esc(best.label + " → " + n.to) + "</div>" +
-        '<div class="lp-tsub"' + gl(gpdYoursGloss(best)) + ">yours: " + esc(best.yours) + "</div></div>";
+          esc(best.label + " → " + n.to) + "</div></div>" +
+        tfootHtml({ txt: "yours: " + best.yours, gloss: gpdYoursGloss(best) });
     }
     var low = g.low ? gpdRow(g, g.low) : null;
     if (!low || !low.next) {
       return '<div class="lp-tnum"' + gl("No ladder the lookup can read has a next step, so there is nothing to price.") +
           '><div class="lp-tscore lp-dim">—</div><div class="lp-tsub">' + per + "</div></div>" +
-        '<div class="lp-gstep"><div class="lp-gtext"' + gl("No ladder the lookup can read has a rung above this character's.") + ">Nothing left to buy</div>" +
-        '<div class="lp-tsub">every read ladder is at its top</div></div>';
+        '<div class="lp-gstep"><div class="lp-gtext"' + gl("No ladder the lookup can read has a rung above this character's.") + ">Nothing left to buy</div></div>" +
+        tfootHtml({ txt: "every read ladder is at its top", gloss: "" });
     }
     return '<div class="lp-tnum"' + gl(gpdPriceGloss(low, g.axis)) + '><div class="lp-tscore lp-dim' + (low.next.price.length > 6 ? " lp-tsm" : "") + '">' +
         esc(low.next.price) + '</div><div class="lp-tsub">' + per + "</div></div>" +
-      '<div class="lp-gstep"><div class="lp-gtext"' + gl("Every next step left costs more than 25M per 1% damage, so the chart names no pick.") + ">Nothing under 25M/1%</div>" +
-      '<div class="lp-tsub"' + gl(gpdNextGloss(low)) + ">cheapest left: " + esc(low.label + " → " + low.next.to) + "</div></div>";
+      '<div class="lp-gstep"><div class="lp-gtext"' + gl("Every next step left costs more than 25M per 1% damage, so the chart names no pick.") + ">Nothing under 25M/1%</div></div>" +
+      tfootHtml({ txt: "cheapest left: " + low.label + " → " + low.next.to, gloss: gpdNextGloss(low) });
   }
 
   /** The gold-per-1% overview's headline: the pick and its price. */
@@ -1960,7 +2029,7 @@
         ctx.model.brRank = { st: "none", msg: "No bracelet" };
       } else {
         ctx.model.br = brPart(x, d, false);
-        ctx.model.brRank = brRankEstimate(ctx.board, ctx.region, ctx.name, x);
+        ctx.model.brRank = brRankEstimate(ctx.board, ctx.region, ctx.name, x, d["class"] || null);
       }
       renderBracelet(ctx);
       renderStrip(ctx);
@@ -2078,7 +2147,7 @@
         ctx.model.agRank = { st: "none", msg: "Not on the board" };
       } else {
         ctx.model.agRank = { st: "ok", axis: used, rank: place.rank, count: place.count, estimated: place.estimated,
-          region: res.region, builtAt: res.builtAt, stale: res.stale,
+          cls: place.cls || null, region: res.region, builtAt: res.builtAt, stale: res.stale,
           other: (other && !other.estimated) ? { axis: used === "support" ? "dps" : "support", rank: other.rank, count: other.count } : null };
       }
       if (perfNav && res.timings) perfNav.agBoard = res.timings;
