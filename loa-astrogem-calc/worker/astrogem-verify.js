@@ -41,16 +41,10 @@
 const PRIMARY_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
 const FALLBACK_MODEL = "@cf/llava-hf/llava-1.5-7b-hf";
 
+// The CORS allowlist lives in cors.js, shared with the bible and data workers.
+import { corsHeaders } from "./cors.js";
+
 const GATE_TOKEN = "6104928cd0cc5374f5330e63e6a834f99aef7579db15c77d9d154932bf7a8ced";
-const ALLOW_ORIGINS = [
-  "https://www.loseii.com",          // canonical site (monorepo → Cloudflare Pages)
-  "https://loseii.com",              // apex (redirects to www, but be safe)
-  "https://shizukaziye.github.io",   // legacy standalone (redirect stub, kept for old tabs)
-  "http://localhost:8080",
-  "http://127.0.0.1:8080",
-  "http://localhost:8799",
-  "http://127.0.0.1:8799"
-];
 
 const DAILY_NEURON_BUDGET = 9000;   // 90% of the free 10,000/day — never pay
 const EST_NEURONS_PER_CALL = 100;   // conservative until dashboard-calibrated
@@ -58,15 +52,9 @@ const MAX_BODY = 2 * 1024 * 1024;   // the crop should be ~50-200KB; 2MB is gene
 const MAX_FIELDS = 20;
 const CACHE_TTL = 7 * 24 * 3600;
 
+// An unknown Origin gets no Access-Control-Allow-Origin (it used to get www.loseii.com's).
 function cors(request) {
-  const origin = request.headers.get("Origin") || "";
-  const allowed = ALLOW_ORIGINS.indexOf(origin) !== -1 ? origin : ALLOW_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400"
-  };
+  return corsHeaders(request, { headers: "Content-Type" });
 }
 function json(request, body, status) {
   return new Response(JSON.stringify(body), {

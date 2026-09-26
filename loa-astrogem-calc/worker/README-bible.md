@@ -192,10 +192,16 @@ real ids and fails if only one side is fixed.
 
 ## CORS / security
 
-CORS is an **exact-match Origin allowlist** (`ALLOW_ORIGINS` in the source): the
-site origins plus `lostark.bible` / `www.lostark.bible` — the bookmarklet POSTs
-`?submit=1` from those pages, and its preflight needs the echoed Origin. Requests
-with no Origin (curl, the cron) run without CORS headers; CORS only binds browsers.
+CORS comes from `cors.js`, one allowlist shared by all three astrogem workers:
+`www.loseii.com`, `loseii.com`, `shizukaziye.github.io`, `loastuff.pages.dev` and
+its `*.loastuff.pages.dev` previews, and `http://localhost` / `http://127.0.0.1` on
+any port. An allowed Origin is echoed back with `Vary: Origin`; any other gets no
+`Access-Control-Allow-Origin` at all. This worker alone also grants
+`lostark.bible` / `www.lostark.bible` — the bookmarklet POSTs `?submit=1` from
+those pages, and its preflight needs the echoed Origin — and exposes `ETag`
+(`?list=1`, `/board-slim`). Requests with no Origin (curl, the cron) get no grant;
+CORS only binds browsers. A change to `cors.js` ships only when all three workers
+are redeployed.
 
 Admin auth is the `ADMIN_TOKEN` Worker secret, sent as an `X-Admin-Token` header.
 It replaced the old `?k=<gate hash>` check, which shipped to every browser in
