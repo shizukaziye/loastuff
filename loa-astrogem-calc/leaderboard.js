@@ -289,7 +289,7 @@
 '    </div>' +
 '    <select class="lb-classsel" id="lb-class" aria-label="Filter by class"><option value="">All classes</option></select>' +
 '    <input class="lb-search" id="lb-search" type="search" placeholder="Search name&hellip;" autocomplete="off" aria-label="Search characters by name">' +
-'    <span class="lb-status" id="lb-status"></span>' +
+'    <span class="lb-status" id="lb-status" role="status"></span>' +
 '  </div>' +
 '  <div id="lb-body"></div>' +
 '</div>' +
@@ -307,16 +307,21 @@
 '</details>';
   }
 
-  function setStatus(msg, kind) {
+  // msg is what the reader sees, in plain words. detail (optional) is the raw technical
+  // string: it goes to the tooltip and console.debug, never into the message itself.
+  function setStatus(msg, kind, detail) {
     var el = $("lb-status");
     if (!el) return;
     el.textContent = msg || "";
     el.className = "lb-status" + (kind ? " " + kind : "");
+    if (detail) { el.title = String(detail); if (window.console && console.debug) console.debug("[leaderboard]", msg, detail); }
+    else el.removeAttribute("title");
   }
 
-  function renderEmpty(msg) {
+  // head: the bold first line. An empty board and a failed load must not read the same.
+  function renderEmpty(msg, head) {
     var body = $("lb-body");
-    if (body) body.innerHTML = '<div class="placeholder"><b>No characters yet</b>' + esc(msg) + '</div>';
+    if (body) body.innerHTML = '<div class="placeholder"><b>' + esc(head || "No characters yet") + '</b>' + esc(msg) + '</div>';
   }
 
   // The character's page on its source site: lostark.bible, or lopec.kr for KR.
@@ -397,7 +402,7 @@
     var gradeTxt = avg == null ? "—" : avg.toFixed(1);
     var badge = avg == null ? "" : rankBadge(modeRankFromGrade(avg, support), avg);
     var dmgTxt = dmg == null ? "—" : dmg.toFixed(2) + "%";
-    return '<tr data-i="' + i + '">' +
+    return '<tr data-i="' + i + '" tabindex="0">' +
       starCell(c, i) +
       '<td class="lb-rank">#' + rankNum + '</td>' +
       '<td class="lb-ilvl">' + (c.itemLevel ? Number(c.itemLevel).toLocaleString() : '<span class="lb-dash">—</span>') + '</td>' +
@@ -480,7 +485,7 @@
       '<button type="button" class="lb-pagebtn" id="lb-prev"' + (page <= 1 ? ' disabled' : '') + '>&larr; Prev</button>' +
       '<button type="button" class="lb-pagebtn" id="lb-next"' + (page >= pc ? ' disabled' : '') + '>Next &rarr;</button>' +
       '<span class="lb-pageinfo">Page ' + page + ' of ' + pc + ' &middot; #' + first + '–#' + last + '</span>' +
-      '<span>Jump to <input type="number" class="lb-jump" id="lb-jump" min="1" max="' + pc + '" value="' + page + '"></span>' +
+      '<span>Jump to <input type="number" class="lb-jump" id="lb-jump" aria-label="Jump to page" min="1" max="' + pc + '" value="' + page + '"></span>' +
       '</div>';
   }
 
@@ -505,6 +510,14 @@
   // open the loadout); any other click on the row opens it in the Grader.
   function wireTbody(tbody) {
     if (!tbody) return;
+    // Rows open on click; Enter/Space on a focused row does the same (rows are tabbable).
+    tbody.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var t = e.target;
+      if (!t || !t.matches || !t.matches("tr[data-i]")) return;
+      e.preventDefault();
+      t.click();
+    });
     tbody.addEventListener("click", function (e) {
       var starBtn = e.target.closest ? e.target.closest(".lb-starbtn") : null;
       if (starBtn) {
@@ -675,10 +688,10 @@
       return resp.json().then(function (data) { return { ok: resp.ok, data: data }; });
     }).then(function (r) {
       if (!r.ok) {
-        var em = (r.data && r.data.error) || "Worker returned an error.";
+        var em = (r.data && r.data.error) || "The leaderboard service returned an error. Try again in a minute.";
         // A throttle 429 (spam-refresh) isn't an error — show the note and keep any stale table.
         if (r.data && r.data.rateLimited) { setStatus(em, ""); if (!rawChars.length) renderEmpty(em); }
-        else { setStatus(em, "err"); if (!rawChars.length) renderEmpty("Could not load the leaderboard."); }
+        else { setStatus(em, "err"); if (!rawChars.length) renderEmpty("Could not load the leaderboard.", "Leaderboard unavailable"); }
         return;
       }
       var chars = (r.data && r.data.v === 2) ? decodeSnapshotV2(r.data) : ((r.data && r.data.characters) || []);
@@ -692,8 +705,8 @@
       setStatus(chars.length + " character" + (chars.length === 1 ? "" : "s") + " stored.", "");
       renderTable(chars);
     }).catch(function (e) {
-      setStatus("Request failed: " + (e && e.message || e), "err");
-      renderEmpty("Could not reach the Worker.");
+      setStatus("The leaderboard service did not answer. Try again in a minute.", "err", e && e.message || e);
+      if (!rawChars.length) renderEmpty("The leaderboard service did not answer. Try again in a minute.", "Leaderboard unavailable");
     });
     loadedOnce = true;
   }

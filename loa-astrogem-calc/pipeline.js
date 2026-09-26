@@ -1186,7 +1186,7 @@
     var gpdBtns = "";
     for (var i = 0; i < GPD_LIST.length; i++) {
       var g = GPD_LIST[i];
-      gpdBtns += '<span class="mbtn gpd-btn ' + (g === GPD ? "active" : "") + '" data-gpd="' + g + '" onclick="window.__plSetGpd(' + g + ')">' + gpdName(g) + '</span>';
+      gpdBtns += '<button type="button" class="mbtn gpd-btn ' + (g === GPD ? "active" : "") + '" aria-pressed="' + (g === GPD) + '" data-gpd="' + g + '" onclick="window.__plSetGpd(' + g + ')">' + gpdName(g) + '</button>';
     }
     // One compact row (gpd tiers + roster toggle), tucked above the viewport and
     // revealed on hover (see #pl-inputs styles) so the table gets the vertical space.
@@ -1194,29 +1194,29 @@
     // no roster-bound gems). One compact row, tucked above the viewport, hover to reveal.
     var rosterToggle = (REGION === "global")
       ? '<span class="pl-sep"></span>'
-        + '<span class="mbtn ' + (ROSTER === "nrb" ? "active" : "") + '" id="pl-r-nrb" onclick="window.__plSetRoster(\'nrb\')">Non-Roster Bound</span>'
-        + '<span class="mbtn ' + (ROSTER === "rb" ? "active" : "") + '" id="pl-r-rb" onclick="window.__plSetRoster(\'rb\')">Roster Bound</span>'
+        + '<button type="button" class="mbtn ' + (ROSTER === "nrb" ? "active" : "") + '" aria-pressed="' + (ROSTER === "nrb") + '" id="pl-r-nrb" onclick="window.__plSetRoster(\'nrb\')">Non-Roster Bound</button>'
+        + '<button type="button" class="mbtn ' + (ROSTER === "rb" ? "active" : "") + '" aria-pressed="' + (ROSTER === "rb") + '" id="pl-r-rb" onclick="window.__plSetRoster(\'rb\')">Roster Bound</button>'
       : '';
     return '<div class="inputs" id="pl-inputs">'
       + '<div class="pl-bar">'
       + (SUPPORT_ENABLED
         ? '<span class="pl-axis">'
-          + '<span class="mbtn ' + (AXIS === "dps" ? "active" : "") + '" id="pl-ax-dps" onclick="window.__plSetAxis(\'dps\')">DPS</span>'
-          + '<span class="mbtn ' + (AXIS === "support" ? "active" : "") + '" id="pl-ax-sup" onclick="window.__plSetAxis(\'support\')">Support</span>'
+          + '<button type="button" class="mbtn ' + (AXIS === "dps" ? "active" : "") + '" aria-pressed="' + (AXIS === "dps") + '" id="pl-ax-dps" onclick="window.__plSetAxis(\'dps\')">DPS</button>'
+          + '<button type="button" class="mbtn ' + (AXIS === "support" ? "active" : "") + '" aria-pressed="' + (AXIS === "support") + '" id="pl-ax-sup" onclick="window.__plSetAxis(\'support\')">Support</button>'
           + '</span>'
           + '<span class="pl-sep"></span>'
         : '')
       + '<span class="pl-region">'
-      + '<span class="mbtn ' + (REGION === "global" ? "active" : "") + '" id="pl-rg-global" onclick="window.__plSetRegion(\'global\')">Global</span>'
-      + '<span class="mbtn ' + (REGION === "kr" ? "active" : "") + '" id="pl-rg-kr" onclick="window.__plSetRegion(\'kr\')">KR</span>'
+      + '<button type="button" class="mbtn ' + (REGION === "global" ? "active" : "") + '" aria-pressed="' + (REGION === "global") + '" id="pl-rg-global" onclick="window.__plSetRegion(\'global\')">Global</button>'
+      + '<button type="button" class="mbtn ' + (REGION === "kr" ? "active" : "") + '" aria-pressed="' + (REGION === "kr") + '" id="pl-rg-kr" onclick="window.__plSetRegion(\'kr\')">KR</button>'
       + '</span>'
       + '<span class="pl-sep"></span>'
       + '<span class="pl-gpd" id="pl-gpd-row">' + (gpdBtns || '<span class="note">Loading tiers…</span>') + '</span>'
       + rosterToggle
       + '</div>'
       + '<div class="pl-handles">'
-      + '<div class="pl-handle pl-handle-rg" role="button" tabindex="0" onclick="window.__plToggleBar()">axis / region / gpd &#9662;</div>'
-      + '<div class="pl-handle pl-handle-legend" role="button" tabindex="0" onclick="window.__plToggleLegend()">how to read &#9662;</div>'
+      + '<div class="pl-handle pl-handle-rg" role="button" tabindex="0" aria-expanded="false" aria-controls="pl-inputs" onclick="window.__plToggleBar()">axis / region / gpd &#9662;</div>'
+      + '<div class="pl-handle pl-handle-legend" role="button" tabindex="0" aria-expanded="false" aria-controls="pl-legend" onclick="window.__plToggleLegend()">how to read &#9662;</div>'
       + '</div>'
       + '</div>';
   }
@@ -1516,8 +1516,9 @@
         DATA_WAITERS[axis] = [];                     // a later call retries the fetch
         var host = document.getElementById("pl-results");
         if (host && axis === AXIS) {
-          host.innerHTML = '<div class="placeholder"><b>Could not load ' + url + '</b>'
-            + '<div class="note">Serve over http (static server). ' + e.message + '</div></div>';
+          if (window.console && console.debug) console.debug("[pipeline] could not load", url, e && e.message || e);
+          host.innerHTML = '<div class="placeholder" title="' + String(url + ": " + (e && e.message || e)).replace(/[&"<>]/g, function (c) { return { "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" }[c]; }) + '"><b>The gem tables did not load.</b>'
+            + '<div class="note">Check your connection and reload the page.</div></div>';
         }
       });
   }
@@ -1544,15 +1545,15 @@
     GPD = g;
     plSaveState();
     var btns = document.querySelectorAll("#pl-gpd-row .gpd-btn");
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("active", Number(btns[i].dataset.gpd) === g);
+    for (var i = 0; i < btns.length; i++) setOn(btns[i], Number(btns[i].dataset.gpd) === g);
     renderBody();
   };
   window.__plSetRoster = function (rb) {
     ROSTER = rb;
     plSaveState();
     var a = document.getElementById("pl-r-nrb"), b = document.getElementById("pl-r-rb");
-    if (a) a.classList.toggle("active", rb === "nrb");
-    if (b) b.classList.toggle("active", rb === "rb");
+    setOn(a, rb === "nrb");
+    setOn(b, rb === "rb");
     var note = document.getElementById("pl-mode-note");
     if (note) note.textContent = modeNote();
     renderBody();
@@ -1580,14 +1581,25 @@
   };
   window.__plToggleBar = function () {   // tap the handle (mobile has no hover) to open/close the bar
     var el = document.getElementById("pl-inputs");
-    if (el) el.classList.toggle("pl-open");
+    if (!el) return;
+    var open = el.classList.toggle("pl-open");
+    var h = document.querySelector("#tab-pipeline .pl-handle-rg");
+    if (h) h.setAttribute("aria-expanded", open ? "true" : "false");
   };
+
+  // A toggle button's on/off state: the .active colour AND aria-pressed, so the
+  // state is not shown by colour alone.
+  function setOn(el, on) {
+    if (!el) return;
+    el.classList.toggle("active", !!on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
+  }
   window.__plToggleLegend = function () {   // collapse/expand the "How to read these tables" legend
     var el = document.getElementById("pl-legend");
     if (!el) return;
     var open = el.classList.toggle("pl-legend-open");
     var h = document.querySelector("#tab-pipeline .pl-handle-legend");
-    if (h) h.classList.toggle("active", open);
+    if (h) { h.classList.toggle("active", open); h.setAttribute("aria-expanded", open ? "true" : "false"); }
   };
   // ===========================================================================
   // PUBLIC ADVICE API — consumed by the Grader tab's "what to do with your

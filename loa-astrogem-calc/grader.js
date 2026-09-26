@@ -662,7 +662,7 @@
 
 // ---- INPUT panel ----
 '<div class="inputs" id="gr-inputs">' +
-'  <div class="ihdr"><span>Grader — score a finished gem</span><span class="tgl" onclick="window.__grToggleInputs()"><span id="gr-caret">&#9662;</span></span></div>' +
+'  <div class="ihdr"><span>Grader — score a finished gem</span><span class="tgl" role="button" tabindex="0" aria-label="Show or hide the grader inputs" onclick="window.__grToggleInputs()"><span id="gr-caret">&#9662;</span></span></div>' +
 '  <div id="gr-inputs-body">' +
 '    <div class="gr-modes">' +
 '      <button class="mbtn active" id="gr-mode-pull" type="button">Pull from lostark.bible</button>' +
@@ -689,14 +689,14 @@
 '      <div class="gr-pullgrid">' +
 '        <div class="gr-pullleft">' +
 '          <div class="gr-pullctl">' +
-'            <div class="fld fld-region"><label>Region</label><select id="gr-region">' + opts(REGIONS, "NA") + '</select></div>' +
-'            <div class="fld fld-name"><label>Character name</label><input id="gr-name" type="text" placeholder="e.g. Paroxysmal" autocomplete="off"></div>' +
+'            <div class="fld fld-region"><label for="gr-region">Region</label><select id="gr-region">' + opts(REGIONS, "NA") + '</select></div>' +
+'            <div class="fld fld-name"><label for="gr-name">Character name</label><input id="gr-name" type="text" placeholder="e.g. Paroxysmal" autocomplete="off"></div>' +
 '          </div>' +
 '          <div class="gr-pullbtns">' +
 '            <button class="primary" id="gr-pull-go" type="button">Grade loadout</button>' +
 '            <button class="mbtn" id="gr-pull-refresh" type="button" style="display:none">Re-pull</button>' +
 '          </div>' +
-'          <div class="barrow" style="margin-top:8px"><span class="gr-status" id="gr-pull-status"></span></div>' +
+'          <div class="barrow" style="margin-top:8px"><span class="gr-status" id="gr-pull-status" role="status"></span></div>' +
 '          <div class="gr-freenote" id="gr-free-note"></div>' +
 '          <div class="note" id="gr-pull-note"></div>' +
 '        </div>' +
@@ -856,7 +856,7 @@
     if (!supportAxisAvailable()) return "";
     function pill(mode, label) {
       return '<button type="button" class="gr-axispill gr-axispill-' + mode + (grMode === mode ? " active" : "") +
-        '" data-axis="' + mode + '">' + label + '</button>';
+        '" aria-pressed="' + (grMode === mode) + '" data-axis="' + mode + '">' + label + '</button>';
     }
     var note = isSupport()
       ? "Grading party-damage value (support)"
@@ -884,7 +884,7 @@
     if (!(data && data.chaosGems && data.chaosGems.length)) return "";
     function pill(p, label) {
       return '<button type="button" class="gr-axispill gr-presetpill' + (grPreset === p ? " active" : "") +
-        '" data-preset="' + p + '">' + label + '</button>';
+        '" aria-pressed="' + (grPreset === p) + '" data-preset="' + p + '">' + label + '</button>';
     }
     var note = (grPreset === "chaos") ? "Grading the chaos-dungeon preset" : "Grading the raid preset";
     return '<div class="gr-axis gr-presetrow">' +
@@ -1288,8 +1288,8 @@
     var gpdBtns = "";
     for (var i = 0; i < GPD_TIERS.length; i++) {
       var g = GPD_TIERS[i];
-      gpdBtns += '<span class="mbtn gpd-btn ' + (g === grGpd ? "active" : "") + '" data-gpd="' + g
-        + '" onclick="window.__grSetGpd(' + g + ')">' + gpdLabel(g) + '</span>';
+      gpdBtns += '<button type="button" class="mbtn gpd-btn ' + (g === grGpd ? "active" : "") + '" aria-pressed="' + (g === grGpd) + '" data-gpd="' + g
+        + '" onclick="window.__grSetGpd(' + g + ')">' + gpdLabel(g) + '</button>';
     }
 
     // KR loadouts get the KR plan (no roster-bound gems, tradable-epic floor); global
@@ -1322,8 +1322,8 @@
     var rosterRow = "";
     if (rgn !== "kr") {
       rosterRow = '<div class="gr-gpd gr-roster"><span class="lab">Binding</span>'
-        + '<span class="mbtn roster-btn ' + (grRoster === "nrb" ? "active" : "") + '" data-roster="nrb" onclick="window.__grSetRoster(\'nrb\')">Non-roster-bound</span>'
-        + '<span class="mbtn roster-btn ' + (grRoster === "rb" ? "active" : "") + '" data-roster="rb" onclick="window.__grSetRoster(\'rb\')">Roster-bound</span>'
+        + '<button type="button" class="mbtn roster-btn ' + (grRoster === "nrb" ? "active" : "") + '" aria-pressed="' + (grRoster === "nrb") + '" data-roster="nrb" onclick="window.__grSetRoster(\'nrb\')">Non-roster-bound</button>'
+        + '<button type="button" class="mbtn roster-btn ' + (grRoster === "rb" ? "active" : "") + '" aria-pressed="' + (grRoster === "rb") + '" data-roster="rb" onclick="window.__grSetRoster(\'rb\')">Roster-bound</button>'
         + '</div>';
     }
     return '<div class="gr-plan">'
@@ -1361,7 +1361,7 @@
   window.__grSetGpd = function (g) {
     grGpd = g;
     var btns = document.querySelectorAll("#tab-grader .gr-gpd .gpd-btn");
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("active", Number(btns[i].getAttribute("data-gpd")) === g);
+    for (var i = 0; i < btns.length; i++) setOn(btns[i], Number(btns[i].getAttribute("data-gpd")) === g);
     // The provenance note must track the ACTIVE tier ("auto-set" only while it is the
     // CP suggestion) — re-render it, since refreshPlanCards doesn't touch it.
     var noteHost = document.getElementById("gr-gpd-note-host");
@@ -1374,7 +1374,7 @@
   window.__grSetRoster = function (r) {
     grRoster = (r === "rb") ? "rb" : "nrb";
     var btns = document.querySelectorAll("#tab-grader .gr-roster .roster-btn");
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("active", btns[i].getAttribute("data-roster") === grRoster);
+    for (var i = 0; i < btns.length; i++) setOn(btns[i], btns[i].getAttribute("data-roster") === grRoster);
     var lbl = document.getElementById("gr-econ-label");
     if (lbl) lbl.textContent = (isSupport() ? "Support · " : "") + ((grRoster === "rb") ? "RB" : "NRB");
     refreshPlanCards();
@@ -1598,10 +1598,22 @@ presetToggleHtml(data) +
     setTimeout(function () { el.classList.remove("flash"); }, 1400);
   }
 
-  function setPullStatus(msg, kind) {
+  // msg is what the reader sees, in plain words. detail (optional) is the raw technical
+  // string: it goes to the tooltip and console.debug, never into the message itself.
+  function setPullStatus(msg, kind, detail) {
     var el = $("gr-pull-status");
     el.textContent = msg || "";
     el.className = "gr-status" + (kind ? " " + kind : "");
+    if (detail) { el.title = String(detail); if (window.console && console.debug) console.debug("[grader]", msg, detail); }
+    else el.removeAttribute("title");
+  }
+
+  // A toggle button's on/off state: the .active colour AND aria-pressed, so the
+  // state is not shown by colour alone.
+  function setOn(el, on) {
+    if (!el) return;
+    el.classList.toggle("active", !!on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   }
 
   // Make the Re-pull button + the source note reflect the site a region pulls from
@@ -1759,12 +1771,12 @@ presetToggleHtml(data) +
         return;
       }
       // Anything else: an error / rate-limit / busy / monthly-budget message.
-      var msg = d.error || "Worker returned an error.";
+      var msg = d.error || "The lookup service returned an error. Try again in a minute.";
       setPullStatus(msg, "err");
       $("gr-result").innerHTML = '<div class="panel"><div class="gr-status err">' + esc(msg) + '</div></div>';
       if (d.degraded) setFreeStatus(true);
     }).catch(function (e) {
-      setPullStatus("Request failed: " + (e && e.message || e), "err");
+      setPullStatus("The lookup service did not answer. Try again in a minute.", "err", e && e.message || e);
     }).then(function () {
       $("gr-pull-go").disabled = false;
       if (refreshBtn) refreshBtn.disabled = false;
@@ -1912,10 +1924,10 @@ presetToggleHtml(data) +
   // ---------------- mode switching ----------------
   function selectMode(mode) {
     if (mode !== "custom" && mode !== "bookmarklet" && mode !== "shots") mode = "pull";
-    $("gr-mode-pull").classList.toggle("active", mode === "pull");
-    $("gr-mode-shots").classList.toggle("active", mode === "shots");
-    $("gr-mode-custom").classList.toggle("active", mode === "custom");
-    $("gr-mode-bookmarklet").classList.toggle("active", mode === "bookmarklet");
+    setOn($("gr-mode-pull"), mode === "pull");
+    setOn($("gr-mode-shots"), mode === "shots");
+    setOn($("gr-mode-custom"), mode === "custom");
+    setOn($("gr-mode-bookmarklet"), mode === "bookmarklet");
     $("gr-body-pull").style.display = mode === "pull" ? "" : "none";
     $("gr-body-shots").style.display = mode === "shots" ? "" : "none";
     $("gr-body-custom").style.display = mode === "custom" ? "" : "none";
@@ -2114,7 +2126,7 @@ presetToggleHtml(data) +
       setPullStatus(chars.length + " characters · " + have + " with cached loadouts" +
         (added ? " · " + added + " added to saved characters" : ""), "ok");
     }).catch(function (e) {
-      setPullStatus("Couldn't load your roster: " + (e && (e.description || e.error) || e), "err");
+      setPullStatus("Couldn't load your roster. Try again in a minute.", "err", e && (e.description || e.error || e.message) || e);
       renderAuth();
     });
   }
@@ -2375,7 +2387,7 @@ presetToggleHtml(data) +
     if (window.BibleOAuth) {
       window.BibleOAuth.onChange(function () { renderAuth(); refreshLookupPanel(); });
       window.BibleOAuth.handleRedirect().then(function (res) {
-        if (res && !res.ok) setPullStatus("Sign-in failed: " + res.error, "err");
+        if (res && !res.ok) setPullStatus("Sign-in with lostark.bible did not finish. Try signing in again.", "err", res.error);
         renderAuth();
         if (res && res.ok) loadRosters();
       });
