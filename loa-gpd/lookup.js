@@ -8,7 +8,7 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=4"></script>
+ *   <script src="/loa-gpd/lookup.js?v=6"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
@@ -819,7 +819,14 @@
       }
       if (key === "armor" || key === "weapon") {
         var hn = key === "armor" ? c.honeArmor : c.honeWeapon;
-        if (hn != null) {
+        if (key === "weapon" && c.weaponSidereal) {
+          // KYLE, 2026-09-27: a Sidereal +10 read as a normal +10 and the chart
+          // offered "+12 for 364k". Its honing table is its own and it already
+          // outclasses a +25, so it is shown, not placed, and never the next buy.
+          e.seen = "Sidereal +" + hn + (c.weaponAdv ? " · advanced " + c.weaponAdv : "");
+          e.offLadder = "Sidereal +" + hn;
+          e.why = "a Sidereal weapon hones on its own table and outclasses a +25 — not on this ladder";
+        } else if (hn != null) {
           e.owned = lkOwnedIndex(mine, function (r) {
             return parseInt(String(r.to || "").replace(/[^0-9]/g, ""), 10) <= hn;
           });
@@ -936,7 +943,7 @@
           : "the ark grid gems did not parse";
       }
       var graded = e.seen != null && !e.why;
-      out.yours[key] = { owned: e.owned, label: graded ? (e.place || e.seen) : null };
+      out.yours[key] = { owned: e.owned, label: graded ? (e.place || e.seen) : (e.offLadder || null) };
       // the rung you are standing on — the step that bought your current
       // position — so the list can show what the last 1% cost beside the next
       if (graded) {
@@ -973,6 +980,17 @@
     } : null;
     return out;
   }
+  /**
+   * A Sidereal (Esther) weapon. The astrogem worker names it from the item id
+   * on every pull since 2026-09-27; a record pulled before that still shows
+   * the one shape only a Sidereal can have — advanced honing on a weapon under
+   * +20, which normal honing does not open until +20. (NA/Legendarymember:
+   * weapon +10 with advanced 40 beside armour at +25/40.)
+   */
+  function lkSidereal(honing, adv, flag) {
+    if (flag === true) return true;
+    return honing != null && honing < 20 && adv != null && adv > 0;
+  }
   /** Every piece in a slot kind, read as a configuration. */
   function lkAccPieces(ctx, c, kind, axis) {
     if (!c || !c.acc) return null;
@@ -1006,6 +1024,7 @@
     var gems = (d.classicGemLevels || []).filter(function (x) { return x != null; });
     var eq = d.equipment || null;
     var armExact = !!(eq && eq.armorMin != null), wpnExact = !!(eq && eq.weapon != null);
+    var wpnAdv = wpnExact && eq.weaponAdv != null ? eq.weaponAdv : null;
     var same = current && current.name === d.name && current.region === d.region;
     var prev = same ? current : null;
     var c = {
@@ -1021,6 +1040,8 @@
       honeArmor: armExact ? eq.armorMin : lkHoning(d.itemLevel),
       honeWeapon: wpnExact ? eq.weapon : lkHoning(d.itemLevel),
       honeExact: armExact && wpnExact,
+      weaponAdv: wpnAdv,
+      weaponSidereal: wpnExact ? lkSidereal(eq.weapon, wpnAdv, eq.weaponSidereal) : false,
       karma: d.karma ? d.karma.enlightenment : null,
       stone: d.stone ? d.stone.a + "-" + d.stone.b : null,
       region: d.region || null,
@@ -1111,6 +1132,9 @@
           c.honeArmor = Math.min.apply(null, arm);
           c.honeWeapon = pr.honing.weapon;
           c.honeExact = true;
+          var padv = pr.advancedHoning ? pr.advancedHoning.weapon : null;
+          if (padv != null) c.weaponAdv = padv;
+          c.weaponSidereal = lkSidereal(c.honeWeapon, c.weaponAdv, c.weaponSidereal === true);
           c.stamp.honing = { src: "bracelet", ts: ts, exact: true };
         }
       }

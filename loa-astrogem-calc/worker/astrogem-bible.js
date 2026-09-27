@@ -783,11 +783,21 @@ function parseAccessories(html) {
 
 // Per-piece honing from the equipment slots (raid loadout = first occurrence
 // per slot). armorMin is the next tap target; weaponAdv rides for display.
+//
+// A Sidereal (Esther) weapon carries its own item id — 10134000 on
+// NA/Legendarymember against the 10144000 of a normal T4 upper weapon — and
+// hones on its own table, so its +N must never be read as a normal weapon's
+// (KYLE, 2026-09-27: "lemme just hone to esther 12 for 364k gold"). The id
+// rides with the record so the set can grow without a re-parse.
+const SIDEREAL_WEAPON_IDS = new Set([10134000]);
 function parseEquipmentHoning(html) {
-  const re = /slot:"(weapon|head|upper_body|lower_body|hand|shoulder)",data:\{type:"equipment",stats:\[.*?\],honing:(\d+)(?:,advancedHoning:(\d+))?/g;
+  const re = /slot:"(weapon|head|upper_body|lower_body|hand|shoulder)",data:\{type:"equipment",stats:\[(.*?)\],honing:(\d+)(?:,advancedHoning:(\d+))?/g;
   const seen = {}; let m;
   while ((m = re.exec(html)) !== null) {
-    if (seen[m[1]] == null) seen[m[1]] = { honing: +m[2], adv: m[3] != null ? +m[3] : null };
+    if (seen[m[1]] == null) {
+      const idm = /id:(\d+)/.exec(m[2]);
+      seen[m[1]] = { honing: +m[3], adv: m[4] != null ? +m[4] : null, id: idm ? +idm[1] : null };
+    }
   }
   const armor = ["head", "upper_body", "lower_body", "hand", "shoulder"]
     .map(sl => seen[sl]).filter(Boolean);
@@ -795,6 +805,8 @@ function parseEquipmentHoning(html) {
   return {
     weapon: seen.weapon ? seen.weapon.honing : null,
     weaponAdv: seen.weapon ? seen.weapon.adv : null,
+    weaponId: seen.weapon ? seen.weapon.id : null,
+    weaponSidereal: seen.weapon ? SIDEREAL_WEAPON_IDS.has(seen.weapon.id) : null,
     armorMin: armor.length ? Math.min.apply(null, armor.map(a => a.honing)) : null,
     armor: armor.map(a => a.honing)
   };
