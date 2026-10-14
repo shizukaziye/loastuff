@@ -38,6 +38,7 @@ Tools (each folder is served at `/<folder>/`):
 - `loa-deal-finder/` — Deal Finder
 - `loa-hell-key-calc/` — Hell Key Calculator
 - `loa-on-2026-summer/` — LOA ON 2026 Summer recap
+- `aion2-roster/` — Aion 2 Roster Checklist (main + alts, per-character vs per-server limits, refill trackers, auto resets)
 - `loa-tierlist/` — retired; redirect stub
 
 ## Market prices
@@ -103,6 +104,9 @@ To switch it on: Cloudflare dashboard → Workers & Pages → `loastuff` → Set
 - [Hell Key Calculator](https://www.loseii.com/loa-hell-key-calc/) — Paradise Hell key EV, middle-jump strategy, altar verdict, season projection
 - [LOA ON Bingo](https://loa-on-bingo.shizukaziye.workers.dev/) — live multiplayer watch-party bingo (own repo)
 - [LOA ON 2026 Summer](https://www.loseii.com/loa-on-2026-summer/) — showcase recap (a page, not a tool: the hub's count leaves it out)
+
+**Aion 2**
+- [Roster Checklist](https://www.loseii.com/aion2-roster/) — main + alt daily/weekly checklist with per-server limits, Odyle and charge trackers, Kina-tier counter
 
 **League of Legends**
 - [Champion Pool Coverage](https://shizukaziye.github.io/lol-pool-coverage/) — analyze your pool vs the live meta (own repo)

@@ -57,6 +57,12 @@
       ]
     },
     {
+      label: "Aion 2",
+      items: [
+        { name: "Roster Checklist", url: "https://www.loseii.com/aion2-roster/" }
+      ]
+    },
+    {
       label: "League of Legends",
       items: [
         { name: "Champion Pool Coverage", url: "https://shizukaziye.github.io/lol-pool-coverage/" }
