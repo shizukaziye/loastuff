@@ -90,6 +90,7 @@ dialog h3{margin-bottom:10px}
 .fbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 .fbtns .left{margin-right:auto}
 .note{font-size:12px;color:var(--dim);margin-top:6px}
+.note .bad{color:var(--bad)}
 details.method{margin-top:26px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px 15px}
 details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
 details.method p,details.method li{font-size:13px}
@@ -140,6 +141,7 @@ textarea{width:100%;min-height:120px;background:var(--panel2);color:var(--text);
     <tr><td>Commands</td><td>12 capital + 20 Abyss per week</td><td>server</td></tr>
     <tr><td>Sealed Wings morph</td><td>20 per week</td><td>server</td></tr>
     <tr><td>Unclaimed cube count</td><td>10 per week; at 0 every character is locked out of Conquest and Transcendence</td><td>server</td></tr>
+    <tr><td>Cube energy target</td><td>(83 + 55 full-Kina runs) × 80 per doubled claim = 11,040 a week with membership, 5,520 without. A character can make about 840 regen + 40 per morph (4 own, +16 server on the main) + 40 per stone (20, membership) + ~400 from a premium event pass averaged over its four weeks; energy items are bound, so a surplus cannot move between characters.</td><td>both</td></tr>
     <tr><td>Kina reduction</td><td>Conquest 100% to 83 runs, 80% to 104, 60% to 125, 40% to 146, 20% after. Transcendence 100% to 55, 80% to 69, 60% to 83, 40% to 97, 20% after. Counts runs; a doubled cube is one run. Only Kina is cut.</td><td>server</td></tr>
   </table>
   <p>Refill trackers project from the last value you typed: set the number you see in-game and the card shows the current estimate and when it fills. Logging a run on a character takes one charge, adds one weekly cube, and adds one run to the server counter. Sources: aion2maps, metabot, Raid Relay, space4games and the 13/14 Oct Global patch notes.</p>
@@ -292,6 +294,15 @@ function bumpTracker(c,key,cap,per,rate,delta){
 var root=document.getElementById("servers");
 function esc(s){ return String(s).replace(/[&<>"]/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch];}); }
 function tierOf(kind,n){ var t=TIERS[kind]; for(var i=0;i<t.length;i++){ if(n<=t[i][0]) return {pct:t[i][1],cap:t[i][0],next:t[i+1]?t[i+1][1]:null}; } }
+/* energy budget: per-claim cost, the server-wide full-Kina target, and what one character can make in a week */
+function perClaim(sv){ return sv.membership?80:40; }
+function energyTarget(sv){ return (TIERS.conq[0][0]+TIERS.trans[0][0])*perClaim(sv); }
+function energySpent(sv){ return (sv.runs.conq+sv.runs.trans)*perClaim(sv); }
+function energySupply(c,sv){
+  var own=4, srvShare=c.role==="main"?16:0, stones=sv.membership?20:0, pass=c.pass?400:0;
+  return 840+40*(own+srvShare+stones)+pass;
+}
+function fmtN(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,","); }
 
 function render(){
   var servers={};
@@ -346,7 +357,8 @@ function sharedPanel(n,sv){
     return '<span>'+label+'</span><span class="pct p'+t.pct+'">'+n2+' runs · '+t.pct+'% Kina</span><span class="next">'+next+'</span>';
   }
   return '<div class="panel shared"><h2 class="shared">Server · shared by every character</h2>'+
-    '<div class="tier">'+tierRow('Conquest','conq',sv.runs.conq,tc)+tierRow('Transcendence','trans',sv.runs.trans,tt)+'</div>'+
+    '<div class="tier">'+tierRow('Conquest','conq',sv.runs.conq,tc)+tierRow('Transcendence','trans',sv.runs.trans,tt)+
+    '<span>Cube energy</span><span class="pct'+(energySpent(sv)>=energyTarget(sv)?' p100':'')+'">'+fmtN(energySpent(sv))+' / '+fmtN(energyTarget(sv))+'</span><span class="next">'+perClaim(sv)+' per claim · 83 + 55 runs</span></div>'+
     '<div class="runs"><button type="button" class="btn small" '+ctx+' data-run="conq" data-d="-1">− Conquest run</button><button type="button" class="btn small" '+ctx+' data-run="trans" data-d="-1">− Transcendence run</button></div>'+
     '<div class="note">Run counters grow when you log a run on a character. Use these to correct them.</div>'+
     groupHTML('Daily',SRV_DAILY,sv.daily,ctx+' data-scope="daily"',{member:sv.membership,pass:true})+
@@ -366,10 +378,12 @@ function charPanel(c,sv){
       '<div class="meter"><i class="'+key+'" style="width:'+(cur==null?0:Math.round(cur/capv*100))+'%"></i></div>';
   }
   var gs=c.gs?(' · '+c.gs+' GS'):'';
+  var used=((c.weekly.conq||0)+(c.weekly.trans||0))*perClaim(sv), supply=energySupply(c,sv);
   return '<div class="panel"><div class="chr-head"><span class="role'+(c.role==="main"?' main':'')+'">'+c.role+'</span><h3>'+esc(c.name)+'</h3><span class="sub">'+esc(c.cls)+gs+'</span>'+
     '<button type="button" class="btn small edit" '+ctx+' data-edit="1">Edit</button></div>'+
     '<div class="track">'+trow('Odyle Energy','odyle',od,cap,3*H,15)+trow('Conquest charges','conq',cq,21,8*H,1)+trow('Transcendence charges','trans',ts,14,12*H,1)+'</div>'+
     '<div class="runs"><button type="button" class="btn small" '+ctx+' data-log="conq">+ Conquest run</button><button type="button" class="btn small" '+ctx+' data-log="trans">+ Transcendence run</button></div>'+
+    '<div class="note">Cube energy this week: <b'+(used>supply?' class="bad"':'')+'>'+fmtN(used)+'</b> of ~'+fmtN(supply)+' this character can make (840 regen + morph + stones'+(c.pass?' + pass':'')+')</div>'+
     groupHTML('Daily',CHAR_DAILY,c.daily,ctx+' data-scope="daily"',{member:sv.membership,pass:!!c.pass})+
     groupHTML('Weekly',CHAR_WEEKLY,c.weekly,ctx+' data-scope="weekly"',{member:sv.membership,pass:!!c.pass})+
   '</div>';
