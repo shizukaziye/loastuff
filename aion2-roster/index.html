@@ -44,7 +44,7 @@ button{font-family:inherit}
 .toggle input{accent-color:var(--accent)}
 .cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .panel.shared{grid-column:1/-1}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 28px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:0 28px}
 .shared .tier,.shared .runs,.shared .note{max-width:620px}
 .panel{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
 .panel.shared{border-color:#3a4a2a}
