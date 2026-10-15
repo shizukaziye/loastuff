@@ -1,0 +1,4 @@
+/* Loaded only without JavaScript (a <noscript> link in each page): no page-load
+   screen, and the page shows at once. */
+.loader { display: none !important; }
+html.loading .top, html.loading main, html.loading .foot { opacity: 1 !important; }

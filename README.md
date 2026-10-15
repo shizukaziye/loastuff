@@ -39,6 +39,7 @@ Tools (each folder is served at `/<folder>/`):
 - `loa-hell-key-calc/` — Hell Key Calculator
 - `loa-on-2026-summer/` — LOA ON 2026 Summer recap
 - `aion2-roster/` — Aion 2 Roster Checklist (main + alts, per-character vs per-server limits, refill trackers, auto resets)
+- `aion2-ranger-guide/` — Ranger Point Guide, a mirror of tgustafsson's ranger.tgustafsson.se (offline Oct 2026) restored from the Internet Archive, credited
 - `loa-tierlist/` — retired; redirect stub
 
 ## Market prices
@@ -107,6 +108,7 @@ To switch it on: Cloudflare dashboard → Workers & Pages → `loastuff` → Set
 
 **Aion 2**
 - [Roster Checklist](https://www.loseii.com/aion2-roster/) — main + alt daily/weekly checklist with per-server limits, Odyle and charge trackers, Kina-tier counter
+- [Ranger Point Guide](https://www.loseii.com/aion2-ranger-guide/) — Daevanion nodes, skill ranks, traits and stigmas step by step to 45; tgustafsson's guide, mirrored with credit
 
 **League of Legends**
 - [Champion Pool Coverage](https://shizukaziye.github.io/lol-pool-coverage/) — analyze your pool vs the live meta (own repo)

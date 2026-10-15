@@ -1,0 +1,1100 @@
+/* Ranger Point Guide. One idea per screen: the next step, then the board or
+   the skill list it changes. Dark or light follows the system setting. */
+
+/* Barlow and Barlow Condensed (SIL OFL 1.1, img/fonts/OFL.txt), self-hosted:
+   latin subset from @fontsource 5.3.0. Missing glyphs (the arrows) fall back. */
+/* Four faces are used (Barlow 400/600/700, Condensed 700); a browser only
+   downloads a face some text on screen needs. */
+@font-face { font-family: Barlow; font-style: normal; font-weight: 400; font-display: swap; src: url(img/fonts/barlow-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: Barlow; font-style: normal; font-weight: 600; font-display: swap; src: url(img/fonts/barlow-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: Barlow; font-style: normal; font-weight: 700; font-display: swap; src: url(img/fonts/barlow-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url(img/fonts/barlow-condensed-latin-700-normal.woff2) format("woff2"); }
+
+:root {
+  --bg: #0b0f14;
+  --panel: #131a22;
+  --raised: #1a232d;
+  --ink: #eef1f5;
+  --ink-soft: #a7b1bd;
+  --rule: #253140;
+  --accent: #e8b45a;
+  --accent-ink: #1b1406;
+  --now: #6fe3a0;
+  --now-board: #6fe3a0;
+  --wait: #e5625a;
+  --owned: #e7a940;
+  --offense: #f2a65e;
+  --defense: #72b6e2;
+  --utility: #a7b0bb;
+  --common: #a0a8b2;
+  --rare: #3fbf6f;
+  --legend: #4d92ea;
+  --unique: #f08a3c;
+  --Green: #4cc36f; --Blue: #4d92ea; --Yellow: #e7cd4a; --Orange: #f08a3c; --Red: #e5524a;
+  --k-macro: #b58cf5;
+  /* One lift for every card and panel: none on the dark ground (the rule
+     line carries it), a soft one on the light ground. */
+  --shadow: none;
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, .45);
+  /* The edge of a control (buttons, the level list, the board tabs): a
+     step firmer than the hairlines between rows. */
+  --rule-strong: #34445a;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --shadow: 0 1px 2px rgba(40, 32, 16, .05), 0 2px 10px rgba(40, 32, 16, .05);
+    --shadow-pop: 0 12px 32px rgba(40, 32, 16, .18);
+    --bg: #f3f1ec;
+    --panel: #ffffff;
+    --raised: #f6f4ef;
+    --ink: #161b22;
+    --ink-soft: #545d69;
+    --rule: #ddd8cd;
+    /* Darker than the dark theme's so text on and in them passes WCAG AA
+       (4.5:1) on the light panels: white on accent 5.6:1, the rest 5:1+. */
+    --accent: #8f5d12;
+    --accent-ink: #ffffff;
+    --now: #177a45;
+    --offense: #a8541a;
+    --defense: #2878b0;
+    --utility: #5f6873;
+    --k-macro: #6d3fc0;
+    --wait: #b42a22;
+    /* The trait dot, 3:1 on the light panels (was #b39200, 2.7:1). */
+    --Yellow: #9a7d00;
+    --rule-strong: #cfc7b6;
+  }
+}
+
+* { box-sizing: border-box; }
+/* The scroll bar's room is always kept, so a page that grows past the window
+   (a fold opened, a longer tab) never shifts sideways. */
+html { scrollbar-gutter: stable; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.5 Barlow, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+img { display: block; }
+/* Headings in the condensed display face (self-hosted, 700): the one type
+   voice that is the site's own. Body text stays Barlow. */
+h1, h2 { margin: 0; line-height: 1.15; font-family: "Barlow Condensed", Barlow, sans-serif; font-weight: 700; letter-spacing: .005em; }
+h2 { font-size: 22px; margin-bottom: 10px; }
+p { margin: 0; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 14px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ top -- */
+.top {
+  display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap;
+  width: calc(var(--site-w) + 32px); max-width: 100%; margin: 0 auto; padding: 14px 16px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px; font: 700 20px/1 "Barlow Condensed", Barlow, sans-serif;
+  color: inherit; text-decoration: none; border-radius: 8px;
+}
+.brand img { border-radius: 7px; }
+/* Guide / Changelog / About: quiet links at the right, the current one
+   underlined. */
+.site { display: flex; gap: 2px; margin-left: auto; }
+.site a {
+  display: inline-flex; align-items: center; min-height: 36px;
+  padding: 4px 10px; border-radius: 8px; color: var(--ink-soft); font-weight: 600; font-size: 15px; text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.site a:hover { color: var(--ink); background: var(--raised); }
+.site a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); border-radius: 8px 8px 0 0; }
+.site a[aria-current="page"]:hover { background: none; }
+/* The page tabs beside the mark: one segmented control, the current page
+   marked by an amber underline (filled amber is kept for the one action:
+   Next / Continue). */
+.tabs { display: flex; gap: 0; padding: 3px; border: 1px solid var(--rule); border-radius: 10px; background: var(--panel); box-shadow: var(--shadow); margin-left: 8px; }
+.tab {
+  border: 0; background: none; border-radius: 7px; min-height: 38px;
+  padding: 6px 20px; font: 700 18px/1.2 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .02em; color: var(--ink-soft);
+  transition: background-color .12s ease, color .12s ease, box-shadow .12s ease;
+}
+.tab:hover { color: var(--ink); background: color-mix(in srgb, var(--raised) 60%, transparent); }
+.tab[aria-current="page"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* Three columns on a desktop: the step card | the board or skill grid | the
+   stats or traits. The middle column is the board's size: as big as the
+   window height allows (the board is square and must fit on screen with its
+   tabs and legend), capped at 760 px. Board and Skills use the same columns,
+   so a tab change moves nothing. */
+:root {
+  --col-step: 320px; --col-side: 270px; --gap: 16px;
+  /* 100vw counts the scroll bar, whose room is always kept (scrollbar-gutter),
+     so 17 px (a Windows scroll bar) comes off: the right gutter stays 16 px. */
+  --bw: min(760px, calc(100vh - 210px), calc(100vw - 17px - var(--col-step) - var(--col-side) - 2 * var(--gap) - 32px));
+  --step-h: min(700px, calc(100vh - 86px));
+  --site-w: calc(var(--col-step) + var(--bw) + var(--col-side) + 2 * var(--gap));
+}
+main {
+  width: calc(var(--site-w) + 32px); max-width: 100%; margin: 0 auto; padding: 0 16px 24px;
+  display: grid; grid-template-columns: var(--col-step) var(--bw) var(--col-side); gap: var(--gap); align-items: start;
+}
+main > .page, main > #fatal { grid-column: 2 / 4; grid-row: 1; }
+main > .page[data-page="setup"] { grid-column: 1 / -1; }
+.page[data-page="board"], .page[data-page="skills"] {
+  display: grid; grid-template-columns: var(--bw) var(--col-side); gap: var(--gap); align-items: start;
+}
+.page[hidden] { display: none; }
+.col-main, .col-side { min-width: 0; }
+
+.noscript { max-width: 1168px; margin: 0 auto 16px; }
+@media (max-width: 1200px) { .noscript { margin: 0 16px 16px; } }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
+.card + .card { margin-top: 14px; }
+
+/* ----------------------------------------------------------------- step -- */
+/* One fixed size for every step, so Back and Next never move: the title is
+   held to two lines, and the notes take the height that is left and scroll
+   inside it when a step has more of them than fit. */
+.step {
+  grid-column: 1; grid-row: 1; position: sticky; top: 16px;
+  height: var(--step-h);
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow);
+}
+.step-text { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.step-text > * { flex: none; }
+.step-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; }
+.step-no {
+  font-size: 14px; color: var(--ink-soft); font-weight: 600; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; margin-top: 10px;
+}
+/* How far along the order this step is. */
+.progress { height: 4px; margin-top: 6px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 2px; }
+@media (prefers-reduced-motion: no-preference) { .progress i { transition: width .2s ease-out; } }
+.jump { min-width: 0; flex: 0 1 auto; }
+.jump select, .reset {
+  height: 32px; border-radius: 8px; border: 1px solid var(--rule-strong); background: var(--raised); color: var(--ink-soft);
+  font: 700 13px/1 Barlow, system-ui, sans-serif;
+}
+.jump select { max-width: 100%; padding: 0 6px; cursor: pointer; }
+.jump select:hover { color: var(--ink); border-color: var(--accent); }
+.reset { flex: none; padding: 0 10px; white-space: nowrap; }
+.reset:hover:not(:disabled) { color: var(--ink); border-color: var(--accent); }
+.reset:disabled { opacity: .35; cursor: default; }
+/* Fixed boxes: the title row always holds two title lines and the cost
+   line, the totals box two lines, whatever the step says. */
+.step-main { display: flex; gap: 14px; align-items: center; margin: 12px 0; height: 92px; }
+.step-icon { flex: none; width: 64px; height: 64px; }
+/* The start cards have no icon: the title starts at the card's edge (the
+   box keeps its height, so nothing below moves). */
+.step-icon.empty { display: none; }
+.step-head { min-width: 0; }
+.big-icon { width: 64px; height: 64px; border-radius: 12px; }
+.big-icon.frame { display: block; background-image: url(img/board/node-frames.webp); background-size: 400% 200%; }
+.step h1 {
+  font-size: 24px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  /* Two even lines, never a lone "9" under "Focused Eye → rank". */
+  text-wrap: balance;
+}
+.step-cost { color: var(--ink-soft); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step-need {
+  font-size: 17px; padding: 10px 14px; border-radius: 10px; background: var(--raised);
+  height: 70px; overflow: hidden;
+}
+.step-need b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step-need .sep { display: none; }
+.step-need .need-sub { display: block; font-size: 15px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A start card's line ("Press Next for your first node, ..."): two wrapped lines. */
+.step-need.plain { font-size: 15px; line-height: 1.4; }
+.step-text > .notes {
+  flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; gap: 8px; align-content: start; margin-top: 12px;
+}
+/* Step notes: a tint and a hairline, no coloured stripe. */
+.note { padding: 9px 12px; border-radius: 8px; background: var(--raised); font-size: 15px; }
+.note.trait { background: none; box-shadow: inset 0 0 0 1px var(--rule); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-weight: 600; }
+.tchip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--panel); }
+.tchip .dot { width: 10px; height: 10px; }
+/* Board switches ("Switch to Zikel", "Quick stop on ... then back to ..."):
+   the step's action, so as visible as the hold note (the user, 2026-09-25). */
+.note.swap {
+  background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--ink); font-weight: 700; font-size: 16px;
+}
+.note.swap::before { content: "→ "; color: var(--accent); }
+.note.wait { background: color-mix(in srgb, var(--wait) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wait) 45%, transparent); font-weight: 600; }
+.note.info { color: var(--ink-soft); }
+.nav { flex: none; display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 18px; }
+.btn {
+  height: 52px; border-radius: 8px; border: 1px solid var(--rule-strong); background: var(--raised);
+  font-size: 18px; font-weight: 700;
+  transition: background-color .12s ease, border-color .12s ease, transform .06s ease;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:hover:not(:disabled) { border-color: var(--ink-soft); }
+/* Mixing with the ink lightens it on dark and darkens it on light. */
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); border-color: transparent; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .35; cursor: default; }
+/* A disabled primary button: greyed, not a washed-out amber. */
+.btn.primary:disabled { opacity: 1; background: var(--raised); color: var(--ink-soft); border-color: var(--rule); }
+.hint { flex: none; margin-top: 10px; font-size: 13px; color: var(--ink-soft); text-align: center; }
+/* Up next: the following steps, quieter than the step above them. One
+   fixed box (three rows), so the card never moves; each row opens its step. */
+.upnext { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.step .upnext-h {
+  margin: 0 0 4px; font: 700 13px/1.2 Barlow, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.upnext-list { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-rows: 42px; height: calc(3 * 42px); }
+.un-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 100%; padding: 0 8px; margin: 0;
+  border: 0; border-radius: 8px; background: none; text-align: left; color: var(--ink);
+  transition: background-color .12s ease;
+}
+.un-row:hover { background: var(--raised); }
+.un-ic { flex: none; width: 30px; height: 30px; border-radius: 6px; }
+.un-ic.frame { background-image: url(img/board/node-frames.webp); background-size: 400% 200%; }
+.un-text { display: grid; min-width: 0; line-height: 1.2; }
+.un-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.un-cost { font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.un-empty { display: flex; align-items: center; padding: 0 8px; font-size: 15px; color: var(--ink-soft); }
+/* A shorter window: two rows, then none (the notes keep their room). The
+   card is 700 px from a 786 px window up (--step-h). */
+@media (max-height: 785px) { .upnext-list { height: calc(2 * 42px); } .upnext-list > li:nth-child(n + 3) { display: none; } }
+@media (max-height: 699px) { .upnext { display: none; } }
+
+/* ---------------------------------------------------------------- board -- */
+.boards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.btab {
+  border: 1px solid var(--rule-strong); background: var(--panel); border-radius: 10px; padding: 8px 10px;
+  display: flex; flex-direction: column; align-items: flex-start; text-align: left; box-shadow: var(--shadow);
+}
+.btab .nm { font-weight: 700; }
+.btab .pt { font-size: 13px; color: var(--ink-soft); }
+.btab[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.btab, .seg button, .win-cell { transition: background-color .12s ease, border-color .12s ease, color .12s ease; }
+.btab:hover:not([aria-pressed="true"]), .seg button:hover:not([aria-selected="true"]) { border-color: var(--ink-soft); color: var(--ink); }
+.win-cell:hover { background: var(--raised); }
+
+.board-wrap {
+  border-radius: 14px; overflow: hidden;
+  background: #0b1016 url(img/board/board-bg.jpg) center / cover no-repeat;
+}
+.board {
+  position: relative; width: 100%; aspect-ratio: 1; padding: 2%;
+  display: grid; grid-template-columns: repeat(var(--span), minmax(0, 1fr)); grid-template-rows: repeat(var(--span), minmax(0, 1fr));
+}
+.board svg.links { position: absolute; inset: 2%; width: 96%; height: 96%; pointer-events: none; }
+.links line { stroke: #384554; stroke-width: .06; }
+.links line.on { stroke: var(--owned); stroke-width: .1; }
+
+.tile { position: relative; margin: 9%; padding: 0; border: 0; background: none; border-radius: 16%; }
+.tile .fr { position: absolute; inset: 0; border-radius: 16%; background-image: url(img/board/node-frames.webp); background-size: 400% 200%; }
+.tile.skill .fr { display: none; }
+.tile .ic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 16%; box-shadow: 0 0 0 2px var(--g) inset; }
+.tile.start { background: url(img/board/start-tile.webp) center / cover; border-radius: 50%; }
+/* Not taken: the frame and icon dimmed, the label kept readable (its own
+   muted colour, 5.3:1 on the label's dark ground; the board is dark in both themes). */
+.tile.off .fr, .tile.off .ic { filter: grayscale(.8) brightness(.4); }
+.tile.off .tl, .tile.off .tl.offense, .tile.off .tl.defense { color: #7d8691; }
+.tile.owned::after, .tile.now::after {
+  content: ""; position: absolute; inset: -8%; border-radius: 22%; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--owned);
+}
+/* The board art is dark in both themes, so its highlight keeps the bright green. */
+.tile.now::after { inset: -12%; box-shadow: 0 0 0 4px var(--now-board), 0 0 10px var(--now-board); animation: pulse 2.4s ease-in-out infinite; }
+/* Hover and keyboard focus on a node: a white ring, never the amber of a
+   taken node. */
+.tile:hover:not(.now)::before { content: ""; position: absolute; inset: -8%; border-radius: 22%; pointer-events: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, .75); }
+.tile:focus-visible { outline: 2px dashed #fff; outline-offset: 3px; }
+@keyframes pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .tile.now::after { animation: none; } }
+.tl {
+  position: absolute; left: 50%; bottom: -4%; transform: translateX(-50%); white-space: nowrap; pointer-events: none;
+  font: 700 clamp(9px, 1.05vw, 12px)/1 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .02em; padding: 2px 3px; border-radius: 3px;
+  background: rgba(5, 8, 12, .85); color: #c0c7cf;
+}
+.tl.offense { color: #ffc083; }
+.tl.defense { color: #93cdf2; }
+
+.legend { margin: 8px 2px 0; font-size: 14px; color: var(--ink-soft); display: flex; gap: 6px 18px; align-items: center; flex-wrap: wrap; }
+/* Under the board or skill window: the legend on the left, the page's FAQ
+   button on the right, on one line. */
+.page-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin-top: 10px; }
+.page-foot .legend { margin: 0 2px; }
+.page-foot .faq-open { margin-left: auto; }
+/* The swatches are little pieces of the board: its dark ground with the same
+   ring the board draws, so they match in both themes (the board art is dark
+   in both). Each ring is 3:1 or more against the ground and the panel. */
+.lg { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; background: #0b1016; }
+.lg.taken { box-shadow: 0 0 0 2px var(--owned) inset; }
+.lg.now { box-shadow: 0 0 0 2px var(--now-board) inset; }
+.lg.todo { box-shadow: 0 0 0 2px #7a8594 inset; }
+/* Light theme: outlined swatches on the light panel (a dark fill read as a
+   filled "taken" box), the rings darkened to 3:1 on white. */
+@media (prefers-color-scheme: light) {
+  .lg { background: none; }
+  .lg.taken { box-shadow: 0 0 0 2px #a8741b inset; }
+  .lg.now { box-shadow: 0 0 0 2px #1f8f52 inset; }
+  .lg.todo { box-shadow: 0 0 0 2px #6b7582 inset; }
+}
+
+.fold { margin-top: 14px; background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 18px; }
+.fold summary { font-weight: 700; cursor: pointer; }
+.stats { margin-top: 10px; }
+.income { margin-top: 10px; }
+.income-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.income-table th, .income-table td { padding: 5px 0; border-bottom: 1px solid var(--rule); text-align: left; font-weight: 400; }
+.income-table td { text-align: right; font-weight: 600; }
+.income-table tr.grp th {
+  padding-top: 14px; font-size: 14px; color: var(--ink-soft); font-weight: 600;
+}
+.income-table tbody:first-child tr.grp th { padding-top: 2px; }
+.income-table tr.sum th, .income-table tr.sum td { font-weight: 700; color: var(--accent); }
+.st-row {
+  display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 5px 0;
+  border-bottom: 1px solid var(--rule); font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.st-row > :first-child { flex: 1 1 auto; min-width: 0; }
+.st-row .v { font-weight: 700; }
+/* The right column on a desktop: the stats card runs from the top edge of
+   the board tabs down to the step card's bottom less the points fold, and
+   scrolls inside; the row the current step adds to is marked. */
+.side-card { padding: 14px 16px; display: flex; flex-direction: column; }
+.side-title { font: 700 18px/1.2 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .01em; margin: 0 0 6px; color: var(--ink); }
+.stats-card { height: calc(var(--step-h) - 62px); }
+.stats-card .stats { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: 0; position: relative; }
+/* More rows below the fold of the list (app.js statsFade): the last line fades out. */
+.stats.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent); }
+.col-side > .fold { margin-top: 10px; height: 52px; }
+.col-side > .fold[open] { height: auto; }
+/* Desktop: the Board's right column is exactly the step card's height.
+   Opening Point sources takes its room from the stats list (which scrolls),
+   so the page never grows: no footer jump, no scroll bar appearing. */
+@media (min-width: 1100px) {
+  .page[data-page="board"] .col-side { height: var(--step-h); display: flex; flex-direction: column; }
+  .page[data-page="board"] .stats-card { height: auto; flex: 1 1 0; min-height: 140px; }
+  .page[data-page="board"] .col-side > .fold { flex: none; }
+  .page[data-page="board"] .col-side > .fold[open] { max-height: calc(var(--step-h) - 150px); overflow-y: auto; overscroll-behavior: contain; }
+}
+.st-row.now { background: color-mix(in srgb, var(--now) 14%, transparent); border-radius: 6px; padding-left: 6px; padding-right: 6px; }
+.st-add { font-weight: 700; color: var(--now); font-size: 13px; }
+.v.offense { color: var(--offense); } .v.defense { color: var(--defense); } .v.utility { color: var(--utility); }
+
+.tip {
+  position: fixed; z-index: 40; max-width: 260px; pointer-events: none; font-size: 14px;
+  background: #0d131a; color: #e8ecf1; border: 1px solid #2c3847; border-radius: 8px; padding: 8px 10px;
+}
+.tip .muted { color: #9aa6b4; }
+
+/* --------------------------------------------------------------- skills -- */
+.skills { display: grid; gap: 14px; }
+.skills .card + .card { margin-top: 0; }
+/* The skill window fills the step card's height. Six to a row beside the
+   board's column (12 actives in 2 rows, 10 passives in 2), so all 4 rows fit
+   with icons near full size; phones keep the game's five (four at 430 px
+   and under, where five split the longer names mid-word). */
+.win-card { height: var(--step-h); overflow: hidden; padding: 14px 16px; --cell: clamp(44px, calc((var(--step-h) - 392px) / 4), 96px); }
+.win-card .win-title + .win-grid { margin-top: 8px; }
+.win-card .win-grid + .win-title { margin-top: 12px; }
+.win-card .win-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.win-title { padding: 0 0 4px; border-bottom: 1px solid var(--rule); font: 700 17px/1.2 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .02em; margin: 0; }
+.win-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 8px; }
+/* Never wider than its cell (1101-1190 px wide the height-based size is). */
+.win-card .win-art { width: min(var(--cell), 100%); max-width: none; }
+.win-card .win-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.4em; }
+.win-card .win-sub { min-height: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* The traits panel: the step card's height, scrolling inside. */
+.skills-side .spec { height: var(--step-h); overflow-y: auto; padding: 14px 16px; }
+.win-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
+.win-art {
+  position: relative; width: 100%; max-width: 96px; aspect-ratio: 1; border-radius: 6px;
+  box-shadow: 0 0 0 2px #d9893a; overflow: hidden;
+}
+.win-cell.passive .win-art { box-shadow: 0 0 0 2px #3fbf6f; }
+.win-art img { width: 100%; height: 100%; }
+.win-lv {
+  position: absolute; right: 4px; bottom: 3px;
+  font: 700 clamp(10px, min(1.4vw, calc(var(--cell, 96px) * .24)), 17px)/1 Barlow, sans-serif; color: #fff;
+  text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px #000;
+}
+.win-art .dots { position: absolute; left: 4px; top: 4px; margin: 0; }
+.win-name { font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+.win-sub { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
+.win-cell.locked .win-art img { filter: grayscale(1) brightness(.35); }
+.win-cell.locked .win-name { color: var(--ink-soft); }
+.win-cell.now .win-art { box-shadow: 0 0 0 3px var(--now), 0 0 8px var(--now); }
+.win-cell.now .win-name { color: var(--now); }
+.win-cell { cursor: pointer; border-radius: 8px; padding: 2px 0 4px; }
+.win-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.win-cell.picked { background: var(--raised); box-shadow: 0 0 0 2px var(--accent) inset; }
+.spec-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.spec-ic { width: 44px; height: 44px; border-radius: 8px; }
+.spec-head h2 { margin: 0 0 2px; }
+.spec-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.spec-list li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 9px 10px; border-radius: 10px; background: var(--raised); font-size: 14px; line-height: 1.4; }
+.spec-list li .dot { width: 12px; height: 12px; margin-top: 4px; }
+/* Not unlocked yet: softer text and a faded dot, not a faded row, so the
+   text keeps AA contrast in both themes. */
+.spec-list li.later { color: var(--ink-soft); }
+.spec-list li.later .dot { opacity: .45; }
+.spec-why { margin-top: 10px; }
+.spec-does { font-size: 14px; margin: 0 0 10px; }
+.spec-does + .spec-why { margin: -4px 0 10px; }
+.spec-list li.worn { box-shadow: 0 0 0 2px var(--now) inset; }
+.spec-state { font-size: 12px; font-weight: 600; line-height: 18px; color: var(--ink-soft); white-space: nowrap; text-align: right; }
+.spec-list li.worn .spec-state { color: var(--now); font-weight: 700; }
+.spec-list li.worn { background: color-mix(in srgb, var(--now) 8%, var(--raised)); }
+/* A tied pick (build.py wearTie): under "picked", small and plain. */
+.spec-tie { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); text-align: right; }
+/* The core stigma cards' rank lines (Rank 5: ... Rank 20: ...). */
+.rot-ranks { list-style: none; margin: 6px 0 0; padding: 6px 0 0; border-top: 1px solid var(--rule); display: grid; gap: 2px; font-size: 13px; color: var(--ink-soft); }
+.st-note { margin-top: 8px; }
+.dots { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: 1px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.Green { background: var(--Green); } .dot.Blue { background: var(--Blue); } .dot.Yellow { background: var(--Yellow); }
+.dot.Orange { background: var(--Orange); } .dot.Red { background: var(--Red); }
+
+/* ---------------------------------------------------------------- setup -- */
+.fold.inner { margin-top: 12px; background: var(--raised); padding: 10px 14px; }
+.fold.inner p { margin-top: 8px; }
+/* Setup rows (stigma picks, utility): a label (icon, name, optional tag) and
+   short lines. Flat, split by hairlines: a table read down, not a stack of
+   cards. */
+.rotation { display: grid; gap: 0; }
+.rot-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.rotation > .rot-row:first-child { border-top: 1px solid var(--rule); }
+.rot-label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 700; color: var(--ink); padding-top: 2px; }
+.rot-label img { width: 28px; height: 28px; border-radius: 6px; }
+.rot-tag { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.rot-body { min-width: 0; }
+.rot-line { font-size: 15px; }
+.rot-line + .rot-line { margin-top: 4px; }
+/* ---- Setup page layout. One spacing scale (4 / 8 / 12 / 16 / 24 / 32 /
+   48 px), one card padding (24 px, 16 px on phones), hairlines between
+   rows. ------------------------------------------------------------------ */
+.page[data-page="setup"] { --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; }
+.page[data-page="setup"] .card { padding: var(--s5); }
+.page[data-page="setup"] .card + .card { margin-top: var(--s4); }
+.page[data-page="setup"] h2 { margin-bottom: var(--s4); }
+.page[data-page="setup"] h3 { font: 700 18px/1.2 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .01em; margin: 0 0 var(--s2); color: var(--ink); }
+@media (max-width: 600px) { .page[data-page="setup"] .card { padding: var(--s4); } }
+/* A new macro being simulated: the card blurred under one message. */
+.card.pending { position: relative; overflow: hidden; }
+.card.pending #bars-panel { filter: blur(7px); opacity: .5; pointer-events: none; user-select: none; }
+.pending-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; }
+@media (max-width: 900px) { .pending-msg { align-items: flex-start; padding-top: 120px; } }
+.pending-msg p {
+  max-width: 460px; padding: 14px 20px; border-radius: 12px; text-align: center; font-weight: 700; font-size: 17px;
+  background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+}
+/* ---- Skill bar and macro: two setups on one card (app.js buildBars). ---- */
+.bars-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
+.bars-head h2 { margin: 0 !important; font-size: 24px; }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--raised); border: 1px solid var(--rule); }
+.seg button { font: inherit; font-weight: 600; font-size: 14px; color: var(--ink-soft); background: none; border: 0; border-radius: 7px; padding: 6px 14px; cursor: pointer; }
+.seg button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent), 0 0 0 1px var(--rule); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The card's header block: the one line that says what you do, then the
+   rest softer; the NCSOFT line a tinted notice above them. */
+.bars-sum { display: grid; gap: var(--s1); justify-items: start; padding-bottom: var(--s5); border-bottom: 1px solid var(--rule); }
+.bars-sum p { font-size: 16px; max-width: 84ch; color: var(--ink-soft); text-wrap: pretty; }
+.bars-sum p:first-child:not(.warn), .bars-sum .warn + p { font-size: 18px; line-height: 1.4; font-weight: 600; color: var(--ink); }
+.bars-sum .warn {
+  margin-bottom: var(--s3); padding: var(--s2) var(--s3); border-radius: 8px; font-weight: 600; color: var(--ink);
+  background: color-mix(in srgb, var(--wait) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wait) 45%, transparent);
+}
+/* The setup steps: one row each, split by hairlines. Wide: a text column
+   (number, title, instructions) and a visual column that every step's bar,
+   window or key table starts in. Narrow: the same parts stacked. Sized by
+   the card (a container), not the window: the card is narrower on a short
+   screen. */
+#bars-panel { container: bars / inline-size; --lead-w: 336px; --gut: 40px; --measure: 72ch; }
+.bsteps { list-style: none; margin: 0; padding: 0; counter-reset: bs; }
+.bstep { counter-increment: bs; position: relative; min-width: 0; padding: var(--s5) 0 var(--s5) var(--gut); }
+.bstep + .bstep { border-top: 1px solid var(--rule); }
+.bstep:last-child { padding-bottom: 0; }
+/* The number: a neutral disc centred on the title's line (24 px). */
+.bstep::before {
+  content: counter(bs); position: absolute; left: 0; top: calc(var(--s5) - 2px); width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--raised); box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink); font: 700 16px/1 "Barlow Condensed", Barlow, sans-serif; font-variant-numeric: tabular-nums;
+}
+.page[data-page="setup"] .bstep h3 { font-size: 21px; line-height: 24px; margin: 0; }
+.bstep-lead { display: grid; gap: var(--s2); align-content: start; min-width: 0; }
+.bstep-lead > p, .bstep-vis > p { font-size: 15px; max-width: var(--measure); text-wrap: pretty; }
+.bstep-lead > p.small { font-size: 14px; }
+.bstep-vis { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); justify-items: start; align-content: start; min-width: 0; margin-top: var(--s4); }
+.bstep-vis > p.small { font-size: 14px; }
+.bstep-vis > p + p { margin-top: calc(-1 * var(--s1)); }
+/* Rows of key chips and text (the keybinds, the mouse macro, the fight): a
+   small settings panel like the Macro window, the chips in one fixed
+   column with their text right beside them. */
+.brows { width: min(100%, var(--vis-w)); padding: 0 var(--s4); border: 1px solid var(--rule); border-radius: 8px; background: var(--raised); }
+.brow { display: grid; grid-template-columns: 120px minmax(0, 1fr); column-gap: var(--s4); align-items: center; min-height: 48px; padding: var(--s2) 0; font-size: 15px; }
+.brow + .brow { border-top: 1px solid var(--rule); }
+.brow .c { min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.brow .c:first-child:not(:has(kbd)) { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+/* Wide: the two columns. A step with no visual (Give the macro a key) puts
+   its instructions in the visual column, so its row has no hole. */
+@container bars (min-width: 1040px) {
+  .bstep { display: grid; grid-template-columns: var(--lead-w) minmax(0, 1fr); column-gap: var(--s7); row-gap: var(--s2); align-items: start; padding-left: 0; }
+  .bstep-lead { padding-left: var(--gut); }
+  .bstep-vis { margin-top: 0; }
+  .bstep.text-only .bstep-lead { display: contents; }
+  .bstep.text-only h3 { grid-column: 1; grid-row: 1; padding-left: var(--gut); }
+  .bstep.text-only .bstep-lead > p { grid-column: 2; }
+}
+/* Phones: no number gutter; the number sits on the title's line and
+   everything else starts at the card's edge. */
+@container bars (max-width: 599px) {
+  #bars-panel .bsteps { --vis-w: 100%; }
+  .bstep { padding-left: 0; }
+  .bstep::before { width: 26px; height: 26px; top: calc(var(--s5) - 1px); font-size: 15px; }
+  .page[data-page="setup"] .bstep h3 { padding-left: 38px; }
+  .bars-sum p:first-child:not(.warn), .bars-sum .warn + p { font-size: 17px; }
+  /* The chip column as wide as this table's widest chip, the same in
+     every row of it. */
+  .brows { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: var(--s3); padding: 0 var(--s3); }
+  .brow { grid-column: 1 / -1; grid-template-columns: subgrid; }
+  .mwin { padding: 0 var(--s3); }
+}
+@container bars (max-width: 299px) {
+  .brow { grid-template-columns: minmax(0, 1fr); row-gap: var(--s1); padding: var(--s3) 0; }
+}
+/* The game's bar: four groups (skill slots, stigma slots, the two context
+   slots, the two mouse slots), four rows each, the key row at the bottom. */
+/* A cell is 62 px, or less when the visual column is narrower than the bar
+   (12 cells + 62 px of gaps + 24 px of padding): its width is the card's
+   less the number gutter, and less the text column when wide. */
+/* Set on the steps list (inside the container, so 100cqi is the card's
+   width): the Macro window and key tables take the bar's width too. */
+.bsteps { --g: min(62px, calc((100cqi - var(--gut) - 86px) / 12)); --vis-w: calc(12 * var(--g) + 86px); }
+@container bars (min-width: 1040px) { .bsteps { --g: min(62px, calc((100cqi - var(--lead-w) - var(--s7) - 86px) / 12)); } }
+.gbar { display: flex; align-items: flex-end; gap: 10px; }
+/* The bar and its legend as one figure: the legend wraps at the bar's
+   width and starts at its left edge. */
+.gbar-fig { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); width: max-content; max-width: 100%; }
+.ggroup { display: grid; grid-template-columns: repeat(var(--n), var(--g)); gap: 4px; }
+.gcell, .gkey { width: var(--g); height: var(--g); border-radius: 6px; }
+/* The bar stays dark in both themes, like the game's own (and the board). */
+.gbar { --bar-bg: #0b1016; --bar-cell: #151c25; --bar-rule: #2a3645; }
+.gcell { background: var(--bar-cell); border: 1px solid var(--bar-rule); overflow: hidden; }
+.gcell img { width: 100%; height: 100%; display: block; }
+.gcell.empty { background: none; border: 1px dashed var(--bar-rule); }
+/* The bar on its own dark panel in both themes, like the game's HUD, with
+   the dark theme's key colours (and the legend's swatches to match). */
+.gbar-wrap { display: block; width: max-content; max-width: 100%; padding: 12px; border-radius: 10px; background: #0b1016; }
+.gbar-wrap, .gbar-legend i { --accent: #e8b45a; --now: #6fe3a0; --defense: #72b6e2; --k-macro: #b58cf5; --rule: #2a3645; }
+.gkey { position: relative; display: flex; align-items: center; justify-content: center; background: var(--bar-bg); border: 2px solid var(--bar-rule); overflow: hidden; }
+.gkey img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .35; }
+/* Key names in the system UI face: in Barlow, Q reads as 0 (and 0 is a bind
+   key in the mouse-macro setup) and ß as B. */
+.gkey .gk { position: relative; font: 700 15px/1 system-ui, "Segoe UI", sans-serif; color: #eef1f5; text-shadow: 0 1px 2px #000; }
+.gbar-legend .lg-note { font-family: system-ui, "Segoe UI", sans-serif; }
+.gkey .gk2 { position: absolute; right: 2px; top: 2px; min-width: 14px; padding: 1px 3px; border-radius: 4px; font: 700 10px/1.2 system-ui, "Segoe UI", sans-serif; text-align: center; background: var(--defense); color: #06121c; }
+.gkey.ctx { border-style: dashed; }
+.gkey.ctx .gk { color: #a7b1bd; }
+.gbar-legend { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s5); width: 0; min-width: 100%; font-size: 14px; color: var(--ink-soft); }
+.gbar-legend span { display: inline-flex; align-items: center; gap: var(--s2); }
+.gbar-legend span:not(.lg-note) { color: var(--ink); }
+.gbar-legend span:not(.lg-note) + .lg-note { margin-top: var(--s1); }
+.gbar-legend i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--rule); background: #0b1016; }
+/* Who presses a slot: the key's border, and the legend's swatch. */
+.k-you-held, .lg-you-held i { border-color: var(--accent); }
+.k-you-hand, .lg-you-hand i { border-color: var(--now); }
+.k-mouse-held, .lg-mouse-held i { border-color: var(--defense); }
+.k-mouse-tap, .lg-mouse-tap i { border-color: var(--defense); border-style: dotted; }
+.k-macro-macro, .lg-macro-macro i { border-color: var(--k-macro); }
+.gbar-legend .lg-note { flex-basis: 100%; display: block; }
+/* The Macro window: a small panel of numbered steps, each with what its
+   slot fires and the slot's key. */
+.mwin { list-style: none; width: min(100%, var(--vis-w)); margin: 0; padding: 0 var(--s4); display: grid; counter-reset: m; border: 1px solid var(--rule); border-radius: 8px; background: var(--raised); }
+.mwin li { counter-increment: m; display: grid; grid-template-columns: 12px 32px minmax(0, 1fr) auto; align-items: center; column-gap: var(--s3); min-height: 56px; padding: var(--s2) 0; border-top: 1px solid var(--rule); }
+.mwin li:first-child { border-top: 0; }
+.mwin li::before { content: counter(m); color: var(--ink-soft); font-weight: 700; }
+.mwin img { width: 32px; height: 32px; border-radius: 6px; }
+.mw-text { display: grid; min-width: 0; }
+.mw-name { font-weight: 600; }
+.mw-fires { font-size: 13px; color: var(--ink-soft); line-height: 1.35; }
+.mw-key, .brow kbd { font: 700 13px/1 system-ui, "Segoe UI", sans-serif; padding: 5px 8px; border-radius: 5px; background: var(--bg); border: 1px solid var(--rule); border-bottom-width: 2px; color: var(--ink); white-space: nowrap; }
+/* Phones: the skill and stigma groups on one line, context and mouse under
+   (8 cells, 6 inner gaps, 1 group gap, 20 px of padding; no gutter). */
+@container bars (max-width: 599px) {
+  .gbar { flex-wrap: wrap; --g: calc((100cqi - 54px) / 8); gap: var(--s2) 10px; }
+  .gbar-wrap { padding: 10px; }
+  .gkey .gk { font-size: 13px; }
+  .gcell.erow { display: none; }
+  .gkey .gk2 { display: none; }
+}
+@media (max-width: 600px) {
+  .seg { width: 100%; }
+  .seg button { flex: 1; padding: 7px 8px; }
+}
+.picks .rot-row, .lane .rot-row { grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: start; }
+#st-after-box h3 { margin-top: 0; }
+/* Stigmas: the picks in one row, then the two plans side by side. */
+.picks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s3); margin-bottom: var(--s6); }
+.picks .rot-row { padding: var(--s3); border: 1px solid var(--rule); border-radius: 8px; }
+.picks .rot-line { font-size: 14px; }
+.picks .rot-line:first-of-type { color: var(--ink-soft); }
+.picks .rot-row.flex { border-style: dashed; }
+/* The two stigma plans, stacked: one grid each (a column per stigma). */
+.st-cols { display: grid; gap: var(--s6); align-items: start; }
+/* Wide screens: the two plans side by side (each table half the card, its
+   columns close enough to read across). */
+@media (min-width: 1360px) {
+  .st-cols:not(:has(> [hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s7); }
+  .st-cols:not(:has(> [hidden])) .st-table .st-corner { width: 96px; }
+  /* Half-width columns: a long stigma name takes two lines, never an ellipsis. */
+  .st-cols:not(:has(> [hidden])) .st-table .st-col { white-space: normal; line-height: 1.25; vertical-align: bottom; }
+  /* The two plans share their rows (heading, intro, table, note), so both
+     tables start at the same height however long either intro runs: the
+     After-45 intro is a line longer and pushed its table down. */
+  .st-cols:not(:has(> [hidden])) { grid-template-rows: repeat(4, auto); }
+  .st-cols:not(:has(> [hidden])) > div {
+    display: grid; grid-template-rows: subgrid; grid-row: span 4; align-content: start;
+    row-gap: 0;
+  }
+  /* The shorter table keeps its own height instead of stretching to the row. */
+  .st-cols:not(:has(> [hidden])) > div > * { align-self: start; }
+  @supports not (grid-template-rows: subgrid) {
+    .st-cols:not(:has(> [hidden])) #st-path-intro,
+    .st-cols:not(:has(> [hidden])) #st-after-intro { min-height: 4.8em; }
+  }
+}
+/* The stigma plans as tables (app.js gridHead / gridRow): a caption, a
+   column per stigma (icon and name), a row header per level or total. */
+.st-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.st-cap { caption-side: top; text-align: left; padding: 0 2px 8px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.st-cap-t { display: block; }
+.st-legend { display: none; }
+.st-table th, .st-table td { padding: 8px 6px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+.st-table th:first-child { padding-left: 10px; }
+/* Striped and marked under the pointer, so a row reads across its columns. */
+.st-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--raised) 70%, transparent); }
+.st-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.st-table thead th { padding-top: 0; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.st-table .st-corner { width: 120px; }
+.st-table .st-col { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-table .st-col img { display: inline-block; width: 22px; height: 22px; border-radius: 5px; margin-right: 6px; vertical-align: middle; }
+.st-table .st-name { vertical-align: middle; }
+.st-table tr.lvl-row { display: table-row; }
+.st-table tbody th { font-weight: 700; color: var(--ink); white-space: nowrap; }
+.st-table .st-chip, .st-table .st-empty { font-size: 15px; background: none; padding: 0; }
+.st-table .st-chip { color: var(--ink-soft); }
+.st-table .st-chip.new { color: var(--accent); font-weight: 700; }
+.st-table .st-empty { color: var(--rule); }
+/* Utility: three lanes, Active | Stigmas | Passive. */
+.lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6) var(--s7); align-items: start; }
+.lane-col { display: grid; gap: var(--s6); }
+.lane .rot-line { font-size: 14px; color: var(--ink-soft); }
+.lane .rot-line:first-of-type { color: var(--ink); }
+#utility-card > p, #gear-card > p { margin: calc(-1 * var(--s2)) 0 var(--s5); }
+/* Skill levels from gear: the raise order, one run of one skill per row. */
+.gear-order { list-style: none; margin: 0; padding: 0; counter-reset: gear; }
+.gear-step {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--rule); counter-increment: gear;
+}
+.gear-step::before { content: counter(gear); min-width: 1.4em; text-align: right; color: var(--ink-soft); font-weight: 600; }
+.gear-step img { width: 28px; height: 28px; border-radius: 6px; }
+.gear-step:not(:has(img)) { grid-template-columns: auto minmax(0, 1fr) auto; }
+.gear-gain { white-space: nowrap; }
+@media (max-width: 1100px) { .picks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .st-cols, .lanes { grid-template-columns: minmax(0, 1fr); }
+  .picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) { .picks { grid-template-columns: minmax(0, 1fr); } }
+/* A long name wraps beside its icon, never below it (the tag still takes its own line). */
+.rot-label > span:not(.rot-tag) { flex: 1 1 0; min-width: 0; }
+@media (max-width: 600px) { .rot-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+.levels { display: grid; gap: 0; margin-top: 12px; }
+.lvl-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 2px; border-bottom: 1px solid var(--rule); }
+.levels > .lvl-row:first-child { border-top: 1px solid var(--rule); }
+.lvl-range { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.lvl-what { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.lvl-held { font-size: 14px; font-weight: 600; }
+.st-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-soft); }
+.st-chip img { width: 28px; height: 28px; border-radius: 6px; }
+.st-chip.new { color: var(--ink); font-weight: 700; }
+@media (max-width: 600px) { .lvl-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+/* Phones: the label column narrower (one line: "300 points"), the header
+   icons only, their names in a legend under the caption. */
+@media (max-width: 600px) {
+  .st-table .st-corner { width: 80px; }
+  .st-table tbody th { font-size: 13px; }
+  .st-table .st-col img { margin-right: 0; }
+  .st-table .st-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .st-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-weight: 400; color: var(--ink); }
+  .st-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .st-legend img { width: 20px; height: 20px; border-radius: 4px; }
+}
+
+.foot { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 20px 16px 30px; max-width: 820px; margin: 0 auto; }
+/* "Updated 26 September 2026 · AION 2 Global client version 17 · Changelog" (app.js). */
+.foot .foot-meta { margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+
+/* Skip to content: off screen until it has keyboard focus. */
+.skip {
+  position: absolute; left: 12px; top: -64px; z-index: 95; padding: 8px 14px; border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none;
+}
+.skip:focus { top: 12px; }
+/* A jump or skip target takes focus only to move the reader there. */
+main:focus, [tabindex="-1"]:focus { outline: none; }
+/* The Setup page's jump row: its three cards as pills, kept at the top of
+   the window while the page scrolls; the card in view is marked (app.js). */
+.jumps {
+  position: sticky; top: var(--top-h, 0px); z-index: 20; display: flex; flex-wrap: wrap; gap: 8px;
+  transition: top .2s ease;
+  margin: 0 0 6px; padding: 8px 0 10px; background: var(--bg); font-size: 15px;
+}
+.jumps > span { display: none; }
+.jumps a {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--panel); color: var(--ink-soft); font-weight: 600; text-decoration: none;
+  transition: border-color .12s ease, color .12s ease;
+}
+.jumps a:hover { color: var(--ink); border-color: var(--ink-soft); }
+.jumps a[aria-current="true"] { color: var(--ink); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+@media (max-width: 900px) { .jumps a { min-height: 44px; } .jumps { gap: 6px; } .jumps a { padding: 4px 12px; } }
+/* Under the jump row: app.js measures it into --jumps-h (it wraps to two
+   lines on a phone); 66px is one line, before the script has run. */
+.page[data-page="setup"] .card { scroll-margin-top: calc(var(--jumps-h, 66px) + 6px); }
+/* On the Setup page the header stays at the top while the page scrolls, the
+   jump row under it (app.js sets --top-h to the header's height), so a jump
+   never takes the page tabs off screen. Its background runs the full window
+   width (the border-image outset paints without widening the page). On a
+   phone it steps aside while you scroll down and returns on any scroll up
+   (.away), as phone sites do: two rows of header would take a fifth of the
+   screen. */
+body:has(.page[data-page="setup"]:not([hidden])) .top {
+  position: sticky; top: 0; z-index: 25; background: var(--bg);
+  border-image: linear-gradient(var(--bg) 0 0) fill 0 / / 0 100vmax;
+  transition: opacity .25s ease, transform .2s ease;
+}
+.top.away { transform: translateY(-100%); }
+html { scroll-padding-top: var(--top-h, 0px); }
+@media (prefers-reduced-motion: reduce) {
+  body:has(.page[data-page="setup"]:not([hidden])) .top, .jumps { transition: none; }
+}
+/* The 404 page (404.html). */
+.notfound { text-align: center; padding: 36px 24px; }
+.notfound h1 { margin-bottom: 8px; }
+.notfound p + p { margin-top: 20px; }
+.doc a.notfound-go { display: inline-flex; align-items: center; height: 48px; padding: 0 22px; color: var(--accent-ink); text-decoration: none; }
+.foot p + p { margin-top: 4px; }
+.foot p { text-wrap: balance; }
+.foot a, .doc a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.foot a:hover, .doc a:hover { color: var(--ink); }
+
+/* ------------------------------------------------ changelog and about -- */
+main.doc { display: block; max-width: 712px; }
+.doc p, .doc li { max-width: 78ch; }
+.doc > .card, .doc > .pair { margin-top: 14px; }
+.doc h1 { font-size: 30px; margin: 6px 0 6px; }
+.doc .lede { color: var(--ink-soft); margin-bottom: 18px; }
+.doc h2 { font-size: 20px; }
+.doc h3 {
+  font-size: 15px; font-weight: 700; color: var(--ink-soft);
+  margin: 16px 0 6px;
+}
+.doc ul { margin: 0; padding-left: 20px; }
+.doc li + li { margin-top: 4px; }
+.doc .card p + p { margin-top: 8px; }
+/* About's damage formula: one line set apart from the list under it. */
+.doc .formula {
+  margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--raised);
+  font-weight: 600; overflow-wrap: anywhere;
+}
+.doc-dlg .formula { margin-top: 4px; }
+/* Date on its own line above the title. */
+.entry-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+.entry-head h2 { margin: 0; }
+.entry-date { font-size: 14px; font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.change-num { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.change-num b { color: var(--ink); }
+.todo li::marker { color: var(--accent); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pair .card + .card { margin-top: 0; }
+@media (max-width: 640px) { .pair { grid-template-columns: minmax(0, 1fr); } .doc h1 { font-size: 26px; } }
+.faq h3 { text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); margin: 18px 0 4px; }
+.faq h2 + h3 { margin-top: 6px; }
+
+/* ---------------------------------------------- page-load screen (site.js) -- */
+/* Shown from the first paint (static markup, html.loading) until site.js has
+   checked the build and the guide has drawn; then the page fades in as the
+   screen fades out. Same background as the page, so nothing flashes. */
+.loader {
+  position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px; background: var(--bg); color: var(--ink-soft); transition: opacity .25s ease;
+}
+.loader img { border-radius: 10px; }
+.loader-text { display: flex; align-items: center; gap: 8px; min-height: 22px; font: 600 15px/1.4 Barlow, system-ui, sans-serif; }
+.loader-ok { display: none; color: var(--now); }
+.loader.ok .loader-ok { display: block; }
+.loader-bar { width: 200px; max-width: 70vw; height: 3px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.loader-bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center;
+  transform: scaleX(0); transition: transform .7s cubic-bezier(.2, .7, .2, 1); }
+.loader.done { opacity: 0; pointer-events: none; }
+/* A link click within a visit (gate.js): no screen at all, from the first paint. */
+html.fast .loader { display: none; }
+/* "A new version of the guide is out." (site.js): stays until Refresh. */
+.update-toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 80;
+  /* max-content: a fixed box at left 50% would otherwise shrink to the right half. */
+  display: flex; align-items: center; gap: 14px; width: max-content; max-width: calc(100vw - 32px);
+  padding: 10px 10px 10px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--accent); box-shadow: 0 10px 28px rgba(0, 0, 0, .35); font-weight: 600;
+}
+.update-toast .btn { flex: none; }
+/* Phones: above the fixed Back / Next bar, where it shows. */
+@media (max-width: 900px) { body:has(#step:not([hidden])) .update-toast { bottom: 88px; } }
+html.loading .top, html.loading main, html.loading .foot { opacity: 0; }
+.top, main, .foot { transition: opacity .25s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .loader, .loader-bar i, .top, main, .foot { transition: none; }
+  /* No hover fades or button press nudge either. */
+  .tab, .btn, .btab, .seg button, .win-cell, .faq-open { transition: none; }
+  .btn:active:not(:disabled) { transform: none; }
+}
+
+/* ------------------------------------------- first-visit notice (site.js) -- */
+.notice {
+  width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto;
+  padding: 22px 22px 20px; border: 1px solid var(--rule); border-radius: 14px;
+  background: var(--panel); color: var(--ink);
+}
+.notice::backdrop { background: rgba(4, 7, 10, .72); }
+@media (prefers-reduced-motion: no-preference) {
+  .notice[open] { animation: notice-in .15s ease-out; }
+  @keyframes notice-in { from { opacity: 0; } }
+}
+.notice h2 { font-size: 22px; margin: 0 32px 8px 0; }
+.notice-lead { font-weight: 600; margin-bottom: 10px; }
+.notice ul { margin: 0; padding-left: 20px; }
+.notice li { font-size: 15px; }
+.notice li + li { margin-top: 6px; }
+.notice-more { margin-top: 12px; font-size: 15px; }
+.notice a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.notice-check {
+  display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 10px 12px;
+  border-radius: 10px; background: var(--raised); font-weight: 600; cursor: pointer;
+}
+.notice-check input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.notice-go { width: 100%; margin-top: 12px; }
+@media (max-width: 400px) {
+  .notice { padding: 18px 16px 16px; }
+  .notice h2 { font-size: 20px; }
+  .notice li, .notice-more { font-size: 14px; }
+}
+.notice-x {
+  position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid transparent; background: none; color: var(--ink-soft); font-size: 22px; line-height: 1;
+}
+.notice-x:hover { color: var(--ink); border-color: var(--rule); }
+.linklike {
+  border: 0; background: none; padding: 0; color: inherit; font-size: inherit;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.linklike:hover { color: var(--ink); }
+
+/* ----------------------------------------------------------- small screens -- */
+/* Tablets: two columns (step card | board or grid), the right column under
+   the middle one. */
+@media (max-width: 1099px) and (min-width: 901px) {
+  :root { --bw: calc(100vw - var(--col-step) - var(--gap) - 32px); --site-w: calc(100vw - 32px); }
+  main { grid-template-columns: var(--col-step) minmax(0, 1fr); }
+  main > .page, main > #fatal { grid-column: 2; }
+  .page[data-page="board"], .page[data-page="skills"] { grid-template-columns: minmax(0, 1fr); }
+  .skills-side .spec { height: auto; max-height: 520px; }
+  /* The board's full width under it: the stats in two columns, read down,
+     no scroll box. */
+  .stats-card { height: auto; }
+  .stats-card .stats { flex: none; overflow: visible; columns: 2; column-gap: 28px; }
+  .stats-card .st-row { break-inside: avoid; }
+  .win-card .win-sub.lock { white-space: normal; }
+}
+/* Short wide windows (landscape phones): the skill window's four rows need
+   ~543 px at the smallest icon size, so the card grows instead of clipping
+   the passives. */
+@media (max-height: 660px) and (min-width: 901px) { .win-card { height: auto; min-height: var(--step-h); } }
+/* Short screens (a landscape phone): the step card grows with its notes
+   instead of squeezing them to nothing. */
+@media (max-height: 560px) and (min-width: 901px) {
+  .step { position: static; height: auto; }
+  .step-text { overflow: visible; }
+  .step-text > .notes { flex: none; overflow: visible; }
+}
+@media (max-width: 900px) {
+  :root { --site-w: calc(100vw - 32px); }
+  /* 100vw counts a scroll bar; the page's own width does not. */
+  main, .top { width: auto; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  main > .page, main > #fatal, .step { grid-column: 1; grid-row: auto; }
+  .page[data-page="board"], .page[data-page="skills"] { display: block; }
+  .page[data-page="board"][hidden], .page[data-page="skills"][hidden] { display: none; }
+  .col-side { margin-top: 14px; }
+  /* The buttons are fixed to the bottom of the screen. The card keeps one
+     size on every step: fixed title, totals and notes boxes (the notes box
+     holds the longest step's notes), so nothing moves as you step. */
+  .step { position: static; height: auto; padding: 16px; }
+  .step-text { overflow: visible; }
+  /* The notes take the room their step needs, one note's worth at least,
+     so a step without notes does not push the board below the screen
+     (review 2026-09-26; was a fixed 92 px). */
+  .step-text > .notes { flex: none; overflow: visible; height: auto; min-height: 40px; }
+  /* This step's node is scrolled into view clear of the fixed buttons. */
+  .tile { scroll-margin: 12px 0 92px; }
+  .step h1 { font-size: 20px; }
+  .step-main { margin: 10px 0; height: 84px; }
+  .step-icon { width: 56px; height: 56px; }
+  .step .big-icon { width: 56px; height: 56px; }
+  .step-need { font-size: 16px; padding: 9px 12px; height: 64px; }
+  .note { font-size: 14px; padding: 8px 10px; }
+  .stats-card, .skills-side .spec, .win-card { height: auto; }
+  .stats-card .stats { overflow: visible; flex: none; }
+  .win-card { --cell: 100%; }
+  .win-card .win-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .win-card .win-art { width: 100%; max-width: 96px; }
+  /* Only the unlock line shows; while any skill in the grid is locked every
+     cell keeps its two lines, so the rows line up. */
+  .win-sub { display: none; }
+  .win-sub.lock { display: block; }
+  .win-grid.has-lock .win-sub { display: block; visibility: hidden; font-size: 11px; min-height: 2.4em; }
+  .win-grid.has-lock .win-sub.lock { visibility: visible; }
+  /* Five cells of ~60 px: long names break (with a hyphen where the browser
+     can) instead of running into the next cell. */
+  .win-name { font-size: 11.5px; overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; max-width: 100%; }
+  .win-card .win-name { -webkit-line-clamp: 3; line-clamp: 3; }
+  .win-sub.lock { font-size: 11px; }
+  .win-card .win-sub.lock { white-space: normal; }
+  .win-grid { gap: 10px 6px; }
+  /* Room for the fixed Back / Next bar, only where it shows. */
+  body:has(#step:not([hidden])) { padding-bottom: 84px; }
+  .nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--rule);
+  }
+  .hint { display: none; }
+  /* The card grows with its step here: the next steps would push the board
+     down, and Next is always at hand at the bottom. */
+  .upnext { display: none; }
+  /* The four boards in one row: name over points, so the board itself
+     starts higher. */
+  .boards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .btab { padding: 6px 8px; border-radius: 8px; min-height: 52px; justify-content: center; }
+  .btab .nm { font-size: 15px; line-height: 1.2; }
+  .btab .pt { font-size: 12px; line-height: 1.2; }
+  /* Tap targets of 44 px; a fold opens from anywhere in its box. */
+  .jump select, .reset { height: 44px; }
+  .seg button { min-height: 44px; }
+  .faq-open { height: 44px; }
+  .site a, .tab { min-height: 44px; }
+  .foot .linklike { padding: 12px 8px; }
+  .fold summary { margin: -12px -18px; padding: 12px 18px; }
+  .fold.inner summary { margin: -10px -14px; padding: 10px 14px; }
+}
+/* The narrowest phones: four skill cells a row (five split words), and
+   smaller key names so LMB / RMB fit their keys. */
+@media (max-width: 430px) { .win-card .win-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .gkey .gk { font-size: 11px; letter-spacing: -.04em; } }
+/* Mid widths: the mark without its name, so the tabs and links share a row. */
+@media (max-width: 820px) { .top:has(.tabs) .brand span { display: none; } }
+@media (max-width: 560px) { .brand span { display: none; } }
+@media (max-width: 640px) {
+  /* The header on two rows: the mark and the site links, then the page tabs
+     across the full width. */
+  .top { padding: 10px 16px; }
+  .site a { padding: 4px 8px; }
+  .tabs { order: 3; flex: 1 0 100%; margin-left: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+  .tab { padding: 8px 6px; }
+}
+
+/* ------------------------------------------- Macro FAQ and the risk gate -- */
+.bars-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.faq-open {
+  height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--rule-strong); background: var(--raised);
+  color: var(--ink); font-weight: 700; font-size: 14px;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.faq-open:hover { border-color: var(--ink-soft); }
+.faq-open::before { content: "?"; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 8px;
+  border-radius: 50%; border: 1.5px solid currentColor; font-size: 12px; line-height: 1; vertical-align: -3px; }
+.faq-dlg {
+  width: min(720px, calc(100% - 32px)); max-height: calc(100% - 48px); padding: 0; overflow: hidden;
+  border: 1px solid var(--rule); border-radius: 14px; background: var(--panel); color: var(--ink);
+}
+.faq-dlg[open] { display: flex; flex-direction: column; }
+.faq-dlg::backdrop { background: rgba(4, 7, 10, .72); }
+.faq-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--rule); }
+.faq-head h2 { margin: 0; font-size: 24px; }
+.faq-head .notice-x { position: static; }
+.faq-body { overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 20px; }
+.faq-item { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.faq-item:last-child { border-bottom: 0; }
+.faq-item h3 { margin: 0 0 6px; font: 700 18px/1.25 "Barlow Condensed", Barlow, sans-serif; letter-spacing: .01em; }
+.faq-item p { font-size: 15px; color: var(--ink-soft); max-width: 70ch; }
+.faq-item p:first-of-type { color: var(--ink); }
+.faq-item p + p { margin-top: 4px; }
+.faq-table-wrap { margin-top: 10px; overflow-x: auto; }
+.faq-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.faq-table th, .faq-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.faq-table tr:first-child th { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.faq-table td { white-space: nowrap; text-align: right; }
+.faq-table tr:first-child th:not(:first-child) { text-align: right; }
+.faq-table th[scope="row"] { font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .faq-dlg[open] { animation: notice-in .15s ease-out; } }
+/* Changelog and About as dialogs on the guide page: the pages' cards become
+   flat sections split by hairlines inside the dialog. */
+.doc-dlg { width: min(760px, calc(100% - 32px)); }
+.doc-dlg .faq-body { padding-top: 12px; }
+.doc-dlg .lede { color: var(--ink-soft); margin-bottom: 8px; }
+.doc-dlg .card { border: 0; border-radius: 0; background: none; padding: 16px 0; margin: 0; }
+.doc-dlg .card + .card, .doc-dlg .pair + .card, .doc-dlg .card + .pair { border-top: 1px solid var(--rule); }
+.doc-dlg .pair { gap: 0 24px; margin: 0; }
+.doc-dlg .pair .card + .card { border-top: 0; }
+@media (max-width: 640px) { .doc-dlg .pair .card + .card { border-top: 1px solid var(--rule); } }
+/* The mouse-macro tab's gate: the risk, the sources, one accept button. */
+.gate-dlg { width: min(760px, calc(100% - 32px)); border-color: color-mix(in srgb, var(--wait) 55%, var(--rule)); }
+.gate-dlg .faq-head { background: color-mix(in srgb, var(--wait) 10%, var(--panel)); }
+.gate-body { padding-top: 16px; }
+.gate-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--rule); background: var(--panel); }
+.gate-foot .btn { height: 46px; padding: 0 18px; font-size: 16px; }
+.gate-lines { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.gate-lines li:first-child { list-style: none; margin-left: -18px; font-weight: 700; font-size: 16px; }
+.gate-src-title { margin-top: 16px; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.gate-src { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.gate-src li { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline;
+  padding: 5px 0; border-top: 1px solid var(--rule); }
+.gate-src .src-kind { color: var(--ink-soft); font-weight: 600; }
+.gate-src a { color: var(--ink); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.gate-src a:hover { color: var(--accent); }
+.gate-src .src-date { color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .gate-src li { grid-template-columns: minmax(0, 1fr) auto; }
+  .gate-src .src-kind { grid-column: 1 / -1; font-size: 13px; }
+  .gate-foot { flex-direction: column-reverse; }
+  .gate-foot .btn { width: 100%; height: auto; min-height: 46px; padding: 10px 14px; }
+  .bars-tools { width: 100%; }
+  .faq-open { width: 100%; }
+  .faq-table td { white-space: normal; }
+}
+
+/* ---------------------------------------------------------------- print -- */
+/* Light ink on paper, no screen chrome, the board and bar art kept. */
+@media print {
+  :root { --bg: #fff; --panel: #fff; --raised: #f6f4ef; --ink: #161b22; --ink-soft: #545d69; --rule: #ddd8cd; --accent: #8f5d12; --now: #177a45; }
+  body { background: #fff; }
+  .loader, .nav, .hint, .tabs, .site, .step-top, #tip, .update-toast, .seg, .foot { display: none !important; }
+  .step { position: static; height: auto; }
+  .card, .step { box-shadow: none; break-inside: avoid; }
+  .board-wrap, .tile .fr, .big-icon, .gbar-wrap, .gkey, .gcell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
