@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" class="loading">
+<head>
+<meta charset="utf-8">
+<meta name="build" content="59eca00b1688">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the guide is made · Ranger Point Guide — Loseii</title>
+<meta name="description" content="How the AION 2 Global Ranger guide decides what to take.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b0f14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f1ec" media="(prefers-color-scheme: light)">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Loseii">
+<meta property="og:title" content="How the guide is made · Ranger Point Guide">
+<meta property="og:description" content="How the AION 2 Global Ranger guide decides what to take.">
+<meta property="og:url" content="https://www.loseii.com/aion2-ranger-guide/about.html">
+<meta property="og:image" content="https://www.loseii.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="img/icon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preload" href="img/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/fonts/barlow-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=59eca00b1688">
+<noscript><link rel="stylesheet" href="noscript.css?v=59eca00b1688"></noscript>
+<script src="gate.js?v=59eca00b1688"></script>
+<link rel="canonical" href="https://www.loseii.com/aion2-ranger-guide/about.html">
+<style>
+/* Loseii mirror additions: the credit note, and skill icons that were never archived stay blank instead of broken. */
+.mirror-note{max-width:1180px;margin:14px auto 0;padding:10px 16px;border:1px solid color-mix(in srgb,currentColor 22%,transparent);border-radius:10px;font-size:13px;line-height:1.5;opacity:.88}
+.mirror-note a{color:inherit}
+img.noicon{opacity:0}
+</style>
+<script>document.addEventListener("error",function(e){var t=e.target;if(t&&t.tagName==="IMG"&&/img\/skills\//.test(t.getAttribute("src")||""))t.classList.add("noicon")},true);</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<!-- The page-load screen (site.js): checks for a newer build, then fades into the page. -->
+<div id="loader" class="loader" role="status" aria-live="off">
+  <img src="img/icon.png" alt="" width="48" height="48">
+  <p class="loader-text"><svg class="loader-ok" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="loader-text">Checking for updates</span></p>
+  <div class="loader-bar" aria-hidden="true"><i id="loader-bar"></i></div>
+</div>
+
+<header class="top">
+  <a class="brand" href="index.html" aria-label="Ranger Point Guide">
+    <img src="img/icon.png" alt="" width="32" height="32">
+    <span>Ranger Point Guide</span>
+  </a>
+  <nav class="site" aria-label="Site">
+    <a href="index.html">Guide</a>
+    <a href="changelog.html">Changelog</a>
+    <a href="about.html" aria-current="page">About</a>
+  </nav>
+</header>
+
+<!-- Loseii mirror notice: the guide, its simulator and all its text are tgustafsson's work. -->
+<aside class="mirror-note" role="note">
+  <b>A mirror.</b> This is the <b>Ranger Point Guide</b> by <b>tgustafsson</b> (ranger.tgustafsson.se), which went offline in October 2026.
+  Loseii hosts a copy restored from the <a href="https://web.archive.org/web/20261010213912/https://ranger.tgustafsson.se/" rel="noopener">Internet Archive's 10 Oct 2026 capture</a> (data build 28 Sep 2026), unchanged apart from this notice.
+  All credit for the guide, the simulator behind it and the writing goes to the original author. Skill icons and board art were not archived, so those are blank.
+</aside>
+
+<main class="doc" id="main">
+  <h1>How the guide is made</h1>
+  <p class="lede">Board nodes, damage ranks, traits, stigmas and the macro come from a Ranger combat simulator; the defensive passives follow common guides. Below: how it works and how far to trust it.</p>
+
+  <section class="card">
+    <h2>The simulator</h2>
+    <ul>
+      <li>Plays a boss fight cast by cast.</li>
+      <li>Uses each skill's real values: coefficients, cooldowns, cast, cancel and charge times, every trait and stigma rank.</li>
+      <li>Fires skills the way your macro and keys would, under the game's queue and cancel rules.</li>
+      <li>Runs buffs, procs and cooldown resets on their own timers.</li>
+      <li>Each fight runs in a fraction of a second, so every option is tested over many fight lengths and rolls.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Damage per hit</h2>
+    <p class="formula">(Attack × coefficient + rank bonus) × damage boosts × crit × Double</p>
+    <ul>
+      <li>Coefficient: fixed per skill. Rank bonus: flat, and grows with rank. A rank-up adds a little; the big jumps come at the trait ranks.</li>
+      <li>Crit: ×1.5 plus your Crit Damage. Crit chance caps at 80%.</li>
+      <li>Double: exactly ×2. Bosses take 30 percentage points off your Double chance.</li>
+      <li>Multi-hit: up to 4 extra hits, each 10% of the hit.</li>
+      <li>Perfect: the top of the damage roll. Other hits average 92% of it.</li>
+      <li>Damage over time (Griffon Arrow's burn, Drill Dart's bleed) never crits or Doubles.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Crit against bosses</h2>
+    <ul>
+      <li>Bosses resist crits. In Korean and Taiwanese boss logs, crit chance rises about 0.07 percentage points per Critical Hit point above a resist of about 650, up to the 80% cap.</li>
+      <li>That resist is our estimate for Global's first-season bosses: it grows with a boss's level, and the Korean endgame bosses in those logs resist more.</li>
+      <li>A level-45 Global Ranger has about 1,300 Critical Hit, so it crits on such a boss some of the time, and far more while Precision and Bow of Blessing are up.</li>
+      <li>Point for point, Critical Hit nodes still add more boss damage than Attack nodes: outside Precision and Bow of Blessing a level-45 Ranger is below the 80% crit cap, and your crits also make Drill Dart usable.</li>
+      <li>Drill Dart needs one of your crits in the last 3 s.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Speed and timing</h2>
+    <ul>
+      <li>Animation time = base time ÷ (1 + Combat Speed).</li>
+      <li>The server acts in 50 ms steps. The shortest cancel is 100 ms.</li>
+      <li>Deadshot's charge stages scale with Combat Speed too.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Test character and fight</h2>
+    <ul>
+      <li>Level-45 Global Ranger in typical first-season gear, at typical skill levels: Attack 2,692, Critical Hit 1,312, Combat Speed 41.5%.</li>
+      <li>An endgame boss, fought at range, over fights of 55 s to 3 min 45 s.</li>
+      <li>Mobility traits are also tested with 10–20% of the fight spent moving.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>How we check it</h2>
+    <ul>
+      <li>Skill values and gear are Global's. The Korean and Taiwanese logs below only check the combat mechanics.</li>
+      <li>Over 800 Korean and Taiwanese boss fights: cast timing, skill order and each skill's share of damage.</li>
+      <li>3 full-fight logs of one Korean Ranger, skill by skill: 16 of 22 skills land within 2 percentage points of their real share of damage.</li>
+      <li>When the simulator and a real log disagree, the log wins and the simulator changes.</li>
+    </ul>
+  </section>
+
+  <div class="pair">
+    <section class="card">
+      <h2>Reading the numbers</h2>
+      <ul>
+        <li>DPS % numbers compare options ("A beats B"). They are not the DPS you will see: that depends on your gear and play.</li>
+        <li>"Without it, you lose X%": DPS lost with only that one thing left out. Such numbers don't add up: the parts of the rotation feed each other.</li>
+        <li>"Same DPS" or "about the same": too close to call. The guide then follows a popular Ranger guide.</li>
+        <li>Stagger rates are counted in real Korean and Taiwanese fights, not simulated.</li>
+        <li>Global has no combat logs yet. We re-check once it does. Every change is in the <a href="changelog.html">changelog</a>.</li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>Not covered</h2>
+      <ul>
+        <li>PvP</li>
+        <li>Farming</li>
+        <li>Party buffs</li>
+        <li>Boss mechanics that stop you attacking</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="card faq" id="questions">
+    <h2>Questions</h2>
+    <h3>Why does it disagree with my build?</h3>
+    <p>It's tuned for one fight: an endgame boss and a level-45 Ranger in dungeon gear. PvP, farming and better gear change the answer. Many picks are close, so either can be fine.</p>
+    <h3>Why are some skills not in the rotation?</h3>
+    <p>They are utility, not boss damage: Setup lists them under Utility. Explosion Trap and Defiance get skill points last, at level 45. The defensive passives get a few points while levelling, for survival.</p>
+    <h3>Is this official?</h3>
+    <p>No. It is an unofficial fan guide, not affiliated with NCSOFT.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Unofficial fan guide. Not affiliated with or endorsed by NCSOFT Corporation.</p>
+  <p>AION is a registered trademark of NCSOFT Corporation. Game names, art and icons are © NCSOFT Corporation and are used for reference only.</p>
+<p>Original guide by tgustafsson · ranger.tgustafsson.se (offline since October 2026). Mirrored on Loseii, with credit, from the Internet Archive.</p>
+</footer>
+
+<script src="site.js?v=59eca00b1688"></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>

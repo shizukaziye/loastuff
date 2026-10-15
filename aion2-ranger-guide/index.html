@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en" class="loading">
+<head>
+<meta charset="utf-8">
+<meta name="build" content="59eca00b1688">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranger Point Guide — Loseii</title>
+<meta name="description" content="AION 2 Global Ranger: which Daevanion node and which skill rank to buy next, step by step.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b0f14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f1ec" media="(prefers-color-scheme: light)">
+<!-- The link preview (Discord and other chats): absolute URLs, the image 1200x630 (build.py, art/og.png). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Loseii">
+<meta property="og:title" content="Ranger Point Guide">
+<meta property="og:description" content="AION 2 Global Ranger: every Daevanion node, skill rank, trait and stigma, step by step to level 45.">
+<meta property="og:url" content="https://www.loseii.com/aion2-ranger-guide/">
+<meta property="og:image" content="https://www.loseii.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<!-- Never in a search engine: the same rule the server sends as X-Robots-Tag. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<link rel="icon" href="img/icon.png">
+<!-- Barlow, self-hosted (img/fonts, SIL OFL 1.1): nothing loads from another site.
+     All four faces show on the first screen (600 is the page-load screen's text). -->
+<link rel="preload" href="img/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/fonts/barlow-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/fonts/barlow-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="img/fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=59eca00b1688">
+<noscript><link rel="stylesheet" href="noscript.css?v=59eca00b1688"></noscript>
+<script src="gate.js?v=59eca00b1688"></script>
+<link rel="canonical" href="https://www.loseii.com/aion2-ranger-guide/">
+<style>
+/* Loseii mirror additions: the credit note, and skill icons that were never archived stay blank instead of broken. */
+.mirror-note{max-width:1180px;margin:14px auto 0;padding:10px 16px;border:1px solid color-mix(in srgb,currentColor 22%,transparent);border-radius:10px;font-size:13px;line-height:1.5;opacity:.88}
+.mirror-note a{color:inherit}
+img.noicon{opacity:0}
+</style>
+<script>document.addEventListener("error",function(e){var t=e.target;if(t&&t.tagName==="IMG"&&/img\/skills\//.test(t.getAttribute("src")||""))t.classList.add("noicon")},true);</script>
+</head>
+<body>
+<!-- Skip to the step card and page (app.js moves focus without touching the address). -->
+<a class="skip" href="#main" data-jump="main">Skip to content</a>
+<!-- The page-load screen (site.js): checks for a newer build, waits for the guide, then fades into the page. -->
+<div id="loader" class="loader" role="status" aria-live="off">
+  <img src="img/icon.png" alt="" width="48" height="48">
+  <p class="loader-text"><svg class="loader-ok" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="loader-text">Checking for updates</span></p>
+  <div class="loader-bar" aria-hidden="true"><i id="loader-bar"></i></div>
+</div>
+
+<header class="top">
+  <a class="brand" href="index.html" aria-label="Ranger Point Guide">
+    <img src="img/icon.png" alt="" width="32" height="32">
+    <span>Ranger Point Guide</span>
+  </a>
+  <!-- The page tabs first: the guide's own navigation, beside the mark. The
+       site links (Guide / Changelog / About) sit at the right, quieter. -->
+  <nav class="tabs" aria-label="Guide pages">
+    <button class="tab" type="button" data-page="board" aria-current="page">Board</button>
+    <button class="tab" type="button" data-page="skills">Skills</button>
+    <button class="tab" type="button" data-page="setup">Setup</button>
+  </nav>
+  <nav class="site" aria-label="Site">
+    <a href="index.html" aria-current="page">Guide</a>
+    <a href="changelog.html">Changelog</a>
+    <a href="about.html">About</a>
+  </nav>
+</header>
+
+<!-- Loseii mirror notice: the guide, its simulator and all its text are tgustafsson's work. -->
+<aside class="mirror-note" role="note">
+  <b>A mirror.</b> This is the <b>Ranger Point Guide</b> by <b>tgustafsson</b> (ranger.tgustafsson.se), which went offline in October 2026.
+  Loseii hosts a copy restored from the <a href="https://web.archive.org/web/20261010213912/https://ranger.tgustafsson.se/" rel="noopener">Internet Archive's 10 Oct 2026 capture</a> (data build 28 Sep 2026), unchanged apart from this notice.
+  All credit for the guide, the simulator behind it and the writing goes to the original author. Skill icons and board art were not archived, so those are blank.
+</aside>
+
+<noscript><p class="noscript card">This guide needs JavaScript.</p></noscript>
+<main id="main">
+
+  <!-- The next step: shared by Board and Skills -->
+  <!-- A fixed size: the text area takes what is left and scrolls, so Back and
+       Next stay in the same place on every step. -->
+  <section id="step" class="step" aria-label="Next step">
+    <p id="step-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+    <div class="step-text">
+      <div class="step-top">
+        <label class="jump"><span class="sr-only">Jump to a level</span>
+          <select id="jump"><option value="" selected>Go to level…</option></select>
+        </label>
+        <button id="reset" class="reset" type="button" title="Back to the start on both pages">↺ Start over</button>
+      </div>
+      <p class="step-no" id="step-no"></p>
+      <div class="progress" aria-hidden="true"><i id="step-bar"></i></div>
+      <div class="step-main">
+        <div class="step-icon" id="step-icon"></div>
+        <div class="step-head">
+          <h1 id="step-title"></h1>
+          <p class="step-cost" id="step-cost"></p>
+        </div>
+      </div>
+      <p class="step-need" id="step-need"></p>
+      <div class="notes" id="step-notes"></div>
+      <!-- The next steps of the same order, each a button to that step
+           (app.js renderUpNext). A fixed box: desktops and tablets only. -->
+      <div class="upnext" id="upnext">
+        <h2 class="upnext-h" id="upnext-h">Up next</h2>
+        <ol id="step-next" class="upnext-list" aria-labelledby="upnext-h"></ol>
+      </div>
+    </div>
+    <div class="nav">
+      <button id="prev" class="btn" type="button" aria-keyshortcuts="ArrowLeft">← Back</button>
+      <button id="next" class="btn primary" type="button" aria-keyshortcuts="ArrowRight">Next →</button>
+    </div>
+    <p class="hint">← → to step · Home and End for the first and last</p>
+  </section>
+
+  <!-- Board page -->
+  <!-- Board and Skills pages: the middle column (board / skill grid) and the
+       right column (stats / traits). Same columns on both, so a tab change
+       moves nothing. -->
+  <section class="page" data-page="board">
+    <div class="col-main">
+      <div class="boards" id="board-tabs" role="group" aria-label="Board to show"></div>
+      <div class="board-wrap">
+        <div class="board" id="board" role="group" aria-label="Daevanion board"></div>
+      </div>
+      <div class="page-foot">
+        <p class="legend"><span><i class="lg taken"></i>taken</span><span><i class="lg now"></i>this step</span><span><i class="lg todo"></i>not yet</span></p>
+        <button type="button" class="faq-open" data-faq="boardFaq" data-title="Board FAQ" aria-haspopup="dialog" aria-controls="macro-faq">Board FAQ</button>
+      </div>
+    </div>
+    <div class="col-side">
+      <div class="card side-card stats-card">
+        <h2 class="side-title">Board stats</h2>
+        <div id="stats" class="stats"></div>
+      </div>
+      <details class="fold" id="dp-income-box" hidden>
+        <summary>Point sources</summary>
+        <div id="dp-income" class="income"></div>
+      </details>
+    </div>
+    <div id="tip" class="tip" role="tooltip" hidden></div>
+  </section>
+
+  <!-- Skills page -->
+  <section class="page" data-page="skills" hidden>
+    <div class="col-main">
+      <div id="skills" class="skills"></div>
+      <div class="page-foot">
+        <button type="button" class="faq-open" data-faq="skillsFaq" data-title="Skills FAQ" aria-haspopup="dialog" aria-controls="macro-faq">Skills FAQ</button>
+      </div>
+    </div>
+    <div class="col-side">
+      <div id="skills-side" class="skills-side"></div>
+    </div>
+  </section>
+
+  <!-- Setup page -->
+  <section class="page" data-page="setup" hidden>
+    <h1 class="sr-only">Setup: skill bar and macro, stigmas and utility</h1>
+    <!-- Jumps to the three cards (app.js: data-jump scrolls there without
+         changing the address, which names the page). -->
+    <nav class="jumps" aria-label="On this page">
+      <a href="#setup" data-jump="bars-card">Skill bar and macro</a><span aria-hidden="true"> · </span><a href="#setup" data-jump="stigmas-card">Stigmas</a><span aria-hidden="true"> · </span><a href="#setup" data-jump="utility-card">Utility</a><span aria-hidden="true" class="gear-jump" hidden> · </span><a href="#setup" data-jump="gear-card" class="gear-jump" hidden>Gear</a>
+    </nav>
+    <!-- Skill bar and macro: two setups, drawn like the game's bar (app.js
+         buildBars). The one section that names slots and keys. -->
+    <div class="card" id="bars-card">
+      <div class="bars-head">
+        <h2>Skill bar and macro</h2>
+        <div class="bars-tools">
+          <button type="button" class="faq-open" id="faq-open" data-faq="macroFaq" data-title="Macro FAQ" aria-haspopup="dialog" aria-controls="macro-faq">Macro FAQ</button>
+          <div class="seg" role="tablist" aria-label="Setup">
+            <button type="button" role="tab" id="tab-inGame" data-setup="inGame" aria-controls="bars-panel">In-game only</button>
+            <button type="button" role="tab" id="tab-external" data-setup="external" aria-controls="bars-panel">With a mouse macro</button>
+          </div>
+        </div>
+      </div>
+      <div id="bars-panel" role="tabpanel">
+        <div id="bars-sum" class="bars-sum"></div>
+        <!-- The setup as numbered steps, one thread top to bottom (app.js
+             barGuide): bar, macro, keys (and the mouse macro), fight. -->
+        <ol id="bars-steps" class="bsteps"></ol>
+      </div>
+    </div>
+    <div class="card" id="stigmas-card">
+      <h2>Stigmas</h2>
+      <div id="st-picks" class="picks"></div>
+      <div class="st-cols">
+        <div id="st-path-box" hidden>
+          <h3>By level</h3>
+          <p class="muted" id="st-path-intro"></p>
+          <div id="st-path" class="levels"></div>
+          <p class="muted small st-note" id="st-path-note" hidden></p>
+        </div>
+        <div id="st-after-box" hidden>
+          <h3>After level 45</h3>
+          <p class="muted" id="st-after-intro"></p>
+          <div id="st-after" class="levels"></div>
+          <details id="st-swaps-box" class="fold inner" hidden>
+            <summary>Optional: free-reset windows</summary>
+            <p class="muted small" id="st-swaps-intro"></p>
+            <div id="st-swaps" class="levels"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="utility-card">
+      <h2>Utility</h2>
+      <p class="muted">No boss damage.</p>
+      <!-- Active and Passive stacked on the left, Stigmas on the right: the
+           two sides end level. -->
+      <div id="utility" class="lanes">
+        <div class="lane-col">
+          <div class="lane"><h3>Active</h3><div id="utility-actives" class="rotation"></div></div>
+          <div class="lane"><h3>Passive</h3><div id="utility-passives" class="rotation"></div></div>
+        </div>
+        <div class="lane"><h3>Stigmas</h3><div id="utility-stigmas" class="rotation"></div></div>
+      </div>
+    </div>
+    <!-- Skill levels from gear (build.py gear_priority, gearprio.py): which
+         skills to keep on soul-bind and Arcana skill lines. Hidden until the
+         data has it. -->
+    <div class="card" id="gear-card" hidden>
+      <h2>Skill levels from gear</h2>
+      <p class="muted" id="gear-intro"></p>
+      <div class="lanes">
+        <div class="lane"><h3>Raise in this order</h3><ol id="gear-order" class="gear-order"></ol></div>
+        <div class="lane"><h3>What to keep</h3><div id="gear-sources" class="rotation"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="fatal" class="card" role="alert" hidden>
+    <h2>The guide didn't load</h2>
+    <p id="fatal-text">Reload in a minute. The site may be updating.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <p>Unofficial fan guide. Not affiliated with or endorsed by NCSOFT Corporation.</p>
+  <p>AION is a registered trademark of NCSOFT Corporation. Game names, art and icons are © NCSOFT Corporation and are used for reference only.</p>
+<p>Original guide by tgustafsson · ranger.tgustafsson.se (offline since October 2026). Mirrored on Loseii, with credit, from the Internet Archive.</p>
+</footer>
+
+<!-- The mouse-macro tab's gate (app.js drawRiskGate): the risk and its
+     sources, then accept (saved) or go to the in-game setup. The tab shows
+     nothing until it is accepted. -->
+<dialog id="bars-gate" class="faq-dlg gate-dlg" aria-labelledby="bars-gate-title"></dialog>
+<!-- The FAQ dialog, shared by the Board, Skills and Macro FAQ buttons
+     (app.js buildFaq; build.py board_faq / skills_faq / macro_faq). -->
+<dialog id="macro-faq" class="faq-dlg" aria-labelledby="faq-title">
+  <div class="faq-head">
+    <h2 id="faq-title">FAQ</h2>
+    <button type="button" class="notice-x" id="faq-close" aria-label="Close">×</button>
+  </div>
+  <div id="faq-body" class="faq-body"></div>
+</dialog>
+<!-- Changelog and About as dialogs over the guide (site.js). -->
+<dialog id="doc-dlg" class="faq-dlg doc-dlg" aria-labelledby="doc-dlg-title">
+  <div class="faq-head">
+    <h2 id="doc-dlg-title">About</h2>
+    <button type="button" class="notice-x" id="doc-dlg-close" aria-label="Close">×</button>
+  </div>
+  <div id="doc-dlg-body" class="faq-body doc"></div>
+</dialog>
+
+<script src="changelog.js?v=59eca00b1688"></script>
+<script src="data/guide-pack.js?v=59eca00b1688"></script>
+<script src="app.js?v=59eca00b1688"></script>
+<script src="site.js?v=59eca00b1688"></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>
