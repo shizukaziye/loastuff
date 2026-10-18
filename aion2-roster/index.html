@@ -3,9 +3,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aion 2 Roster Checklist — Loseii</title>
-<meta name="description" content="Aion 2 daily and weekly checklist for a main and alts. Per-character and per-server limits, Odyle and dungeon-charge refill trackers, the server Kina tier counter, and automatic resets at 07:00 UTC and the Wednesday weekly.">
+<meta name="description" content="Aion 2 daily and weekly checklist for a main and alts. Odyle Energy and Nightmare charges refill on their own, one tap logs a cube run, and the server-wide Kina tier counts every run. Resets at 07:00 UTC and on the Wednesday weekly.">
 <meta property="og:title" content="Aion 2 Roster Checklist">
-<meta property="og:description" content="Main and alt profiles with every daily and weekly limit, refill trackers, and the server Kina tier counter. Resets itself.">
+<meta property="og:description" content="Big-button roster tracker: Odyle Energy, Nightmare, Kina tiers and every weekly limit, with automatic resets.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.loseii.com/aion2-roster/">
 <link rel="canonical" href="https://www.loseii.com/aion2-roster/">
@@ -13,120 +13,159 @@
 <!-- SELF-CONTAINED: all CSS + JS inline, no build, no deps. State lives in localStorage (export/import JSON). -->
 <style>
 :root{
-  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--border:#2a3142;--text:#e7e9ee;
+  --bg:#0d1017;--panel:#161a24;--panel2:#1b2030;--panel3:#222a3a;--border:#2a3142;--text:#e7e9ee;
   --dim:#97a0b4;--accent:#66c7ff;--gold:#e8b75c;--good:#6ee7a8;--bad:#ff7f7f;--warn:#ffb86b;--mid:#c78cff;
+  --conq:#66c7ff;--trans:#c78cff;--nm:#ffb86b;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
-body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1900px;margin:0 auto;padding:20px 16px 90px}
-.tag{max-width:900px}
-h1{font-size:23px;margin:0 0 3px;letter-spacing:-.02em}
-.tag{color:var(--dim);font-size:13px;margin-bottom:14px;max-width:70ch}
-h2{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:0 0 8px;font-weight:700}
-h3{font-size:15px;margin:0}
-button{font-family:inherit}
-.bar{position:sticky;top:var(--loseii-nav-offset,0px);z-index:20;background:rgba(13,16,23,.97);backdrop-filter:blur(6px);
-  border:1px solid var(--border);border-radius:10px;padding:10px 13px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
-.bar .reset{font-size:12px;color:var(--dim)}
-.bar .reset b{color:var(--text);font-variant-numeric:tabular-nums}
+body{font:16px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:2100px;margin:0 auto;padding:18px 16px 100px}
+h1{font-size:26px;margin:0;letter-spacing:-.02em}
+.tag{color:var(--dim);font-size:15px;margin:4px 0 0;max-width:80ch}
+button{font-family:inherit;font-size:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+
+/* top bar */
+.bar{position:sticky;top:var(--loseii-nav-offset,0px);z-index:20;background:rgba(13,16,23,.96);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin:14px 0 18px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.clock{display:flex;flex-direction:column;line-height:1.15}
+.clock span{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
+.clock b{font-size:22px;font-variant-numeric:tabular-nums}
 .bar .spacer{flex:1}
-.btn{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)}
+.btn{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:16px;font-weight:600;cursor:pointer;color:var(--text);line-height:1.2}
+.btn:hover{background:var(--panel3)}
 .btn.primary{background:var(--accent);color:#06121f;border-color:var(--accent)}
-.btn.small{padding:3px 8px;font-size:12px}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
+.btn.small{padding:6px 12px;font-size:14px}
 .btn.danger{color:var(--bad)}
-.btn:disabled{opacity:.4;cursor:default}
-.server{margin-top:22px;border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:14px}
-.server-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px}
-.server-head h3{font-size:17px}
-.server-head .meta{font-size:12px;color:var(--dim)}
-.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);cursor:pointer;user-select:none}
-.toggle input{accent-color:var(--accent)}
-.cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-.panel.shared{grid-column:1/-1}
-.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:0 28px}
-.shared .tier,.shared .runs,.shared .note{max-width:620px}
-.panel{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:0}
-.panel.shared{border-color:#3a4a2a}
-.panel h2.shared{color:var(--good)}
-.panel h2.chr{color:var(--gold)}
-.chr-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin-bottom:6px}
-.chr-head .role{font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:1px 7px;border-radius:9px;background:#2a2140;color:var(--mid)}
-.chr-head .role.main{background:#3a2e14;color:var(--gold)}
-.chr-head .sub{font-size:12px;color:var(--dim)}
-.chr-head .edit{margin-left:auto}
-.group{margin-top:8px}
-.glbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:8px 0 4px;display:flex;justify-content:space-between}
-.glbl .pct{font-variant-numeric:tabular-nums}
-.item{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
-.item:last-child{border-bottom:none}
-.item .name{flex:1;min-width:0}
-.item .name small{color:var(--dim);font-size:11px;display:block}
-.item.done .name{color:var(--dim);text-decoration:line-through}
-.item input[type=checkbox]{accent-color:var(--good);width:16px;height:16px;flex:none}
-.ctr{display:inline-flex;align-items:center;gap:0;flex:none}
-.ctr button{width:26px;height:24px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;font-size:14px;line-height:1}
-.ctr button:first-child{border-radius:5px 0 0 5px}.ctr button:last-child{border-radius:0 5px 5px 0}
-.ctr .v{min-width:52px;text-align:center;font-variant-numeric:tabular-nums;font-size:12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);height:24px;line-height:22px;background:var(--panel)}
-.ctr .v.full{color:var(--good)}
-.track{display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center;font-size:12px;margin-top:6px}
-.track .lab{color:var(--dim)}
-.track .val{font-variant-numeric:tabular-nums}
-.track .val b{color:var(--text)}
-.track .val.cap{color:var(--good)}
-.track input{width:64px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:inherit}
-.meter{height:6px;border-radius:3px;background:var(--panel);overflow:hidden;grid-column:1/-1;margin-bottom:4px}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.35;cursor:default}
+
+/* server block */
+.server{margin-top:8px;border:1px solid var(--border);border-radius:16px;background:var(--panel);padding:16px}
+.srv-head{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:12px}
+.srv-head h2{font-size:22px;margin:0}
+.srv-head .meta{color:var(--dim);font-size:15px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:15px;color:var(--dim);cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--accent);width:18px;height:18px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px;margin-bottom:14px}
+.tile{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.tile .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;gap:8px}
+.tile .lbl .pct{font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0}
+.tile.conq .lbl{color:var(--conq)} .tile.trans .lbl{color:var(--trans)}
+.bignum{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;line-height:1}
+.bignum b{font-size:40px;font-variant-numeric:tabular-nums;font-weight:800}
+.bignum span{font-size:18px;color:var(--dim);font-variant-numeric:tabular-nums}
+.bignum .tier{font-size:16px;font-weight:700;margin-left:auto}
+.tier.p100{color:var(--good)}.tier.p80{color:var(--warn)}.tier.p60,.tier.p40,.tier.p20{color:var(--bad)}
+.meter{height:9px;border-radius:5px;background:var(--panel);overflow:hidden;display:flex}
 .meter i{display:block;height:100%;background:var(--accent)}
-.meter i.odyle{background:var(--mid)}
-.tier{font-size:12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;margin-top:4px}
-.tier .pct{font-weight:700;font-variant-numeric:tabular-nums}
-.pct.p100{color:var(--good)}.pct.p80{color:var(--warn)}.pct.p60,.pct.p40,.pct.p20{color:var(--bad)}
-.tier .next{color:var(--dim)}
-.runs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.runs .btn{flex:1 1 auto}
-.runs .cnt{opacity:.7;font-weight:500;margin-left:4px;font-variant-numeric:tabular-nums}
-.runs .btn:disabled{opacity:.4;cursor:not-allowed}
-.track .val.editable{cursor:pointer}
-.track .val .bad{color:var(--bad)}
-.runs .btn{flex:1;min-width:120px;text-align:center}
-.empty{border:1px dashed var(--border);border-radius:10px;padding:26px 16px;text-align:center;color:var(--dim);margin-top:18px}
-dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:420px;width:calc(100% - 32px)}
-dialog::backdrop{background:rgba(0,0,0,.6)}
-dialog h3{margin-bottom:10px}
-.frow{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.meter i.conq{background:var(--conq)} .meter i.trans{background:var(--trans)} .meter i.bonus{background:var(--gold)} .meter i.nm{background:var(--nm)}
+.meter i.full{background:var(--good)}
+.hint{font-size:14px;color:var(--dim)}
+.hint .bad{color:var(--bad);font-weight:700}
+.hint .good{color:var(--good);font-weight:700}
+.pm{display:flex;gap:8px;margin-top:auto}
+.pm .btn{flex:1;text-align:center;font-size:18px;padding:9px 10px}
+
+/* character cards */
+.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:12px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.card.main{border-color:#4a3c1a}
+.chead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chead .role{font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:3px 9px;border-radius:10px;background:#2a2140;color:var(--mid);font-weight:700}
+.chead .role.main{background:#3a2e14;color:var(--gold)}
+.chead h3{font-size:21px;margin:0;line-height:1.1}
+.chead .sub{font-size:14px;color:var(--dim);width:100%}
+.chead .edit{margin-left:auto}
+.block{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}
+.block .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.block.odyle .lbl{color:var(--accent)} .block.nm .lbl{color:var(--nm)}
+.block .lbl .r{text-transform:none;letter-spacing:0;font-weight:600}
+.odyle .bignum b{font-size:36px}
+.odyle .bonus{font-size:16px;color:var(--gold);font-weight:700;margin-left:4px;cursor:pointer}
+.odyle .bonus:hover,.editable:hover{text-decoration:underline dotted}
+.editable{cursor:pointer}
+.setrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.setrow input{width:110px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:18px;font-family:inherit}
+.setrow label{font-size:14px;color:var(--dim)}
+.runs{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:10px}
+.runs .btn{padding:12px 8px;font-size:16px;line-height:1.15;text-align:center;border-width:2px}
+.runs .btn.conq{border-color:var(--conq)} .runs .btn.trans{border-color:var(--trans)}
+.runs .btn small{display:block;font-size:13px;color:var(--dim);font-weight:500;margin-top:2px}
+.runs .x2{font-size:15px;font-weight:800;padding:8px 10px;color:var(--dim)}
+.runs .x2.on{background:var(--gold);color:#1a1200;border-color:var(--gold)}
+.undo{margin-top:8px;display:flex;gap:8px;align-items:center;font-size:14px;color:var(--dim)}
+.nm .row2{display:flex;align-items:center;gap:10px}
+.nm .bignum b{font-size:30px}
+.nm .btn{margin-left:auto;padding:10px 16px;border:2px solid var(--nm)}
+
+/* task lists */
+.list{display:flex;flex-direction:column;gap:6px}
+.lhead{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:700;margin:4px 0 0}
+.lhead .n{font-variant-numeric:tabular-nums;font-size:13px}
+.lhead .n.all{color:var(--good)}
+.row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;user-select:none;min-height:50px;text-align:left}
+.row:hover{background:var(--panel3)}
+.row .chk{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none;font-size:16px;font-weight:800;color:transparent}
+.row.done .chk{background:var(--good);border-color:var(--good);color:#06121f}
+.row.warn.done .chk{background:var(--bad);border-color:var(--bad)}
+.row .name{flex:1;min-width:0;font-size:16px;font-weight:600;line-height:1.2}
+.row .name small{display:block;color:var(--dim);font-size:13px;font-weight:500;margin-top:2px}
+.row.done .name{color:var(--dim);text-decoration:line-through}
+.row.warn.done .name{color:var(--bad);text-decoration:none}
+.row .cnt{font-variant-numeric:tabular-nums;font-size:17px;font-weight:800;flex:none;min-width:56px;text-align:right}
+.row.done .cnt{color:var(--good)} .row.warn.done .cnt{color:var(--bad)}
+.row .minus{flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);font-size:20px;line-height:1;cursor:pointer;color:var(--dim)}
+.row .minus:hover{color:var(--text);background:var(--panel3)}
+.row .minus:disabled{opacity:.25}
+.row.energy .cnt::after{content:" ⚡";font-size:12px;color:var(--gold)}
+
+.empty{border:2px dashed var(--border);border-radius:14px;padding:40px 16px;text-align:center;color:var(--dim);margin-top:18px;font-size:18px}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:460px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+dialog h3{margin:0 0 12px;font-size:20px}
+.frow{display:grid;grid-template-columns:130px 1fr;gap:8px;align-items:center;margin:8px 0;font-size:15px}
 .frow label{color:var(--dim)}
-.frow input,.frow select{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit}
-.fbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.frow input,.frow select{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:16px;font-family:inherit}
+.frow .help{grid-column:2;font-size:13px;color:var(--dim);margin-top:-4px}
+.fbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 .fbtns .left{margin-right:auto}
-.note{font-size:12px;color:var(--dim);margin-top:6px}
-.note .bad{color:var(--bad)}
-details.method{margin-top:26px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px 15px}
-details.method summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:8px 0}
-details.method p,details.method li{font-size:13px}
-details.method table{border-collapse:collapse;font-size:12px;width:100%}
-details.method th,details.method td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)}
+.note{font-size:14px;color:var(--dim);margin-top:6px}
+.sopt{display:flex;flex-direction:column;gap:10px;margin:6px 0 14px}
+.sopt label{display:flex;gap:10px;align-items:flex-start;font-size:15px;cursor:pointer}
+.sopt input{accent-color:var(--accent);width:18px;height:18px;flex:none;margin-top:2px}
+.sopt small{display:block;color:var(--dim);font-size:13px}
+details.method{margin-top:28px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:4px 16px}
+details.method summary{cursor:pointer;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;padding:10px 0}
+details.method p,details.method li{font-size:15px}
+details.method table{border-collapse:collapse;font-size:14px;width:100%}
+details.method th,details.method td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}
 details.method th{color:var(--dim);font-weight:600}
-textarea{width:100%;min-height:120px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font:12px/1.4 "SF Mono",Menlo,monospace}
-.toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;z-index:50;display:none}
-@media (max-width:1500px){ .cols{grid-template-columns:repeat(4,minmax(0,1fr))} }
-@media (max-width:1200px){ .cols{grid-template-columns:repeat(3,minmax(0,1fr))} }
-@media (max-width:900px){ .cols{grid-template-columns:repeat(2,minmax(0,1fr))} }
-@media (max-width:520px){ .frow{grid-template-columns:1fr} .cols{grid-template-columns:1fr} }
+textarea{width:100%;min-height:140px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px;font:13px/1.4 "SF Mono",Menlo,monospace}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:16px;z-index:50;display:none}
+@media (max-width:560px){
+  .wrap{padding:12px 12px 90px}
+  .frow{grid-template-columns:1fr} .frow .help{grid-column:1}
+  .bar{padding:10px 12px;gap:8px 14px}
+  .clock b{font-size:19px}
+  .runs{grid-template-columns:1fr 1fr}
+  .runs .x2{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>Aion 2 Roster Checklist</h1>
-<div class="tag">Set each character's Odyle once, then press a run button after every cube. Energy, charges, the weekly counts and the server Kina tier all update on their own and reset at 07:00 UTC daily and Wednesday weekly. Tick the rest by hand. Saved in this browser.</div>
+<p class="tag">Set each character's Odyle Energy and Nightmare charges once. After that, tap a run button after every cube and the energy, the server Kina tier and the Nightmare bank keep themselves. Everything resets at 07:00 UTC daily and on the Wednesday weekly. Saved in this browser.</p>
 
 <div class="bar">
-  <span class="reset">Daily reset in <b id="dcount">—</b></span>
-  <span class="reset">Weekly reset in <b id="wcount">—</b></span>
+  <div class="clock"><span>Daily reset</span><b id="dcount">—</b></div>
+  <div class="clock"><span>Weekly reset</span><b id="wcount">—</b></div>
   <span class="spacer"></span>
   <button class="btn primary" id="addChar">+ Character</button>
-  <label class="toggle"><input type="checkbox" id="moreBtn"> Show everything</label>
-  <button class="btn" id="exportBtn">Export</button>
-  <button class="btn" id="importBtn">Import</button>
+  <button class="btn" id="settingsBtn">Settings</button>
 </div>
 
 <div id="servers"></div>
@@ -134,30 +173,26 @@ textarea{width:100%;min-height:120px;background:var(--panel2);color:var(--text);
 
 <details class="method">
   <summary>What the limits are and where they come from</summary>
-  <p>Scope decides where an item lives. A <b>per-character</b> limit multiplies with alts and sits on the character card. A <b>per-server</b> limit is shared by every character you own on that server, so it sits once on the server panel and any character can clear it.</p>
+  <p>A <b>per-character</b> limit sits on the character card. A <b>per-server</b> limit is shared by every character you own on that server, so it sits once on the server panel.</p>
   <table>
     <tr><th>Item</th><th>Limit</th><th>Scope</th></tr>
-    <tr><td>Conquest reward charges</td><td>+1 per 8 h, holds 21 (one per cube)</td><td>character</td></tr>
-    <tr><td>Transcendence reward charges</td><td>+1 per 12 h, holds 14</td><td>character</td></tr>
-    <tr><td>Odyle Energy</td><td>+15 per 3 h, cap 560 (840 with membership); regen past the cap is lost</td><td>character</td></tr>
-    <tr><td>Nightmare</td><td>+2 per day, banks 14</td><td>character</td></tr>
-    <tr><td>Ascension Trial</td><td>3 per week</td><td>character</td></tr>
+    <tr><td>Odyle Energy</td><td>+15 per 3 h, cap 560 (840 with membership); regen past the cap is lost. Bonus energy from items (Substance Morph, Wind Breeze stones, pass rewards) sits in a second pool up to 2,000 that does not regenerate. One cube = 40, a doubled cube (×2) = 80</td><td>character</td></tr>
+    <tr><td>Nightmare</td><td>+2 at every daily reset, banks 14</td><td>character</td></tr>
+    <tr><td>Conquest / Transcendence runs</td><td>Counted server-wide for the Kina tier. Conquest pays 100% Kina to 83 runs, 80% to 104, 60% to 125, 40% to 146, 20% after. Transcendence 100% to 55, 80% to 69, 60% to 83, 40% to 97, 20% after. A doubled cube is one run. Per-character claim pools (21 / 14) are not tracked here</td><td>server</td></tr>
+    <tr><td>Ascension Trial / Subjugation</td><td>3 each per week</td><td>character</td></tr>
+    <tr><td>Substance Morph: Odyle Energy</td><td>40 energy each; main 20 a week, alts 4 (set the limit per character)</td><td>character</td></tr>
+    <tr><td>Wind Breeze: Odyle stone (membership)</td><td>20 per character per week, 100k Kina, 40 energy each</td><td>character</td></tr>
     <tr><td>Abyss time</td><td>7 h per week</td><td>character</td></tr>
-    <tr><td>Battlefield</td><td>3 wins + 3 entries rewarded per week</td><td>character</td></tr>
-    <tr><td>Arena</td><td>10 entries + 30 wins rewarded per week</td><td>character</td></tr>
-    <tr><td>Substance Morph: Odyle Energy</td><td>4 per character + 16 per server per week</td><td>both</td></tr>
-    <tr><td>Wind Breeze: Odyle stone (membership)</td><td>20 per character per week (13–27 Oct notice; was 4 + 16 per server)</td><td>character</td></tr>
+    <tr><td>Battlefield / Arena</td><td>3 wins + 3 entries / 10 entries + 30 wins rewarded per week</td><td>character</td></tr>
     <tr><td>Duties</td><td>5 rewarded per day</td><td>server</td></tr>
-    <tr><td>Daily Dungeon (Unknown Fissure)</td><td>14 per week</td><td>server</td></tr>
-    <tr><td>Shugo Festa keys</td><td>+3 per day, holds 12 (21 with membership)</td><td>server</td></tr>
-    <tr><td>Dimensional Invasion key</td><td>1 per day, holds 7</td><td>server</td></tr>
-    <tr><td>Commands</td><td>12 capital + 20 Abyss per week</td><td>server</td></tr>
+    <tr><td>Daily Dungeon (Unknown Fissure)</td><td>14 per week; Instant Clear tickets 7 a week at 30k</td><td>server</td></tr>
+    <tr><td>Shugo Festa keys</td><td>+3 at every daily reset, holds 12 (21 with membership)</td><td>server</td></tr>
+    <tr><td>Dimensional Invasion key</td><td>+1 at every daily reset, holds 7</td><td>server</td></tr>
+    <tr><td>Commands</td><td>12 capital + 20 Abyss scrolls per week</td><td>server</td></tr>
     <tr><td>Sealed Wings morph</td><td>20 per week</td><td>server</td></tr>
     <tr><td>Unclaimed cube count</td><td>10 per week; at 0 every character is locked out of Conquest and Transcendence</td><td>server</td></tr>
-    <tr><td>Cube energy target</td><td>(83 + 55 full-Kina runs) × 80 per doubled claim = 11,040 a week with membership, 5,520 without. A character can make about 840 regen + 40 per morph (4 own, +16 server on the main) + 40 per stone (20, membership) + ~400 from a premium event pass averaged over its four weeks; energy items are bound, so a surplus cannot move between characters.</td><td>both</td></tr>
-    <tr><td>Kina reduction</td><td>Conquest 100% to 83 runs, 80% to 104, 60% to 125, 40% to 146, 20% after. Transcendence 100% to 55, 80% to 69, 60% to 83, 40% to 97, 20% after. Counts runs; a doubled cube is one run. Only Kina is cut.</td><td>server</td></tr>
   </table>
-  <p>Refill trackers project from the last value you typed: set the number you see in-game and the card shows the current estimate and when it fills. Logging a run on a character takes one charge, adds one weekly cube, and adds one run to the server counter. Sources: aion2maps, metabot, Raid Relay, space4games and the 13/14 Oct Global patch notes.</p>
+  <p>Refill trackers project from the last value you typed: set the number you see in-game and the card shows the current estimate and when it fills. Tap a number to correct it. Logging a run takes the cube's energy from the character and adds one run to the server counter; logging a morph or a stone adds 40 bonus energy. Sources: aion2maps, metabot, Raid Relay, space4games, the 13/14 Oct Global patch notes and in-game checks.</p>
 </details>
 </div>
 
@@ -171,13 +206,28 @@ textarea{width:100%;min-height:120px;background:var(--panel2);color:var(--text);
     <div class="frow"><label for="fRole">Role</label><select id="fRole"><option value="alt">Alt</option><option value="main">Main</option></select></div>
     <div class="frow"><label for="fServer">Server</label><input id="fServer" required maxlength="24" placeholder="e.g. Nezekan" list="serverList"><datalist id="serverList"></datalist></div>
     <div class="frow"><label for="fGs">Gear score</label><input id="fGs" type="number" min="0" max="9999" step="1" placeholder="1900"></div>
-    <div class="frow"><label for="fPass">Daeva Pass</label><select id="fPass"><option value="1">Premium bought</option><option value="0">Free track</option></select></div>
+    <div class="frow"><label for="fMorph">Morph limit</label><input id="fMorph" type="number" min="0" max="99" step="1" placeholder="20 main / 4 alt"><div class="help">Substance Morph Odyle crafts per week on this character</div></div>
+    <div class="frow"><label for="fX2">Cubes</label><select id="fX2"><option value="1">Double inject (80 energy)</option><option value="0">Single (40 energy)</option></select></div>
     <div class="fbtns">
       <button type="button" class="btn danger left" id="delChar" hidden>Delete</button>
       <button type="button" class="btn" id="cancelChar">Cancel</button>
       <button type="submit" class="btn primary" id="saveChar">Save</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="settingsDlg">
+  <h3>Settings</h3>
+  <div class="sopt">
+    <label><input type="checkbox" id="optMore"><span>Show everything<small>Optional rows (PvP, Abyss, commands, wings, sieges, attendance, field boss) and correction buttons</small></span></label>
+    <label><input type="radio" name="spend" value="regen" id="spendRegen"><span>Cubes spend regen energy first<small>Keeps the regen pool below its cap so nothing is lost</small></span></label>
+    <label><input type="radio" name="spend" value="bonus" id="spendBonus"><span>Cubes spend bonus energy first<small>Pick this if your in-game numbers drift the other way</small></span></label>
+  </div>
+  <div class="fbtns">
+    <button type="button" class="btn left" id="exportBtn">Export</button>
+    <button type="button" class="btn left" id="importBtn">Import</button>
+    <button type="button" class="btn primary" id="settingsClose">Done</button>
+  </div>
 </dialog>
 
 <dialog id="ioDlg">
@@ -206,42 +256,36 @@ textarea{width:100%;min-height:120px;background:var(--panel2);color:var(--text);
 "use strict";
 var KEY="aion2roster.v1";
 var H=3600e3, D=24*H;
+var CUBE=40, BONUS_CAP=2000;
 
 /* ---- checklist definitions ---------------------------------------- */
-/* kind: check | count ; max for count ; note shown under name */
+/* kind: check | count ; max for count ; note shown under name ; opt = behind "show everything"
+   energy = bonus energy added per count ; maxKey = per-character field that holds the limit */
 var CHAR_DAILY=[
-  {id:"attend",   kind:"check", name:"Attendance / login reward", opt:true},
-  {id:"odyle",    kind:"check", name:"Odyle spent below the cap", note:"regen above the cap is lost", opt:true},
-  {id:"nightmare",kind:"count", max:2,  name:"Nightmare", note:"+2 a day, banks 14"},
-  {id:"passd",    kind:"check", name:"Daeva Pass daily missions", passOnly:true, opt:true}
+  {id:"attend",   kind:"check", name:"Attendance / login reward", opt:true}
 ];
 var CHAR_WEEKLY=[
-  {id:"conq",     kind:"count", max:21, name:"Conquest cubes", locked:true, hidden:true},
-  {id:"trans",    kind:"count", max:14, name:"Transcendence cubes", locked:true, hidden:true},
-  {id:"ascension",kind:"count", max:3,  name:"Ascension Trial"},
-  {id:"bfwin",    kind:"count", max:3,  name:"Battlefield wins", note:"3,000 AP + 2 medals each", opt:true},
-  {id:"arena",    kind:"count", max:30, name:"Arena wins", note:"10 entries + 30 wins rewarded", opt:true},
-  {id:"abyss",    kind:"count", max:14, name:"Abyss time (half hours)", note:"7 h a week; AP from sieges and corridors first", opt:true},
-  {id:"morph",    kind:"count", max:4,  name:"Substance Morph: Odyle (character recipe)", note:"50k Kina + 25 Odyle, 5 Fine, 1 Pure"},
-  {id:"stones",   kind:"count", max:20, name:"Wind Breeze Odyle stones", note:"100k Kina each, membership", memberOnly:true},
+  {id:"ascension",kind:"count", max:3,  name:"Ascension Trial", note:"enhance stones, Amp fragments"},
+  {id:"subjug",   kind:"count", max:3,  name:"Subjugation", note:"season rank"},
+  {id:"morph",    kind:"count", max:20, maxKey:"morphMax", name:"Substance Morph: Odyle Energy", note:"50k Kina + 25 Odyle, 5 Fine, 1 Pure · +40 bonus", energy:40},
+  {id:"stones",   kind:"count", max:20, name:"Wind Breeze Odyle stones", note:"100k Kina each · +40 bonus", memberOnly:true, energy:40},
   {id:"abshop",   kind:"check", name:"Abyss shop weekly stones", note:"50 manastones, 50 soulstones", opt:true},
   {id:"season",   kind:"check", name:"Season weekly missions", note:"up to 12.5k AP", opt:true},
-  {id:"passw",    kind:"check", name:"Daeva Pass weekly EXP cap", note:"50,000 Dawn / 15,000 Planet's Call", passOnly:true}
+  {id:"bfwin",    kind:"count", max:3,  name:"Battlefield wins", note:"3,000 AP + 2 medals each", opt:true},
+  {id:"arena",    kind:"count", max:30, name:"Arena wins", note:"10 entries + 30 wins rewarded", opt:true},
+  {id:"abyss",    kind:"count", max:14, name:"Abyss time (half hours)", note:"7 h a week", opt:true}
 ];
 var SRV_DAILY=[
   {id:"duties",   kind:"count", max:5,  name:"Duties", note:"50k bound Kina + 1,000 AP each"},
-  {id:"shugo",    kind:"count", max:3,  name:"Shugo Festa keys used", note:"+3 a day, hold 12 (21 member)", opt:true},
-  {id:"invasion", kind:"count", max:1,  name:"Dimensional Invasion key", note:":30 every hour, holds 7", opt:true},
   {id:"fboss",    kind:"check", name:"Field boss", note:"Nahma Sun/Fri 21:00; Tamasa, Kaira, Argo Mon/Thu/Sat 21:30", opt:true}
 ];
 var SRV_WEEKLY=[
-  {id:"dailydg",  kind:"count", max:14, name:"Daily Dungeon (Unknown Fissure)", note:"Instant Clear tickets: 7 a week at 30k"},
+  {id:"dailydg",  kind:"count", max:14, name:"Daily Dungeon", note:"Unknown Fissure, on the main; 7 Instant Clear tickets at 30k"},
+  {id:"unclaimed",kind:"count", max:10, name:"Unclaimed cubes used", note:"at 10 the server is locked out until Wednesday", warn:true, opt:true},
   {id:"cmdcap",   kind:"count", max:12, name:"Commands: capital scrolls", opt:true},
   {id:"cmdaby",   kind:"count", max:20, name:"Commands: Abyss scrolls", opt:true},
-  {id:"morphsrv", kind:"count", max:16, name:"Substance Morph: Odyle (server recipe)", note:"best done on the main"},
   {id:"wings",    kind:"count", max:20, name:"Sealed Wings morph", opt:true},
-  {id:"siege",    kind:"count", max:3,  name:"Artifact sieges", note:"Mon / Thu / Sat 21:00", opt:true},
-  {id:"unclaimed",kind:"count", max:10, name:"Unclaimed cubes used", note:"at 10 the server is locked out until Wednesday", warn:true}
+  {id:"siege",    kind:"count", max:3,  name:"Artifact sieges", note:"Mon / Thu / Sat 21:00", opt:true}
 ];
 var TIERS={
   conq:[[83,100],[104,80],[125,60],[146,40],[Infinity,20]],
@@ -251,17 +295,36 @@ var CLASSES=["Ranger","Assassin","Gladiator","Templar","Chanter","Cleric","Sorce
 
 /* ---- state ----------------------------------------------------------- */
 var S=load();
-function blank(){ return {chars:[],servers:{},resetD:0,resetW:0,ui:{more:false}}; }
+var editKeys={};
+function blank(){ return {v:2,chars:[],servers:{},resetD:0,resetW:0,ui:{more:false,spend:"regen"}}; }
 function more(){ return !!(S.ui&&S.ui.more); }
-var editing={};
+function spendOrder(){ return (S.ui&&S.ui.spend==="bonus")?"bonus":"regen"; }
 function load(){
-  try{ var j=localStorage.getItem(KEY); if(j){ var o=JSON.parse(j); if(o&&o.chars){ o.ui=o.ui||{more:false}; return o; } } }catch(e){}
+  try{ var j=localStorage.getItem(KEY); if(j){ var o=JSON.parse(j); if(o&&o.chars) return migrate(o); } }catch(e){}
   return blank();
+}
+function migrate(o){
+  o.ui=o.ui||{}; if(o.ui.more==null) o.ui.more=false; if(!o.ui.spend) o.ui.spend="regen";
+  o.servers=o.servers||{};
+  Object.keys(o.servers).forEach(function(k){ var sv=o.servers[k]; sv.daily=sv.daily||{}; sv.weekly=sv.weekly||{}; sv.runs=sv.runs||{conq:0,trans:0}; sv.track=sv.track||{}; });
+  o.chars.forEach(function(c){
+    c.daily=c.daily||{}; c.weekly=c.weekly||{};
+    if(o.v!==2){
+      var tr=c.track||{};
+      c.od=tr.odyle&&tr.odyle.at!=null?{val:tr.odyle.val,at:tr.odyle.at}:null;
+      c.nm=null; c.bonus=0;
+      var sv=o.servers[c.server]; c.x2=sv?!!sv.membership:true;
+      c.morphMax=c.role==="main"?20:4;
+      delete c.track; delete c.pass; delete c.weekly.conq; delete c.weekly.trans; delete c.daily.nightmare; delete c.daily.odyle; delete c.daily.passd; delete c.weekly.passw; delete c.weekly.morph;
+    }
+    if(c.bonus==null) c.bonus=0; if(c.x2==null) c.x2=true; if(c.morphMax==null) c.morphMax=c.role==="main"?20:4;
+  });
+  o.v=2; return o;
 }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ toast("Could not save (storage blocked)"); } }
 function srv(name){
-  if(!S.servers[name]) S.servers[name]={membership:false,daily:{},weekly:{},runs:{conq:0,trans:0}};
-  return S.servers[name];
+  if(!S.servers[name]) S.servers[name]={membership:false,daily:{},weekly:{},runs:{conq:0,trans:0},track:{}};
+  var sv=S.servers[name]; sv.track=sv.track||{}; return sv;
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
@@ -271,7 +334,7 @@ function lastWeekly(now){ var t=lastDaily(now); var dow=new Date(t).getUTCDay();
 function applyResets(){
   var now=Date.now(), ld=lastDaily(now), lw=lastWeekly(now), changed=false;
   if(S.resetD<ld){ S.chars.forEach(function(c){c.daily={};}); Object.keys(S.servers).forEach(function(k){S.servers[k].daily={};}); S.resetD=ld; changed=true; }
-  if(S.resetW<lw){ S.chars.forEach(function(c){c.weekly={};}); Object.keys(S.servers).forEach(function(k){S.servers[k].weekly={};S.servers[k].runs={conq:0,trans:0};}); S.resetW=lw; changed=true; }
+  if(S.resetW<lw){ S.chars.forEach(function(c){c.weekly={};c.last=null;}); Object.keys(S.servers).forEach(function(k){S.servers[k].weekly={};S.servers[k].runs={conq:0,trans:0};}); S.resetW=lw; changed=true; }
   if(changed) save();
   return changed;
 }
@@ -284,6 +347,7 @@ function tickClock(){
 }
 
 /* ---- refill trackers ------------------------------------------------- */
+/* interval trackers: +rate every `per` ms from the moment it was set */
 function project(tr,cap,per,rate){
   if(!tr||tr.at==null) return null;
   var n=Math.floor((Date.now()-tr.at)/per)*rate;
@@ -296,31 +360,30 @@ function fillIn(tr,cap,per,rate){
   var elapsed=(Date.now()-tr.at)%per;
   return need*per-elapsed;
 }
-function setTracker(c,key,val){ c.track=c.track||{}; c.track[key]={val:val,at:Date.now()}; }
-function bumpTracker(c,key,cap,per,rate,delta){
-  var cur=project(c.track&&c.track[key],cap,per,rate); if(cur==null) return;
+function bumpInterval(tr,cap,per,rate,delta){
+  var cur=project(tr,cap,per,rate); if(cur==null) return tr;
   var nv=Math.max(0,Math.min(cap,cur+delta));
-  /* keep the fractional progress toward the next refill */
-  var elapsed=(Date.now()-c.track[key].at)%per;
-  c.track[key]={val:nv,at:Date.now()-elapsed};
+  var elapsed=(Date.now()-tr.at)%per;          /* keep the progress toward the next tick */
+  return {val:nv,at:Date.now()-elapsed};
 }
+/* daily trackers: +rate at every 07:00 UTC reset since it was set */
+function resetsSince(at){ var now=Date.now(); var first=lastDaily(at)+D; if(now<first) return 0; return Math.floor((now-first)/D)+1; }
+function projectDaily(tr,cap,rate){ if(!tr||tr.at==null) return null; return Math.min(cap,tr.val+resetsSince(tr.at)*rate); }
+function bumpDaily(tr,cap,rate,delta){ var cur=projectDaily(tr,cap,rate); if(cur==null) return tr; return {val:Math.max(0,Math.min(cap,cur+delta)),at:Date.now()}; }
 
-/* ---- rendering ------------------------------------------------------- */
+/* ---- helpers --------------------------------------------------------- */
 var root=document.getElementById("servers");
 function esc(s){ return String(s).replace(/[&<>"]/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch];}); }
 function tierOf(kind,n){ var t=TIERS[kind]; for(var i=0;i<t.length;i++){ if(n<=t[i][0]) return {pct:t[i][1],cap:t[i][0],next:t[i+1]?t[i+1][1]:null}; } }
-/* energy budget: per-claim cost, the server-wide full-Kina target, and what one character can make in a week */
-function perClaim(sv){ return sv.membership?80:40; }
-function energyTarget(sv){ return (TIERS.conq[0][0]+TIERS.trans[0][0])*perClaim(sv); }
-function energySpent(sv){ return (sv.runs.conq+sv.runs.trans)*perClaim(sv); }
-function energySupply(c,sv){
-  var own=4, srvShare=c.role==="main"?16:0, stones=sv.membership?20:0, pass=c.pass?400:0;
-  return 840+40*(own+srvShare+stones)+pass;
-}
 function fmtN(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,","); }
+function odCap(sv){ return sv.membership?840:560; }
+function odyleNow(c,sv){ return project(c.od,odCap(sv),3*H,15); }
+function nmNow(c){ return projectDaily(c.nm,14,2); }
+function cubeCost(c){ return c.x2?CUBE*2:CUBE; }
+function itemMax(it,c){ return it.maxKey&&c&&c[it.maxKey]!=null?c[it.maxKey]:it.max; }
 
+/* ---- rendering ------------------------------------------------------- */
 function render(){
-  document.getElementById("moreBtn").checked=more();
   var servers={};
   S.chars.forEach(function(c){ (servers[c.server]=servers[c.server]||[]).push(c); });
   var names=Object.keys(servers).sort();
@@ -329,88 +392,112 @@ function render(){
   root.innerHTML=names.map(function(n){
     var sv=srv(n), chars=servers[n].slice().sort(function(a,b){ return (a.role==="main"?0:1)-(b.role==="main"?0:1) || a.name.localeCompare(b.name); });
     return '<section class="server" data-server="'+esc(n)+'">'+
-      '<div class="server-head"><h3>'+esc(n)+'</h3>'+
-      '<span class="meta">'+chars.length+' character'+(chars.length===1?'':'s')+'</span>'+
-      '<label class="toggle"><input type="checkbox" data-member="'+esc(n)+'"'+(sv.membership?' checked':'')+'> Special Quai Membership on this server</label>'+
+      '<div class="srv-head"><h2>'+esc(n)+'</h2>'+
+      '<span class="meta">'+chars.length+' character'+(chars.length===1?'':'s')+' · shared limits</span>'+
+      '<label class="toggle"><input type="checkbox" data-member="'+esc(n)+'"'+(sv.membership?' checked':'')+'> Membership on this server</label>'+
       '</div>'+
-      '<div class="cols">'+sharedPanel(n,sv)+chars.map(function(c){return charPanel(c,sv);}).join("")+'</div>'+
+      '<div class="tiles">'+runTile(n,sv,"conq","Conquest runs")+runTile(n,sv,"trans","Transcendence runs")+keyTile(n,sv)+
+        '<div class="tile">'+listHTML("Daily",SRV_DAILY,sv.daily,'data-srv="'+esc(n)+'" data-scope="daily"',{member:sv.membership})+'</div>'+
+        '<div class="tile">'+listHTML("Weekly",SRV_WEEKLY,sv.weekly,'data-srv="'+esc(n)+'" data-scope="weekly"',{member:sv.membership})+'</div>'+
+      '</div>'+
+      '<div class="chars">'+chars.map(function(c){return charCard(c,sv);}).join("")+'</div>'+
     '</section>';
   }).join("");
 }
 
-function listHTML(items,state,ctx,opts){
-  var done=0,total=0;
-  var html=items.filter(function(it){
-    if(it.hidden) return false;
+function runTile(n,sv,kind,label){
+  var runs=sv.runs[kind]||0, t=tierOf(kind,runs), full=TIERS[kind][0][0];
+  var hint=t.pct===100?('<span class="good">'+(full-runs)+' full-Kina runs left</span> this week'):
+           (t.next!=null?('Kina cut to '+t.pct+'% · next cut after '+t.cap+' runs'):('Kina at the '+t.pct+'% floor'));
+  var pct=Math.min(100,Math.round(runs/full*100));
+  return '<div class="tile '+kind+'"><div class="lbl"><span>'+label+'</span><span class="pct">server total</span></div>'+
+    '<div class="bignum"><b>'+runs+'</b><span>/ '+full+' full Kina</span><span class="tier p'+t.pct+'">'+t.pct+'% Kina</span></div>'+
+    '<div class="meter"><i class="'+kind+(runs>=full?' full':'')+'" style="width:'+pct+'%"></i></div>'+
+    '<div class="hint">'+hint+'</div>'+
+    '<div class="pm"><button type="button" class="btn" data-srv="'+esc(n)+'" data-run="'+kind+'" data-d="-1" title="Remove a run">−1</button>'+
+    '<button type="button" class="btn" data-srv="'+esc(n)+'" data-run="'+kind+'" data-d="1" title="Add a run done on an untracked character">+1</button></div>'+
+  '</div>';
+}
+function keyTile(n,sv){
+  var ctx='data-srv="'+esc(n)+'"';
+  var scap=sv.membership?21:12;
+  var sh=projectDaily(sv.track.shugo,scap,3), inv=projectDaily(sv.track.inv,7,1);
+  function row(label,key,cur,cap,rate,btn){
+    var ek='srv:'+n+':'+key, edit=cur==null||editKeys[ek];
+    var val=edit?'<span class="setrow"><input type="number" min="0" max="'+cap+'" step="1" '+ctx+' data-dtrack="'+key+'" placeholder="set" aria-label="Set '+label+'"><label>/ '+cap+'</label></span>'
+                :'<span class="editable" '+ctx+' data-editkey="'+ek+'" title="Tap to correct"><b class="num">'+cur+'</b><span class="num"> / '+cap+'</span></span>';
+    return '<div class="row2" style="display:flex;align-items:center;gap:10px"><span style="flex:1"><span class="hint" style="display:block">'+label+' <span class="num">+'+rate+'/day</span></span><span class="bignum" style="font-size:26px">'+val+'</span></span>'+
+      '<button type="button" class="btn" '+ctx+' data-usekey="'+key+'"'+(cur==null||cur<=0?' disabled':'')+'>'+btn+'</button></div>';
+  }
+  return '<div class="tile"><div class="lbl"><span>Keys (server pool)</span></div>'+
+    row('Shugo Festa keys','shugo',sh,scap,3,'Use 1')+
+    row('Invasion keys','inv',inv,7,1,'Use 1')+
+  '</div>';
+}
+
+function listHTML(label,items,state,ctx,opts){
+  var done=0,total=0,c=opts.chr||null;
+  var rows=items.filter(function(it){
     if(it.opt&&!more()) return false;
     if(it.memberOnly&&!opts.member) return false;
-    if(it.passOnly&&!opts.pass) return false;
+    if(it.maxKey&&c&&!(c[it.maxKey]>0)) return false;
     return true;
   }).map(function(it){
-    var v=state[it.id]||0, isDone=it.kind==="check"?!!v:v>=it.max;
+    var v=state[it.id]||0, max=itemMax(it,c), isDone=it.kind==="check"?!!v:v>=max;
     total++; if(isDone) done++;
-    var ctrl;
-    if(it.kind==="check"){
-      ctrl='<input type="checkbox" '+ctx+' data-id="'+it.id+'"'+(v?' checked':'')+'>';
-    }else{
-      var cls=isDone?(it.warn?' bad':' full'):'';
-      ctrl='<span class="ctr"><button type="button" '+ctx+' data-id="'+it.id+'" data-d="-1"'+(it.locked?' data-locked="1"':'')+'>−</button>'+
-           '<span class="v'+cls+'">'+v+' / '+it.max+'</span>'+
-           '<button type="button" '+ctx+' data-id="'+it.id+'" data-d="1"'+(it.locked?' data-locked="1"':'')+'>+</button></span>';
-    }
-    return '<div class="item'+(isDone&&!it.warn?' done':'')+'"><div class="name">'+esc(it.name)+(it.note?'<small>'+esc(it.note)+'</small>':'')+'</div>'+ctrl+'</div>';
+    var cnt=it.kind==="check"?'':'<span class="cnt num">'+v+' / '+max+'</span>';
+    var minus=it.kind==="check"?'':'<button type="button" class="minus" '+ctx+' data-id="'+it.id+'" data-d="-1" aria-label="Minus one"'+(v<=0?' disabled':'')+'>−</button>';
+    return '<div class="row'+(isDone?' done':'')+(it.warn?' warn':'')+(it.energy?' energy':'')+'" role="button" tabindex="0" '+ctx+' data-id="'+it.id+'" data-d="1" data-kind="'+it.kind+'">'+
+      '<span class="chk">✓</span><span class="name">'+esc(it.name)+(it.note?'<small>'+esc(it.note)+'</small>':'')+'</span>'+cnt+minus+'</div>';
   }).join("");
-  return {html:html,done:done,total:total};
-}
-function groupHTML(label,items,state,ctx,opts){
-  var l=listHTML(items,state,ctx,opts);
-  return '<div class="group"><div class="glbl"><span>'+label+'</span><span class="pct">'+l.done+' / '+l.total+'</span></div>'+l.html+'</div>';
+  if(!total) return '';
+  return '<div class="list"><div class="lhead"><span>'+label+'</span><span class="n'+(done>=total?' all':'')+'">'+done+' / '+total+'</span></div>'+rows+'</div>';
 }
 
-function sharedPanel(n,sv){
-  var ctx='data-srv="'+esc(n)+'"';
-  var tc=tierOf("conq",sv.runs.conq), tt=tierOf("trans",sv.runs.trans);
-  function tierRow(label,kind,n2,t){
-    var next=t.next!=null?('next: '+t.next+'% after '+t.cap):'floor';
-    return '<span>'+label+'</span><span class="pct p'+t.pct+'">'+n2+' runs · '+t.pct+'% Kina</span><span class="next">'+next+'</span>';
-  }
-  return '<div class="panel shared"><h2 class="shared">Server · shared by every character</h2>'+
-    '<div class="tier">'+tierRow('Conquest','conq',sv.runs.conq,tc)+tierRow('Transcendence','trans',sv.runs.trans,tt)+
-    '<span>Cube energy</span><span class="pct'+(energySpent(sv)>=energyTarget(sv)?' p100':'')+'">'+fmtN(energySpent(sv))+' / '+fmtN(energyTarget(sv))+'</span><span class="next">'+perClaim(sv)+' per claim · 83 + 55 runs</span></div>'+
-    (more()?'<div class="runs"><button type="button" class="btn small" '+ctx+' data-run="conq" data-d="-1">− Conquest run</button><button type="button" class="btn small" '+ctx+' data-run="trans" data-d="-1">− Transcendence run</button></div>'+
-    '<div class="note">Run counters grow when you log a run on a character. Use these to correct them.</div>':'')+
-    '<div class="sgrid">'+groupHTML('Daily',SRV_DAILY,sv.daily,ctx+' data-scope="daily"',{member:sv.membership,pass:true})+
-    groupHTML('Weekly',SRV_WEEKLY,sv.weekly,ctx+' data-scope="weekly"',{member:sv.membership,pass:true})+'</div>'+
-  '</div>';
-}
-
-function charPanel(c,sv){
+function charCard(c,sv){
   var ctx='data-chr="'+c.id+'"';
-  var cap=sv.membership?840:560;
-  var tr=c.track||{};
-  var od=project(tr.odyle,cap,3*H,15), cq=project(tr.conq,21,8*H,1), ts=project(tr.trans,14,12*H,1);
-  function trow(label,key,cur,capv,per,rate,full){
-    var fill=fillIn(tr[key],capv,per,rate), ek=c.id+':'+key, edit=cur==null||editing[ek]||more();
-    var atCap=cur!=null&&cur>=capv;
-    var val=cur==null?'<span class="lab">set it once</span>':'<b>'+cur+'</b> / '+capv+(atCap?(full?' · <span class="bad">'+full+'</span>':' · full'):fill!=null?' · full in '+fmtDur(fill):'');
-    var inp=edit?' <input type="number" min="0" max="'+capv+'" step="1" '+ctx+' data-track="'+key+'" placeholder="set" aria-label="Set '+label+'">':'';
-    return '<span class="lab">'+label+'</span><span class="val'+(atCap?' cap':'')+(edit?'':' editable')+'" '+(edit?'':ctx+' data-editkey="'+ek+'" title="Click to correct"')+'>'+val+inp+'</span>'+
-      '<div class="meter"><i class="'+key+'" style="width:'+(cur==null?0:Math.round(cur/capv*100))+'%"></i></div>';
+  var cap=odCap(sv), od=odyleNow(c,sv), bonus=c.bonus||0, total=od==null?null:od+bonus;
+  var cost=cubeCost(c), fill=fillIn(c.od,cap,3*H,15);
+  var ekO=c.id+':od', ekB=c.id+':bonus', ekN=c.id+':nm';
+  var odHTML;
+  if(od==null||editKeys[ekO]){
+    odHTML='<div class="setrow"><input type="number" min="0" max="'+cap+'" step="1" '+ctx+' data-set="od" placeholder="energy" aria-label="Set Odyle Energy" autofocus><label>/ '+cap+' regen</label>'+
+      '<input type="number" min="0" max="'+BONUS_CAP+'" step="1" '+ctx+' data-set="bonus" value="'+bonus+'" aria-label="Set bonus energy"><label>bonus</label></div>'+
+      '<div class="hint">Type what the game shows, then press Enter.</div>';
+  }else{
+    var atCap=od>=cap;
+    var state=atCap?'<span class="bad">FULL, spend it</span>':(fill!=null?'full in '+fmtDur(fill):'');
+    odHTML='<div class="bignum"><b class="editable num" '+ctx+' data-editkey="'+ekO+'" title="Tap to correct">'+od+'</b><span class="num">/ '+cap+'</span>'+
+      '<span class="bonus num" '+ctx+' data-editkey="'+ekB+'" title="Bonus energy from items. Tap to correct">+ '+bonus+' bonus</span></div>'+
+      '<div class="meter"><i class="'+(atCap?'full':'')+'" style="width:'+Math.round(od/cap*100)+'%"></i></div>'+
+      '<div class="hint">'+state+(state?' · ':'')+'<span class="num">'+Math.floor(total/cost)+'</span> cubes in hand</div>';
   }
-  /* charges only show when they could block a run: unset, empty, or in show-everything mode */
-  function chargeRow(label,key,cur,capv,per,rate){ return (cur==null||cur===0||more())?trow(label,key,cur,capv,per,rate):''; }
-  var gs=c.gs?(' · '+c.gs+' GS'):'';
-  var used=((c.weekly.conq||0)+(c.weekly.trans||0))*perClaim(sv), supply=energySupply(c,sv);
-  return '<div class="panel"><div class="chr-head"><span class="role'+(c.role==="main"?' main':'')+'">'+c.role+'</span><h3>'+esc(c.name)+'</h3><span class="sub">'+esc(c.cls)+gs+'</span>'+
-    '<button type="button" class="btn small edit" '+ctx+' data-edit="1">Edit</button></div>'+
-    '<div class="track">'+trow('Odyle Energy','odyle',od,cap,3*H,15,'full, spend it')+chargeRow('Conquest charges','conq',cq,21,8*H,1)+chargeRow('Transcendence charges','trans',ts,14,12*H,1)+'</div>'+
-    '<div class="runs"><button type="button" class="btn small" '+ctx+' data-log="conq"'+((c.weekly.conq||0)>=21||cq===0?' disabled':'')+'>+ Conquest run <span class="cnt">'+(c.weekly.conq||0)+' / 21</span></button>'+
-    '<button type="button" class="btn small" '+ctx+' data-log="trans"'+((c.weekly.trans||0)>=14||ts===0?' disabled':'')+'>+ Transcendence run <span class="cnt">'+(c.weekly.trans||0)+' / 14</span></button>'+
-    (more()?'<button type="button" class="btn small" '+ctx+' data-unlog="conq" title="Undo a Conquest run">−</button><button type="button" class="btn small" '+ctx+' data-unlog="trans" title="Undo a Transcendence run">−</button>':'')+'</div>'+
-    '<div class="note">Energy on cubes: <b'+(used>supply?' class="bad"':'')+'>'+fmtN(used)+'</b> of ~'+fmtN(supply)+' this character makes a week</div>'+
-    groupHTML('Daily',CHAR_DAILY,c.daily,ctx+' data-scope="daily"',{member:sv.membership,pass:!!c.pass})+
-    groupHTML('Weekly',CHAR_WEEKLY,c.weekly,ctx+' data-scope="weekly"',{member:sv.membership,pass:!!c.pass})+
-  '</div>';
+  var canRun=od==null||total>=cost;
+  var runs='<div class="runs">'+
+    '<button type="button" class="btn conq" '+ctx+' data-log="conq"'+(canRun?'':' disabled')+'>Conquest run<small>−'+cost+' energy</small></button>'+
+    '<button type="button" class="btn trans" '+ctx+' data-log="trans"'+(canRun?'':' disabled')+'>Transcendence run<small>−'+cost+' energy</small></button>'+
+    '<button type="button" class="btn x2'+(c.x2?' on':'')+'" '+ctx+' data-x2="1" title="Double injection: 80 energy, one claim, one run">×2</button></div>';
+  var undo=c.last?'<div class="undo"><span>Last: '+(c.last.kind==="conq"?"Conquest":"Transcendence")+' run</span><button type="button" class="btn small" '+ctx+' data-undo="1">Undo</button></div>':'';
+
+  var nm=nmNow(c), nmHTML;
+  if(nm==null||editKeys[ekN]){
+    nmHTML='<div class="setrow"><input type="number" min="0" max="14" step="1" '+ctx+' data-set="nm" placeholder="charges" aria-label="Set Nightmare charges"><label>/ 14 · +2 at every daily reset</label></div>';
+  }else{
+    nmHTML='<div class="row2"><span class="bignum"><b class="editable num" '+ctx+' data-editkey="'+ekN+'" title="Tap to correct">'+nm+'</b><span class="num">/ 14</span></span>'+
+      '<span class="hint">'+(nm>=14?'<span class="bad">bank full</span>':'+2 at reset')+'</span>'+
+      '<button type="button" class="btn" '+ctx+' data-nmrun="1"'+(nm<=0?' disabled':'')+'>Run −1</button></div>'+
+      '<div class="meter" style="margin-top:8px"><i class="nm'+(nm>=14?' full':'')+'" style="width:'+Math.round(nm/14*100)+'%"></i></div>';
+  }
+  var gs=c.gs?(' · '+fmtN(c.gs)+' GS'):'';
+  return '<article class="card'+(c.role==="main"?' main':'')+'">'+
+    '<div class="chead"><span class="role'+(c.role==="main"?' main':'')+'">'+c.role+'</span><h3>'+esc(c.name)+'</h3>'+
+      '<button type="button" class="btn small ghost edit" '+ctx+' data-edit="1" aria-label="Edit character">✎ Edit</button>'+
+      '<span class="sub">'+esc(c.cls)+gs+'</span></div>'+
+    '<div class="block odyle"><div class="lbl"><span>Odyle Energy</span><span class="r num">+15 / 3 h</span></div>'+odHTML+runs+undo+'</div>'+
+    '<div class="block nm"><div class="lbl"><span>Nightmare</span><span class="r">2 a day, banks 14</span></div>'+nmHTML+'</div>'+
+    listHTML('Daily',CHAR_DAILY,c.daily,ctx+' data-scope="daily"',{member:sv.membership,chr:c})+
+    listHTML('Weekly',CHAR_WEEKLY,c.weekly,ctx+' data-scope="weekly"',{member:sv.membership,chr:c})+
+  '</article>';
 }
 
 /* ---- events ---------------------------------------------------------- */
@@ -420,58 +507,102 @@ function stateFor(el){
   if(el.hasAttribute("data-chr")){ var c=charById(el.getAttribute("data-chr")); return c?c[scope]:null; }
   var sv=srv(el.getAttribute("data-srv")); return sv[scope];
 }
+function defsFor(el){
+  var chr=el.hasAttribute("data-chr"), daily=el.getAttribute("data-scope")==="daily";
+  return chr?(daily?CHAR_DAILY:CHAR_WEEKLY):(daily?SRV_DAILY:SRV_WEEKLY);
+}
+function bumpItem(el,d){
+  var id=el.getAttribute("data-id"), def=null;
+  defsFor(el).forEach(function(it){ if(it.id===id) def=it; });
+  var st=stateFor(el); if(!st||!def) return;
+  var c=el.hasAttribute("data-chr")?charById(el.getAttribute("data-chr")):null;
+  var cur=st[id]||0, nv;
+  if(def.kind==="check"){ nv=cur?0:1; }
+  else{ var max=itemMax(def,c); nv=Math.max(0,Math.min(max,cur+d)); }
+  if(nv===cur) return;
+  st[id]=nv;
+  if(def.energy&&c){ c.bonus=Math.max(0,Math.min(BONUS_CAP,(c.bonus||0)+def.energy*(nv-cur))); }
+  save(); render();
+}
 root.addEventListener("change",function(e){
   var el=e.target;
   if(el.hasAttribute("data-member")){ srv(el.getAttribute("data-member")).membership=el.checked; save(); render(); return; }
-  if(el.type==="checkbox"&&el.hasAttribute("data-id")){ var st=stateFor(el); if(st){ st[el.getAttribute("data-id")]=el.checked?1:0; save(); render(); } return; }
-  if(el.hasAttribute("data-track")){
-    var c=charById(el.getAttribute("data-chr")); var v=parseInt(el.value,10);
-    if(c&&!isNaN(v)){ setTracker(c,el.getAttribute("data-track"),Math.max(0,v)); editing={}; save(); render(); }
+  if(el.hasAttribute("data-set")){
+    var c=charById(el.getAttribute("data-chr")); var v=parseInt(el.value,10), k=el.getAttribute("data-set");
+    if(!c||isNaN(v)) return; v=Math.max(0,v);
+    if(k==="od"){ c.od={val:Math.min(v,odCap(srv(c.server))),at:Date.now()}; var b=el.parentNode.querySelector('[data-set="bonus"]'); var bv=b?parseInt(b.value,10):NaN; if(!isNaN(bv)) c.bonus=Math.max(0,Math.min(BONUS_CAP,bv)); }
+    else if(k==="bonus"){ c.bonus=Math.min(BONUS_CAP,v); if(c.od==null) return; /* wait for the energy value */ }
+    else if(k==="nm"){ c.nm={val:Math.min(14,v),at:Date.now()}; }
+    editKeys={}; save(); render(); return;
   }
+  if(el.hasAttribute("data-dtrack")){
+    var sv=srv(el.getAttribute("data-srv")); var v2=parseInt(el.value,10), key=el.getAttribute("data-dtrack");
+    if(isNaN(v2)) return; var cap=key==="shugo"?(sv.membership?21:12):7;
+    sv.track[key]={val:Math.max(0,Math.min(cap,v2)),at:Date.now()}; editKeys={}; save(); render();
+  }
+});
+root.addEventListener("keydown",function(e){
+  if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.target.blur(); return; }
+  if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("row")){ e.preventDefault(); bumpItem(e.target,1); }
 });
 root.addEventListener("click",function(e){
-  var ed=e.target.closest("[data-editkey]"); if(ed){ editing[ed.getAttribute("data-editkey")]=true; render(); var inp=root.querySelector('[data-chr="'+ed.getAttribute("data-chr")+'"][data-track="'+ed.getAttribute("data-editkey").split(':')[1]+'"]'); if(inp) inp.focus(); return; }
-  var el=e.target.closest("button"); if(!el) return;
-  if(el.hasAttribute("data-edit")){ openChar(charById(el.getAttribute("data-chr"))); return; }
-  if(el.hasAttribute("data-log")){ logRun(charById(el.getAttribute("data-chr")),el.getAttribute("data-log"),1); return; }
-  if(el.hasAttribute("data-unlog")){ logRun(charById(el.getAttribute("data-chr")),el.getAttribute("data-unlog"),-1); return; }
-  if(el.hasAttribute("data-run")){ var sv=srv(el.getAttribute("data-srv")); var k=el.getAttribute("data-run"); sv.runs[k]=Math.max(0,sv.runs[k]+parseInt(el.getAttribute("data-d"),10)); save(); render(); return; }
-  if(el.hasAttribute("data-id")&&el.hasAttribute("data-d")){
-    var id=el.getAttribute("data-id"), d=parseInt(el.getAttribute("data-d"),10);
-    if(el.hasAttribute("data-locked")){ logRun(charById(el.getAttribute("data-chr")),id,d); return; }
-    var items=el.hasAttribute("data-chr")?(el.getAttribute("data-scope")==="daily"?CHAR_DAILY:CHAR_WEEKLY):(el.getAttribute("data-scope")==="daily"?SRV_DAILY:SRV_WEEKLY);
-    var def=null; items.forEach(function(it){ if(it.id===id) def=it; });
-    var st=stateFor(el); if(!st||!def) return;
-    st[id]=Math.max(0,Math.min(def.max,(st[id]||0)+d)); save(); render();
+  var ed=e.target.closest("[data-editkey]");
+  if(ed){ editKeys[ed.getAttribute("data-editkey")]=true; render(); var inp=root.querySelector('input[data-set], input[data-dtrack]'); if(inp){ inp.focus(); } return; }
+  var btn=e.target.closest("button");
+  if(btn){
+    if(btn.hasAttribute("data-edit")){ openChar(charById(btn.getAttribute("data-chr"))); return; }
+    if(btn.hasAttribute("data-log")){ logRun(charById(btn.getAttribute("data-chr")),btn.getAttribute("data-log")); return; }
+    if(btn.hasAttribute("data-undo")){ undoRun(charById(btn.getAttribute("data-chr"))); return; }
+    if(btn.hasAttribute("data-x2")){ var c=charById(btn.getAttribute("data-chr")); if(c){ c.x2=!c.x2; save(); render(); } return; }
+    if(btn.hasAttribute("data-nmrun")){ var c2=charById(btn.getAttribute("data-chr")); if(c2&&c2.nm){ c2.nm=bumpDaily(c2.nm,14,2,-1); save(); render(); } return; }
+    if(btn.hasAttribute("data-usekey")){ var sv=srv(btn.getAttribute("data-srv")), key=btn.getAttribute("data-usekey"); var cap=key==="shugo"?(sv.membership?21:12):7, rate=key==="shugo"?3:1; if(sv.track[key]){ sv.track[key]=bumpDaily(sv.track[key],cap,rate,-1); save(); render(); } return; }
+    if(btn.hasAttribute("data-run")){ var sv2=srv(btn.getAttribute("data-srv")); var k=btn.getAttribute("data-run"); sv2.runs[k]=Math.max(0,(sv2.runs[k]||0)+parseInt(btn.getAttribute("data-d"),10)); save(); render(); return; }
+    if(btn.classList.contains("minus")){ bumpItem(btn,-1); return; }
+    return;
   }
+  var row=e.target.closest(".row[data-id]"); if(row) bumpItem(row,1);
 });
-function logRun(c,kind,d){
+function logRun(c,kind){
   if(!c) return;
-  var sv=srv(c.server), max=kind==="conq"?21:14;
-  var cur=c.weekly[kind]||0, nv=Math.max(0,Math.min(max,cur+d));
-  if(nv===cur) return;
-  c.weekly[kind]=nv;
-  sv.runs[kind]=Math.max(0,sv.runs[kind]+(nv-cur));
-  var cap=kind==="conq"?21:14, per=kind==="conq"?8*H:12*H;
-  bumpTracker(c,kind,cap,per,1,-(nv-cur));
-  if(c.track&&c.track.odyle){ var ocap=sv.membership?840:560; bumpTracker(c,"odyle",ocap,3*H,15,-(nv-cur)*(sv.membership?80:40)); }
-  save(); render();
+  var sv=srv(c.server), cost=cubeCost(c), cap=odCap(sv);
+  var last={kind:kind,regen:0,bonus:0};
+  if(c.od){
+    var od=odyleNow(c,sv), bonus=c.bonus||0;
+    if(od+bonus<cost){ toast("Not enough energy for a "+cost+" cube"); return; }
+    var fromRegen, fromBonus;
+    if(spendOrder()==="bonus"){ fromBonus=Math.min(bonus,cost); fromRegen=cost-fromBonus; }
+    else{ fromRegen=Math.min(od,cost); fromBonus=cost-fromRegen; }
+    c.od=bumpInterval(c.od,cap,3*H,15,-fromRegen); c.bonus=bonus-fromBonus;
+    last.regen=fromRegen; last.bonus=fromBonus;
+  }
+  sv.runs[kind]=(sv.runs[kind]||0)+1;
+  c.last=last; save(); render();
+}
+function undoRun(c){
+  if(!c||!c.last) return;
+  var sv=srv(c.server), l=c.last;
+  sv.runs[l.kind]=Math.max(0,(sv.runs[l.kind]||0)-1);
+  if(c.od&&l.regen) c.od=bumpInterval(c.od,odCap(sv),3*H,15,l.regen);
+  c.bonus=Math.min(BONUS_CAP,(c.bonus||0)+(l.bonus||0));
+  c.last=null; save(); render(); toast("Run removed");
 }
 
 /* ---- character dialog ----------------------------------------------- */
-var dlg=document.getElementById("charDlg"), editing=null;
+var dlg=document.getElementById("charDlg"), editingChar=null;
 function openChar(c){
-  editing=c||null;
+  editingChar=c||null;
   document.getElementById("dlgTitle").textContent=c?"Edit character":"Add character";
   document.getElementById("fName").value=c?c.name:"";
   document.getElementById("fClass").value=c?c.cls:(CLASSES[0]);
   document.getElementById("fRole").value=c?c.role:(S.chars.length?"alt":"main");
   document.getElementById("fServer").value=c?c.server:(S.chars.length?S.chars[S.chars.length-1].server:"");
   document.getElementById("fGs").value=c&&c.gs?c.gs:"";
-  document.getElementById("fPass").value=c?(c.pass?"1":"0"):"1";
+  document.getElementById("fMorph").value=c?c.morphMax:"";
+  document.getElementById("fX2").value=c?(c.x2?"1":"0"):"1";
   document.getElementById("delChar").hidden=!c;
   dlg.showModal();
 }
+document.getElementById("fRole").addEventListener("change",function(){ var m=document.getElementById("fMorph"); if(!m.value||m.value==="20"||m.value==="4") m.value=this.value==="main"?"20":"4"; });
 document.getElementById("addChar").addEventListener("click",function(){ openChar(null); });
 document.getElementById("cancelChar").addEventListener("click",function(){ dlg.close(); });
 document.getElementById("charForm").addEventListener("submit",function(e){
@@ -479,42 +610,53 @@ document.getElementById("charForm").addEventListener("submit",function(e){
   var name=document.getElementById("fName").value.trim(), server=document.getElementById("fServer").value.trim();
   if(!name||!server) return;
   var role=document.getElementById("fRole").value;
-  var o=editing||{id:uid(),daily:{},weekly:{},track:{}};
+  var o=editingChar||{id:uid(),daily:{},weekly:{},od:null,nm:null,bonus:0,last:null};
   o.name=name; o.cls=document.getElementById("fClass").value; o.role=role; o.server=server;
-  o.gs=parseInt(document.getElementById("fGs").value,10)||0; o.pass=document.getElementById("fPass").value==="1";
+  o.gs=parseInt(document.getElementById("fGs").value,10)||0;
+  var mm=parseInt(document.getElementById("fMorph").value,10); o.morphMax=isNaN(mm)?(role==="main"?20:4):Math.max(0,mm);
+  o.x2=document.getElementById("fX2").value==="1";
   if(role==="main") S.chars.forEach(function(c){ if(c!==o&&c.server===server&&c.role==="main") c.role="alt"; });
-  if(!editing) S.chars.push(o);
+  if(!editingChar) S.chars.push(o);
   srv(server); save(); dlg.close(); render();
 });
 var cdlg=document.getElementById("confirmDlg");
 document.getElementById("delChar").addEventListener("click",function(){
-  if(!editing) return;
-  document.getElementById("confirmTitle").textContent="Delete "+editing.name+"?";
+  if(!editingChar) return;
+  document.getElementById("confirmTitle").textContent="Delete "+editingChar.name+"?";
   document.getElementById("confirmText").textContent="Its checklist and trackers are removed. The server panel stays while other characters use it.";
   cdlg.showModal();
 });
 document.getElementById("confirmNo").addEventListener("click",function(){ cdlg.close(); });
 document.getElementById("confirmYes").addEventListener("click",function(){
-  if(editing){ S.chars=S.chars.filter(function(c){return c!==editing;}); }
+  if(editingChar){ S.chars=S.chars.filter(function(c){return c!==editingChar;}); }
   var used={}; S.chars.forEach(function(c){used[c.server]=1;});
   Object.keys(S.servers).forEach(function(k){ if(!used[k]) delete S.servers[k]; });
-  editing=null; save(); cdlg.close(); dlg.close(); render();
+  editingChar=null; save(); cdlg.close(); dlg.close(); render();
 });
 
-/* ---- export / import ------------------------------------------------- */
+/* ---- settings / export / import -------------------------------------- */
+var sdlg=document.getElementById("settingsDlg");
+document.getElementById("settingsBtn").addEventListener("click",function(){
+  document.getElementById("optMore").checked=more();
+  document.getElementById(spendOrder()==="bonus"?"spendBonus":"spendRegen").checked=true;
+  sdlg.showModal();
+});
+document.getElementById("settingsClose").addEventListener("click",function(){ sdlg.close(); });
+document.getElementById("optMore").addEventListener("change",function(e){ S.ui.more=e.target.checked; editKeys={}; save(); render(); });
+document.getElementById("spendRegen").addEventListener("change",function(){ S.ui.spend="regen"; save(); });
+document.getElementById("spendBonus").addEventListener("change",function(){ S.ui.spend="bonus"; save(); });
 var io=document.getElementById("ioDlg"), ioMode="export";
-document.getElementById("moreBtn").addEventListener("change",function(e){ S.ui=S.ui||{}; S.ui.more=e.target.checked; editing={}; save(); render(); });
 document.getElementById("exportBtn").addEventListener("click",function(){
   ioMode="export"; document.getElementById("ioTitle").textContent="Export";
   document.getElementById("ioText").value=JSON.stringify(S); document.getElementById("ioText").readOnly=true;
   document.getElementById("ioNote").textContent="Copy this text somewhere safe. Paste it into Import on another browser or device.";
-  document.getElementById("ioAction").textContent="Copy"; io.showModal();
+  document.getElementById("ioAction").textContent="Copy"; sdlg.close(); io.showModal();
 });
 document.getElementById("importBtn").addEventListener("click",function(){
   ioMode="import"; document.getElementById("ioTitle").textContent="Import";
   document.getElementById("ioText").value=""; document.getElementById("ioText").readOnly=false;
   document.getElementById("ioNote").textContent="Paste an export here. It replaces everything in this browser.";
-  document.getElementById("ioAction").textContent="Import"; io.showModal();
+  document.getElementById("ioAction").textContent="Import"; sdlg.close(); io.showModal();
 });
 document.getElementById("ioClose").addEventListener("click",function(){ io.close(); });
 document.getElementById("ioAction").addEventListener("click",function(){
@@ -524,14 +666,14 @@ document.getElementById("ioAction").addEventListener("click",function(){
     p.then(function(){toast("Copied");}).catch(function(){ ta.focus(); ta.select(); toast("Select and copy the text"); });
     return;
   }
-  try{ var o=JSON.parse(ta.value); if(!o||!Array.isArray(o.chars)) throw 0; S=o; S.servers=S.servers||{}; save(); applyResets(); render(); io.close(); toast("Imported"); }
+  try{ var o=JSON.parse(ta.value); if(!o||!Array.isArray(o.chars)) throw 0; S=migrate(o); save(); applyResets(); render(); io.close(); toast("Imported"); }
   catch(e){ toast("That is not a valid export"); }
 });
 var toastEl=document.getElementById("toast"), toastT;
 function toast(m){ toastEl.textContent=m; toastEl.style.display="block"; clearTimeout(toastT); toastT=setTimeout(function(){toastEl.style.display="none";},2200); }
 
 /* ---- boot ------------------------------------------------------------ */
-applyResets(); render(); tickClock(); setInterval(tickClock,30e3);
+applyResets(); save(); render(); tickClock(); setInterval(tickClock,30e3);
 document.addEventListener("visibilitychange",function(){ if(!document.hidden){ tickClock(); render(); } });
 })();
 </script>
