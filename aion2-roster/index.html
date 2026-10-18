@@ -70,7 +70,7 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .pm .btn{flex:1;text-align:center;font-size:18px;padding:9px 10px}
 
 /* character cards */
-.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:12px}
+.chars{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:12px}
 .card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:14px;min-width:0;display:flex;flex-direction:column;gap:10px}
 .card.main{border-color:#4a3c1a}
 .chead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -84,7 +84,20 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .block.odyle .lbl{color:var(--accent)} .block.nm .lbl{color:var(--nm)}
 .block .lbl .r{text-transform:none;letter-spacing:0;font-weight:600}
 .odyle .bignum b{font-size:36px}
-.odyle .bonus{font-size:16px;color:var(--gold);font-weight:700;margin-left:4px;cursor:pointer}
+.odyle .bonus{font-size:22px;color:var(--accent);font-weight:800;cursor:pointer}
+.odyle .bignum .pen{margin-left:auto}
+.efrm{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end}
+.efrm label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--dim);font-weight:600}
+.efrm label.blue{color:var(--accent)}
+.efrm input{width:96px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:20px;font-weight:700;font-family:inherit;font-variant-numeric:tabular-nums}
+.efrm label.blue input{color:var(--accent)}
+.efrm .cap{font-size:18px;color:var(--dim);padding-bottom:9px}
+.efrm .ebtns{display:flex;gap:8px;width:100%}
+.efrm .ebtns .btn{flex:1;text-align:center}
+.efrm .hint{width:100%}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns .btn{flex:1;text-align:center;padding:9px 8px}
+.nm .btns{margin-top:8px}
 .odyle .bonus:hover,.editable:hover{text-decoration:underline dotted}
 .editable{cursor:pointer}
 .setrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -106,20 +119,25 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .lhead{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:700;margin:4px 0 0}
 .lhead .n{font-variant-numeric:tabular-nums;font-size:13px}
 .lhead .n.all{color:var(--good)}
-.row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;user-select:none;min-height:50px;text-align:left}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;user-select:none;min-height:50px;text-align:left}
 .row:hover{background:var(--panel3)}
 .row .chk{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none;font-size:16px;font-weight:800;color:transparent}
 .row.done .chk{background:var(--good);border-color:var(--good);color:#06121f}
 .row.warn.done .chk{background:var(--bad);border-color:var(--bad)}
-.row .name{flex:1;min-width:0;font-size:16px;font-weight:600;line-height:1.2}
+.row .name{flex:1 1 160px;min-width:0;font-size:16px;font-weight:600;line-height:1.2}
 .row .name small{display:block;color:var(--dim);font-size:13px;font-weight:500;margin-top:2px}
 .row.done .name{color:var(--dim);text-decoration:line-through}
 .row.warn.done .name{color:var(--bad);text-decoration:none}
-.row .cnt{font-variant-numeric:tabular-nums;font-size:17px;font-weight:800;flex:none;min-width:56px;text-align:right}
+.row .ctl{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
+.row .cnt{font-variant-numeric:tabular-nums;font-size:17px;font-weight:800;flex:none;min-width:44px;text-align:right;margin-right:4px}
 .row.done .cnt{color:var(--good)} .row.warn.done .cnt{color:var(--bad)}
-.row .minus{flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);font-size:20px;line-height:1;cursor:pointer;color:var(--dim)}
-.row .minus:hover{color:var(--text);background:var(--panel3)}
-.row .minus:disabled{opacity:.25}
+.row .minus,.row .plus,.row .maxb,.row .chkb{flex:none;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);font-size:20px;line-height:1;cursor:pointer;color:var(--text);font-weight:700}
+.row .minus,.row .plus{width:36px}
+.row .plus{border-color:var(--accent);color:var(--accent)}
+.row .maxb,.row .chkb{font-size:13px;padding:0 10px;color:var(--dim)}
+.row.done .maxb,.row.done .chkb{color:var(--good);border-color:var(--good)}
+.row .minus:hover,.row .plus:hover,.row .maxb:hover,.row .chkb:hover{background:var(--panel3)}
+.row .minus:disabled,.row .plus:disabled{opacity:.25;cursor:default}
 .row.energy .cnt::after{content:" ⚡";font-size:12px;color:var(--gold)}
 
 .empty{border:2px dashed var(--border);border-radius:14px;padding:40px 16px;text-align:center;color:var(--dim);margin-top:18px;font-size:18px}
@@ -152,6 +170,7 @@ textarea{width:100%;min-height:140px;background:var(--panel2);color:var(--text);
   .clock b{font-size:19px}
   .runs{grid-template-columns:1fr 1fr}
   .runs .x2{grid-column:1/-1}
+  .row .maxb,.row .chkb{padding:0 7px}
 }
 </style>
 </head>
@@ -176,10 +195,10 @@ textarea{width:100%;min-height:140px;background:var(--panel2);color:var(--text);
   <p>A <b>per-character</b> limit sits on the character card. A <b>per-server</b> limit is shared by every character you own on that server, so it sits once on the server panel.</p>
   <table>
     <tr><th>Item</th><th>Limit</th><th>Scope</th></tr>
-    <tr><td>Odyle Energy</td><td>+15 per 3 h, cap 560 (840 with membership); regen past the cap is lost. Bonus energy from items (Substance Morph, Wind Breeze stones, pass rewards) sits in a second pool up to 2,000 that does not regenerate. One cube = 40, a doubled cube (×2) = 80</td><td>character</td></tr>
+    <tr><td>Odyle Energy</td><td>+15 per 3 h, cap 560 (840 with membership); regen past the cap is lost. The blue bonus number from items (Substance Morph, Wind Breeze stones, pass rewards) is a second pool up to 2,000 that does not regenerate; the game shows it as 120 (+675) / 840. One cube = 40, a doubled cube (×2) = 80</td><td>character</td></tr>
     <tr><td>Nightmare</td><td>+2 at every daily reset, banks 14</td><td>character</td></tr>
     <tr><td>Conquest / Transcendence runs</td><td>Counted server-wide for the Kina tier. Conquest pays 100% Kina to 83 runs, 80% to 104, 60% to 125, 40% to 146, 20% after. Transcendence 100% to 55, 80% to 69, 60% to 83, 40% to 97, 20% after. A doubled cube is one run. Per-character claim pools (21 / 14) are not tracked here</td><td>server</td></tr>
-    <tr><td>Ascension Trial / Subjugation</td><td>3 each per week</td><td>character</td></tr>
+    <tr><td>Ascension Trial / Subjugation</td><td>3 runs each per week, shown as runs left and counted down</td><td>character</td></tr>
     <tr><td>Substance Morph: Odyle Energy</td><td>40 energy each; main 20 a week, alts 4 (set the limit per character)</td><td>character</td></tr>
     <tr><td>Wind Breeze: Odyle stone (membership)</td><td>20 per character per week, 100k Kina, 40 energy each</td><td>character</td></tr>
     <tr><td>Abyss time</td><td>7 h per week</td><td>character</td></tr>
@@ -265,8 +284,8 @@ var CHAR_DAILY=[
   {id:"attend",   kind:"check", name:"Attendance / login reward", opt:true}
 ];
 var CHAR_WEEKLY=[
-  {id:"ascension",kind:"count", max:3,  name:"Ascension Trial", note:"enhance stones, Amp fragments"},
-  {id:"subjug",   kind:"count", max:3,  name:"Subjugation", note:"season rank"},
+  {id:"ascension",kind:"count", max:3,  down:true, name:"Ascension Trial", note:"3 runs a week · enhance stones, Amp fragments"},
+  {id:"subjug",   kind:"count", max:3,  down:true, name:"Subjugation", note:"3 runs a week · season rank"},
   {id:"morph",    kind:"count", max:20, maxKey:"morphMax", name:"Substance Morph: Odyle Energy", note:"50k Kina + 25 Odyle, 5 Fine, 1 Pure · +40 bonus", energy:40},
   {id:"stones",   kind:"count", max:20, name:"Wind Breeze Odyle stones", note:"100k Kina each · +40 bonus", memberOnly:true, energy:40},
   {id:"abshop",   kind:"check", name:"Abyss shop weekly stones", note:"50 manastones, 50 soulstones", opt:true},
@@ -296,7 +315,7 @@ var CLASSES=["Ranger","Assassin","Gladiator","Templar","Chanter","Cleric","Sorce
 /* ---- state ----------------------------------------------------------- */
 var S=load();
 var editKeys={};
-function blank(){ return {v:2,chars:[],servers:{},resetD:0,resetW:0,ui:{more:false,spend:"regen"}}; }
+function blank(){ return {v:3,chars:[],servers:{},resetD:0,resetW:0,ui:{more:false,spend:"regen"}}; }
 function more(){ return !!(S.ui&&S.ui.more); }
 function spendOrder(){ return (S.ui&&S.ui.spend==="bonus")?"bonus":"regen"; }
 function load(){
@@ -309,7 +328,7 @@ function migrate(o){
   Object.keys(o.servers).forEach(function(k){ var sv=o.servers[k]; sv.daily=sv.daily||{}; sv.weekly=sv.weekly||{}; sv.runs=sv.runs||{conq:0,trans:0}; sv.track=sv.track||{}; });
   o.chars.forEach(function(c){
     c.daily=c.daily||{}; c.weekly=c.weekly||{};
-    if(o.v!==2){
+    if(!o.v||o.v<2){
       var tr=c.track||{};
       c.od=tr.odyle&&tr.odyle.at!=null?{val:tr.odyle.val,at:tr.odyle.at}:null;
       c.nm=null; c.bonus=0;
@@ -317,9 +336,9 @@ function migrate(o){
       c.morphMax=c.role==="main"?20:4;
       delete c.track; delete c.pass; delete c.weekly.conq; delete c.weekly.trans; delete c.daily.nightmare; delete c.daily.odyle; delete c.daily.passd; delete c.weekly.passw; delete c.weekly.morph;
     }
-    if(c.bonus==null) c.bonus=0; if(c.x2==null) c.x2=true; if(c.morphMax==null) c.morphMax=c.role==="main"?20:4;
+    if(c.bonus==null) c.bonus=0; if(c.x2==null||(o.v||1)<3) c.x2=true; if(c.morphMax==null) c.morphMax=c.role==="main"?20:4;
   });
-  o.v=2; return o;
+  o.v=3; return o;
 }
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ toast("Could not save (storage blocked)"); } }
 function srv(name){
@@ -424,14 +443,19 @@ function keyTile(n,sv){
   var sh=projectDaily(sv.track.shugo,scap,3), inv=projectDaily(sv.track.inv,7,1);
   function row(label,key,cur,cap,rate,btn){
     var ek='srv:'+n+':'+key, edit=cur==null||editKeys[ek];
-    var val=edit?'<span class="setrow"><input type="number" min="0" max="'+cap+'" step="1" '+ctx+' data-dtrack="'+key+'" placeholder="set" aria-label="Set '+label+'"><label>/ '+cap+'</label></span>'
-                :'<span class="editable" '+ctx+' data-editkey="'+ek+'" title="Tap to correct"><b class="num">'+cur+'</b><span class="num"> / '+cap+'</span></span>';
-    return '<div class="row2" style="display:flex;align-items:center;gap:10px"><span style="flex:1"><span class="hint" style="display:block">'+label+' <span class="num">+'+rate+'/day</span></span><span class="bignum" style="font-size:26px">'+val+'</span></span>'+
-      '<button type="button" class="btn" '+ctx+' data-usekey="'+key+'"'+(cur==null||cur<=0?' disabled':'')+'>'+btn+'</button></div>';
+    var head='<span class="hint" style="display:block">'+label+' <span class="num">+'+rate+'/day</span></span>';
+    if(edit){
+      return '<form class="efrm" '+ctx+' data-eform="key" data-key="'+key+'">'+head+'<label>Keys<input type="number" name="v" min="0" max="'+cap+'" step="1" value="'+(cur==null?'':cur)+'" placeholder="0"></label><span class="cap">/ '+cap+'</span>'+
+        '<div class="ebtns"><button type="submit" class="btn primary">Save</button>'+(cur==null?'':'<button type="button" class="btn" data-ecancel="1">Cancel</button>')+'</div></form>';
+    }
+    return '<div style="margin-top:6px">'+head+'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="bignum" style="font-size:26px"><b class="num">'+cur+'</b><span class="num">/ '+cap+'</span></span>'+
+      '<span class="btns" style="margin-left:auto"><button type="button" class="btn" '+ctx+' data-keyd="'+key+'" data-d="-1"'+(cur<=0?' disabled':'')+'>'+btn+'</button>'+
+      '<button type="button" class="btn" '+ctx+' data-keyd="'+key+'" data-d="1"'+(cur>=cap?' disabled':'')+'>+1</button>'+
+      '<button type="button" class="btn ghost small" '+ctx+' data-editkey="'+ek+'" title="Type the number you see in game">&#9998;</button></span></div></div>';
   }
   return '<div class="tile"><div class="lbl"><span>Keys (server pool)</span></div>'+
-    row('Shugo Festa keys','shugo',sh,scap,3,'Use 1')+
-    row('Invasion keys','inv',inv,7,1,'Use 1')+
+    row('Shugo Festa keys','shugo',sh,scap,3,'Use &minus;1')+
+    row('Invasion keys','inv',inv,7,1,'Use &minus;1')+
   '</div>';
 }
 
@@ -445,10 +469,23 @@ function listHTML(label,items,state,ctx,opts){
   }).map(function(it){
     var v=state[it.id]||0, max=itemMax(it,c), isDone=it.kind==="check"?!!v:v>=max;
     total++; if(isDone) done++;
-    var cnt=it.kind==="check"?'':'<span class="cnt num">'+v+' / '+max+'</span>';
-    var minus=it.kind==="check"?'':'<button type="button" class="minus" '+ctx+' data-id="'+it.id+'" data-d="-1" aria-label="Minus one"'+(v<=0?' disabled':'')+'>−</button>';
-    return '<div class="row'+(isDone?' done':'')+(it.warn?' warn':'')+(it.energy?' energy':'')+'" role="button" tabindex="0" '+ctx+' data-id="'+it.id+'" data-d="1" data-kind="'+it.kind+'">'+
-      '<span class="chk">✓</span><span class="name">'+esc(it.name)+(it.note?'<small>'+esc(it.note)+'</small>':'')+'</span>'+cnt+minus+'</div>';
+    var ctrls;
+    if(it.kind==="check"){
+      ctrls='<button type="button" class="chkb" '+ctx+' data-id="'+it.id+'" data-d="1" aria-label="Toggle done">'+(isDone?'Done &#10003;':'Done')+'</button>';
+    }else if(it.down){
+      /* charges left: the blue button spends one, + gives one back */
+      ctrls='<span class="cnt num">'+(max-v)+' / '+max+'</span>'+
+        '<button type="button" class="plus" '+ctx+' data-id="'+it.id+'" data-d="1" aria-label="Use one"'+(v>=max?' disabled':'')+'>&minus;</button>'+
+        '<button type="button" class="minus" '+ctx+' data-id="'+it.id+'" data-d="-1" aria-label="Give one back"'+(v<=0?' disabled':'')+'>+</button>'+
+        '<button type="button" class="maxb" '+ctx+' data-id="'+it.id+'" data-max="1" title="'+(isDone?'Back to '+max+' left':'Use all '+max)+'">'+(isDone?'Reset':'All')+'</button>';
+    }else{
+      ctrls='<span class="cnt num">'+v+' / '+max+'</span>'+
+        '<button type="button" class="minus" '+ctx+' data-id="'+it.id+'" data-d="-1" aria-label="Minus one"'+(v<=0?' disabled':'')+'>&minus;</button>'+
+        '<button type="button" class="plus" '+ctx+' data-id="'+it.id+'" data-d="1" aria-label="Plus one"'+(v>=max?' disabled':'')+'>+</button>'+
+        '<button type="button" class="maxb" '+ctx+' data-id="'+it.id+'" data-max="1" title="'+(isDone?'Back to 0':'Mark all '+max+' done')+'">'+(isDone?'Clear':'Max')+'</button>';
+    }
+    return '<div class="row'+(isDone?' done':'')+(it.warn?' warn':'')+(it.energy?' energy':'')+'" '+ctx+' data-id="'+it.id+'" data-kind="'+it.kind+'">'+
+      '<span class="chk">✓</span><span class="name">'+esc(it.name)+(it.note?'<small>'+esc(it.note)+'</small>':'')+'</span><span class="ctl">'+ctrls+'</span></div>';
   }).join("");
   if(!total) return '';
   return '<div class="list"><div class="lhead"><span>'+label+'</span><span class="n'+(done>=total?' all':'')+'">'+done+' / '+total+'</span></div>'+rows+'</div>';
@@ -458,17 +495,21 @@ function charCard(c,sv){
   var ctx='data-chr="'+c.id+'"';
   var cap=odCap(sv), od=odyleNow(c,sv), bonus=c.bonus||0, total=od==null?null:od+bonus;
   var cost=cubeCost(c), fill=fillIn(c.od,cap,3*H,15);
-  var ekO=c.id+':od', ekB=c.id+':bonus', ekN=c.id+':nm';
+  var ekO=c.id+':od', ekN=c.id+':nm';
   var odHTML;
   if(od==null||editKeys[ekO]){
-    odHTML='<div class="setrow"><input type="number" min="0" max="'+cap+'" step="1" '+ctx+' data-set="od" placeholder="energy" aria-label="Set Odyle Energy" autofocus><label>/ '+cap+' regen</label>'+
-      '<input type="number" min="0" max="'+BONUS_CAP+'" step="1" '+ctx+' data-set="bonus" value="'+bonus+'" aria-label="Set bonus energy"><label>bonus</label></div>'+
-      '<div class="hint">Type what the game shows, then press Enter.</div>';
+    odHTML='<form class="efrm" '+ctx+' data-eform="od">'+
+      '<label>Energy<input type="number" name="od" min="0" max="'+cap+'" step="1" value="'+(od==null?'':od)+'" placeholder="0" aria-label="Odyle Energy"></label>'+
+      '<label class="blue">(+ Bonus)<input type="number" name="bonus" min="0" max="'+BONUS_CAP+'" step="1" value="'+bonus+'" aria-label="Bonus energy"></label>'+
+      '<span class="cap">/ '+cap+'</span>'+
+      '<div class="ebtns"><button type="button" class="btn" data-efull="'+cap+'">Full</button><button type="button" class="btn" data-ezero="1">Empty</button><button type="submit" class="btn primary">Save</button>'+(od==null?'':'<button type="button" class="btn" data-ecancel="1">Cancel</button>')+'</div>'+
+      '<div class="hint">Type the two numbers the game shows, like 120 (+675) / 840.</div></form>';
   }else{
     var atCap=od>=cap;
     var state=atCap?'<span class="bad">FULL, spend it</span>':(fill!=null?'full in '+fmtDur(fill):'');
-    odHTML='<div class="bignum"><b class="editable num" '+ctx+' data-editkey="'+ekO+'" title="Tap to correct">'+od+'</b><span class="num">/ '+cap+'</span>'+
-      '<span class="bonus num" '+ctx+' data-editkey="'+ekB+'" title="Bonus energy from items. Tap to correct">+ '+bonus+' bonus</span></div>'+
+    odHTML='<div class="bignum"><b class="editable num" '+ctx+' data-editkey="'+ekO+'" title="Tap to correct">'+od+'</b>'+
+      '<span class="bonus num editable" '+ctx+' data-editkey="'+ekO+'" title="Bonus energy from items. Tap to correct">(+'+bonus+')</span><span class="num">/ '+cap+'</span>'+
+      '<button type="button" class="btn ghost small pen" '+ctx+' data-editkey="'+ekO+'" title="Type the numbers you see in game">&#9998;</button></div>'+
       '<div class="meter"><i class="'+(atCap?'full':'')+'" style="width:'+Math.round(od/cap*100)+'%"></i></div>'+
       '<div class="hint">'+state+(state?' · ':'')+'<span class="num">'+Math.floor(total/cost)+'</span> cubes in hand</div>';
   }
@@ -481,12 +522,17 @@ function charCard(c,sv){
 
   var nm=nmNow(c), nmHTML;
   if(nm==null||editKeys[ekN]){
-    nmHTML='<div class="setrow"><input type="number" min="0" max="14" step="1" '+ctx+' data-set="nm" placeholder="charges" aria-label="Set Nightmare charges"><label>/ 14 · +2 at every daily reset</label></div>';
+    nmHTML='<form class="efrm" '+ctx+' data-eform="nm">'+
+      '<label>Charges<input type="number" name="v" min="0" max="14" step="1" value="'+(nm==null?'':nm)+'" placeholder="0" aria-label="Nightmare charges"></label><span class="cap">/ 14</span>'+
+      '<div class="ebtns"><button type="submit" class="btn primary">Save</button>'+(nm==null?'':'<button type="button" class="btn" data-ecancel="1">Cancel</button>')+'</div>'+
+      '<div class="hint">Type the charges you see in game. +2 at every daily reset.</div></form>';
   }else{
     nmHTML='<div class="row2"><span class="bignum"><b class="editable num" '+ctx+' data-editkey="'+ekN+'" title="Tap to correct">'+nm+'</b><span class="num">/ 14</span></span>'+
       '<span class="hint">'+(nm>=14?'<span class="bad">bank full</span>':'+2 at reset')+'</span>'+
-      '<button type="button" class="btn" '+ctx+' data-nmrun="1"'+(nm<=0?' disabled':'')+'>Run −1</button></div>'+
-      '<div class="meter" style="margin-top:8px"><i class="nm'+(nm>=14?' full':'')+'" style="width:'+Math.round(nm/14*100)+'%"></i></div>';
+      '<button type="button" class="btn ghost small" style="margin-left:auto;border:1px solid var(--border)" '+ctx+' data-editkey="'+ekN+'" title="Type the number you see in game">&#9998;</button></div>'+
+      '<div class="meter" style="margin-top:8px"><i class="nm'+(nm>=14?' full':'')+'" style="width:'+Math.round(nm/14*100)+'%"></i></div>'+
+      '<div class="btns"><button type="button" class="btn" style="border:2px solid var(--nm)" '+ctx+' data-nmd="-1"'+(nm<=0?' disabled':'')+'>Run &minus;1</button>'+
+      '<button type="button" class="btn" '+ctx+' data-nmd="1"'+(nm>=14?' disabled':'')+'>+1</button></div>';
   }
   var gs=c.gs?(' · '+fmtN(c.gs)+' GS'):'';
   return '<article class="card'+(c.role==="main"?' main':'')+'">'+
@@ -511,14 +557,14 @@ function defsFor(el){
   var chr=el.hasAttribute("data-chr"), daily=el.getAttribute("data-scope")==="daily";
   return chr?(daily?CHAR_DAILY:CHAR_WEEKLY):(daily?SRV_DAILY:SRV_WEEKLY);
 }
-function bumpItem(el,d){
+function bumpItem(el,d,toMax){
   var id=el.getAttribute("data-id"), def=null;
   defsFor(el).forEach(function(it){ if(it.id===id) def=it; });
   var st=stateFor(el); if(!st||!def) return;
   var c=el.hasAttribute("data-chr")?charById(el.getAttribute("data-chr")):null;
   var cur=st[id]||0, nv;
   if(def.kind==="check"){ nv=cur?0:1; }
-  else{ var max=itemMax(def,c); nv=Math.max(0,Math.min(max,cur+d)); }
+  else{ var max=itemMax(def,c); nv=toMax?(cur>=max?0:max):Math.max(0,Math.min(max,cur+d)); }
   if(nv===cur) return;
   st[id]=nv;
   if(def.energy&&c){ c.bonus=Math.max(0,Math.min(BONUS_CAP,(c.bonus||0)+def.energy*(nv-cur))); }
@@ -527,40 +573,49 @@ function bumpItem(el,d){
 root.addEventListener("change",function(e){
   var el=e.target;
   if(el.hasAttribute("data-member")){ srv(el.getAttribute("data-member")).membership=el.checked; save(); render(); return; }
-  if(el.hasAttribute("data-set")){
-    var c=charById(el.getAttribute("data-chr")); var v=parseInt(el.value,10), k=el.getAttribute("data-set");
-    if(!c||isNaN(v)) return; v=Math.max(0,v);
-    if(k==="od"){ c.od={val:Math.min(v,odCap(srv(c.server))),at:Date.now()}; var b=el.parentNode.querySelector('[data-set="bonus"]'); var bv=b?parseInt(b.value,10):NaN; if(!isNaN(bv)) c.bonus=Math.max(0,Math.min(BONUS_CAP,bv)); }
-    else if(k==="bonus"){ c.bonus=Math.min(BONUS_CAP,v); if(c.od==null) return; /* wait for the energy value */ }
-    else if(k==="nm"){ c.nm={val:Math.min(14,v),at:Date.now()}; }
-    editKeys={}; save(); render(); return;
-  }
-  if(el.hasAttribute("data-dtrack")){
-    var sv=srv(el.getAttribute("data-srv")); var v2=parseInt(el.value,10), key=el.getAttribute("data-dtrack");
-    if(isNaN(v2)) return; var cap=key==="shugo"?(sv.membership?21:12):7;
-    sv.track[key]={val:Math.max(0,Math.min(cap,v2)),at:Date.now()}; editKeys={}; save(); render();
-  }
 });
-root.addEventListener("keydown",function(e){
-  if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.target.blur(); return; }
-  if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("row")){ e.preventDefault(); bumpItem(e.target,1); }
+function num(form,name,cap){ var v=parseInt(form.elements[name].value,10); if(isNaN(v)) return null; return Math.max(0,Math.min(cap,v)); }
+root.addEventListener("submit",function(e){
+  var f=e.target; if(!f.hasAttribute("data-eform")) return;
+  e.preventDefault();
+  var kind=f.getAttribute("data-eform");
+  if(kind==="od"){
+    var c=charById(f.getAttribute("data-chr")); if(!c) return;
+    var cap=odCap(srv(c.server)), v=num(f,"od",cap), b=num(f,"bonus",BONUS_CAP);
+    if(v==null){ f.elements.od.focus(); return; }
+    c.od={val:v,at:Date.now()}; c.bonus=b==null?0:b;
+  }else if(kind==="nm"){
+    var c2=charById(f.getAttribute("data-chr")); if(!c2) return;
+    var v2=num(f,"v",14); if(v2==null){ f.elements.v.focus(); return; }
+    c2.nm={val:v2,at:Date.now()};
+  }else if(kind==="key"){
+    var sv=srv(f.getAttribute("data-srv")), key=f.getAttribute("data-key"), cap2=key==="shugo"?(sv.membership?21:12):7;
+    var v3=num(f,"v",cap2); if(v3==null){ f.elements.v.focus(); return; }
+    sv.track[key]={val:v3,at:Date.now()};
+  }
+  editKeys={}; save(); render();
 });
 root.addEventListener("click",function(e){
   var ed=e.target.closest("[data-editkey]");
-  if(ed){ editKeys[ed.getAttribute("data-editkey")]=true; render(); var inp=root.querySelector('input[data-set], input[data-dtrack]'); if(inp){ inp.focus(); } return; }
+  if(ed){ editKeys[ed.getAttribute("data-editkey")]=true; render(); var inp=root.querySelector('form.efrm input'); if(inp){ inp.focus(); inp.select(); } return; }
   var btn=e.target.closest("button");
   if(btn){
+    if(btn.hasAttribute("data-ecancel")){ editKeys={}; render(); return; }
+    if(btn.hasAttribute("data-efull")){ var fo=btn.closest("form"); fo.elements.od.value=btn.getAttribute("data-efull"); fo.elements.od.focus(); return; }
+    if(btn.hasAttribute("data-ezero")){ var fz=btn.closest("form"); fz.elements.od.value=0; fz.elements.bonus.value=0; fz.elements.od.focus(); return; }
+    if(btn.hasAttribute("data-nmd")){ var cn=charById(btn.getAttribute("data-chr")); if(cn&&cn.nm){ cn.nm=bumpDaily(cn.nm,14,2,parseInt(btn.getAttribute("data-nmd"),10)); save(); render(); } return; }
+    if(btn.hasAttribute("data-keyd")){ var svk=srv(btn.getAttribute("data-srv")), kk=btn.getAttribute("data-keyd"); var capk=kk==="shugo"?(svk.membership?21:12):7, ratek=kk==="shugo"?3:1; if(svk.track[kk]){ svk.track[kk]=bumpDaily(svk.track[kk],capk,ratek,parseInt(btn.getAttribute("data-d"),10)); save(); render(); } return; }
+    if(btn.hasAttribute("data-max")){ bumpItem(btn,0,true); return; }
+    if(btn.classList.contains("plus")||btn.classList.contains("chkb")){ bumpItem(btn,1); return; }
     if(btn.hasAttribute("data-edit")){ openChar(charById(btn.getAttribute("data-chr"))); return; }
     if(btn.hasAttribute("data-log")){ logRun(charById(btn.getAttribute("data-chr")),btn.getAttribute("data-log")); return; }
     if(btn.hasAttribute("data-undo")){ undoRun(charById(btn.getAttribute("data-chr"))); return; }
     if(btn.hasAttribute("data-x2")){ var c=charById(btn.getAttribute("data-chr")); if(c){ c.x2=!c.x2; save(); render(); } return; }
-    if(btn.hasAttribute("data-nmrun")){ var c2=charById(btn.getAttribute("data-chr")); if(c2&&c2.nm){ c2.nm=bumpDaily(c2.nm,14,2,-1); save(); render(); } return; }
-    if(btn.hasAttribute("data-usekey")){ var sv=srv(btn.getAttribute("data-srv")), key=btn.getAttribute("data-usekey"); var cap=key==="shugo"?(sv.membership?21:12):7, rate=key==="shugo"?3:1; if(sv.track[key]){ sv.track[key]=bumpDaily(sv.track[key],cap,rate,-1); save(); render(); } return; }
     if(btn.hasAttribute("data-run")){ var sv2=srv(btn.getAttribute("data-srv")); var k=btn.getAttribute("data-run"); sv2.runs[k]=Math.max(0,(sv2.runs[k]||0)+parseInt(btn.getAttribute("data-d"),10)); save(); render(); return; }
     if(btn.classList.contains("minus")){ bumpItem(btn,-1); return; }
     return;
   }
-  var row=e.target.closest(".row[data-id]"); if(row) bumpItem(row,1);
+  var row=e.target.closest(".row[data-id]"); if(row&&!e.target.closest("button")) bumpItem(row,1);
 });
 function logRun(c,kind){
   if(!c) return;
