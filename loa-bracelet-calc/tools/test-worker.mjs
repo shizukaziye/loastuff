@@ -848,6 +848,25 @@ const rpSt2 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
 ok("a finished sweep waits out the week rather than starting over",
   rpSt2 && rpSt2.cursor === 4 && rpSt2.builtAt === rpSt0.builtAt, JSON.stringify(rpSt2));
 
+// ---- The recovery probe with an EMPTY queue -------------------------------
+// The breaker can trip from the sweep, which queues nothing, so the probe must
+// find a character to try on its own: the sweep's next target first, then any
+// stored record, and only with neither does it give up (2026-10-18 outage).
+{
+  const pk = stubKV({});
+  ok("with no plan and no records there is nothing to probe", (await __test.probeFallbackTarget({ CHARS: pk })) === null);
+  await pk.put(__test.charKey("NA", "Someone"), JSON.stringify({ region: "NA", name: "Someone", published: true, stats: [] }));
+  const t1 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("with records but no plan, a stored character is the probe", t1 && t1[0] === "NA" && t1[1] === "Someone", JSON.stringify(t1));
+  await pk.put(__test.REPULL_PLAN_KEY, JSON.stringify([["NA", "First"], ["CE", "Second"], ["NA", "Third"]]));
+  await pk.put(__test.REPULL_STATE_KEY, JSON.stringify({ cursor: 1, planLen: 3 }));
+  const t2 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("with a plan, the sweep's next target is the probe", t2 && t2[0] === "CE" && t2[1] === "Second", JSON.stringify(t2));
+  await pk.put(__test.REPULL_STATE_KEY, JSON.stringify({ cursor: 3, planLen: 3 }));
+  const t3 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("a finished plan probes its head rather than running off the end", t3 && t3[1] === "First", JSON.stringify(t3));
+}
+
 // ---------------------------------------------------------------------------
 console.log("\n" + (fail ? "FAILED" : "PASSED") + " — " + pass + " checks passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);

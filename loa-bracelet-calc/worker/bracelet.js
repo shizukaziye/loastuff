@@ -2364,20 +2364,35 @@ async function spaceUpstream(env) {
  */
 async function probeOldest(env) {
   const items = await readQueueOrder(env);
-  const it = items[0];
-  if (!it || !it.r || !it.n) return { up: false, empty: true, entry: { region: "", name: "", msg: "queue empty — nothing to probe" } };
+  let it = items[0];
   let tok = "";
-  try { const v = await env.CHARS.get(it.k, "json"); tok = (v && v.t) || ""; } catch (e) {}
+  if (it && it.r && it.n) {
+    try { const v = await env.CHARS.get(it.k, "json"); tok = (v && v.t) || ""; } catch (e) {}
+  } else {
+    // An EMPTY queue must still probe. The breaker can trip from the weekly re-pull
+    // sweep (a site block there calls setDrainConfig(probe) exactly as the drain
+    // does), and the sweep queues nothing; in probe mode no new lookup is enqueued
+    // either. So with nothing queued the old code answered "queue empty — nothing to
+    // probe", the caller read that as "still down", and the Worker stayed paused
+    // for good (it did, from 2026-10-18 until this fix). Fall back to a character
+    // we already hold — the sweep's next target, else any stored record — fetched
+    // with the BIBLE_TOKEN like a signed-out lookup. Nothing is deleted on that path.
+    const fb = await probeFallbackTarget(env);
+    if (!fb) return { up: false, empty: true, entry: { region: "", name: "", msg: "nothing to probe: queue empty and no stored character" } };
+    it = { r: fb[0], n: fb[1], k: null };
+  }
   await spaceUpstream(env);
   let r = null;
   try { r = await loadCharacter(env, it.r, it.n, { refresh: true, publish: true, token: tok }); } catch (e) { r = null; }
   if (r && r.ok && !r.stale) {
-    try { await env.CHARS.delete(it.k); } catch (e) {}
+    if (it.k) { try { await env.CHARS.delete(it.k); } catch (e) {} }
     return { up: true, cached: true, name: it.r + ":" + it.n };
   }
   if (r && !r.ok && r.status === 404) {
-    try { await env.CHARS.delete(it.k); } catch (e) {}
-    try { await env.CHARS.put(NOTFOUND_PREFIX + charKey(it.r, it.n), String(r.body && r.body.message || "not found").slice(0, 300), { expirationTtl: NOTFOUND_TTL_S }); } catch (e) {}
+    if (it.k) {
+      try { await env.CHARS.delete(it.k); } catch (e) {}
+      try { await env.CHARS.put(NOTFOUND_PREFIX + charKey(it.r, it.n), String(r.body && r.body.message || "not found").slice(0, 300), { expirationTtl: NOTFOUND_TTL_S }); } catch (e) {}
+    }
     return { up: true, cached: false, name: it.r + ":" + it.n };
   }
   const fe = (r && r.fetchError) || {};
@@ -2385,6 +2400,31 @@ async function probeOldest(env) {
     status: (r && r.status) || fe.status || 0,
     upstream: fe.upstreamStatus != null ? fe.upstreamStatus : ((r && r.upstreamStatus) || null),
     msg: fe.error || (r && r.body && r.body.error) || "network/timeout" } };
+}
+
+/**
+ * A character to probe with when the queue is empty: the re-pull sweep's next
+ * target (it is on the board, so its page exists), else the first stored record.
+ * Returns [region, name] or null.
+ */
+async function probeFallbackTarget(env) {
+  try {
+    const plan = await kvGetJson(env, REPULL_PLAN_KEY);
+    const st = await kvGetJson(env, REPULL_STATE_KEY);
+    if (Array.isArray(plan) && plan.length) {
+      const i = st && (st.cursor | 0) < plan.length ? (st.cursor | 0) : 0;
+      const t = plan[i] || plan[0];
+      if (t && t[0] && t[1]) return [t[0], t[1]];
+    }
+  } catch (e) {}
+  try {
+    const l = await env.CHARS.list({ prefix: CHAR_PREFIX, limit: 10 });
+    for (const k of (l && l.keys) || []) {
+      const rec = await kvGetJson(env, k.name);
+      if (rec && rec.region && rec.name && rec.published !== false) return [rec.region, rec.name];
+    }
+  } catch (e) {}
+  return null;
 }
 
 /**
@@ -4125,6 +4165,7 @@ export const __test = {
   // The re-pull sweep, against a stub KV: its plan and its skip path (a fetch
   // needs lostark.bible, so the tick is exercised on fresh entries only).
   buildRepullPlan: buildRepullPlan, runRepullTick: runRepullTick, gzipString: gzipString, charKey: charKey,
+  probeFallbackTarget: probeFallbackTarget,
   SNAPSHOT_SRC_KEY: SNAPSHOT_SRC_KEY, REPULL_PLAN_KEY: REPULL_PLAN_KEY, REPULL_STATE_KEY: REPULL_STATE_KEY,
   drainSpacingMs: drainSpacingMs, validateNameRegion: validateNameRegion,
   isCharKey: isCharKey,
