@@ -435,6 +435,16 @@
       }
       r = rowFor(line);
       if (!r) continue;
+      // A MAIN-STAT (or Vitality) line is one of the bracelet's TWO fixed stat
+      // lines — the drop rolls Crit / Spec / Swiftness / Str-Dex-Int / Vitality
+      // into those two, so a bracelet can carry one combat trait and a main stat.
+      // It is not a granted slot. Sorting it into `rows` made it eat a slot (a
+      // five-line Ancient read as four granted lines, over the cap, so the last
+      // effect line "went unread") and left traitOrder one short, so the panel
+      // invented a second combat trait the bracelet does not have. Three notes
+      // said so (Corruptedreaper ×2, 2026-08-30 and 09-25; a support, 09-27).
+      // The Advanced fold's fixed rows are exactly this: scored, never rerolled.
+      if (line.cat === "basic" && fixedRows.length < 2) { fixedRows.push(r); continue; }
       if (line.unmatchedValue) warn.push("a special effect whose value matched no tier");
       // `fixed` on a lostark.bible line means LOCKED — the blue padlock the player
       // set before a reroll — NOT the drop's fixed lines. It is routinely true on
@@ -446,10 +456,11 @@
       if (line.fixed) locks.push(rows.length - 1);
     }
 
-    // The panel always shows exactly two combat traits. A bracelet that reported
-    // fewer keeps the defaults switched on so the score stays sane; app.js's own
-    // fitTraits() would do it anyway, this just picks a sensible pair.
-    while (traitOrder.length < 2) {
+    // Two fixed stat lines in all: the combat traits found plus any basic line
+    // routed to fixedRows above. A bracelet that reported fewer keeps a default
+    // trait switched on so the score stays sane. A bracelet whose second fixed
+    // stat is a main stat is complete as it stands and gets no invented trait.
+    while (traitOrder.length + fixedRows.length < 2) {
       var fill = traitOrder.indexOf("crit") < 0 ? "crit" : (traitOrder.indexOf("spec") < 0 ? "spec" : "swift");
       traits[fill].on = true;
       traitOrder.push(fill);

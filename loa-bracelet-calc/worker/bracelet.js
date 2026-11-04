@@ -1691,12 +1691,28 @@ function briefScore(s) {
  * bible draws, then to raid > est. raid > chaos, then to the newest.
  */
 const LOADOUT_ORDER = { most_recent_raid: 0, raid_merged: 1, most_recent_chaos_dungeon: 2 };
-function pickBestLoadout(loadouts) {
+function pickBestLoadout(loadouts, asSupport) {
   const rank = function (c) { return LOADOUT_ORDER[c] == null ? 9 : LOADOUT_ORDER[c]; };
+  // The reading the loadouts are compared on. A damage dealer: the record's own
+  // score. A SUPPORT CLASS: the support reading, because that is the axis its
+  // board row ranks on. Compared on the DPS reading, an Artist's chaos bracelet
+  // full of damage lines out-scored her raid support bracelet, so the support
+  // board graded her F on a bracelet she never raids with (Xinnywinny, feedback
+  // 2026-09-26; the 2026-09-27 note is the same thing).
+  const sup = new Map();
+  const reading = function (l) {
+    if (!asSupport) return { lines: l.score.linesPct, pct: l.score.pct };
+    if (!sup.has(l)) {
+      const b = boardScore(l.stats, "support");
+      sup.set(l, b ? { lines: b.linesPct, pct: b.pct } : { lines: -Infinity, pct: -Infinity });
+    }
+    return sup.get(l);
+  };
   let best = 0;
   for (let i = 1; i < loadouts.length; i++) {
     const a = loadouts[best], b = loadouts[i];
-    const cmp = (b.score.linesPct - a.score.linesPct) || (b.score.pct - a.score.pct) ||
+    const ra = reading(a), rb = reading(b);
+    const cmp = (rb.lines - ra.lines) || (rb.pct - ra.pct) ||
       ((b.isRendered ? 1 : 0) - (a.isRendered ? 1 : 0)) ||
       (rank(a.classification) - rank(b.classification)) ||
       ((b.lastUpdated || 0) - (a.lastUpdated || 0));
@@ -1828,7 +1844,7 @@ async function fetchCharacterPage(env, region, name, userToken) {
     loadouts.loadoutsUnparsed = true;
   }
 
-  const bestIdx = pickBestLoadout(loadouts);
+  const bestIdx = pickBestLoadout(loadouts, isSupportClass(meta.klass));
   const b = loadouts[bestIdx];
   return { ok: true, data: {
     region: region,

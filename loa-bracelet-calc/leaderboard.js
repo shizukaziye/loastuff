@@ -217,10 +217,12 @@
    * Null for a row with no region: "/" + "" + "/Name" would be "//Name", which a
    * browser reads as a link to a host called Name.
    */
+  // "#bracelet" opens the profile on its bracelet overview rather than on the
+  // browser's last-used one (the astrogem board does the same with #astrogems).
   function profileHref(region, name) {
     var r = String(region || "").trim();
     if (!r || !name) return null;
-    return "/" + encodeURIComponent(r) + "/" + encodeURIComponent(name);
+    return "/" + encodeURIComponent(r) + "/" + encodeURIComponent(name) + "#bracelet";
   }
 
   /**

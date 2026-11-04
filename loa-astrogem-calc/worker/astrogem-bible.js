@@ -181,11 +181,11 @@ function gemIdentity(idStr, e1, e2) {
   else if (!ov && !GEM_ID_674.test(idStr)) {
     warnings.push("gem id " + idStr + " is not in the known 674xxxxx format — cost/type are a guess");
   }
-  if (ov && (costFromGemId(idStr) !== ov.baseCost || typeFromGemId(idStr) !== ov.gemType)) {
-    warnings.push("gem id " + idStr + " reads as " + costFromGemId(idStr) + "-cost " +
-      typeFromGemId(idStr) + " by the id digits — the known-ids table says " +
-      ov.baseCost + "-cost " + ov.gemType);
-  }
+  // An id in the override table is KNOWN, not a guess: the table exists because the
+  // digit rule misreads it, so disagreeing with the digits is the expected case. This
+  // used to warn anyway, and players read "reads as 9-cost chaos by the id digits — the
+  // known-ids table says 8-cost chaos" on a correctly graded gem as a bug (two feedback
+  // notes, 2026-09-18 and 2026-10-05). Nothing to say; the table had the last word.
   if (baseCost != null && e1 && e2 && !poolHolds(baseCost, e1, e2)) {
     const fix = costFromEffects(e1, e2);
     if (fix != null) {

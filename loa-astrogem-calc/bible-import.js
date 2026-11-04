@@ -99,11 +99,9 @@
     else if (!ov && !GEM_ID_674.test(idStr)) {
       warnings.push("gem id " + idStr + " is not in the known 674xxxxx format — cost/type are a guess");
     }
-    if (ov && (costFromGemId(idStr) !== ov.baseCost || typeFromGemId(idStr) !== ov.gemType)) {
-      warnings.push("gem id " + idStr + " reads as " + costFromGemId(idStr) + "-cost " +
-        typeFromGemId(idStr) + " by the id digits — the known-ids table says " +
-        ov.baseCost + "-cost " + ov.gemType);
-    }
+    // A table id is KNOWN, not a guess, so disagreeing with the digit rule is the
+    // expected case and raises nothing (it did until 2026-11-03, and players reported
+    // the warning on correctly graded gems as a bug). Mirrors the Worker.
     if (baseCost != null && e1 && e2 && !poolHolds(baseCost, e1, e2)) {
       const fix = costFromEffects(e1, e2);
       if (fix != null) {

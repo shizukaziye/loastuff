@@ -493,6 +493,27 @@ ok("a tie goes to raid over est. raid",
 ok("the old first-hit rule would have taken the WRONG bracelet here",
   extractBracelets(PAGE)[0].stats[0].value === 61);
 
+// A SUPPORT CLASS is compared on the support reading. Xinnywinny (Artist, NA,
+// 2026-09-26): her chaos loadout wears a damage bracelet, her raid loadout a
+// support one. On the DPS reading the chaos bracelet wins and the support board
+// graded her F on it; on the support reading the raid bracelet wins.
+// The damage bracelet here is Shizukaziye's (13.27% on the DPS reading); the
+// support one is Xinnywinny's raid bracelet (two ally lines).
+{
+  const ST = (t, i, v, f) => ({ type: t, index: i, id: 213400023, value: v, fixed: !!f });
+  const chaosDps = [ST(2, 16, 67, 1), ST(2, 15, 84, 1), ST(3, 11013, 5), ST(2, 76, 840), ST(3, 11042, 5)];
+  const raidSup = [ST(2, 18, 104, 1), ST(2, 16, 72, 1), ST(3, 11091, 5), ST(3, 11082, 5)];
+  const xl = [
+    { classification: "most_recent_chaos_dungeon", stats: chaosDps, isRendered: false, lastUpdated: 2 },
+    { classification: "most_recent_raid", stats: raidSup, isRendered: true, lastUpdated: 1 }
+  ];
+  for (const l of xl) l.score = briefScore(score(l.stats));
+  ok("on the DPS reading the damage bracelet wins (a damage dealer's pick, unchanged)",
+    pickBestLoadout(xl) === 0 && pickBestLoadout(xl, false) === 0, String(pickBestLoadout(xl)));
+  ok("a support class picks on the support reading: the raid support bracelet wins",
+    pickBestLoadout(xl, true) === 1, String(pickBestLoadout(xl, true)));
+}
+
 const EMPTY_SLOT = 'loadouts:[' + LD("most_recent_raid", 1, 1700, BR_RAID) + "," +
   LD("most_recent_chaos_dungeon", 2, 1700, BR_NONE) + "]";
 const one = extractLoadouts(EMPTY_SLOT);
