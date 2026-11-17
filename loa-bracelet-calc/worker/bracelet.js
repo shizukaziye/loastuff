@@ -90,7 +90,10 @@
  *                                               character page actually yielded. This is how
  *                                               the profile auto-fill map gets filled in
  *                                               without guessing at field names.
- *   cron * * * * *                              drain the queue (paced), then rebuild the
+ *   cron * * * * *                              drain the queue (paced); on a minute the
+ *                                               queue left idle, re-pull ONE top-ranked
+ *                                               character whose record is over a week old
+ *                                               (the sweep, below); then rebuild the
  *                                               snapshot if anything changed
  *
  * EVERY ADMIN MUTATION IS POST. A GET with side effects is one <img src> away from
@@ -259,11 +262,12 @@ const SNAPSHOT_SRC_KEY = "lb:chars:gz";     // the MUTATION source: the same cha
                                             // tables; keeping the objects is cheaper than unpacking.
 const SNAPSHOT_V = 3;                       // the WIRE format (payload.v). 2 added the per-row loadouts;
                                             // 3 dropped every raw bracelet and sends finished numbers.
-const SNAPSHOT_FMT = 3;                     // the ENTRY shape stored in SNAPSHOT_SRC_KEY. Bump it whenever
+const SNAPSHOT_FMT = 4;                     // the ENTRY shape stored in SNAPSHOT_SRC_KEY. Bump it whenever
                                             // snapshotEntry() starts carrying a new field: the incremental
                                             // rebuild only rewrites the rows a dirty marker points at, so a
                                             // widened row would otherwise reach the board one takedown at a
                                             // time. A mismatch forces ONE from-scratch build and clears.
+                                            // 4 (2026-09-26): altBracelet, the other board's own bracelet.
 const SNAPSHOT_FMT_KEY = "lb:snapshot:fmt"; // the SNAPSHOT_FMT the stored source was built with
 const SNAPSHOT_MIN_INTERVAL_MS = 10 * 60 * 1000;  // Shizu's number: rebuild at most every 10 minutes
 const REBUILD_CURSOR_KEY = "lb:rebuild:cursor";   // { c } — present while a from-scratch build is in flight
@@ -1687,12 +1691,28 @@ function briefScore(s) {
  * bible draws, then to raid > est. raid > chaos, then to the newest.
  */
 const LOADOUT_ORDER = { most_recent_raid: 0, raid_merged: 1, most_recent_chaos_dungeon: 2 };
-function pickBestLoadout(loadouts) {
+function pickBestLoadout(loadouts, asSupport) {
   const rank = function (c) { return LOADOUT_ORDER[c] == null ? 9 : LOADOUT_ORDER[c]; };
+  // The reading the loadouts are compared on. A damage dealer: the record's own
+  // score. A SUPPORT CLASS: the support reading, because that is the axis its
+  // board row ranks on. Compared on the DPS reading, an Artist's chaos bracelet
+  // full of damage lines out-scored her raid support bracelet, so the support
+  // board graded her F on a bracelet she never raids with (Xinnywinny, feedback
+  // 2026-09-26; the 2026-09-27 note is the same thing).
+  const sup = new Map();
+  const reading = function (l) {
+    if (!asSupport) return { lines: l.score.linesPct, pct: l.score.pct };
+    if (!sup.has(l)) {
+      const b = boardScore(l.stats, "support");
+      sup.set(l, b ? { lines: b.linesPct, pct: b.pct } : { lines: -Infinity, pct: -Infinity });
+    }
+    return sup.get(l);
+  };
   let best = 0;
   for (let i = 1; i < loadouts.length; i++) {
     const a = loadouts[best], b = loadouts[i];
-    const cmp = (b.score.linesPct - a.score.linesPct) || (b.score.pct - a.score.pct) ||
+    const ra = reading(a), rb = reading(b);
+    const cmp = (rb.lines - ra.lines) || (rb.pct - ra.pct) ||
       ((b.isRendered ? 1 : 0) - (a.isRendered ? 1 : 0)) ||
       (rank(a.classification) - rank(b.classification)) ||
       ((b.lastUpdated || 0) - (a.lastUpdated || 0));
@@ -1824,7 +1844,7 @@ async function fetchCharacterPage(env, region, name, userToken) {
     loadouts.loadoutsUnparsed = true;
   }
 
-  const bestIdx = pickBestLoadout(loadouts);
+  const bestIdx = pickBestLoadout(loadouts, isSupportClass(meta.klass));
   const b = loadouts[bestIdx];
   return { ok: true, data: {
     region: region,
@@ -2174,6 +2194,167 @@ async function usageCount(env) {
   return (u && u.month === monthKey()) ? (u.count | 0) : 0;
 }
 
+// ---------------------------------------------------------------------------
+// The re-pull sweep: keep the top of the board fresh
+// ---------------------------------------------------------------------------
+//
+// Shizu, 2026-09-26: "the astrogem calculator periodically updates top ranked
+// individuals right? do the same with bracelets." The astrogem Worker's sweep,
+// ported to this one:
+//
+//   - PLAN     : once a week, from the stored entry list (never a packed row):
+//                the DPS board's top REPULL_TOP_OVERALL by damage %, plus every
+//                class's top REPULL_TOP_CLASS — a support class by its support
+//                reading, so the Support board's head is covered. Priority is
+//                min(overall rank, 10 × class rank): #1 overall and each class's
+//                #1 lead, and a class quota's tail (#100) meets overall #1000.
+//   - PACE     : at most ONE upstream fetch per cron minute, and only on a
+//                minute the queue drain left idle — a lookup someone is waiting
+//                for always comes first. Spaced and locked like every other
+//                page fetch (the 3s floor, the drain lock), counted against the
+//                monthly budget, logged tagged `repull`.
+//   - FRESH    : an entry pulled within CHAR_TTL_MS (7 days) is skipped for the
+//                price of one KV read, REPULL_SKIP_CAP of them a tick. A record
+//                that is gone (a takedown) or unpublished is skipped too: the
+//                sweep refreshes what is on the board, it never puts anyone on.
+//   - AUTH     : the BIBLE_TOKEN secret, the same Bearer a signed-out lookup
+//                uses. A refusal pauses only the sweep, for REPULL_BACKOFF_MAX_MS;
+//                a site block trips the breaker exactly as the drain's does.
+//   - LANDING  : loadCharacter stores the record and marks it dirty, so the next
+//                snapshot rebuild carries the fresh bracelet — the same path a
+//                lookup takes.
+const REPULL_PLAN_KEY = "rp:plan";               // [[region, name], …] in priority order
+const REPULL_STATE_KEY = "rp:state";             // { builtAt, planLen, cursor, fetched, skipped, dropped, headAtt, failStreak, backoffUntil, lastAt, lastResult }
+const REPULL_WEEK_MS = 7 * 24 * 3600 * 1000;     // the plan's life
+const REPULL_TOP_OVERALL = 1000;                 // DPS board depth
+const REPULL_TOP_CLASS = 100;                    // per-class depth
+const REPULL_SKIP_CAP = 25;                      // fresh entries skipped per tick
+const REPULL_MAX_HEAD_ATTEMPTS = 5;              // transient retries before an entry is given up
+const REPULL_BACKOFF_FIRST_MS = 5 * 60 * 1000;   // after a transient failure: 5 min, doubling…
+const REPULL_BACKOFF_MAX_MS = 6 * 3600 * 1000;   // …to 6 h — also the pause on a refused token
+
+/** The two readings an entry carries, filed by axis whichever one it is shown on. */
+function entryReadings(e) {
+  const shown = e.read ? e.read.pct : null, other = e.alt ? e.alt.pct : null;
+  return e.role === "support" ? { dps: other, sup: shown } : { dps: shown, sup: other };
+}
+
+/** Build the week's plan from the stored entries. False when there is nothing to plan from. */
+async function buildRepullPlan(env) {
+  const entries = await readSnapshotSource(env);
+  if (!Array.isArray(entries) || !entries.length) return false;
+  const scored = [];
+  for (const e of entries) {
+    if (!e || !e.region || !e.name) continue;
+    const r = entryReadings(e);
+    const dps = (typeof r.dps === "number" && isFinite(r.dps)) ? r.dps : null;
+    const sup = (typeof r.sup === "number" && isFinite(r.sup)) ? r.sup : null;
+    const cls = (e["class"] && e["class"] !== "null" && e["class"] !== "undefined") ? e["class"] : null;
+    const cm = (cls && isSupportClass(cls)) ? sup : dps;
+    if (dps === null && cm === null) continue;
+    scored.push({ region: e.region, name: e.name, cls: cls, dps: dps === null ? -Infinity : dps, cm: cm === null ? -Infinity : cm, pri: Infinity });
+  }
+  scored.sort(function (a, b) { return b.dps - a.dps; });
+  for (let i = 0; i < scored.length && i < REPULL_TOP_OVERALL; i++) if (scored[i].dps > -Infinity) scored[i].pri = i + 1;
+  const byClass = {};
+  for (const s of scored) if (s.cls) (byClass[s.cls] = byClass[s.cls] || []).push(s);
+  for (const cls in byClass) {
+    const list = byClass[cls].sort(function (a, b) { return b.cm - a.cm; });
+    for (let i = 0; i < list.length && i < REPULL_TOP_CLASS; i++) if (list[i].cm > -Infinity) list[i].pri = Math.min(list[i].pri, (i + 1) * 10);
+  }
+  const picked = scored.filter(function (s) { return s.pri !== Infinity; })
+    .sort(function (a, b) { return a.pri - b.pri || b.dps - a.dps; })
+    .map(function (s) { return [s.region, s.name]; });
+  if (!picked.length) return false;
+  await env.CHARS.put(REPULL_PLAN_KEY, JSON.stringify(picked));
+  await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify({
+    builtAt: Date.now(), planLen: picked.length, cursor: 0,
+    fetched: 0, skipped: 0, dropped: 0, headAtt: 0, failStreak: 0, backoffUntil: 0,
+    lastAt: Date.now(), lastResult: "plan built (" + picked.length + " targets)"
+  }));
+  return true;
+}
+
+/**
+ * One cron tick of the sweep: skip what is fresh, gone or unpublished (bounded),
+ * then at most ONE upstream fetch. The outcome branches are the drain's.
+ */
+async function runRepullTick(env, deadlineMs) {
+  if (!env || !env.CHARS) return;
+  const cfg = await getDrainConfig(env);
+  if (cfg.mode !== "run") return;                       // the breaker pauses the sweep too
+  const now = Date.now();
+  let st = await kvGetJson(env, REPULL_STATE_KEY);
+  if (!st || ((st.cursor | 0) >= (st.planLen | 0) && now - (st.builtAt || 0) >= REPULL_WEEK_MS)) {
+    await buildRepullPlan(env);                         // a build tick — the sweep starts next minute
+    return;
+  }
+  if ((st.cursor | 0) >= (st.planLen | 0)) return;      // done; wait out the week
+  if (st.backoffUntil && now < st.backoffUntil) return;
+  if ((await usageCount(env)) >= MONTHLY_CHAR_BUDGET) return;
+  const plan = await kvGetJson(env, REPULL_PLAN_KEY);
+  if (!Array.isArray(plan) || !plan.length) {           // the plan is gone (a KV wipe): finish the cycle
+    st.cursor = st.planLen; st.lastResult = "plan missing — cycle closed";
+    await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify(st));
+    return;
+  }
+  // The drain lock: a kick must not fetch beside this, and this must not fetch
+  // beside a drain that is somehow still running.
+  try { if (await env.CHARS.get(DRAIN_LOCK_KEY)) return; } catch (e) {}
+  try { await env.CHARS.put(DRAIN_LOCK_KEY, "1", { expirationTtl: 60 }); } catch (e) {}
+  try {
+    let skips = 0;
+    while ((st.cursor | 0) < plan.length && skips < REPULL_SKIP_CAP && Date.now() < deadlineMs) {
+      const target = plan[st.cursor], region = target[0], name = target[1];
+      const rec = await kvGetJson(env, charKey(region, name));
+      if (!rec || rec.published === false || (rec.pulledAt && Date.now() - rec.pulledAt < CHAR_TTL_MS)) {
+        st.cursor++; st.skipped++; st.headAtt = 0; skips++;
+        continue;
+      }
+      await spaceUpstream(env);
+      const t0 = Date.now();
+      let r = null;
+      try { r = await loadCharacter(env, region, name, { refresh: true, publish: true, token: "" }); }
+      catch (e) { r = null; }
+      const fe = (r && r.fetchError) || null;
+      const upstream = fe ? fe.upstreamStatus : (r && r.upstreamStatus) || null;
+      const ourStatus = fe ? fe.status : (r && !r.ok ? r.status : 0);
+      if (r && r.ok && !r.stale) {
+        st.cursor++; st.fetched++; st.headAtt = 0; st.failStreak = 0; st.backoffUntil = 0;
+        st.lastResult = "pulled " + region + ":" + name;
+        await appendDrainLog(env, { t: Date.now(), cached: [region + ":" + name], dropped: [], failed: [], stop: null, repull: true, ms: Date.now() - t0 });
+        await bumpUsage(env, 1);
+        try { await env.CHARS.put(LASTWRITE_KEY, String(Date.now())); } catch (e) {}
+      } else if (ourStatus >= 400 && ourStatus < 500) {
+        // Our 404/422: renamed, deleted, or no bracelet on the page any more.
+        st.cursor++; st.dropped++; st.headAtt = 0;
+        st.lastResult = "dropped " + region + ":" + name + " (HTTP " + ourStatus + ")";
+      } else if (upstream === 401 || upstream === 403) {
+        // BIBLE_TOKEN refused: pause only the sweep, and say so. Lookups with a
+        // caller's own token are unaffected, so the breaker stays out of it.
+        st.backoffUntil = Date.now() + REPULL_BACKOFF_MAX_MS;
+        st.lastResult = "paused: BIBLE_TOKEN refused (upstream " + upstream + ")";
+      } else if (upstream >= 400 && upstream < 500) {
+        // A site-wide refusal: hand off to the breaker exactly as the drain does.
+        await setDrainConfig(env, { mode: "probe", drainPerMin: cfg.drainPerMin, lastProbe: Date.now(), interval: PAUSE_PROBE_FIRST_MS });
+        st.lastResult = "blocked (upstream " + upstream + ") — breaker tripped to probe";
+      } else {
+        // Transient: the same entry again next tick, backing off; given up after
+        // REPULL_MAX_HEAD_ATTEMPTS so one broken name cannot stall the sweep.
+        st.headAtt = (st.headAtt | 0) + 1; st.failStreak = (st.failStreak | 0) + 1;
+        st.backoffUntil = Date.now() + Math.min(REPULL_BACKOFF_FIRST_MS * Math.pow(2, Math.max(0, st.failStreak - 1)), REPULL_BACKOFF_MAX_MS);
+        if (st.headAtt >= REPULL_MAX_HEAD_ATTEMPTS) { st.cursor++; st.dropped++; st.headAtt = 0; }
+        st.lastResult = "transient failure on " + region + ":" + name + " (attempt " + st.headAtt + ")";
+      }
+      break;                                            // one upstream fetch a tick, whatever came of it
+    }
+    st.lastAt = Date.now();
+    await env.CHARS.put(REPULL_STATE_KEY, JSON.stringify(st));
+  } finally {
+    try { await env.CHARS.delete(DRAIN_LOCK_KEY); } catch (e) {}
+  }
+}
+
 /**
  * Space this fetch ≥3s from the last one, wherever that one came from.
  *
@@ -2199,20 +2380,35 @@ async function spaceUpstream(env) {
  */
 async function probeOldest(env) {
   const items = await readQueueOrder(env);
-  const it = items[0];
-  if (!it || !it.r || !it.n) return { up: false, empty: true, entry: { region: "", name: "", msg: "queue empty — nothing to probe" } };
+  let it = items[0];
   let tok = "";
-  try { const v = await env.CHARS.get(it.k, "json"); tok = (v && v.t) || ""; } catch (e) {}
+  if (it && it.r && it.n) {
+    try { const v = await env.CHARS.get(it.k, "json"); tok = (v && v.t) || ""; } catch (e) {}
+  } else {
+    // An EMPTY queue must still probe. The breaker can trip from the weekly re-pull
+    // sweep (a site block there calls setDrainConfig(probe) exactly as the drain
+    // does), and the sweep queues nothing; in probe mode no new lookup is enqueued
+    // either. So with nothing queued the old code answered "queue empty — nothing to
+    // probe", the caller read that as "still down", and the Worker stayed paused
+    // for good (it did, from 2026-10-18 until this fix). Fall back to a character
+    // we already hold — the sweep's next target, else any stored record — fetched
+    // with the BIBLE_TOKEN like a signed-out lookup. Nothing is deleted on that path.
+    const fb = await probeFallbackTarget(env);
+    if (!fb) return { up: false, empty: true, entry: { region: "", name: "", msg: "nothing to probe: queue empty and no stored character" } };
+    it = { r: fb[0], n: fb[1], k: null };
+  }
   await spaceUpstream(env);
   let r = null;
   try { r = await loadCharacter(env, it.r, it.n, { refresh: true, publish: true, token: tok }); } catch (e) { r = null; }
   if (r && r.ok && !r.stale) {
-    try { await env.CHARS.delete(it.k); } catch (e) {}
+    if (it.k) { try { await env.CHARS.delete(it.k); } catch (e) {} }
     return { up: true, cached: true, name: it.r + ":" + it.n };
   }
   if (r && !r.ok && r.status === 404) {
-    try { await env.CHARS.delete(it.k); } catch (e) {}
-    try { await env.CHARS.put(NOTFOUND_PREFIX + charKey(it.r, it.n), String(r.body && r.body.message || "not found").slice(0, 300), { expirationTtl: NOTFOUND_TTL_S }); } catch (e) {}
+    if (it.k) {
+      try { await env.CHARS.delete(it.k); } catch (e) {}
+      try { await env.CHARS.put(NOTFOUND_PREFIX + charKey(it.r, it.n), String(r.body && r.body.message || "not found").slice(0, 300), { expirationTtl: NOTFOUND_TTL_S }); } catch (e) {}
+    }
     return { up: true, cached: false, name: it.r + ":" + it.n };
   }
   const fe = (r && r.fetchError) || {};
@@ -2220,6 +2416,31 @@ async function probeOldest(env) {
     status: (r && r.status) || fe.status || 0,
     upstream: fe.upstreamStatus != null ? fe.upstreamStatus : ((r && r.upstreamStatus) || null),
     msg: fe.error || (r && r.body && r.body.error) || "network/timeout" } };
+}
+
+/**
+ * A character to probe with when the queue is empty: the re-pull sweep's next
+ * target (it is on the board, so its page exists), else the first stored record.
+ * Returns [region, name] or null.
+ */
+async function probeFallbackTarget(env) {
+  try {
+    const plan = await kvGetJson(env, REPULL_PLAN_KEY);
+    const st = await kvGetJson(env, REPULL_STATE_KEY);
+    if (Array.isArray(plan) && plan.length) {
+      const i = st && (st.cursor | 0) < plan.length ? (st.cursor | 0) : 0;
+      const t = plan[i] || plan[0];
+      if (t && t[0] && t[1]) return [t[0], t[1]];
+    }
+  } catch (e) {}
+  try {
+    const l = await env.CHARS.list({ prefix: CHAR_PREFIX, limit: 10 });
+    for (const k of (l && l.keys) || []) {
+      const rec = await kvGetJson(env, k.name);
+      if (rec && rec.region && rec.name && rec.published !== false) return [rec.region, rec.name];
+    }
+  } catch (e) {}
+  return null;
 }
 
 /**
@@ -2508,10 +2729,13 @@ function packStats(stats) {
  * value), and — for the >1-bracelet marker alone — a label and a percentage per
  * loadout. Anything that needs the bracelet itself asks GET /character for it.
  *
- * WHICH LOADOUT THE BOARD RANKS. The highest RE-SCORED one, ties to the record's
- * own chosen index — which is the rule the page has always applied to the list it
- * was sent, and it is not pickBestLoadout's (that ranks linesPct first, and it
- * disagrees on 1 of the 67 stored characters). The rule moved; it did not change.
+ * WHICH LOADOUT THE BOARD RANKS. On each board, the loadout that re-scores
+ * highest ON THAT BOARD'S LADDER, ties to the record's own chosen index. The DPS
+ * board reads every loadout as a damage dealer; the Support board reads a
+ * support class's loadouts as a support, and the two picks can be different
+ * bracelets (xin's report, 2026-09-26: an Artist who raids as a support and runs
+ * chaos as a dealer). The row is filed on whichever reading bands better and
+ * carries the other board's bracelet as `altBracelet` when it differs.
  *
  * A character with fewer than two DISTINCT brackets carries no loadout block at
  * all: the marker only draws on ≥2, so a list that would collapse to one is a
@@ -2544,54 +2768,80 @@ function snapshotEntry(rec) {
   }) : [{ label: "Bracelet", stats: rec.stats }];
   if (!multi) chosen = 0;
 
-  // Score every candidate as a DAMAGE DEALER and rank on that, for everyone. The
-  // support reading is a DISPLAY choice made afterwards, on the bracelet this
-  // pick already settled — the same order the page ran them in.
-  let best = -Infinity, bestI = -1;
+  // Score every candidate as a DAMAGE DEALER and, on a support class, as a
+  // SUPPORT too, and pick the best candidate ON EACH LADDER. The two picks can
+  // be different bracelets: an Artist who raids as a support and runs chaos as
+  // a dealer wears a support bracelet in one loadout and a damage bracelet in
+  // the other, and until 2026-09-26 the support reading was taken off the
+  // dealer-best bracelet — so the Support board graded her chaos bracelet's
+  // damage lines as F- F- F- and put her at F 0.0 (xin's report on Xinnywinny).
+  // Each board ranks the bracelet that is best on ITS ladder now, and the row
+  // carries both bracelets when they differ (altBracelet).
+  const supCls = isSupportClass(rec["class"]);
+  let bestD = -Infinity, bdI = -1, bestS = -Infinity, bsI = -1;
   for (let i = 0; i < cand.length; i++) {
-    let s = null;
+    let s = null, u = null;
     try { s = boardScore(cand[i].stats, "dps"); } catch (e) { s = null; }
-    cand[i].s = s;
+    if (supCls) { try { u = boardScore(cand[i].stats, "support"); } catch (e) { u = null; } }
+    cand[i].s = s; cand[i].u = u;
     const p = (s && isFinite(s.pct)) ? s.pct : null;
     cand[i].pct = p;
-    if (p != null && (p > best + 1e-9 || (Math.abs(p - best) < 1e-9 && i === chosen))) { best = p; bestI = i; }
+    if (p != null && (p > bestD + 1e-9 || (Math.abs(p - bestD) < 1e-9 && i === chosen))) { bestD = p; bdI = i; }
+    const q = (u && isFinite(u.pct)) ? u.pct : null;
+    if (q != null && (q > bestS + 1e-9 || (Math.abs(q - bestS) < 1e-9 && i === chosen))) { bestS = q; bsI = i; }
   }
-  const b = cand[bestI >= 0 ? bestI : chosen];
-  if (!b || !b.s) return null;                          // nothing decoded: no row rather than a wrong one
+  const bd = cand[bdI >= 0 ? bdI : chosen];
+  if (!bd || !bd.s) return null;                        // nothing decoded: no row rather than a wrong one
+  const bs = bsI >= 0 ? cand[bsI] : null;               // support classes only, and only when a candidate decoded
 
-  // THE BETTER-LETTER RULE (Shizu, 2026-08-14). A support class is read a second
-  // time on the support profile and the support ladder, and the board shows
-  // whichever reading BANDS better — the smaller band index. A tie keeps the
-  // damage-dealer reading, because that is what every other row is comparable to.
-  // Both readings ship whichever way it goes: the Grade tooltip names the loser.
-  let sup = null;
-  if (isSupportClass(rec["class"])) {
-    try { sup = boardScore(b.stats, "support"); } catch (e) { sup = null; }
+  // THE BETTER-LETTER RULE (Shizu, 2026-08-14). A support class is read on the
+  // support ladder as well, and the board shows whichever reading BANDS better
+  // — the smaller band index. A tie keeps the damage-dealer reading, because
+  // that is what every other row is comparable to. Both readings ship
+  // whichever way it goes: the Grade tooltip names the loser, and the other
+  // board ranks on it.
+  const sup = (bs && bs.u) ? bs.u : null;
+  const supWins = !!sup && Subrank.of(sup.score, "support").i < Subrank.of(bd.s.score, "dps").i;
+  const shownC = supWins ? bs : bd, shown = supWins ? sup : bd.s;
+  const otherC = supWins ? bd : bs, other = supWins ? bd.s : sup;
+  const dpsI = bdI >= 0 ? bdI : chosen;
+  const shownI = supWins ? bsI : dpsI;
+  const otherI = otherC ? (supWins ? dpsI : bsI) : -1;
+  // The decode is role-blind — a bracelet's families, tiers and trait values
+  // are the item, not the reader — so the dealer reading's decode serves both
+  // readings of one bracelet.
+  function bracelet(c) {
+    return {
+      grade: c.s.grade,
+      traits: c.s.traitLines.map(function (l) { return [l.family, l.value]; }),
+      lines: c.s.lines.map(function (l) {
+        return { cat: l.cat, family: l.family, tier: l.tier || null,
+          value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
+      }),
+      unmapped: c.s.unmapped
+    };
   }
-  const supWins = !!sup && Subrank.of(sup.score, "support").i < Subrank.of(b.s.score, "dps").i;
-  const shown = supWins ? sup : b.s;
-  const other = supWins ? b.s : sup;
+  const own = bracelet(shownC);
 
   return {
     region: rec.region, name: rec.name,
     itemLevel: rec.itemLevel == null ? null : rec.itemLevel,
     "class": rec["class"] || null,
     pulledAt: rec.pulledAt || 0,
-    grade: b.s.grade,
+    grade: own.grade,
     role: shown.role,
     read: { pct: shown.pct, linesPct: shown.linesPct, score: shown.score, isPerfect: shown.isPerfect },
     alt: other ? { pct: other.pct, score: other.score } : null,
-    // The decode is role-blind — a bracelet's families, tiers and trait values are
-    // the item, not the reader — so ONE copy serves both readings.
-    traits: b.s.traitLines.map(function (l) { return [l.family, l.value]; }),
-    lines: b.s.lines.map(function (l) {
-      return { cat: l.cat, family: l.family, tier: l.tier || null,
-        value: l.cat === "special" ? null : l.value, fixed: !!l.fixed };
-    }),
-    unmapped: b.s.unmapped,
+    traits: own.traits,
+    lines: own.lines,
+    unmapped: own.unmapped,
+    // The OTHER board's bracelet, when its reading came off a different one —
+    // null when both readings are of the bracelet above (one loadout, or one
+    // bracelet best on both ladders). `idx` is its place in `loadouts`.
+    altBracelet: (otherC && otherC !== shownC) ? Object.assign(bracelet(otherC), { idx: otherI }) : null,
     loadouts: multi ? {
       distinct: nDistinct,
-      best: bestI >= 0 ? bestI : chosen,
+      best: shownI,                                     // the loadout ranked on the row's own board
       items: cand.map(function (c) { return { label: c.label, pct: c.pct }; })
     } : null
   };
@@ -2718,6 +2968,18 @@ function encodeSnapshot(builtAt, entries) {
       for (const it of e.loadouts.items) items.push(li(it.label), r2(it.pct));
       lo = [e.loadouts.distinct, e.loadouts.best, items];
     }
+    // Slot 13, the OTHER board's bracelet — 0 when the alt reading is of the
+    // bracelet in slots 9-11. Appended, so a reader of the v3 row from before
+    // it existed simply never looks this far: [grade, traits, lines, unmapped,
+    // its loadout index].
+    let ab = 0;
+    if (e.altBracelet) {
+      const at = [], al = [];
+      for (const t of (e.altBracelet.traits || [])) at.push(TRAIT_CODE[t[0]] == null ? -1 : TRAIT_CODE[t[0]], t[1]);
+      for (const l of (e.altBracelet.lines || [])) al.push(CAT_CODE[l.cat] == null ? 0 : CAT_CODE[l.cat], famCode(l), slot2(l), l.fixed ? 1 : 0);
+      ab = [GRADE_CODE[e.altBracelet.grade] || 0, at, al, e.altBracelet.unmapped || 0,
+        typeof e.altBracelet.idx === "number" ? e.altBracelet.idx : -1];
+    }
     return [
       e.region, e.name, e.itemLevel,
       ci(e["class"]), e.pulledAt || 0,
@@ -2727,7 +2989,8 @@ function encodeSnapshot(builtAt, entries) {
       e.alt ? [r2(e.alt.pct), r3(e.alt.score)] : 0,
       traits, lines,
       e.unmapped || 0,
-      lo
+      lo,
+      ab
     ];
   });
   return { v: SNAPSHOT_V, builtAt: builtAt, classes: classes, labels: labels, characters: characters };
@@ -3492,7 +3755,7 @@ async function countPrefix(env, prefix) {
  */
 async function handleAdminMetrics(env) {
   if (!env || !env.CHARS) return json({ error: "no_kv" }, 503);
-  const [items, chars, dirty, lw, ba, dlog, cfg, usage, pv] = await Promise.all([
+  const [items, chars, dirty, lw, ba, dlog, cfg, usage, pv, rp] = await Promise.all([
     listQueueOrder(env).catch(function () { return []; }),
     countPrefix(env, CHAR_PREFIX).catch(function () { return null; }),
     countPrefix(env, DIRTY_PREFIX).catch(function () { return null; }),
@@ -3501,7 +3764,8 @@ async function handleAdminMetrics(env) {
     kvGetJson(env, DRAIN_LOG_KEY).catch(function () { return null; }),
     getDrainConfig(env).catch(function () { return { mode: "run", drainPerMin: DRAIN_PER_MIN_DEFAULT }; }),
     kvGetJson(env, USAGE_KEY).catch(function () { return null; }),
-    env.CHARS.get(PARSEVERSION_KEY).catch(function () { return null; })
+    env.CHARS.get(PARSEVERSION_KEY).catch(function () { return null; }),
+    kvGetJson(env, REPULL_STATE_KEY).catch(function () { return null; })
   ]);
   const lastWrite = parseInt(lw, 10) || 0;
   const builtAt = parseInt(ba, 10) || 0;
@@ -3519,6 +3783,8 @@ async function handleAdminMetrics(env) {
     ok: true, nowMs: now,
     // ---- §3.7 nested blocks ----
     queue: { total: items.length, list: list, shown: list.length },
+    // The re-pull sweep's state, as stored: null until the first plan is built.
+    repull: rp || null,
     drain: {
       mode: cfg.mode, perMin: cfg.drainPerMin, spacingMs: drainSpacingMs(cfg.drainPerMin),
       lastRun: lastRun,
@@ -3762,10 +4028,17 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
-    // Every minute: drain a few queued characters, paced, then rebuild the board
-    // snapshot if anything changed. The rebuild reads its throttle key first, so
-    // in the nine minutes out of ten when it has nothing to do it costs one get().
-    try { await drainQueue(env); } catch (e) { console.log("[cron] drain failed: " + ((e && e.message) || e)); }
+    // Every minute: drain a few queued characters, paced; on a minute the queue
+    // left idle, advance the re-pull sweep by at most one fetch; then rebuild
+    // the board snapshot if anything changed. The rebuild reads its throttle
+    // key first, so in the nine minutes out of ten when it has nothing to do it
+    // costs one get().
+    const t0 = Date.now();
+    let d = null;
+    try { d = await drainQueue(env); } catch (e) { console.log("[cron] drain failed: " + ((e && e.message) || e)); }
+    if (d && !d.locked && !d.waiting && !d.processed && Date.now() - t0 < 20000) {
+      try { await runRepullTick(env, t0 + 40000); } catch (e) { console.log("[cron] repull failed: " + ((e && e.message) || e)); }
+    }
     try { await rebuildSnapshotIfChanged(env); } catch (e) { console.log("[cron] snapshot failed: " + ((e && e.message) || e)); }
   }
 };
@@ -3859,8 +4132,13 @@ async function handleFetch(request, env, ctx) {
   // ---- public drain status, for the "lookups are paused" notice ----
   if (p === "/status") {
     const cfg = await getDrainConfig(env);
+    // The sweep's progress as counts, never names: enough to see it working.
+    let rp = null;
+    try { rp = await kvGetJson(env, REPULL_STATE_KEY); } catch (e) { rp = null; }
     return json({ ok: true, paused: cfg.mode !== "run", mode: cfg.mode,
-      message: cfg.mode !== "run" ? UNAVAILABLE_MSG + "." : "Character lookups are running." },
+      message: cfg.mode !== "run" ? UNAVAILABLE_MSG + "." : "Character lookups are running.",
+      sweep: rp ? { planLen: rp.planLen | 0, cursor: rp.cursor | 0, fetched: rp.fetched | 0, skipped: rp.skipped | 0,
+        dropped: rp.dropped | 0, builtAt: rp.builtAt || 0, lastAt: rp.lastAt || 0, paused: !!(rp.backoffUntil && rp.backoffUntil > Date.now()) } : null },
       200, { "Cache-Control": "public, max-age=30" });
   }
 
@@ -3900,6 +4178,11 @@ export const __test = {
   encodeSnapshot: encodeSnapshot, snapshotEntry: snapshotEntry,
   boardScore: boardScore, isSupportClass: isSupportClass, r2: r2, r3: r3,
   SNAPSHOT_V: SNAPSHOT_V, SNAPSHOT_FMT: SNAPSHOT_FMT,
+  // The re-pull sweep, against a stub KV: its plan and its skip path (a fetch
+  // needs lostark.bible, so the tick is exercised on fresh entries only).
+  buildRepullPlan: buildRepullPlan, runRepullTick: runRepullTick, gzipString: gzipString, charKey: charKey,
+  probeFallbackTarget: probeFallbackTarget,
+  SNAPSHOT_SRC_KEY: SNAPSHOT_SRC_KEY, REPULL_PLAN_KEY: REPULL_PLAN_KEY, REPULL_STATE_KEY: REPULL_STATE_KEY,
   drainSpacingMs: drainSpacingMs, validateNameRegion: validateNameRegion,
   isCharKey: isCharKey,
   // The failure copy. It is checked here rather than against the live Worker

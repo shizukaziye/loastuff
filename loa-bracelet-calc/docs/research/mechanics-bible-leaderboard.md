@@ -136,6 +136,14 @@ chaos bracelet. So:
   one bible draws, then raid > est. raid > chaos, then newest. `data/leaderboard-seed.json`
   carries every loadout per entry plus `chosenLoadout`; the import panel shows
   them as pills and loads the highest first.
+- **Per board, since 2026-09-26:** the DPS board ranks the loadout that
+  re-scores highest as a damage dealer, the Support board the one that
+  re-scores highest as a support. On a support class those can be two
+  different bracelets (xin's Xinnywinny: a support raid bracelet and a damage
+  chaos bracelet), and the row carries the other board's bracelet as
+  `altBracelet` (packed slot 13, appended so v3 readers are unaffected). Until
+  then the support reading was taken off the dealer-best bracelet, which put
+  her at F 0.0 on the Support board.
 
 Two other things the 30-page sweep settled:
 

@@ -301,6 +301,15 @@ rung nobody bought. The next step is the ticked rung above that costs least per
 1% from your piece: on the chain that is the rung straight above; off it (a dear
 flat roll the switches exclude, say) it can be a rung further up.
 
+**A Sidereal weapon is shown, not placed.** The honing ladder is the normal
+T4 upper weapon's, +11 to +25. A Sidereal (Esther) weapon hones on its own
+table and already outclasses a +25, so reading its +10 as a normal +10 offered
+"+12 for 364k" to a player who would pay millions for that (KYLE,
+2026-09-27). The astrogem worker names the weapon from its item id (10134000
+against 10144000), a record pulled before that is recognised by the one shape
+only a Sidereal has — advanced honing under +20 — and the weapon row then says
+what it is and stays out of the next-buy pick.
+
 **The ability stone comes from the astrogem pull, never from node counts alone.**
 The bracelet Worker sends `stoneNodes`: every engraving's node count, the malus
 included, sorted high to low. The top two are therefore not reliably the two

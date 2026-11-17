@@ -144,6 +144,36 @@ and 375px, both verify batteries green, then push loastuff (Cloudflare Pages) an
   a bar the odds fill), every grade from the last certain band to the first
   unreachable one, worst on the left.
 
+## Fix of 2026-09-26 — two bracelets, two boards
+
+xin's report: Xinnywinny (NA, Artist) raids as a support and runs chaos as a
+dealer, so her raid loadout wears a support bracelet and her chaos loadout a
+damage one. `snapshotEntry` scored every loadout as a dealer, kept the best,
+and read THAT bracelet on the support ladder — F- F- F-, F 0.0 on the Support
+board. Now each board ranks the loadout that is best on its own ladder; the
+row is filed on the better-banding reading, `loadouts.best` is the loadout
+ranked on the row's own board, and packed slot 13 carries the other board's
+bracelet (`altBracelet`: grade, traits, lines, unmapped, loadout index) when
+it differs. The leaderboard's `applyMode` swaps the display bracelet per
+board; the profile page and the calculator's baked fallback port the same
+pick. `SNAPSHOT_FMT` 3 → 4 forces one from-scratch rebuild (the cron runs
+every minute, 750 records a tick). Wire format stays v3.
+
+## The re-pull sweep (2026-09-26)
+
+Shizu: "the astrogem calculator periodically updates top ranked individuals
+right? do the same with bracelets." The astrogem Worker's sweep, ported into
+`worker/bracelet.js`: a weekly plan from the stored entry list — the DPS
+board's top 1000 by damage % plus every class's top 100 (a support class by
+its support reading), priority min(overall rank, 10 × class rank) — walked at
+ONE upstream fetch per cron minute, only on a minute the queue drain left
+idle, skipping anything pulled within 7 days, gone, or unpublished. Fetches
+use the `BIBLE_TOKEN` secret, take the drain lock, honour the 3 s floor and
+the monthly budget, and land through `loadCharacter` (record + dirty marker),
+so the next snapshot rebuild carries them. State under `rp:plan` / `rp:state`,
+visible as `repull` in `GET /admin/metrics`. A refused token pauses only the
+sweep for 6 h; a site block trips the breaker like the drain's.
+
 ## Debts (2026-09-24)
 
 - The Leaderboard tab and the profile page each fetch `/list` themselves;

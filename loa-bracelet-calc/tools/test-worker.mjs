@@ -42,7 +42,7 @@ const { score, boardScore, extractBracelets, collectRosterChars, ownsCharacter, 
         extractLoadouts, pickBestLoadout, briefScore, loadoutLabel,
         parseCharacterProfile, snapTo, modal, MASTER_NODE_ID, GEM_AP_LEVEL,
         noSuchMsg, lookupKey, regionLabel, snapshotEntry, encodeSnapshot,
-        isSupportClass, r2, r3, SNAPSHOT_V } = __test;
+        isSupportClass, r2, r3, SNAPSHOT_V, SNAPSHOT_FMT } = __test;
 
 let pass = 0, fail = 0;
 function ok(name, cond, detail) {
@@ -179,11 +179,13 @@ const shapeBad = board.characters.filter(a =>
   !flatNums(a[10]) || a[10].length % 4 !== 0 || a[10].length > 20 ||    // ≤5 lines
   !flatNums(a[7]) || a[7].length !== 3 ||
   (a[8] !== 0 && !flatNums(a[8])) ||
-  (a[12] !== 0 && !(a[12].length === 3 && flatNums(a[12][2]) && a[12][2].length % 2 === 0)));
+  (a[12] !== 0 && !(a[12].length === 3 && flatNums(a[12][2]) && a[12][2].length % 2 === 0)) ||
+  // slot 13: the other board's bracelet, in the same decoded form, or 0
+  (a[13] !== 0 && !(a[13].length === 5 && flatNums(a[13][1]) && a[13][1].length <= 4 && flatNums(a[13][2]) && a[13][2].length <= 20)));
 ok("no row carries a nested raw stat array, and none is longer than a bracelet",
   shapeBad.length === 0, shapeBad.map(a => a[1]).join(","));
-ok("a row is 13 slots wide, every row",
-  board.characters.every(a => a.length === 13),
+ok("a row is 14 slots wide, every row (13, plus the other board's bracelet since 2026-09-26)",
+  board.characters.every(a => a.length === 14),
   JSON.stringify([...new Set(board.characters.map(a => a.length))]));
 // The size claim, as a number rather than an adjective. v2's rows averaged 170
 // bytes across the same characters; a regression past this would mean a raw
@@ -260,6 +262,48 @@ ok("the shown reading's numbers are the ones in slot 7",
 // An unpublished record is not a board row, and never has been.
 ok("`published:false` keeps a character off the board",
   snapshotEntry(Object.assign({}, supRec, { published: false })) === null);
+
+// TWO BRACELETS, TWO BOARDS (xin's report, 2026-09-26). Xinnywinny's own two
+// loadouts as the Worker stored them: a chaos bracelet with damage lines and a
+// raid bracelet with support lines. The DPS board must rank the first and the
+// Support board the second. The support reading used to be taken off the
+// dealer-best bracelet, which put her at F 0.0 on the Support board.
+const XW_CHAOS = [
+  { type: 2, index: 18, value: 106, fixed: true }, { type: 2, index: 15, value: 113, fixed: true },
+  { type: 2, index: 6, value: 4780, fixed: false }, { type: 4, index: 605100133, value: 0, fixed: false },
+  { type: 3, index: 11022, value: 5, fixed: false }
+];
+const XW_RAID = [
+  { type: 2, index: 18, value: 104, fixed: true }, { type: 2, index: 16, value: 72, fixed: true },
+  { type: 3, index: 11091, value: 5, fixed: false }, { type: 3, index: 11082, value: 5, fixed: false }
+];
+const mixRec = {
+  region: "NA", name: "Mixture", "class": "Artist", itemLevel: 1781, pulledAt: 1, published: true,
+  stats: XW_RAID, chosenLoadout: 1, score: { grade: "ancient" },
+  loadouts: [{ classification: "most_recent_chaos_dungeon", label: "Chaos", stats: XW_CHAOS },
+             { classification: "most_recent_raid", label: "Raid", stats: XW_RAID }]
+};
+const mixRow = snapshotEntry(mixRec);
+const chaosAsDps = boardScore(XW_CHAOS, "dps"), chaosAsSup = boardScore(XW_CHAOS, "support");
+const raidAsDps = boardScore(XW_RAID, "dps"), raidAsSup = boardScore(XW_RAID, "support");
+ok("the chaos bracelet is the better damage bracelet and the raid one the better support bracelet",
+  chaosAsDps.pct > raidAsDps.pct && raidAsSup.pct > chaosAsSup.pct,
+  "dps " + chaosAsDps.pct.toFixed(2) + " vs " + raidAsDps.pct.toFixed(2) + "; support " + raidAsSup.pct.toFixed(2) + " vs " + chaosAsSup.pct.toFixed(2));
+const rowSup = mixRow && (mixRow.role === "support" ? mixRow.read : mixRow.alt);
+const rowDps = mixRow && (mixRow.role === "support" ? mixRow.alt : mixRow.read);
+ok("a support class with a damage bracelet in one loadout and a support one in another is read on the support bracelet for the Support board",
+  !!rowSup && rowSup.pct === raidAsSup.pct, mixRow && ("filed on " + mixRow.role + ", support reading " + (rowSup && rowSup.pct)));
+ok("…and on the damage bracelet for the DPS board",
+  !!rowDps && rowDps.pct === chaosAsDps.pct, rowDps && rowDps.pct);
+const supFiled = !!mixRow && mixRow.role === "support";
+ok("the row's own lines are the bracelet it is filed on, and the ranked loadout is that one",
+  !!mixRow && mixRow.lines.length === (supFiled ? raidAsSup : chaosAsDps).lines.length && mixRow.loadouts.best === (supFiled ? 1 : 0));
+ok("and it carries the other board's bracelet, with that loadout's index",
+  !!mixRow && mixRow.altBracelet !== null && mixRow.altBracelet.idx === (supFiled ? 0 : 1) &&
+  mixRow.altBracelet.lines.length === (supFiled ? chaosAsDps : raidAsSup).lines.length);
+ok("the packed row carries the other bracelet in slot 13, and 0 when there is none",
+  !!mixRow && encodeSnapshot(0, [mixRow]).characters[0][13][4] === (supFiled ? 0 : 1) &&
+  encodeSnapshot(0, [supRow]).characters[0][13] === 0);
 
 // A ROW CLICK MUST OPEN THE BRACELET THE ROW RANKED. The row carries no bracelet
 // now, so the click fetches GET /character and picks out of THAT — which means
@@ -340,7 +384,7 @@ const bumped = await __test.rebuildSnapshotIfChanged({ CHARS: kv }, 0);
 ok("a stale stored format rebuilds even with no character marked dirty",
   bumped.built === 1 && bumped.fromScratch === true, JSON.stringify(bumped));
 ok("and it stamps the new format so the next tick does not repeat it",
-  kv.store.get("lb:snapshot:fmt") === "3", kv.store.get("lb:snapshot:fmt"));
+  kv.store.get("lb:snapshot:fmt") === String(SNAPSHOT_FMT), kv.store.get("lb:snapshot:fmt"));
 ok("the rebuilt payload is v" + SNAPSHOT_V,
   bumped.v === SNAPSHOT_V, String(bumped.v));
 // The second call: same store, nothing dirty, format now current -> no work.
@@ -448,6 +492,27 @@ ok("a tie goes to raid over est. raid",
   lds[1].score.pct === lds[2].score.pct && lds[best].classification === "most_recent_raid");
 ok("the old first-hit rule would have taken the WRONG bracelet here",
   extractBracelets(PAGE)[0].stats[0].value === 61);
+
+// A SUPPORT CLASS is compared on the support reading. Xinnywinny (Artist, NA,
+// 2026-09-26): her chaos loadout wears a damage bracelet, her raid loadout a
+// support one. On the DPS reading the chaos bracelet wins and the support board
+// graded her F on it; on the support reading the raid bracelet wins.
+// The damage bracelet here is Shizukaziye's (13.27% on the DPS reading); the
+// support one is Xinnywinny's raid bracelet (two ally lines).
+{
+  const ST = (t, i, v, f) => ({ type: t, index: i, id: 213400023, value: v, fixed: !!f });
+  const chaosDps = [ST(2, 16, 67, 1), ST(2, 15, 84, 1), ST(3, 11013, 5), ST(2, 76, 840), ST(3, 11042, 5)];
+  const raidSup = [ST(2, 18, 104, 1), ST(2, 16, 72, 1), ST(3, 11091, 5), ST(3, 11082, 5)];
+  const xl = [
+    { classification: "most_recent_chaos_dungeon", stats: chaosDps, isRendered: false, lastUpdated: 2 },
+    { classification: "most_recent_raid", stats: raidSup, isRendered: true, lastUpdated: 1 }
+  ];
+  for (const l of xl) l.score = briefScore(score(l.stats));
+  ok("on the DPS reading the damage bracelet wins (a damage dealer's pick, unchanged)",
+    pickBestLoadout(xl) === 0 && pickBestLoadout(xl, false) === 0, String(pickBestLoadout(xl)));
+  ok("a support class picks on the support reading: the raid support bracelet wins",
+    pickBestLoadout(xl, true) === 1, String(pickBestLoadout(xl, true)));
+}
 
 const EMPTY_SLOT = 'loadouts:[' + LD("most_recent_raid", 1, 1700, BR_RAID) + "," +
   LD("most_recent_chaos_dungeon", 2, 1700, BR_NONE) + "]";
@@ -759,6 +824,69 @@ ok("the copy never blames lostark.bible for refusing us",
 // price of signing out.
 ok("the lookup throttle keys on the IP", lookupKey("1.2.3.4") === "look:1.2.3.4");
 ok("a missing IP still lands in one bucket, never an empty key", lookupKey("") === "look:0.0.0.0");
+
+// ---------------------------------------------------------------------------
+console.log("\n5. the re-pull sweep");
+// The weekly plan, from the stored entry list: the DPS board's top overall and
+// each class's top, a support class by its support reading, priority
+// min(overall rank, 10 × class rank). Four rows are enough to see the rule:
+// Sup2 out-damages Sup1 as a dealer, but Sup1 is the better support, and both
+// orders show in the plan.
+function rpEntry(name, cls, dps, sup) {
+  const supWon = !!(sup && sup.won);
+  return { region: "NA", name: name, "class": cls, itemLevel: 1700, pulledAt: 1, grade: "ancient",
+    role: supWon ? "support" : "dps",
+    read: { pct: supWon ? sup.pct : dps, linesPct: 0, score: 50, isPerfect: false },
+    alt: sup ? { pct: supWon ? dps : sup.pct, score: 50 } : null,
+    traits: [], lines: [], unmapped: 0, loadouts: null, altBracelet: null };
+}
+const rpList = [
+  rpEntry("Dealer1", "Sorceress", 20, null), rpEntry("Dealer2", "Sorceress", 19, null),
+  rpEntry("Sup1", "Bard", 5, { pct: 2.0, won: true }), rpEntry("Sup2", "Bard", 15, { pct: 1.0, won: false })
+];
+const rpKV = stubKV({});
+await rpKV.put(__test.SNAPSHOT_SRC_KEY, await __test.gzipString(JSON.stringify({ fmt: SNAPSHOT_FMT, entries: rpList })));
+const rpBuilt = await __test.buildRepullPlan({ CHARS: rpKV });
+const rpPlan = JSON.parse(rpKV.store.get(__test.REPULL_PLAN_KEY) || "null");
+ok("the sweep's plan is built from the stored entries",
+  rpBuilt === true && Array.isArray(rpPlan) && rpPlan.length === 4, JSON.stringify(rpPlan));
+ok("the DPS board's head leads it, and a support class ranks by its support reading behind that",
+  JSON.stringify(rpPlan.map(p => p[1])) === JSON.stringify(["Dealer1", "Dealer2", "Sup2", "Sup1"]), JSON.stringify(rpPlan));
+const rpSt0 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("the state starts at the head of the plan", rpSt0 && rpSt0.cursor === 0 && rpSt0.planLen === 4, JSON.stringify(rpSt0));
+// Fresh, gone and unpublished entries are skipped without a fetch: three of the
+// four are fresh, the fourth has no record at all.
+for (const p of rpPlan.slice(0, 3)) {
+  await rpKV.put(__test.charKey(p[0], p[1]), JSON.stringify({ region: p[0], name: p[1], pulledAt: Date.now(), published: true, stats: [] }));
+}
+await __test.runRepullTick({ CHARS: rpKV }, Date.now() + 5000);
+const rpSt1 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("fresh and missing entries are skipped without a fetch, and the cursor moves past them",
+  rpSt1 && rpSt1.cursor === 4 && rpSt1.skipped === 4 && rpSt1.fetched === 0, JSON.stringify(rpSt1));
+ok("the drain lock is released afterwards", !rpKV.store.get("drain:lock"));
+await __test.runRepullTick({ CHARS: rpKV }, Date.now() + 5000);
+const rpSt2 = JSON.parse(rpKV.store.get(__test.REPULL_STATE_KEY) || "null");
+ok("a finished sweep waits out the week rather than starting over",
+  rpSt2 && rpSt2.cursor === 4 && rpSt2.builtAt === rpSt0.builtAt, JSON.stringify(rpSt2));
+
+// ---- The recovery probe with an EMPTY queue -------------------------------
+// The breaker can trip from the sweep, which queues nothing, so the probe must
+// find a character to try on its own: the sweep's next target first, then any
+// stored record, and only with neither does it give up (2026-10-18 outage).
+{
+  const pk = stubKV({});
+  ok("with no plan and no records there is nothing to probe", (await __test.probeFallbackTarget({ CHARS: pk })) === null);
+  await pk.put(__test.charKey("NA", "Someone"), JSON.stringify({ region: "NA", name: "Someone", published: true, stats: [] }));
+  const t1 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("with records but no plan, a stored character is the probe", t1 && t1[0] === "NA" && t1[1] === "Someone", JSON.stringify(t1));
+  await pk.put(__test.REPULL_PLAN_KEY, JSON.stringify([["NA", "First"], ["CE", "Second"], ["NA", "Third"]]));
+  await pk.put(__test.REPULL_STATE_KEY, JSON.stringify({ cursor: 1, planLen: 3 }));
+  const t2 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("with a plan, the sweep's next target is the probe", t2 && t2[0] === "CE" && t2[1] === "Second", JSON.stringify(t2));
+  await pk.put(__test.REPULL_STATE_KEY, JSON.stringify({ cursor: 3, planLen: 3 }));
+  const t3 = await __test.probeFallbackTarget({ CHARS: pk });
+  ok("a finished plan probes its head rather than running off the end", t3 && t3[1] === "First", JSON.stringify(t3));
+}
 
 // ---------------------------------------------------------------------------
 console.log("\n" + (fail ? "FAILED" : "PASSED") + " — " + pass + " checks passed, " + fail + " failed\n");

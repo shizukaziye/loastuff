@@ -338,10 +338,13 @@
   // profile app for /NA/*, /EU/* and /CE/* only (they are the regions the bracelet
   // worker reads), so any other region gets null and keeps its source-site link.
   var PROFILE_REGIONS = { NA: 1, EU: 1, CE: 1 };
+  // "#astrogems" opens the profile on its astrogem overview. Without it the
+  // profile shows the browser's last-used overview, else the bracelet, so a name
+  // clicked on THIS board landed on bracelet numbers (feedback, 2026-10-05).
   function profileHref(region, name) {
     var r = String(region || "").trim();
     if (!PROFILE_REGIONS[r] || !name) return null;
-    return "/" + encodeURIComponent(r) + "/" + encodeURIComponent(name);
+    return "/" + encodeURIComponent(r) + "/" + encodeURIComponent(name) + "#astrogems";
   }
 
   // The name cell's link. The NAME opens the profile; stopPropagation keeps that
@@ -362,7 +365,7 @@
   // Cache-Control, ETag or Last-Modified, so the browser may not reuse a copy
   // fetched here and the profile page would fetch it again anyway: a warm-up would
   // only double the Worker trips. Worth adding if that route ever gains a max-age.
-  var PROFILE_ASSETS = ["/profile/profile.js?v=10", "/profile/profile.css?v=8"];
+  var PROFILE_ASSETS = ["/profile/profile.js?v=12", "/profile/profile.css?v=8"];
   var profileWarm = false;
   function warmProfile(e) {
     if (profileWarm) return;

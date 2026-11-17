@@ -54,6 +54,15 @@
         ]
       },
       {
+        label: "Aion 2",
+        items: [
+          { name: "Roster Checklist", url: "https://www.loseii.com/aion2-roster/", kind: "planner", keyword: "roster",
+            blurb: "Main and alt daily/weekly checklist with per-server limits, Odyle and charge trackers, the Kina-tier counter.", live: true },
+          { name: "Ranger Point Guide", url: "https://www.loseii.com/aion2-ranger-guide/", kind: "planner", keyword: "Ranger",
+            blurb: "tgustafsson's AION 2 Ranger guide, mirrored with credit: every Daevanion node, skill rank, trait and stigma step by step to 45.", live: true }
+        ]
+      },
+      {
         label: "League of Legends",
         items: [
           { name: "Champion Pool Coverage", url: "https://shizukaziye.github.io/lol-pool-coverage/", kind: "analyzer", keyword: "champion pool",

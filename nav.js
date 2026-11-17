@@ -57,6 +57,13 @@
       ]
     },
     {
+      label: "Aion 2",
+      items: [
+        { name: "Roster Checklist", url: "https://www.loseii.com/aion2-roster/" },
+        { name: "Ranger Point Guide", url: "https://www.loseii.com/aion2-ranger-guide/" }
+      ]
+    },
+    {
       label: "League of Legends",
       items: [
         { name: "Champion Pool Coverage", url: "https://shizukaziye.github.io/lol-pool-coverage/" }

@@ -131,11 +131,17 @@ CASES.forEach(function (c) {
   check("worker costFromEffects (swapped) " + p[1] + "+" + p[0], W.costFromEffects(p[1], p[0]), p[2]);
 });
 
-// 3. a repair must be warned about; a clean 674 gem must stay quiet.
-var noisy = W.gemIdentity("40621173", ATK, ADD);
-if (!noisy.warnings.length) fails.push("worker 40621173: a corrected cost raised no warning");
+// 3. a repair must be warned about; a clean 674 gem must stay quiet — and so must an id
+//    the override table knows (its whole point is to disagree with the digit rule, and
+//    saying so on every pull read as a bug to players; two feedback notes, 2026-09/10).
+var noisy = W.gemIdentity("67401125", ADD, ATK);   // id rule -> 9, pair only fits 8: repaired
+if (!noisy.warnings.length) fails.push("worker 67401125: a corrected cost raised no warning");
 var quiet = W.gemIdentity("67401025", ADD, ATK);
 if (quiet.warnings.length) fails.push("worker 67401025: a clean gem warned: " + quiet.warnings.join("; "));
+[["worker", W], ["client", C]].forEach(function (pair) {
+  var known = pair[1].gemIdentity("40621173", ATK, ADD);
+  if (known.warnings.length) fails.push(pair[0] + " 40621173: a table id warned: " + known.warnings.join("; "));
+});
 
 // 4. an id in NO table and outside the 674 format still lands on the right cost via the
 //    pools, and says out loud that it did not recognise the id.
