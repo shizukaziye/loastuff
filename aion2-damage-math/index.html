@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aion 2 Damage Math — Loseii</title>
+<meta name="description" content="What each Aion 2 damage stat is worth on your own character. The tested damage formula step by step, every stat ranked, Soul Binding lines and manastones priced, and any upgrade worked out in Kinah per 1% damage. Global client, PvE.">
+<meta property="og:title" content="Aion 2 Damage Math">
+<meta property="og:description" content="Every damage stat priced for your own character, and any upgrade worked out in Kinah per 1% damage.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.loseii.com/aion2-damage-math/">
+<link rel="canonical" href="https://www.loseii.com/aion2-damage-math/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- No build. Four files carry the page, each with a ?v= pin: bump a pin whenever its file changes,
+     because the zone caches .css and .js for hours. model.js and presets.js also run under node (test.js). -->
+<link rel="stylesheet" href="/shared/tokens.css?v=1">
+<link rel="preload" href="fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-in">
+    <div>
+      <p class="eyebrow">PvE damage · Global client · community-tested formula</p>
+      <h1>Aion 2 Damage Math</h1>
+      <p class="lede">Every damage stat feeds one of a few buckets, and the buckets multiply. A point is worth what it adds to its bucket, divided by what is already there. Enter your sheet and each stat gets an exact price for your character.</p>
+    </div>
+    <div class="hero">
+      <p class="hero-k">Best next step on this sheet</p>
+      <p class="hero-v" id="heroV">+1% Damage Boost adds <b>+1.14%</b> damage</p>
+      <p class="hero-s" id="heroS">Next: +1% Double Chance at +0.94%.</p>
+    </div>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#ranking">Ranking</a>
+    <a href="#stacking">Stacking</a>
+    <a href="#formula">The formula</a>
+    <a href="#binding">Soul Binding</a>
+    <a href="#stones">Manastones</a>
+    <a href="#points">Points</a>
+    <a href="#compare">Compare</a>
+    <a href="#regions">Global vs Korea</a>
+    <a href="#confidence">Confidence</a>
+  </nav>
+</header>
+
+<main class="layout">
+  <aside class="rail" aria-label="Your sheet">
+    <div class="rail-head">
+      <h2>Your sheet</h2>
+      <div class="row">
+        <select id="preset" aria-label="Load a sheet">
+        </select>
+        <button class="btn" type="button" id="resetAll">Reset</button>
+      </div>
+      <p class="rail-note" id="railNote"></p>
+    </div>
+    <div id="railGroups"></div>
+  </aside>
+
+  <div class="content">
+
+    <section id="ranking">
+      <div class="sec-head">
+        <h2>What the next point is worth</h2>
+        <p>Damage gained from one step of each stat at your current numbers. Edit a step to price a real roll, such as +2.08 Double Chance against +9.12 Weapon Damage Boost.</p>
+      </div>
+      <div class="panel">
+        <div class="rk-axis" aria-hidden="true"><div class="ticks" id="rkTicks"></div></div>
+        <div class="rk-list" id="rkList"></div>
+        <p class="note">Each row changes one stat on its own. Two stats from the same bucket shrink each other when you take both, so price combinations and swaps under Compare.</p>
+      </div>
+    </section>
+
+    <section id="stacking">
+      <div class="sec-head">
+        <h2>How fast each stat fades as you stack it</h2>
+        <p>Each line is the value of the next +1% after you have already added that many points of the same stat. A line that starts high and drops fast is a small bucket filling up.</p>
+      </div>
+      <div class="panel">
+        <div class="legend" id="legend" role="group" aria-label="Stats shown in the chart"></div>
+        <div class="chart-wrap" id="chartWrap"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Stat</th><th class="r">Next +1% now</th><th class="r">After +10</th><th class="r">After +20</th><th class="r">Total for +10</th><th class="r">Total for +20</th>
+            </tr></thead>
+            <tbody id="stackBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="formula">
+      <div class="sec-head">
+        <h2>The formula, with your numbers</h2>
+        <p>This is the working model from Korean and Taiwanese player testing, mapped onto the Global client. NCSoft has never published one.</p>
+      </div>
+      <div class="panel">
+        <div class="eq" role="group" aria-label="Damage formula">
+          <div class="eq-row"><span class="eq-l">Attack</span><span class="eq-r">( <em>Pure Attack</em> × (1 + <em>Weapon Damage Boost</em>) × <em>Power Shard</em> + <em>Attack Bonus</em> + <em>base Attack</em> ) × (1 + <em>Attack Increase</em>) + <em>PvE, Boss and Back or Front Attack</em></span></div>
+          <div class="eq-row"><span class="eq-l">Window</span><span class="eq-r">( <em>Pure Attack</em> + <em>Attack Bonus</em> + <em>base Attack</em> ) × (1 + <em>Attack Increase</em>), which is the Attack your character window shows. Weapon Damage Boost and the Power Shard are not in it.</span></div>
+          <div class="eq-row"><span class="eq-l">Hit</span><span class="eq-r"><em>Attack</em> × <em>skill coefficient</em> + <em>skill flat damage</em> − (<em>Defense</em> − <em>Penetration</em>) ÷ 10</span></div>
+          <div class="eq-row"><span class="eq-l">Pool</span><span class="eq-r">1 + <em>Damage Boost</em> + <em>PvE Damage Boost</em> + <em>Boss Damage Boost</em> − <em>target Damage Tolerance</em></span></div>
+          <div class="eq-row"><span class="eq-l">Crit</span><span class="eq-r">1 + <em>crit rate</em> × (0.5 + <em>Critical Damage Boost</em> − <em>target Critical Damage Tolerance</em>)</span></div>
+          <div class="eq-row"><span class="eq-l">Double</span><span class="eq-r">1 + <em>Double Chance</em> − <em>target Double Resist</em></span></div>
+          <div class="eq-row"><span class="eq-l">Position</span><span class="eq-r">1 + <em>Back or Front Damage Boost</em> × <em>share of hits from that side</em></span></div>
+          <div class="eq-row"><span class="eq-l">Damage</span><span class="eq-r"><em>Hit</em> × <em>Pool</em> × <em>Crit</em> × <em>Double</em> × <em>Position</em> × <em>Multi-hit</em></span></div>
+          <div class="eq-row"><span class="eq-l">DPS</span><span class="eq-r"><em>Damage</em> × <em>skill uses per second</em>, which Combat Speed and cooldown reduction raise</span></div>
+        </div>
+      </div>
+
+      <h3>Your buckets</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Bucket</th><th class="r">Now</th><th>Built from</th><th>One more step</th><th class="r">Gain</th><th>Status</th></tr></thead>
+          <tbody id="bucketBody"></tbody>
+        </table>
+      </div>
+      <p class="note" id="shareNote"></p>
+
+      <ul class="takeaways">
+        <li><b>Stats in one pool are interchangeable.</b> Damage Boost, PvE Damage Boost and Boss Damage Boost add together, so 1% of any of them is worth the same against a boss.</li>
+        <li><b>A bucket with little in it pays the most.</b> Double Chance and Back or Front Damage Boost each sit alone in their own multiplier, which is why they hold their value late.</li>
+        <li><b>Target tolerance comes out of the pool.</b> Against 30% Damage Tolerance a small pool sits near 1.0, and every point of Damage Boost is then worth about 1%.</li>
+        <li><b>Flat adds dilute the multipliers before them.</b> PvE Attack, Boss Attack and skill flat damage arrive after Weapon Damage Boost and Attack Increase, so those two only act on part of the hit.</li>
+        <li><b>Two characters with the same Attack in the window can hit differently.</b> The window leaves Weapon Damage Boost out, and Weapon Damage Boost only multiplies the Attack that comes from gear, so where the number comes from matters.</li>
+      </ul>
+
+      <div class="panel solver">
+        <h3>Measure a target's Damage Tolerance</h3>
+        <div class="prose"><p>Hit the same target with the same skill before and after changing only your Damage Boost, for example by swapping a title. Use hits that neither crit nor Double. The sheet in the rail is the before state.</p></div>
+        <div class="ctrl-row" style="margin-top:12px">
+          <label class="ctrl" for="solverA">Average hit before<input type="number" id="solverA" min="0" step="any"></label>
+          <label class="ctrl" for="solverB">Average hit after<input type="number" id="solverB" min="0" step="any"></label>
+          <label class="ctrl" for="solverX">Damage Boost added, in points<input type="number" id="solverX" step="any"></label>
+          <button class="btn" type="button" id="solverApply" hidden>Use it as the target's tolerance</button>
+        </div>
+        <p class="solver-out" id="solverOut"></p>
+      </div>
+    </section>
+
+    <section id="binding">
+      <div class="sec-head">
+        <h2>Soul Binding lines, priced</h2>
+        <p>Roll ranges for Unique gear on Global at item level 86 or 102, with the damage each gives on your sheet at its low and high roll. Where reroll odds are published, the last columns turn them into a price per 1% damage.</p>
+      </div>
+      <div class="ctrl-row">
+        <label class="ctrl" for="bindTier">Item level<select id="bindTier"><option value="86">86: Nuakum, Enraged Kromede</option><option value="102">102: Splendent Dragon Lord</option></select></label>
+        <label class="ctrl" for="bindReset">Kinah per Reset<input type="number" id="bindReset" min="0" step="any"></label>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Slot</th><th>Line</th><th class="r">Roll</th><th>Gain, low to high roll</th><th class="r">Resets</th><th class="r">To land</th><th class="r">Per +1%</th></tr></thead>
+          <tbody id="bindBody"></tbody>
+        </table>
+      </div>
+      <p class="note">Resets is the average number needed to land the line on a piece that has none of it yet. To land and Per +1% are in Kinah, and Per +1% uses the middle of the roll range. Ranges and odds are RaidRelay's figures. A Reset on Unique gear also costs 3 Soul Codex, which is not priced here. Combat Speed rows use the filler strength set in the rail, where 100% is a ceiling. Move Speed lines are left out. Item-level-102 ranges are the 86 ranges × 1.055, which reproduces the published 102 weapon ranges for Weapon Damage Boost and Damage Boost. Multi-hit and the flat Critical, Back and Front Attack lines on the weapon are back-scaled from the published 102 ranges. Odds are the item-level-86 figures at both levels.</p>
+    </section>
+
+    <section id="stones">
+      <div class="sec-head">
+        <h2>Manastones: when to stop rolling</h2>
+        <p>Each engrave overwrites the line in a slot, so the real decision is which lines to keep. Only a few keep-rules are ever the best one. The table lists them with the price of damage at which each takes over. The stone price and the price of damage start as placeholders, so set them to your server's market.</p>
+      </div>
+      <div class="ctrl-row">
+        <label class="ctrl" for="stoneKind">Stone<select id="stoneKind"><option value="superior">Superior</option><option value="intermediate">Intermediate</option><option value="lesser">Lesser</option></select></label>
+        <label class="ctrl" for="stonePrice">Kinah per stone<input type="number" id="stonePrice" min="0" step="any"></label>
+        <label class="ctrl" for="stoneFee">Engrave fee<select id="stoneFee"><option value="500">Common gear, 500</option><option value="1000">Rare gear, 1,000</option><option value="1500">Epic gear, 1,500</option><option value="2000">Unique gear, 2,000</option></select></label>
+        <label class="ctrl" for="stoneLambda">Kinah you would pay for +1% damage<input type="number" id="stoneLambda" min="0" step="any"></label>
+      </div>
+      <div class="panel">
+        <p class="solver-out" id="stoneSummary"></p>
+        <h3>Keep-rules worth using</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Best when +1% is worth</th><th>Keep the slot when it shows</th><th class="r">Avg engraves</th><th class="r">Avg Kinah</th><th class="r">Avg gain</th></tr></thead>
+            <tbody id="stoneRuleBody"></tbody>
+          </table>
+        </div>
+        <h3>Every damage line in the pool</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Line</th><th class="r">Roll</th><th class="r">Chance per engrave</th><th class="r">One in</th><th>Gain on your sheet</th></tr></thead>
+            <tbody id="stoneOutBody"></tbody>
+          </table>
+        </div>
+        <p class="note" id="stoneNote"></p>
+      </div>
+    </section>
+
+    <section id="points">
+      <div class="sec-head">
+        <h2>Attribute and deity points</h2>
+        <p>Each point gives 0.1% of its effect on the Global client. Korea paid 0.2% per deity point until its November 11, 2026 patch, which is why older guides divide by 5. Precision and Death scale your Critical Hit rating, and Illusion's cooldown value depends on the filler strength set in the rail.</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Point</th><th>Each point gives</th><th>Gain per point</th><th class="r">Per 10 points</th></tr></thead>
+          <tbody id="ptsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="compare">
+      <div class="sec-head">
+        <h2>Compare upgrades</h2>
+        <p>Build any change to your sheet, including swaps with negative numbers. Give it a cost and each option shows its math down to Kinah per 1% damage: what moves in the formula, what that does to damage, and cost ÷ gain.</p>
+      </div>
+      <p class="solver-out cmp-verdict" id="cmpVerdict" hidden></p>
+      <div class="tbl-wrap" id="cmpSumWrap">
+        <table class="cmp-sum">
+          <thead><tr><th>Option</th><th class="r">Cost, Kinah</th><th class="r">Damage gained</th><th class="r">Kinah per 1% damage<br>(cost ÷ gain)</th></tr></thead>
+          <tbody id="cmpSumBody"></tbody>
+        </table>
+      </div>
+      <p class="note" id="cmpSheet"></p>
+      <div class="cmp-list" id="cmpList"></div>
+      <p style="margin:12px 0 0"><button class="btn" type="button" id="cmpAdd">Add an option</button></p>
+    </section>
+
+    <section id="regions">
+      <div class="sec-head">
+        <h2>Global against Korea and Taiwan</h2>
+        <p>The formula is the same on every service. The numbers that feed it are not, so a Korean stat weight only carries over after these are swapped.</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>What</th><th>Korea and Taiwan</th><th>Global</th><th>What it changes</th></tr></thead>
+          <tbody>
+            <tr><td class="strong">Deity points</td><td>0.2% per point until Korea's November 11, 2026 patch, 0.1% since</td><td>0.1% per point</td><td>Guides that divide a deity stat by 5 predate that patch. Everything here uses 0.1%.</td></tr>
+            <tr><td class="strong">Might, Precision and the other attributes</td><td>0.1% per point</td><td>0.1% per point</td><td>Nothing.</td></tr>
+            <tr><td class="strong">Crit rate cap</td><td>80%</td><td>50%</td><td>Critical Hit past the cap adds nothing, and Critical Damage Boost acts on at most half your hits.</td></tr>
+            <tr><td class="strong">Critical Hit to crit rate</td><td>About 6.66% per 100 points over the target's resist</td><td>1% per 10 points, from player reports on Ludra</td><td>The rating a boss needs is different on each service.</td></tr>
+            <tr><td class="strong">Amplified stages</td><td>Attack Increase on weapon, guard and accessories and Defense Increase on armor until November 11, 2026. Damage Boost and Damage Tolerance since.</td><td>Damage Boost and Damage Tolerance</td><td>A stage adds to the crowded Damage Boost pool. Older Korean numbers have it in Attack Increase.</td></tr>
+            <tr><td class="strong">Daevanion nodes</td><td>Damage Boost 5%, Combat Speed and cooldown 2.5%, Attack Bonus +5, Critical Hit +10</td><td>Damage Boost 1.5%, Combat Speed and cooldown 1.5%, Attack Bonus +3, Critical Hit +5</td><td>Smaller pools, so one more point of the same stat is worth more on Global.</td></tr>
+            <tr><td class="strong">Weapon Damage Boost sources</td><td>Soul Binding lines, manastones and 10% on the Marchutan board</td><td>Soul Binding lines, manastones and 10% on the Revelation Amulet. No Marchutan board.</td><td>The Korean check, remove it and watch Attack, is done on Global by taking the amulet off.</td></tr>
+            <tr><td class="strong">PvE lines built into crafted gear</td><td>PvE Damage Boost 5% on weapons, 2.5% on accessories</td><td>None</td><td>Less in the pool on Global.</td></tr>
+            <tr><td class="strong">Same gear tier</td><td>Splendent Ebony or Wise is item level 92, longsword 372 to 465 Attack</td><td>Item level 102, longsword 485 to 606</td><td>Flat Attack is higher and percentages are lower, so gear Attack is a larger share of the hit.</td></tr>
+            <tr><td class="strong">Level cap</td><td>55 since November 11, 2026, 50 before</td><td>45</td><td>Skill levels and point totals differ.</td></tr>
+            <tr><td class="strong">Attack in the character window</td><td>Leaves Weapon Damage Boost out. Checked by removing the Marchutan nodes in both regions and by a weapon swap in Korea.</td><td>Grobs' Global-client readings say the same. One Global reading does not fit yet, noted in the next table.</td><td>Decides how much of your Attack Weapon Damage Boost multiplies.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Korean figures: the official November 11, 2026 update note, AION 2 Hub's comparison of the Korean, Taiwanese and Global clients, DC Inside and Inven tests. Global figures: the client data on MetaBot, the official armory sample on AION2 Builder, Aion 2 Maps and the characters loaded into this page.</p>
+    </section>
+
+    <section id="confidence">
+      <div class="sec-head">
+        <h2>How sure each piece is</h2>
+        <p>Everything here comes from player testing, client tooltips and datamined tables. Treat the tested rows as solid, and treat the rest as settings you can change.</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Piece of the model</th><th>Status</th><th>What it rests on</th></tr></thead>
+          <tbody>
+            <tr><td>Attack chain order</td><td><span class="chip tested"><i aria-hidden="true"></i>tested</span></td><td>Pure Attack × Weapon Damage Boost, then Attack Bonus and base Attack, then Attack Increase, then flat PvE, Boss and positional Attack. Korean testers on Inven (March 2026), Taiwanese testers on Bahamut (December 2025) and kanonxo arrive at the same chain. In a Korean test, switching 5% Weapon Damage Boost on and off moved dummy damage by 2.8%, which puts gear at about 79% of that character's Attack.</td></tr>
+            <tr><td>Attack in the character window</td><td><span class="chip tested"><i aria-hidden="true"></i>tested in Korea and Taiwan</span></td><td>(Pure Attack + Attack Bonus + base Attack) × (1 + Attack Increase), with the weapon at the middle of its range. Weapon Damage Boost is not in it. Players in both regions removed the Weapon Damage Boost nodes of the Marchutan board and the number did not move. In a Korean weapon swap it rose by 63, which is the 25.5 Attack difference × 1.212 closet × 2.014 Attack Increase. That character's Weapon Damage Boost, 69.4% with the main weapon on, would have pushed the change toward 105 if it were included. One Global reading does not fit yet: taking a 22 Attack helmet line off Bu lowered her Attack by 28, and the 17.1% Attack Increase visible on her gear and points predicts 26. An earlier version of this page read that as Weapon Damage Boost being inside the number. The check that settles it is to take the Revelation Amulet off: the Attack should not move.</td></tr>
+            <tr><td>Base Attack</td><td><span class="chip estimate"><i aria-hidden="true"></i>one reading</span></td><td>Korean testers split the window into gear Attack and the Attack left with all gear off, which holds Attack Bonus plus Attack from level and class. Bu's gear, Attack Bonus and Attack Increase explain 2,444 of the 2,722 her window shows. The other 237, before Attack Increase, is entered as base Attack on every built-in sheet. Closet bonuses and collections would sit in the same gap. Measure yours with gear off.</td></tr>
+            <tr><td>One Damage Boost pool, minus target tolerance</td><td><span class="chip tested"><i aria-hidden="true"></i>tested</span></td><td>Taiwanese tests from December 2025 and later Korean testing agree. A second tester's dummy and boss figures fit the same subtraction, at about 11% and 72% tolerance.</td></tr>
+            <tr><td>Crit multiplier: 1.5 plus Critical Damage Boost</td><td><span class="chip tested"><i aria-hidden="true"></i>tested</span></td><td>Additive on the 150% base in every test. Target Critical Damage Tolerance subtracts from it.</td></tr>
+            <tr><td>Crit rate cap</td><td><span class="chip tested"><i aria-hidden="true"></i>client tooltip</span></td><td>50% on Global, and Global boss parses stop there. Korea's client has stated 80% since July 1, 2026.</td></tr>
+            <tr><td>Critical Hit rating to crit rate</td><td><span class="chip estimate"><i aria-hidden="true"></i>player reports</span></td><td>10 points per 1% on Global. Players report that Ludra needs about 1,700 Critical Hit for the 50% cap and that sheets near 1,200 see no crits there, which puts its Critical Hit Resist near 1,200. Korean testing fit 6.66% per 100, and the Korean reference sheet keeps that.</td></tr>
+            <tr><td>Double: twice the final hit</td><td><span class="chip tested"><i aria-hidden="true"></i>tested</span></td><td>Resist is reported to come straight off your chance. Korean guides from Season 1, when Ludra was the top raid, count 1% Double as 1% damage in PvE, so the Ludra preset uses 0. Later Korean bosses carry 25% to 32%.</td></tr>
+            <tr><td>Back or Front Damage Boost as its own multiplier</td><td><span class="chip tested"><i aria-hidden="true"></i>tested</span></td><td>A 3.1% line measured as 3.099% in the Taiwanese tests.</td></tr>
+            <tr><td>Target tolerance values</td><td><span class="chip estimate"><i aria-hidden="true"></i>estimate</span></td><td>Measured or estimated on Korean and Taiwanese servers: about 10% on the training dummy, 30% on the first Fire Temple boss, 44% on the last Transcendence stage-4 boss (with 15% Weapon Damage Tolerance, 25% Critical Damage Tolerance and about 6,400 Defense) and 65.5% on a stage-10 boss. Nobody has published Ludra's on Global, where boss stats were lowered, so the 30% in its preset is a placeholder. The solver above measures your own.</td></tr>
+            <tr><td>Power Shard</td><td><span class="chip estimate"><i aria-hidden="true"></i>partly tested</span></td><td>The shard's 5% or 10% multiplies Pure Attack only, which is why a 5% shard tests at about 4.7% damage. The sheet's Power Shard Damage Bonus is counted as 100 points = 1% on top, following Grobs' calculator. The client tooltip only says it increases damage while a shard is on.</td></tr>
+            <tr><td>Perfect</td><td><span class="chip estimate"><i aria-hidden="true"></i>partly tested</span></td><td>The tooltip says a Perfect hit deals enhanced damage based on the weapon's maximum Attack. The top of the range alone is worth half the range in Pure Attack. Korean tests on five classes in July 2026 put a Perfect hit 7% to 10% above an average one, more than the range gives, and another tester reports a hidden bonus of about 5%. The default adds 7% Pure Attack on Perfect hits, which comes to about 8% on a sheet like the one tested most thoroughly.</td></tr>
+            <tr><td>Multi-hit</td><td><span class="chip disputed"><i aria-hidden="true"></i>disputed</span></td><td>Up to four extra hits. Korea's aion2tool treats them as a chain: each extra hit rolls your chance again, and one to four extra hits add 11%, 25%, 43% and 67% in dungeons. At 38% chance that works out to 0.33% damage per 1% Multi-hit, the published Korean figure, and the Korean reference sheet uses it. Global measurements are smaller: about 6% per extra hit in parses, 10 to 15% for all four in another test, and a datamined 20% hidden base chance. The Global sheets keep one proc worth 15%. Both models are under Model choices.</td></tr>
+            <tr><td>Combat Speed and cooldown</td><td><span class="chip model"><i aria-hidden="true"></i>model</span></td><td>Combat Speed shortens every cast, and the time it frees goes to filler skills. Cooldown reduction adds casts of cooldown skills and takes that time back. If fillers are worth a share ε of an average second, 1% faster casting is worth ε% and 1% more cooldown casts is worth (1 − ε)%. ε is the filler strength in the rail: filler share of damage ÷ filler share of cast time. The 50% default is an estimate from the Ranger's skill coefficients.</td></tr>
+            <tr><td>Penetration and Defense</td><td><span class="chip estimate"><i aria-hidden="true"></i>rule tested, values unknown</span></td><td>Each skill use loses 10% of Defense minus Penetration. Boss Defense on Global is unpublished, so it starts at 0 and Penetration shows no value until you set it.</td></tr>
+            <tr><td>Left out</td><td><span class="chip model"><i aria-hidden="true"></i>not modelled</span></td><td>Accuracy is a threshold: at or above the target's Block nothing is parried, a parried hit loses about half its damage, and back attacks skip the check. Proc passives such as Hunter's Soul, timed skill buffs, damage over time (which ignores Defense, crit and Double) and PvP are not modelled.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Sources</h3>
+      <ul class="src">
+        <li><a href="https://gameplay.tips/guides/aion-2-how-stats-work-damage-formula-guide.html">Gameplay.tips, How Stats Work</a> and <a href="https://thegameswiki.com/aion-2/wiki/damage-formula-and-stat-efficiency">The Games Wiki, Damage Formula and Stat Efficiency</a>: the formula and the Korean endgame per-stat figures.</li>
+        <li><a href="https://www.inven.co.kr/board/aion2/6444/902">Inven, Taiwanese test compilation</a>: pool, tolerance, crit, Multi-hit, Perfect and Penetration tests.</li>
+        <li><a href="https://www.aion2bible.com/">The Aion 2 Bible</a> (kanonxo): the full formula, what counts as Pure Attack, and the Korean endgame value of each stat.</li>
+        <li>Inven, Weapon Damage Boost efficiency <a href="https://www.inven.co.kr/board/aion2/6444/1483">part 1</a> and <a href="https://www.inven.co.kr/board/aion2/6444/1485">part 2</a>: the real-Attack formula and the gear on, gear off method. <a href="https://www.inven.co.kr/board/aion2/6448/23000">Inven, Max Attack and Attack Bonus report</a>: how the window's Attack responds to Attack Bonus, Max Attack, the closet and a weapon swap, and the Perfect measurements.</li>
+        <li><a href="https://forum.gamer.com.tw/C.php?bsn=82913&amp;snA=2580">Bahamut, damage tests</a>: the Taiwanese rebuild of the window's Attack without Weapon Damage Boost. <a href="https://forum.gamer.com.tw/C.php?bsn=82913&amp;snA=4340">Bahamut, weapon line thread</a>: a claim that Weapon Damage Boost shows in the window, answered by a player whose Attack did not move when the board nodes came off.</li>
+        <li><a href="https://gall.dcinside.com/mgallery/board/view/?id=aion2&amp;no=1717642">DC Inside, boss Weapon Damage Tolerance test</a>: 5% Weapon Damage Boost switched on and off. <a href="https://aion2tool.com/statistics/combat-power">aion2tool</a>: the chained Multi-hit figures.</li>
+        <li><a href="https://aion2.plaync.com/ko-kr/board/update/view?articleId=6af370b8577e8c01355e047b">NCSoft, Korean update note of November 11, 2026</a> (<a href="https://doenda.com/news/a2-6af370b8577e8c01355e047b/">full text on Doenda</a>): deity points cut to 0.1%, Amplified stages moved to Damage Boost, level 55. <a href="https://aion2hub.com/news/aion-2-launch-scale-test-global-vs-korea-changes">AION 2 Hub, Global against Korea</a>, <a href="https://aion2builder.com/guides/stats/">AION2 Builder, Stats</a> and <a href="https://aion2maps.com/guides/global-differences/">Aion 2 Maps, What's different on Global</a>: regional differences.</li>
+        <li><a href="https://kinahledger.com/items/wrathful-ego">Kinah Ledger</a>: Market lowest asks for the ring materials on Nezekan, read Nov 16, 2026.</li>
+        <li><a href="https://grobs.net/aion2-damage-calculator/">Grobs, Efficiency Lab</a>: how the Global sheet maps onto the formula.</li>
+        <li><a href="https://metabot.gg/en/aion-2/stats">MetaBot, Stats</a> and <a href="https://metabot.gg/en/aion-2/guides/manastone-guide">Manastone guide</a>: Global client tooltips, per-point values and manastone odds.</li>
+        <li><a href="https://raidrelay.com/aion-2-best-stats-guide">RaidRelay, Best Stats by Slot</a>: Soul Binding ranges, odds and Reset cost.</li>
+        <li><a href="https://timesaver.gg/blog/aion-2-accuracy-cap">Timesaver, Accuracy and Crit Cap for Ludra</a>: Ludra's 1,200 and 1,700. MetaBot, <a href="https://metabot.gg/en/aion-2/items/splendent-white-dragon-lord-ring">item-level-86 ring</a>, <a href="https://metabot.gg/en/aion-2/items/splendent-wise-dragon-lord-ring">item-level-102 ring</a> and <a href="https://metabot.gg/en/aion-2/guides/gear-enhancement-guide">enhancement guide</a>: ring Attack by enhancement and amplification, and the Amplified caps. <a href="https://aion2hub.com/database/items/514310040">AION 2 Hub, Dredgion Crash Site</a> and <a href="https://thegameswiki.com/aion-2/wiki/pantheon">The Games Wiki, Pantheon</a>: artwork deity points. <a href="https://metabot.gg/en/aion-2/skills/focused-eye">MetaBot, Focused Eye</a> and <a href="https://wikily.gg/aion-2/skills/hunters-resolve">Wikily, Hunter's Resolve</a>: passive values per level. <a href="https://m.dcinside.com/board/aion2/1724014?recommend=1">DC Inside, Transcendence 4 boss test</a>: measured Korean boss tolerances and Defense.</li>
+        <li><a href="https://shugo.gg/character">Shugo.GG, character search</a>: the character sheets. <a href="https://gamewith.ai/aion2/en/items/110430045">GameWith, Splendent Wise Dragon Lord Bow</a>: the bow's 407 to 512 Attack and the item-level-102 weapon ranges.</li>
+        <li><a href="https://aion2maps.com/guides/stats-explained/">Aion 2 Maps, Stats explained</a> and <a href="https://aion2maps.com/guides/accuracy-and-crit/">Accuracy and Crit</a>: second tester's figures, Global crit and Multi-hit notes.</li>
+        <li><a href="https://corpus.gg/blog/aion-2/combat-stats-explained">Corpus, Combat stats explained</a>, <a href="https://aion2tools.xyz/calculator/">Aion 2 Tools calculator</a>, <a href="https://ai-exodus.com/companion/aion/news/how-damage-works-in-aion-2/">AI Exodus</a> and <a href="https://expcarry.com/aion-2-damage-formula">ExpCarry</a>: cross-checks and the list of open questions.</li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <p>Built for PvE. The Korean reference sheet reproduces the published endgame figures for Double Chance, Weapon Damage Boost, Critical Damage Boost, Damage Boost, Attack, Max Attack, Attack Bonus, Perfect and Multi-hit, which is the check that the model matches the testing it is built on.</p>
+  <p>By Shizukaziye. Unofficial fan tool, not affiliated with or endorsed by NCSOFT Corporation. AION is a registered trademark of NCSOFT Corporation.</p>
+</footer>
+
+<div id="tip" aria-hidden="true"></div>
+
+<script src="model.js?v=1" defer></script>
+<script src="presets.js?v=1" defer></script>
+<script src="app.js?v=1" defer></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>
