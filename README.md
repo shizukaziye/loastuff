@@ -40,6 +40,7 @@ Tools (each folder is served at `/<folder>/`):
 - `loa-on-2026-summer/` — LOA ON 2026 Summer recap
 - `aion2-roster/` — Aion 2 Roster Checklist (main + alts, per-character vs per-server limits, refill trackers, auto resets)
 - `aion2-ranger-guide/` — Ranger Point Guide, a mirror of tgustafsson's ranger.tgustafsson.se (offline Oct 2026) restored from the Internet Archive, credited
+- `aion2-damage-math/` — Aion 2 Damage Math (the damage formula, every stat priced for one character, upgrades in Kinah per 1% damage); see its [README](aion2-damage-math/README.md)
 - `loa-tierlist/` — retired; redirect stub
 
 ## Market prices
@@ -65,6 +66,7 @@ Each step can fail on its own without blocking the others. A bake that sees a de
 - `loa-astrogem-calc`: `tools/lint-pins.js` and `verify.py`
 - `loa-gpd`: `tools/verify.js`
 - `verify.py` in the crafting and hell key tools, and the `tools/marketlib.py` self-test
+- `aion2-damage-math`: `test.js` (the model against published Korean figures and against itself)
 
 Not run in CI: the astrogem `npm run eval-gate` (its OCR corpus lives only on the desktop PC) and anything that needs a deployed Worker.
 
@@ -109,6 +111,7 @@ To switch it on: Cloudflare dashboard → Workers & Pages → `loastuff` → Set
 **Aion 2**
 - [Roster Checklist](https://www.loseii.com/aion2-roster/) — main + alt daily/weekly checklist with per-server limits, Odyle and charge trackers, Kina-tier counter
 - [Ranger Point Guide](https://www.loseii.com/aion2-ranger-guide/) — Daevanion nodes, skill ranks, traits and stigmas step by step to 45; tgustafsson's guide, mirrored with credit
+- [Damage Math](https://www.loseii.com/aion2-damage-math/) — what each damage stat is worth on your sheet, and any upgrade in Kinah per 1% damage
 
 **League of Legends**
 - [Champion Pool Coverage](https://shizukaziye.github.io/lol-pool-coverage/) — analyze your pool vs the live meta (own repo)
