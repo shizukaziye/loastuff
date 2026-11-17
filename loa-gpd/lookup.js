@@ -985,15 +985,36 @@
     return out;
   }
   /**
-   * A Sidereal (Esther) weapon. The astrogem worker names it from the item id
-   * on every pull since 2026-09-27; a record pulled before that still shows
-   * the one shape only a Sidereal can have — advanced honing on a weapon under
-   * +20, which normal honing does not open until +20. (NA/Legendarymember:
-   * weapon +10 with advanced 40 beside armour at +25/40.)
+   * A Sidereal (Esther) weapon. (NA/Legendarymember: weapon +10 with advanced
+   * 40 beside armour at +25/40.)
+   *
+   * The astrogem worker reads the weapon's item id on every pull since
+   * 2026-09-27, and when it did, that is the answer either way
+   * (`weaponIdRead`). Without an id — an older record, or a bracelet-worker
+   * pull, which carries none — the weapon is tested against the item level.
+   *
+   * ADVANCED HONING UNDER +20 IS NOT THE TEST. That was the rule until
+   * 2026-11-17, on the reading that normal honing does not open advanced
+   * honing until +20. But a weapon moved from the 1590 set to the 1675 set
+   * keeps its advanced honing in the pull, so a normal 1675 weapon at +12 to
+   * +19 reads "advanced 40" as well: 63 of the 157 calibration-panel
+   * characters (tools/fixtures/loseii-panel.json) have that shape, and every
+   * one of them was shown as a Sidereal and kept off the honing ladder.
+   *
+   * What does separate them is the item level. Read as a normal weapon, some
+   * split of the six pieces across the two gear sets (lkTracks) reproduces the
+   * character's item level to 0.001 on all 157. A Sidereal's item level is on
+   * neither set's formula, so no split fits. With that shape and no fit it is
+   * a Sidereal; where the fit cannot be run (no per-piece honing or no item
+   * level in the pull) it is taken as a normal weapon, the common case by far.
    */
-  function lkSidereal(honing, adv, flag) {
-    if (flag === true) return true;
-    return honing != null && honing < 20 && adv != null && adv > 0;
+  var LK_SIDEREAL_GAP = 0.5;    // item levels; a normal weapon fits to 0.001
+  function lkSidereal(c) {
+    if (!c || c.honeWeapon == null) return false;
+    if (c.weaponIdRead === true || c.weaponIdRead === false) return c.weaponIdRead;
+    if (!(c.honeWeapon < 20 && c.weaponAdv != null && c.weaponAdv > 0)) return false;
+    var tk = c.armorPieces && c.ilvlExact > 0 ? lkTracks(c) : null;
+    return !!tk && tk.err > LK_SIDEREAL_GAP;
   }
   /** Every piece in a slot kind, read as a configuration. */
   function lkAccPieces(ctx, c, kind, axis) {
@@ -1055,7 +1076,11 @@
         ? { head: eq.armor[0], torso: eq.armor[1], legs: eq.armor[2], hands: eq.armor[3], shoulders: eq.armor[4] }
         : null,
       weaponAdv: wpnAdv,
-      weaponSidereal: wpnExact ? lkSidereal(eq.weapon, wpnAdv, eq.weaponSidereal) : false,
+      // true / false when the worker read the weapon's item id, null when it
+      // did not (lkSidereal then tests the item level instead)
+      weaponIdRead: wpnExact && eq.weaponId != null && typeof eq.weaponSidereal === "boolean"
+        ? eq.weaponSidereal : null,
+      weaponSidereal: false,
       karma: d.karma ? d.karma.enlightenment : null,
       stone: d.stone ? d.stone.a + "-" + d.stone.b : null,
       region: d.region || null,
@@ -1081,6 +1106,7 @@
       bcNote: prev ? prev.bcNote : null,
       pulledAt: d.pulledAt || null
     };
+    c.weaponSidereal = wpnExact ? lkSidereal(c) : false;
     var st = c.stamp, ts = d.pulledAt || null;
     if (c.honeArmor != null || c.honeWeapon != null) {
       st.honing = { src: "astrogem", ts: ts, exact: armExact && wpnExact };
@@ -1156,7 +1182,9 @@
           if (pr.itemLevel || d.itemLevel) c.ilvlExact = pr.itemLevel || d.itemLevel;
           var padv = pr.advancedHoning ? pr.advancedHoning.weapon : null;
           if (padv != null) c.weaponAdv = padv;
-          c.weaponSidereal = lkSidereal(c.honeWeapon, c.weaponAdv, c.weaponSidereal === true);
+          // the astrogem pull's item id, when it read one, still names the
+          // weapon; otherwise the item level decides (lkSidereal)
+          c.weaponSidereal = lkSidereal(c);
           c.stamp.honing = { src: "bracelet", ts: ts, exact: true };
         }
       }
@@ -1489,7 +1517,14 @@
   }
   function lkScoreReadings(ctx, c) {
     var axis = ctx.axis, rd = {}, why = {};
-    var tk = c.armorPieces && c.honeWeapon != null ? lkTracks(c) : null;
+    // A SIDEREAL WEAPON IS NOT SCORED. It hones on its own table (lkPositions
+    // shows it and places nothing), so its +N is neither gear set's: the weapon
+    // drops out of the sum, taken at the reference's +25, which it outclasses.
+    // Its item level is not 1675 + 5 x honing either, so the item level cannot
+    // split the six pieces across the two sets; the armour is read on the 1675
+    // set, which is what a character holding one wears.
+    var sidereal = c.weaponSidereal === true;
+    var tk = !sidereal && c.armorPieces && c.honeWeapon != null ? lkTracks(c) : null;
     if (c.armorPieces) {
       rd.armor = { pieces: c.armorPieces };
       if (tk) {
@@ -1500,7 +1535,10 @@
       }
     } else if (c.honeArmor != null) rd.armor = { level: c.honeArmor };
     else why.armor = "no honing in the pull";
-    if (c.honeWeapon != null) {
+    if (sidereal) {
+      why.weapon = "a Sidereal weapon hones on its own table, which the score does not carry";
+      rd.honingNote = "Sidereal weapon: the armour is read on the 1675 set";
+    } else if (c.honeWeapon != null) {
       rd.weapon = c.honeWeapon;
       if (tk) { rd.weaponTrack = tk.tracks.weapon; rd.weaponAdv = tk.adv.weapon; }
     } else why.weapon = "no honing in the pull";
@@ -1718,6 +1756,7 @@
     // chart builds its card from the tables, the scale and the reference
     score: score, scoreTables: scoreTables, scoreCalib: scoreCalib, scoreReference: scoreReference,
     scoreReferenceLive: scoreReferenceLive, masterD: lkMasterD, statC: lkStatC, apT1: lkApT1, tracks: lkTracks,
+    sidereal: lkSidereal,
     dummySupportAp: lkDummySupportAp,
     scoreReadings: function (ctx, c) { return lkScoreReadings(ctx, c); }, synthGridD: lkSynthGridD,
     accChain: function (ctx, axis, kind) { return accChain(ctx, axis, kind); },

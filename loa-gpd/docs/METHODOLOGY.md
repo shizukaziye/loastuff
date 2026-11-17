@@ -306,9 +306,21 @@ T4 upper weapon's, +11 to +25. A Sidereal (Esther) weapon hones on its own
 table and already outclasses a +25, so reading its +10 as a normal +10 offered
 "+12 for 364k" to a player who would pay millions for that (KYLE,
 2026-09-27). The astrogem worker names the weapon from its item id (10134000
-against 10144000), a record pulled before that is recognised by the one shape
-only a Sidereal has — advanced honing under +20 — and the weapon row then says
-what it is and stays out of the next-buy pick.
+against 10144000), and when it read one that is the answer. The weapon row then
+says what it is and stays out of the next-buy pick.
+
+A pull with no item id — a record from before that, or a bracelet-worker pull,
+which carries none — is tested against the item level instead. The rule until
+2026-11-17 was the shape "advanced honing on a weapon under +20", on the reading
+that only a Sidereal can have it. It is not: a weapon moved from the 1590 set to
+the 1675 set keeps its advanced honing in the pull, so a normal 1675 weapon at
++12 to +19 reads "advanced 40" too. 63 of the 157 calibration-panel characters
+have that shape and all 63 were shown as Sidereal and kept off the honing
+ladder. What separates the two is the item level: read as a normal weapon, some
+split of the six pieces across the two gear sets reproduces the character's
+item level to 0.001 on all 157, and a Sidereal's is on neither set's formula.
+So that shape with no fit (off by more than 0.5) is a Sidereal, and where the
+fit cannot be run the weapon is taken as normal.
 
 **The ability stone comes from the astrogem pull, never from node counts alone.**
 The bracelet Worker sends `stoneNodes`: every engraving's node count, the malus

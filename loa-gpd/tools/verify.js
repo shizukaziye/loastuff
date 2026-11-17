@@ -106,5 +106,25 @@ Lookup.MODELS.forEach(function (m) {
   check(file + " pin", tag ? tag[1] : "no tag", pin);
 });
 
+// ---- a Sidereal weapon, and the normal weapons that only look like one -----
+// Real pulls, as the bracelet worker sends them. Azuron is one of the 63
+// calibration-panel characters whose normal 1675 weapon kept its advanced
+// honing from the 1590 set; Legendarymember is the Sidereal the rule was
+// written for (lostark.bible, 2026-11-17: weapon +10, armour +25, item level
+// 1805 — a normal +10 beside that armour would be 1787.5).
+console.log("lookup.js — Sidereal weapon");
+function wearer(weapon, armour, adv, ilvl, idRead) {
+  return { honeWeapon: weapon, weaponAdv: adv, ilvlExact: ilvl, weaponIdRead: idRead,
+           armorPieces: { head: armour[0], torso: armour[1], legs: armour[2], hands: armour[3], shoulders: armour[4] },
+           advPieces: { weapon: adv, head: adv, torso: adv, legs: adv, hands: adv, shoulders: adv } };
+}
+var azuron = [16, 16, 16, 17, 16], legend = [25, 25, 25, 25, 25];
+check("a 1675 weapon that kept advanced 40 is normal", Lookup.sidereal(wearer(17, azuron, 40, 1756.6661, null)), false);
+check("Legendarymember's +10 fits neither set", Lookup.sidereal(wearer(10, legend, 40, 1805.0001, null)), true);
+check("the worker's item id wins: Sidereal", Lookup.sidereal(wearer(17, azuron, 40, 1756.6661, true)), true);
+check("the worker's item id wins: normal", Lookup.sidereal(wearer(10, legend, 40, 1805.0001, false)), false);
+check("no item level to test: taken as normal", Lookup.sidereal(wearer(10, legend, 40, null, null)), false);
+check("a +20 or better is never the shape", Lookup.sidereal(wearer(23, [21, 21, 21, 21, 21], 40, 1781.6661, null)), false);
+
 console.log(fails ? "\n" + fails + " FAILED" : "\nall checks pass");
 process.exit(fails ? 1 : 0);
