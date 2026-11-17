@@ -196,9 +196,15 @@ the break's 1%, and the Loseii Score counts the level without the break.
 5. **Special honing.** The feed carries a second route per level (`special`,
    `specialAmount` 50 to 70 of "Special Honing: Transferred Leapstone", id 66103105). Not
    modelled here, nor on the weapon and armour rows.
-6. **The first real fetch.** The build machine could not reach the feed, so the table was
-   read out of the calculator page's own loaded data in a browser, rebuilt in the feed's
-   shape, and baked with `bake_vambrace` itself. Deleting `tools/.cache/` and running
-   `python tools/fetch-game-data.py` should rewrite `data/vambrace.json` byte for byte. The
-   same run re-bakes the honing tables from the October feed, which nothing here has
-   compared with the July bake beyond the breath unit.
+6. **The script has not run against the live feed.** The build machine could not reach it,
+   so the table was read out of the feed in a browser, rebuilt in the feed's shape, and
+   baked with `bake_vambrace` itself. The baked file was then compared with the live feed in
+   the browser, value for value (2026-11-17): all 25 levels' materials, gold, silver, shards,
+   growth, rates, both breaths, their cap, the artisan threshold and the six stats; the base
+   block and the attack rate on all four grades; the three limit breaks; the material and
+   item names. No difference, and no stat on the piece that the bake does not read. So
+   deleting `tools/.cache/` and running `python tools/fetch-game-data.py` should rewrite
+   `data/vambrace.json` byte for byte, and what is untested is only the script's download
+   path. The same pass compared the 50 T4 upper weapon and armour recipe rows with the July
+   bake: identical once the breath rates are divided by ten. Not compared: the stat curves,
+   the lower-set table and karma, which that run would also re-bake.

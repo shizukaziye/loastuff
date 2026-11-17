@@ -108,7 +108,9 @@ runs on — and bakes the small derived files under `data/`. Big downloads are
 cached under `tools/.cache/` and not committed. The cache is never refreshed on
 its own: a new patch means deleting it and setting the script's `PATCH` to what
 the calculator page says it tracks. The honing and karma files are the July 2026
-bake; `data/vambrace.json` is October 2026 (Vambrace, below).
+bake; `data/vambrace.json` is October 2026 (Vambrace, below). The upper set's
+50 honing recipe rows were compared with the October feed on 2026-11-17 and
+have not changed.
 
 One thing changed under the script between the two. The feed used to quote a
 breath's rate in the success rate's own 0.01% units and now quotes 0.001%. The

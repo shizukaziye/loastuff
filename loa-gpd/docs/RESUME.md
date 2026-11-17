@@ -262,16 +262,17 @@ METHODOLOGY.md, "Vambrace"; sources, the table and the open questions in
 
 Things a future session should know:
 
-1. **The table was not fetched by the script.** The machine that built this
-   could not reach Maxroll's feed, so the values were read out of the upgrade
-   calculator page's own loaded tables in a browser, rebuilt in the feed's
-   shape, and baked with `fetch-game-data.py`'s own `bake_vambrace`. Delete
-   `tools/.cache/` and run the script: `data/vambrace.json` should come back
-   byte for byte. The same run re-bakes both honing tables and karma from the
-   October feed, and those have not been compared with the July bake beyond
-   the breath unit (the feed went from 0.01% to 0.001%; the script now reads
-   which). If a honing number moves, the honing rows and `honingDamage` move
-   with it.
+1. **The script has not run against the live feed.** The machine that built
+   this could not reach Maxroll's feed, so the values were read out of it in a
+   browser, rebuilt in the feed's shape, and baked with `fetch-game-data.py`'s
+   own `bake_vambrace`. The baked file was then compared with the live feed in
+   the browser, value for value, and matches; so did the 50 T4 upper weapon and
+   armour recipe rows against the July bake, once the breath rates are divided
+   by ten (the feed went from 0.01% to 0.001%; the script now reads which).
+   Delete `tools/.cache/` and run the script: `data/vambrace.json` should come
+   back byte for byte and the honing recipes unchanged. The stat curves, the
+   lower-set table and karma were not compared; if one moves, its rows and
+   `honingDamage` move with it.
 2. **Three modelling calls are Shizu's to overrule**: the flat basic attack
    power sits inside the attack-power percentage; a limit break's 1% is
    credited to the step that reaches it; and a stretch whose later steps are
