@@ -81,7 +81,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=7";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=8";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
@@ -1558,6 +1558,7 @@
   var GPD_SYSTEM = {
     armor: "All five armour pieces honed together on the T4 Upper normal track, +11 to +25.",
     weapon: "The weapon honed on its own on the T4 Upper normal track, +11 to +25.",
+    vambrace: "The vambrace honed from +0 to +25. The step that reaches +10, +15 or +20 carries that level's limit break, and the next step shown runs to the next place worth stopping.",
     gems: "Levelling the whole skill gem set, one level at a time; your lowest gem sets the rung.",
     karma: "Karmic Enlightenment, from level 21 to 30.",
     neck: "Necklaces from the accessory calculator's price lattice, from the growth shop piece up.",
@@ -1572,6 +1573,7 @@
   var GPD_MOVER = {
     armor: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
     weapon: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
+    vambrace: "Material prices move it; the chart uses its defaults, with shards taken as bound. A limit break costs Belgardin drops and no gold.",
     gems: "The level-8 gem's price moves it; the chart takes 420k.",
     karma: "It is 900 gold a try with the Destiny Stones taken as owned, so no market price moves it.",
     bracelet: "Bracelet and pheon prices move it, and so do the odds of rolling this letter.",
@@ -1609,7 +1611,7 @@
   /** What the next rung means. */
   function gpdNextGloss(r) {
     var n = r.next;
-    if (!n) return "Nothing left on this ladder: no rung above yours.";
+    if (!n) return r.held ? gpdCap(r.held) + "." : "Nothing left on this ladder: no rung above yours.";
     if (GPD_ACC[r.k]) return gpdAccWords(r.k, n.to);
     if (r.k === "bracelet" && n.min) return n.to + " takes at least " + n.min + ".";
     return (n.min ? gpdCap(n.min) : n.to) + (n.note ? " (" + n.note + ")" : "") + ".";
@@ -1617,7 +1619,8 @@
   /** How the step is priced, and what would move it. */
   function gpdPriceGloss(r, axis) {
     var n = r.next;
-    if (!n) return "No rung above yours, so nothing to price.";
+    if (!n) return r.held ? "Nothing to price until then: it takes raid drops, not gold."
+      : "No rung above yours, so nothing to price.";
     var on = axis === "support" ? " on each of three dealers" : "";
     if (n.gpd == null) return "This step adds no damage on these ladders, so it has no price per 1%.";
     if (n.pd != null) return n.poolTxt + " gold of cutting and fusing buys " + gpdPct(n.pd) + " more damage" + on +
@@ -1653,7 +1656,9 @@
       var r = { k: e.key, label: e.label, color: (S && S.color) || "", i: i,
         yours: (pos.labels && pos.labels[e.key]) || L.NOT_READ,
         seen: graded ? String(e.seen) : null, detail: graded ? (e.detail || null) : null,
-        why: graded ? null : (e.why || "not in the pull"), under: graded && e.owned < 0 && !e.ownRung, next: null };
+        why: graded ? null : (e.why || "not in the pull"), under: graded && e.owned < 0 && !e.ownRung, next: null,
+        // steps left that gold cannot buy yet (a vambrace's limit break still to do)
+        held: graded && e.nextWhy ? String(e.nextWhy) : null };
       var n = graded ? e.next : null;
       if (n) {
         var pooled = n.poolD > 0 && isNum(n.poolG);
@@ -1868,9 +1873,12 @@
         '<td class="r"' + gl(gpdPriceGloss(r, g.axis)) + ">" + (best ? '<span class="lp-gtag">cheapest</span>' : "") + "<b>" + esc(n.price) + "</b></td></tr>";
     });
     if (priced.length < 3) {
-      var top = 0, unread = 0, bits = [];
-      g.rows.forEach(function (r) { if (r.why) unread++; else if (!r.next || r.next.gpd == null) top++; });
+      var top = 0, unread = 0, held = 0, bits = [];
+      g.rows.forEach(function (r) {
+        if (r.why) unread++; else if (r.held) held++; else if (!r.next || r.next.gpd == null) top++;
+      });
       if (top) bits.push(top + (top === 1 ? " ladder is" : " ladders are") + " at the top rung");
+      if (held) bits.push(held + (held === 1 ? " is" : " are") + " waiting on a limit break");
       if (unread) bits.push(unread + (unread === 1 ? " is" : " are") + " not in the pull");
       h += '<tr class="lp-gnote"><td colspan="4"' + gl("The GPD chart's gear list shows every ladder, with what the pull reads on each.") + ">" +
         (priced.length ? "Nothing else to price" : "Nothing to price") + (bits.length ? ": " + bits.join("; ") : "") + ".</td></tr>";

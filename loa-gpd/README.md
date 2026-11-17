@@ -12,6 +12,9 @@ Systems charted:
 
 - **Honing** — T4 Upper (1675) normal track, +11 through +25. Two rows: all five
   armour pieces together, and the weapon on its own.
+- **Vambrace** — the Belgardin piece, +0 through +25. The step that reaches +10,
+  +15 or +20 carries that level's limit break (raid drops, no gold), and a
+  stretch nobody stops inside is priced as one.
 - **Karma** — Karmic Enlightenment past level 21.
 - **Ability stone** — 7-7 up to 9-7.
 - **Skill gems** — levelling the set.
@@ -44,8 +47,11 @@ and `node tools/verify.js` for the chart's model. Method, what is not scored,
 and the check against lopec.kr: [docs/METHODOLOGY.md](docs/METHODOLOGY.md#loseii-score).
 
 Game tables come from Maxroll's planner feed and are re-baked by
-`python tools/fetch-game-data.py`, which cross-checks itself against bebkok's
-gear sheet. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+`python tools/fetch-game-data.py` (the two honing tables, karma and the
+vambrace), which cross-checks itself against bebkok's gear sheet. After a
+vambrace table change, `node tools/build-vambrace-dps.js` re-bakes the DPS
+axis's vambrace damage into `data/rows-dps.json`; `tools/verify.js` fails if
+the two disagree. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 Lives at https://www.loseii.com/loa-gpd/ inside the [loastuff](https://github.com/shizukaziye/loastuff)
 monorepo (`loa-gpd/`), since 2026-09-22. `shizukaziye.github.io/loa-gpd` redirects here.

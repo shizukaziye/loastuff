@@ -19,8 +19,8 @@ each other: tools/verify-loseii-score.js captures REFS
 
 What cannot be ported (the bracelet scorer, the accessory lattice lookup, the
 astrogem grid) arrives as readings already; the DPS ladder tables are
-re-derived here from data/rows-dps.json and data/honing-t4upper.json and must
-equal the JS ones. The support tables come from the support model's live rows
+re-derived here from data/rows-dps.json, data/honing-t4upper.json and
+data/vambrace.json and must equal the JS ones. The support tables come from the support model's live rows
 (JS only) and are taken from the REFS.
 """
 import json
@@ -29,14 +29,14 @@ import os
 import re
 import sys
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ARMOR_SLOTS = ["head", "shoulders", "torso", "legs", "hands"]
 ACC_SLOTS = ["neck", "ear1", "ear2", "finger1", "finger2"]
 ACC_KIND = {"neck": "neck", "ear1": "earring", "ear2": "earring", "finger1": "ring", "finger2": "ring"}
 GEM_SLOTS = 11
 HONE_MIN, HONE_MAX, KARMA_BASE, KARMA_MAX, GEM_MIN, GEM_MAX = 11, 25, 21, 30, 7, 10
 
-SYSTEMS = [("armor", None), ("weapon", None), ("karma", None), ("gems", None), ("stone", None),
+SYSTEMS = [("armor", None), ("weapon", None), ("vambrace", None), ("karma", None), ("gems", None), ("stone", None),
            ("bracelet", None), ("neck", None), ("earring", None), ("ring", None), ("grid", None),
            ("arkPassive", None), ("master", "dps"), ("partner", None)]
 
@@ -47,9 +47,11 @@ SYSTEMS = [("armor", None), ("weapon", None), ("karma", None), ("gems", None), (
 # fixed dealer, the chart's reference character, and carries no partner term.
 DUMMY_SUPPORT_AP = 1.4341
 
+# The reference wears no vambrace: the spec and the panel are older than the piece.
 REFERENCE = {
     "armor": {"pieces": {"head": 21, "shoulders": 21, "torso": 21, "legs": 21, "hands": 23}},
-    "weapon": 25, "karma": 21, "gems": [9] * 11, "stone": "9-7", "master": False, "evolution": 140,
+    "weapon": 25, "vambrace": {"none": True},
+    "karma": 21, "gems": [9] * 11, "stone": "9-7", "master": False, "evolution": 140,
 }
 
 
@@ -63,14 +65,20 @@ def num(s):
 
 
 # ---- the ladder tables ------------------------------------------------------
-def tables_from_data(rows_dps, honing, lower=None, extras=None):
+def tables_from_data(rows_dps, honing, lower=None, extras=None, vambrace=None):
     """The DPS tables, from rows-dps.json the way lookup.js steps() hands them
-    to tables(): honing and karma from honingDamage/karmaDamage, the rest from
-    the baked rows; the gear stats from the two honing tables."""
+    to tables(): honing, karma and the vambrace from honingDamage / karmaDamage /
+    vambraceDamage, the rest from the baked rows; the gear stats from the two
+    honing tables; the vambrace's grades from data/vambrace.json."""
     rows = []
     for track in ("armor", "weapon"):
         for to, d in rows_dps["honingDamage"][track].items():
             rows.append({"series": track, "to": "+" + to, "damage": d})
+    vd = rows_dps.get("vambraceDamage")
+    if vd and vambrace:
+        for to, d in vd["steps"].items():
+            rows.append({"series": "vambrace", "to": "+" + to, "damage": d,
+                         "breakDamage": (vd.get("breaks") or {}).get(to, 0)})
     for to, d in rows_dps["karmaDamage"].items():
         rows.append({"series": "karma", "to": "lv " + to, "damage": d})
     for r in rows_dps["rows"]:
@@ -79,6 +87,9 @@ def tables_from_data(rows_dps, honing, lower=None, extras=None):
         rows.append(r)
     ex = dict(extras or {})
     ex["lower"] = lower
+    if vd and vambrace:
+        ex["vambraceBase"] = vd["base"]
+        ex["vambraceGrades"] = vambrace["grades"]
     return tables(rows, honing, "dps", ex)
 
 
@@ -91,12 +102,22 @@ def tables(rows, honing, axis, extras=None):
          "wpC": extras.get("wpC") if is_num(extras.get("wpC")) else 0,
          "apT1": {"perLevel": ap["perLevel"], "levels": 40} if ap and is_num(ap.get("perLevel")) else None,
          "upper": {"ms": {}, "wp": {}}, "lower": {"ms": {}, "wp": {}, "base": 1590, "max": 1755},
-         "armorKnots": [], "weaponKnots": []}
+         "armorKnots": [], "weaponKnots": [],
+         "vambrace": {"base": extras.get("vambraceBase") if is_num(extras.get("vambraceBase")) else None,
+                      "steps": {}, "breaks": {}, "gradeAt": {}, "max": 0}}
+    for g in extras.get("vambraceGrades") or []:
+        if g["from"] > 0:
+            t["vambrace"]["gradeAt"][str(g["from"])] = g["grade"]
     for r in rows or []:
         to = num(r.get("to"))
         s = r.get("series")
         if s in ("armor", "weapon") and to is not None:
             t[s][str(to)] = r["damage"]
+        elif s == "vambrace" and to is not None:
+            t["vambrace"]["steps"][str(to)] = r["damage"]
+            if (r.get("breakDamage") or 0) > 0:
+                t["vambrace"]["breaks"][str(to)] = r["breakDamage"]
+            t["vambrace"]["max"] = max(t["vambrace"]["max"], to)
         elif s == "karma" and to is not None:
             t["karma"][str(to)] = r["damage"]
         elif s == "gems" and to is not None:
@@ -184,6 +205,24 @@ def weapon_d(T, level, track, adv):
     return on_knots(T["weaponKnots"], W + T["wpC"]) if is_num(W) else None
 
 
+def vambrace_d(T, v):
+    """{none} is no piece; {level, grade} the piece and every step to +level,
+    less the limit break at that level when the grade says it is still to do."""
+    V = T.get("vambrace")
+    if not V or not is_num(V.get("base")) or not V.get("max"):
+        return None
+    if v.get("none"):
+        return 0.0
+    if not is_num(v.get("level")):
+        return None
+    lv = max(0, min(V["max"], v["level"]))
+    D = V["base"] + sum_to(V["steps"], 0, lv)
+    made = V["gradeAt"].get(str(lv))
+    if made and v.get("grade") and v["grade"] != made:
+        D -= V["breaks"].get(str(lv), 0) or 0
+    return D
+
+
 def karma_d(T, level):
     L = min(KARMA_MAX, level)
     if L >= KARMA_BASE:
@@ -251,6 +290,10 @@ def levels(T, rd, axis):
         x = weapon_d(T, rd["weapon"], rd.get("weaponTrack"), rd.get("weaponAdv"))
         if is_num(x):
             out["weapon"] = x
+    if rd.get("vambrace"):
+        x = vambrace_d(T, rd["vambrace"])
+        if x is not None:
+            out["vambrace"] = x
     if is_num(rd.get("karma")):
         out["karma"] = karma_d(T, rd["karma"])["D"]
     if isinstance(rd.get("gems"), list) and rd["gems"]:
@@ -297,7 +340,8 @@ def reference_readings(extra):
         D = (extra.get("acc") or {}).get(ACC_KIND[s])
         if is_num(D):
             acc[s] = {"D": D}
-    return {"armor": REFERENCE["armor"], "weapon": REFERENCE["weapon"], "karma": REFERENCE["karma"],
+    return {"armor": REFERENCE["armor"], "weapon": REFERENCE["weapon"], "vambrace": REFERENCE["vambrace"],
+            "karma": REFERENCE["karma"],
             "gems": list(REFERENCE["gems"]), "stone": REFERENCE["stone"], "master": REFERENCE["master"],
             "evolution": REFERENCE["evolution"], "acc": acc, "grid": {"D": extra["grid"]} if is_num(extra.get("grid")) else None,
             "bracelet": {"D": extra["bracelet"]} if is_num(extra.get("bracelet")) else None}
@@ -381,18 +425,23 @@ def verify(refs_path):
     mine = tables_from_data(load(os.path.join(data, "rows-dps.json")), load(os.path.join(data, "honing-t4upper.json")),
                             load(os.path.join(data, "honing-t4lower.json")),
                             {"masterD": want.get("master"), "msC": want["msC"], "wpC": want["wpC"],
-                             "apT1": want.get("apT1")})
+                             "apT1": want.get("apT1")},
+                            load(os.path.join(data, "vambrace.json")))
     same = True
     for k in ("armor", "weapon", "karma", "gems", "stone"):
         for lv, d in want[k].items():
             same = same and abs(mine[k].get(lv, float("nan")) - d) < 1e-12
     same = same and abs(mine["bracelet"]["floor"] - want["bracelet"]["floor"]) < 1e-12
+    mv, wv = mine["vambrace"], want["vambrace"]
+    same = same and abs(mv["base"] - wv["base"]) < 1e-12 and mv["max"] == wv["max"] and mv["gradeAt"] == wv["gradeAt"]
+    for k in ("steps", "breaks"):
+        same = same and sorted(mv[k]) == sorted(wv[k]) and all(abs(mv[k][lv] - d) < 1e-12 for lv, d in wv[k].items())
     for key in ("armorKnots", "weaponKnots"):
         same = same and len(mine[key]) == len(want[key]) and all(
             abs(a[0] - b[0]) < 1e-9 and abs(a[1] - b[1]) < 1e-9 for a, b in zip(mine[key], want[key]))
     for part in ("upper", "lower"):
         same = same and mine[part]["wp"] == want[part]["wp"] and mine[part]["ms"] == want[part]["ms"]
-    check("dps tables re-derived from rows-dps.json and the two honing tables", same)
+    check("dps tables re-derived from rows-dps.json, the two honing tables and vambrace.json", same)
 
     cal = {}
     for axis in ("dps", "support"):

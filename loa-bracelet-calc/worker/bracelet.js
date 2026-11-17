@@ -1032,6 +1032,14 @@ function braceletInLoadout(loadoutSrc) {
  *               across the corpus). `advancedHoning` is the Aegir track and the
  *               deck has no control for it, so it is reported, never applied.
  *
+ *   VAMBRACE    items[].slot "bracer" (October 2026), the same equipment shape
+ *               with an empty stats array: {id, slot:"bracer", data:{type:
+ *               "equipment", stats:[], honing, advancedHoning}}. Reported as
+ *               `vambrace: {honing, id}` for the GPD chart's lookup — the id's
+ *               fourth digit is the grade (1343… Epic to 1346… Ancient) — and
+ *               `vambrace: null` where the loadout wears none. The deck has no
+ *               control for it and nothing here scores it.
+ *
  *   ACCESSORY   items[neck|ear1|ear2].data.stats[]. Accessory stats carry a
  *   LINES       `base` flag; the ROLLED grinding lines are `base:false` (the
  *               bracelet's own stats use `fixed` instead — that is the
@@ -1351,7 +1359,7 @@ function parseCharacterProfile(html, loadoutSrc) {
   // ---- one pass over items: honing, accessories, the stone ------------------
   const itemsSrc = field(src, "items");
   const honing = {}, advanced = {}, accData = {};
-  let stoneSrc = null;
+  let stoneSrc = null, vambrace = null, itemsRead = false;
   if (itemsSrc && itemsSrc[0] === "[") {
     const els = splitTop(itemsSrc);
     for (let i = 0; i < els.length; i++) {
@@ -1366,8 +1374,16 @@ function parseCharacterProfile(html, loadoutSrc) {
         if (a != null) advanced[GEAR_SLOTS[slot]] = a;
       } else if (ACC_SLOTS.indexOf(slot) !== -1) accData[slot] = data;
       else if (slot === "ability_stone") stoneSrc = data;
+      else if (slot === "bracer") {
+        const vh = numOrNull(field(data, "honing"));
+        if (vh != null) vambrace = { honing: vh, id: numOrNull(field(els[i], "id")) };
+      }
     }
+    itemsRead = true;
   }
+  // null says "this loadout wears no vambrace"; a page whose items could not be
+  // read at all leaves the field out, like every other field here
+  if (itemsRead) out.vambrace = vambrace;
   const neckData = accData.neck || null, ear1Data = accData.ear1 || null, ear2Data = accData.ear2 || null;
 
   let honingCount = 0;

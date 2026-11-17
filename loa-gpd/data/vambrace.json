@@ -1,0 +1,1024 @@
+{
+ "base": {
+  "defense": 450,
+  "mainStat": 10500,
+  "resistance": 450,
+  "vitality": 900,
+  "weaponPower": 3500
+ },
+ "grades": [
+  {
+   "basicAttackRate": 0,
+   "from": 0,
+   "grade": "epic",
+   "itemId": "134301106",
+   "to": 10
+  },
+  {
+   "basicAttackRate": 100,
+   "from": 10,
+   "grade": "legendary",
+   "itemId": "134401106",
+   "to": 15
+  },
+  {
+   "basicAttackRate": 200,
+   "from": 15,
+   "grade": "relic",
+   "itemId": "134501106",
+   "to": 20
+  },
+  {
+   "basicAttackRate": 300,
+   "from": 20,
+   "grade": "ancient",
+   "itemId": "134601106",
+   "to": 25
+  }
+ ],
+ "limitBreak": {
+  "10": {
+   "cost": {
+    "amount": 200,
+    "id": "52810001"
+   },
+   "or": {
+    "amount": 100,
+    "id": "52810002"
+   },
+   "to": "legendary"
+  },
+  "15": {
+   "cost": {
+    "amount": 240,
+    "id": "52810001"
+   },
+   "or": {
+    "amount": 120,
+    "id": "52810002"
+   },
+   "to": "relic"
+  },
+  "20": {
+   "cost": {
+    "amount": 150,
+    "id": "52810002"
+   },
+   "to": "ancient"
+  }
+ },
+ "materials": [
+  {
+   "id": "52810001",
+   "name": "Spectral Shade"
+  },
+  {
+   "id": "52810002",
+   "name": "Deathly Hand"
+  }
+ ],
+ "maxLevel": 25,
+ "recipe": {
+  "1": {
+   "artisanThreshold": 21500,
+   "failBonus": 150,
+   "failMax": 1500,
+   "gold": 5200,
+   "growShards": 145000,
+   "juiceMax": 1500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 20,
+     "rate": 37.5
+    },
+    {
+     "id": "66111132",
+     "max": 20,
+     "rate": 37.5
+    }
+   ],
+   "mats": {
+    "66102007": 600,
+    "66102107": 1800,
+    "66110226": 30,
+    "6861013": 22
+   },
+   "shards": 14500,
+   "silver": 80000,
+   "success": 1500
+  },
+  "2": {
+   "artisanThreshold": 21500,
+   "failBonus": 150,
+   "failMax": 1500,
+   "gold": 5400,
+   "growShards": 145000,
+   "juiceMax": 1500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 20,
+     "rate": 37.5
+    },
+    {
+     "id": "66111132",
+     "max": 20,
+     "rate": 37.5
+    }
+   ],
+   "mats": {
+    "66102007": 620,
+    "66102107": 1860,
+    "66110226": 31,
+    "6861013": 23
+   },
+   "shards": 15000,
+   "silver": 80000,
+   "success": 1500
+  },
+  "3": {
+   "artisanThreshold": 21500,
+   "failBonus": 150,
+   "failMax": 1500,
+   "gold": 5610,
+   "growShards": 145000,
+   "juiceMax": 1500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 20,
+     "rate": 37.5
+    },
+    {
+     "id": "66111132",
+     "max": 20,
+     "rate": 37.5
+    }
+   ],
+   "mats": {
+    "66102007": 640,
+    "66102107": 1925,
+    "66110226": 32,
+    "6861013": 24
+   },
+   "shards": 15630,
+   "silver": 80000,
+   "success": 1500
+  },
+  "4": {
+   "artisanThreshold": 21500,
+   "failBonus": 150,
+   "failMax": 1500,
+   "gold": 5830,
+   "growShards": 145000,
+   "juiceMax": 1500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 20,
+     "rate": 37.5
+    },
+    {
+     "id": "66111132",
+     "max": 20,
+     "rate": 37.5
+    }
+   ],
+   "mats": {
+    "66102007": 660,
+    "66102107": 1990,
+    "66110226": 33,
+    "6861013": 25
+   },
+   "shards": 16280,
+   "silver": 80000,
+   "success": 1500
+  },
+  "5": {
+   "artisanThreshold": 21500,
+   "failBonus": 150,
+   "failMax": 1500,
+   "gold": 6060,
+   "growShards": 145000,
+   "juiceMax": 1500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 20,
+     "rate": 37.5
+    },
+    {
+     "id": "66111132",
+     "max": 20,
+     "rate": 37.5
+    }
+   ],
+   "mats": {
+    "66102007": 680,
+    "66102107": 2055,
+    "66110226": 34,
+    "6861013": 26
+   },
+   "shards": 16960,
+   "silver": 80000,
+   "success": 1500
+  },
+  "6": {
+   "artisanThreshold": 21500,
+   "failBonus": 100,
+   "failMax": 1000,
+   "gold": 6300,
+   "growShards": 148000,
+   "juiceMax": 1000,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 20
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 20
+    }
+   ],
+   "mats": {
+    "66102007": 700,
+    "66102107": 2125,
+    "66110226": 36,
+    "6861013": 27
+   },
+   "shards": 17670,
+   "silver": 80000,
+   "success": 1000
+  },
+  "7": {
+   "artisanThreshold": 21500,
+   "failBonus": 100,
+   "failMax": 1000,
+   "gold": 6550,
+   "growShards": 166000,
+   "juiceMax": 1000,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 20
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 20
+    }
+   ],
+   "mats": {
+    "66102007": 720,
+    "66102107": 2195,
+    "66110226": 38,
+    "6861013": 28
+   },
+   "shards": 18410,
+   "silver": 88000,
+   "success": 1000
+  },
+  "8": {
+   "artisanThreshold": 21500,
+   "failBonus": 100,
+   "failMax": 1000,
+   "gold": 6810,
+   "growShards": 166000,
+   "juiceMax": 1000,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 20
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 20
+    }
+   ],
+   "mats": {
+    "66102007": 745,
+    "66102107": 2270,
+    "66110226": 40,
+    "6861013": 29
+   },
+   "shards": 19180,
+   "silver": 88000,
+   "success": 1000
+  },
+  "9": {
+   "artisanThreshold": 21500,
+   "failBonus": 100,
+   "failMax": 1000,
+   "gold": 7080,
+   "growShards": 169000,
+   "juiceMax": 1000,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 20
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 20
+    }
+   ],
+   "mats": {
+    "66102007": 770,
+    "66102107": 2345,
+    "66110226": 42,
+    "6861013": 30
+   },
+   "shards": 19980,
+   "silver": 88000,
+   "success": 1000
+  },
+  "10": {
+   "artisanThreshold": 21500,
+   "failBonus": 100,
+   "failMax": 1000,
+   "gold": 7360,
+   "growShards": 204000,
+   "juiceMax": 1000,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 20
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 20
+    }
+   ],
+   "mats": {
+    "66102007": 795,
+    "66102107": 2425,
+    "66110226": 44,
+    "6861013": 31
+   },
+   "shards": 20810,
+   "silver": 88000,
+   "success": 1000
+  },
+  "11": {
+   "artisanThreshold": 21500,
+   "failBonus": 50,
+   "failMax": 500,
+   "gold": 7650,
+   "growShards": 207000,
+   "juiceMax": 500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 10
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 10
+    }
+   ],
+   "mats": {
+    "66102007": 820,
+    "66102107": 2505,
+    "66110226": 46,
+    "6861013": 32
+   },
+   "shards": 21680,
+   "silver": 88000,
+   "success": 500
+  },
+  "12": {
+   "artisanThreshold": 21500,
+   "failBonus": 50,
+   "failMax": 500,
+   "gold": 7950,
+   "growShards": 227000,
+   "juiceMax": 500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 10
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 10
+    }
+   ],
+   "mats": {
+    "66102007": 845,
+    "66102107": 2590,
+    "66110226": 48,
+    "6861013": 33
+   },
+   "shards": 22590,
+   "silver": 88000,
+   "success": 500
+  },
+  "13": {
+   "artisanThreshold": 21500,
+   "failBonus": 50,
+   "failMax": 500,
+   "gold": 8260,
+   "growShards": 253000,
+   "juiceMax": 500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 10
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 10
+    }
+   ],
+   "mats": {
+    "66102007": 870,
+    "66102107": 2680,
+    "66110226": 50,
+    "6861013": 34
+   },
+   "shards": 23530,
+   "silver": 88000,
+   "success": 500
+  },
+  "14": {
+   "artisanThreshold": 21500,
+   "failBonus": 50,
+   "failMax": 500,
+   "gold": 8590,
+   "growShards": 275000,
+   "juiceMax": 500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 10
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 10
+    }
+   ],
+   "mats": {
+    "66102007": 900,
+    "66102107": 2770,
+    "66110226": 53,
+    "6861013": 36
+   },
+   "shards": 24510,
+   "silver": 88000,
+   "success": 500
+  },
+  "15": {
+   "artisanThreshold": 21500,
+   "failBonus": 50,
+   "failMax": 500,
+   "gold": 8930,
+   "growShards": 306000,
+   "juiceMax": 500,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 25,
+     "rate": 10
+    },
+    {
+     "id": "66111132",
+     "max": 25,
+     "rate": 10
+    }
+   ],
+   "mats": {
+    "66102007": 930,
+    "66102107": 2865,
+    "66110226": 56,
+    "6861013": 38
+   },
+   "shards": 25530,
+   "silver": 88000,
+   "success": 500
+  },
+  "16": {
+   "artisanThreshold": 21500,
+   "failBonus": 30,
+   "failMax": 300,
+   "gold": 9280,
+   "growShards": 328000,
+   "juiceMax": 300,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 5
+    }
+   ],
+   "mats": {
+    "66102007": 960,
+    "66102107": 2965,
+    "66110226": 59,
+    "6861013": 40
+   },
+   "shards": 26600,
+   "silver": 88000,
+   "success": 300
+  },
+  "17": {
+   "artisanThreshold": 21500,
+   "failBonus": 30,
+   "failMax": 300,
+   "gold": 9650,
+   "growShards": 360000,
+   "juiceMax": 300,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 5
+    }
+   ],
+   "mats": {
+    "66102007": 990,
+    "66102107": 3065,
+    "66110226": 62,
+    "6861013": 42
+   },
+   "shards": 27710,
+   "silver": 104000,
+   "success": 300
+  },
+  "18": {
+   "artisanThreshold": 21500,
+   "failBonus": 30,
+   "failMax": 300,
+   "gold": 10030,
+   "growShards": 388000,
+   "juiceMax": 300,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 5
+    }
+   ],
+   "mats": {
+    "66102007": 1020,
+    "66102107": 3170,
+    "66110226": 65,
+    "6861013": 44
+   },
+   "shards": 28870,
+   "silver": 104000,
+   "success": 300
+  },
+  "19": {
+   "artisanThreshold": 21500,
+   "failBonus": 30,
+   "failMax": 300,
+   "gold": 10430,
+   "growShards": 420000,
+   "juiceMax": 300,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 5
+    }
+   ],
+   "mats": {
+    "66102007": 1055,
+    "66102107": 3280,
+    "66110226": 68,
+    "6861013": 46
+   },
+   "shards": 30080,
+   "silver": 104000,
+   "success": 300
+  },
+  "20": {
+   "artisanThreshold": 21500,
+   "failBonus": 30,
+   "failMax": 300,
+   "gold": 10840,
+   "growShards": 447000,
+   "juiceMax": 300,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 5
+    }
+   ],
+   "mats": {
+    "66102007": 1090,
+    "66102107": 3390,
+    "66110226": 72,
+    "6861013": 48
+   },
+   "shards": 31340,
+   "silver": 144000,
+   "success": 300
+  },
+  "21": {
+   "artisanThreshold": 21500,
+   "failBonus": 15,
+   "failMax": 150,
+   "gold": 11270,
+   "growShards": 480000,
+   "juiceMax": 150,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 2.5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 2.5
+    }
+   ],
+   "mats": {
+    "66102007": 1125,
+    "66102107": 3505,
+    "66110226": 76,
+    "6861013": 50
+   },
+   "shards": 32650,
+   "silver": 144000,
+   "success": 150
+  },
+  "22": {
+   "artisanThreshold": 21500,
+   "failBonus": 15,
+   "failMax": 150,
+   "gold": 11720,
+   "growShards": 513000,
+   "juiceMax": 150,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 2.5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 2.5
+    }
+   ],
+   "mats": {
+    "66102007": 1160,
+    "66102107": 3625,
+    "66110226": 80,
+    "6861013": 53
+   },
+   "shards": 34020,
+   "silver": 192000,
+   "success": 150
+  },
+  "23": {
+   "artisanThreshold": 21500,
+   "failBonus": 15,
+   "failMax": 150,
+   "gold": 12180,
+   "growShards": 541000,
+   "juiceMax": 150,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 2.5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 2.5
+    }
+   ],
+   "mats": {
+    "66102007": 1200,
+    "66102107": 3750,
+    "66110226": 84,
+    "6861013": 56
+   },
+   "shards": 35440,
+   "silver": 192000,
+   "success": 150
+  },
+  "24": {
+   "artisanThreshold": 21500,
+   "failBonus": 15,
+   "failMax": 150,
+   "gold": 12660,
+   "growShards": 574000,
+   "juiceMax": 150,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 2.5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 2.5
+    }
+   ],
+   "mats": {
+    "66102007": 1240,
+    "66102107": 3880,
+    "66110226": 89,
+    "6861013": 59
+   },
+   "shards": 36920,
+   "silver": 240000,
+   "success": 150
+  },
+  "25": {
+   "artisanThreshold": 21500,
+   "failBonus": 15,
+   "failMax": 150,
+   "gold": 13160,
+   "growShards": 607000,
+   "juiceMax": 150,
+   "juices": [
+    {
+     "id": "66111131",
+     "max": 30,
+     "rate": 2.5
+    },
+    {
+     "id": "66111132",
+     "max": 30,
+     "rate": 2.5
+    }
+   ],
+   "mats": {
+    "66102007": 1280,
+    "66102107": 4015,
+    "66110226": 94,
+    "6861013": 62
+   },
+   "shards": 38470,
+   "silver": 240000,
+   "success": 150
+  }
+ },
+ "source": {
+  "feed": "https://assets-ng.maxroll.gg/laplanner",
+  "item": "Destined Tremor Vambraces",
+  "mode": "Vambrace \u2014 one honing table, +1 to +25, across four grades",
+  "patch": "October 2026 (per maxroll's upgrade calculator)"
+ },
+ "stats": {
+  "0": {
+   "basicAttack": 0,
+   "defense": 0,
+   "mainStat": 0,
+   "resistance": 0,
+   "vitality": 0,
+   "weaponPower": 0
+  },
+  "1": {
+   "basicAttack": 0,
+   "defense": 0,
+   "mainStat": 0,
+   "resistance": 0,
+   "vitality": 540,
+   "weaponPower": 1850
+  },
+  "2": {
+   "basicAttack": 0,
+   "defense": 250,
+   "mainStat": 6000,
+   "resistance": 250,
+   "vitality": 540,
+   "weaponPower": 1850
+  },
+  "3": {
+   "basicAttack": 0,
+   "defense": 250,
+   "mainStat": 6000,
+   "resistance": 250,
+   "vitality": 1082,
+   "weaponPower": 3710
+  },
+  "4": {
+   "basicAttack": 0,
+   "defense": 501,
+   "mainStat": 12030,
+   "resistance": 501,
+   "vitality": 1082,
+   "weaponPower": 3710
+  },
+  "5": {
+   "basicAttack": 850,
+   "defense": 501,
+   "mainStat": 12030,
+   "resistance": 501,
+   "vitality": 1082,
+   "weaponPower": 3710
+  },
+  "6": {
+   "basicAttack": 850,
+   "defense": 501,
+   "mainStat": 12030,
+   "resistance": 501,
+   "vitality": 1626,
+   "weaponPower": 5577
+  },
+  "7": {
+   "basicAttack": 850,
+   "defense": 753,
+   "mainStat": 18108,
+   "resistance": 753,
+   "vitality": 1626,
+   "weaponPower": 5577
+  },
+  "8": {
+   "basicAttack": 850,
+   "defense": 753,
+   "mainStat": 18108,
+   "resistance": 753,
+   "vitality": 2172,
+   "weaponPower": 7469
+  },
+  "9": {
+   "basicAttack": 850,
+   "defense": 1006,
+   "mainStat": 24246,
+   "resistance": 1006,
+   "vitality": 2172,
+   "weaponPower": 7469
+  },
+  "10": {
+   "basicAttack": 2030,
+   "defense": 1006,
+   "mainStat": 24246,
+   "resistance": 1006,
+   "vitality": 2172,
+   "weaponPower": 7469
+  },
+  "11": {
+   "basicAttack": 2030,
+   "defense": 1006,
+   "mainStat": 24246,
+   "resistance": 1006,
+   "vitality": 2721,
+   "weaponPower": 9373
+  },
+  "12": {
+   "basicAttack": 2030,
+   "defense": 1261,
+   "mainStat": 30462,
+   "resistance": 1261,
+   "vitality": 2721,
+   "weaponPower": 9373
+  },
+  "13": {
+   "basicAttack": 2030,
+   "defense": 1261,
+   "mainStat": 30462,
+   "resistance": 1261,
+   "vitality": 3273,
+   "weaponPower": 11317
+  },
+  "14": {
+   "basicAttack": 2030,
+   "defense": 1518,
+   "mainStat": 36768,
+   "resistance": 1518,
+   "vitality": 3273,
+   "weaponPower": 11317
+  },
+  "15": {
+   "basicAttack": 3690,
+   "defense": 1518,
+   "mainStat": 36768,
+   "resistance": 1518,
+   "vitality": 3273,
+   "weaponPower": 11317
+  },
+  "16": {
+   "basicAttack": 3690,
+   "defense": 1518,
+   "mainStat": 36768,
+   "resistance": 1518,
+   "vitality": 3828,
+   "weaponPower": 13278
+  },
+  "17": {
+   "basicAttack": 3690,
+   "defense": 1777,
+   "mainStat": 43182,
+   "resistance": 1777,
+   "vitality": 3828,
+   "weaponPower": 13278
+  },
+  "18": {
+   "basicAttack": 3690,
+   "defense": 1777,
+   "mainStat": 43182,
+   "resistance": 1777,
+   "vitality": 4386,
+   "weaponPower": 15294
+  },
+  "19": {
+   "basicAttack": 3690,
+   "defense": 2038,
+   "mainStat": 49716,
+   "resistance": 2038,
+   "vitality": 4386,
+   "weaponPower": 15294
+  },
+  "20": {
+   "basicAttack": 5980,
+   "defense": 2038,
+   "mainStat": 49716,
+   "resistance": 2038,
+   "vitality": 4386,
+   "weaponPower": 15294
+  },
+  "21": {
+   "basicAttack": 5980,
+   "defense": 2038,
+   "mainStat": 49716,
+   "resistance": 2038,
+   "vitality": 4948,
+   "weaponPower": 17332
+  },
+  "22": {
+   "basicAttack": 5980,
+   "defense": 2302,
+   "mainStat": 56388,
+   "resistance": 2302,
+   "vitality": 4948,
+   "weaponPower": 17332
+  },
+  "23": {
+   "basicAttack": 5980,
+   "defense": 2302,
+   "mainStat": 56388,
+   "resistance": 2302,
+   "vitality": 5514,
+   "weaponPower": 19440
+  },
+  "24": {
+   "basicAttack": 5980,
+   "defense": 2569,
+   "mainStat": 63210,
+   "resistance": 2569,
+   "vitality": 5514,
+   "weaponPower": 19440
+  },
+  "25": {
+   "basicAttack": 9050,
+   "defense": 2569,
+   "mainStat": 63210,
+   "resistance": 2569,
+   "vitality": 5514,
+   "weaponPower": 19440
+  }
+ }
+}

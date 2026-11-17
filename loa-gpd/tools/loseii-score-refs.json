@@ -1,6 +1,6 @@
 {
  "note": "Captured by tools/verify-loseii-score.js --capture from the JS model; the Python twin (model/loseii_score.py) must reproduce the scale and every case from these tables and readings.",
- "version": "1.0.0",
+ "version": "1.1.0",
  "tables": {
   "dps": {
    "axis": "dps",
@@ -1374,7 +1374,48 @@
      241367,
      17.890849999999997
     ]
-   ]
+   ],
+   "vambrace": {
+    "base": 1.43851,
+    "steps": {
+     "1": 0.37078,
+     "2": 0.41208,
+     "3": 0.37004,
+     "4": 0.41074,
+     "5": 0.44385,
+     "6": 0.36707,
+     "7": 0.40881,
+     "8": 0.36926,
+     "9": 0.40948,
+     "10": 1.36198,
+     "11": 0.3667,
+     "12": 0.40888,
+     "13": 0.37165,
+     "14": 0.4114,
+     "15": 1.583,
+     "16": 0.36909,
+     "17": 0.41163,
+     "18": 0.37663,
+     "19": 0.41587,
+     "20": 1.86396,
+     "21": 0.37373,
+     "22": 0.41651,
+     "23": 0.38366,
+     "24": 0.42231,
+     "25": 1.45414
+    },
+    "breaks": {
+     "10": 0.75849,
+     "15": 0.75303,
+     "20": 0.74768
+    },
+    "gradeAt": {
+     "10": "legendary",
+     "15": "relic",
+     "20": "ancient"
+    },
+    "max": 25
+   }
   },
   "support": {
    "axis": "support",
@@ -2748,7 +2789,48 @@
      250887,
      4.808841838146506
     ]
-   ]
+   ],
+   "vambrace": {
+    "base": 0.43460779357533363,
+    "steps": {
+     "1": 0.11090536213024113,
+     "2": 0.1275987672488866,
+     "3": 0.11129880732815745,
+     "4": 0.12786231855964872,
+     "5": 0.13413455948232048,
+     "6": 0.1113607536615254,
+     "7": 0.1283303762098934,
+     "8": 0.11264038843831191,
+     "9": 0.12921760056523404,
+     "10": 0.44614708886136406,
+     "11": 0.11357239212848098,
+     "12": 0.13097031606613804,
+     "13": 0.11573395823179826,
+     "14": 0.13247102719652423,
+     "15": 0.5245581987770834,
+     "16": 0.11686215495367498,
+     "17": 0.13472999735590294,
+     "18": 0.11989758008125277,
+     "19": 0.13683217983927318,
+     "20": 0.6263195958491422,
+     "21": 0.12118397802398995,
+     "22": 0.13954816169038126,
+     "23": 0.12508110808894796,
+     "24": 0.14223700044022713,
+     "25": 0.47748647308390074
+    },
+    "breaks": {
+     "10": 0.2611267967400195,
+     "15": 0.2646617193975738,
+     "20": 0.26872130067679717
+    },
+    "gradeAt": {
+     "10": "legendary",
+     "15": "relic",
+     "20": "ancient"
+    },
+    "max": 25
+   }
   }
  },
  "reference": {
@@ -12713,6 +12795,9 @@
      }
     },
     "weapon": 25,
+    "vambrace": {
+     "none": true
+    },
     "karma": 21,
     "gems": [
      9,
@@ -12767,6 +12852,7 @@
     "parts": {
      "armor": 0,
      "weapon": 0,
+     "vambrace": 0,
      "karma": 0,
      "gems": 0,
      "stone": 0,
@@ -12796,6 +12882,9 @@
      }
     },
     "weapon": 25,
+    "vambrace": {
+     "none": true
+    },
     "karma": 21,
     "gems": [
      9,
@@ -12850,6 +12939,7 @@
     "parts": {
      "armor": 0,
      "weapon": 0,
+     "vambrace": 0,
      "karma": 0,
      "gems": 0,
      "stone": 0,
@@ -12943,6 +13033,7 @@
      "partner": 0
     },
     "unscored": [
+     "vambrace",
      "arkPassive"
     ]
    }
@@ -13026,6 +13117,7 @@
      "partner": 0
     },
     "unscored": [
+     "vambrace",
      "arkPassive"
     ]
    }
@@ -13104,6 +13196,269 @@
      "earring": -0.041972,
      "ring": -0.7679019999999999,
      "grid": -1.2862421163572515,
+     "partner": 0
+    },
+    "unscored": [
+     "vambrace",
+     "arkPassive"
+    ]
+   }
+  },
+  {
+   "name": "dps whale, with an Ancient +25 vambrace",
+   "axis": "dps",
+   "readings": {
+    "armor": {
+     "pieces": {
+      "head": 25,
+      "shoulders": 25,
+      "torso": 25,
+      "legs": 25,
+      "hands": 25
+     }
+    },
+    "weapon": 25,
+    "karma": 30,
+    "gems": [
+     10,
+     10,
+     10,
+     10,
+     10,
+     10,
+     10,
+     10,
+     10,
+     10,
+     10
+    ],
+    "stone": "10-8",
+    "bracelet": {
+     "D": 18.7104,
+     "label": "S+"
+    },
+    "acc": {
+     "neck": {
+      "D": 4.881748,
+      "label": "high/high · atk high flat · max stat"
+     },
+     "ear1": {
+      "D": 3.245277,
+      "label": "high/high · atk high flat · max stat"
+     },
+     "ear2": {
+      "D": 3.245277,
+      "label": "high/high · atk high flat · max stat"
+     },
+     "finger1": {
+      "D": 3.264484,
+      "label": "high/high · atk high flat · max stat"
+     },
+     "finger2": {
+      "D": 3.264484,
+      "label": "high/high · atk high flat · max stat"
+     }
+    },
+    "grid": {
+     "D": 16.627327422986394,
+     "label": "80/80/80, cores 20"
+    },
+    "master": true,
+    "vambrace": {
+     "level": 25,
+     "grade": "ancient"
+    }
+   },
+   "want": {
+    "score": 9793.900525086869,
+    "D": 41.737418400083186,
+    "parts": {
+     "armor": 3.831060570245901,
+     "weapon": 0,
+     "vambrace": 15.991760000000003,
+     "karma": 0.40836000000000006,
+     "gems": 6.765150000000002,
+     "stone": 0,
+     "bracelet": 5.722925535394722,
+     "neck": 0.14250000000000007,
+     "earring": 0.28500000000000014,
+     "ring": 0.28500000000000014,
+     "grid": 3.3730011282400465,
+     "master": 4.932661166202522,
+     "partner": 0
+    },
+    "unscored": [
+     "arkPassive"
+    ]
+   }
+  },
+  {
+   "name": "support mid, with a Legendary +12 vambrace",
+   "axis": "support",
+   "readings": {
+    "armor": {
+     "pieces": {
+      "head": 20,
+      "shoulders": 20,
+      "torso": 20,
+      "legs": 20,
+      "hands": 20
+     }
+    },
+    "weapon": 22,
+    "karma": 25,
+    "gems": [
+     9,
+     9,
+     9,
+     9,
+     9,
+     9,
+     9,
+     9,
+     9,
+     9,
+     9
+    ],
+    "stone": "9-7",
+    "bracelet": {
+     "D": 3.3205,
+     "label": "B"
+    },
+    "acc": {
+     "neck": {
+      "D": 0.539238,
+      "label": "high/mid · no flat · mid stat"
+     },
+     "ear1": {
+      "D": 0.021026,
+      "label": "high · no flat · mid stat"
+     },
+     "ear2": {
+      "D": 0.021026,
+      "label": "high · no flat · mid stat"
+     },
+     "finger1": {
+      "D": 1.138473,
+      "label": "high/mid · no flat · mid stat"
+     },
+     "finger2": {
+      "D": 1.138473,
+      "label": "high/mid · no flat · mid stat"
+     }
+    },
+    "grid": {
+     "D": 1.6493333333333333,
+     "label": "40/40/40, cores 17"
+    },
+    "vambrace": {
+     "level": 12,
+     "grade": "legendary"
+    }
+   },
+   "want": {
+    "score": 5824.261197626672,
+    "D": -1.1691699038862375,
+    "parts": {
+     "armor": -0.4718284784173874,
+     "weapon": -1.0801555746522173,
+     "vambrace": 2.218646524255536,
+     "karma": 0.05575304888932934,
+     "gems": 0,
+     "stone": 0,
+     "bracelet": 0.38999469239575335,
+     "neck": -0.18546399999999996,
+     "earring": -0.041972,
+     "ring": -0.7679019999999999,
+     "grid": -1.2862421163572515,
+     "partner": 0
+    },
+    "unscored": [
+     "arkPassive"
+    ]
+   }
+  },
+  {
+   "name": "dps weak build, with a +10 vambrace, its limit break still to do",
+   "axis": "dps",
+   "readings": {
+    "armor": {
+     "pieces": {
+      "head": 15,
+      "shoulders": 15,
+      "torso": 15,
+      "legs": 15,
+      "hands": 15
+     }
+    },
+    "weapon": 16,
+    "karma": 15,
+    "gems": [
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7,
+     7
+    ],
+    "stone": "7-6",
+    "bracelet": {
+     "D": 10.2357,
+     "label": "C"
+    },
+    "acc": {
+     "neck": {
+      "D": 2.656679,
+      "label": "mid/low · no flat · low stat"
+     },
+     "ear1": {
+      "D": 1.716318,
+      "label": "mid/low · no flat · low stat"
+     },
+     "ear2": {
+      "D": 1.716318,
+      "label": "mid/low · no flat · low stat"
+     },
+     "finger1": {
+      "D": 1.671654,
+      "label": "mid/low · no flat · low stat"
+     },
+     "finger2": {
+      "D": 1.671654,
+      "label": "mid/low · no flat · low stat"
+     }
+    },
+    "grid": {
+     "D": 5.240912092628679,
+     "label": "30/30/30, cores 17"
+    },
+    "master": false,
+    "vambrace": {
+     "level": 10,
+     "grade": "epic"
+    }
+   },
+   "want": {
+    "score": 4064.375332880148,
+    "D": -46.21255509647705,
+    "parts": {
+     "armor": -7.171029429754098,
+     "weapon": -10.932379999999997,
+     "vambrace": 5.6041099999999995,
+     "karma": -0.27324,
+     "gems": -13.771010000000004,
+     "stone": -1.14767,
+     "bracelet": -2.751774464605278,
+     "neck": -2.082569,
+     "earring": -2.772918,
+     "ring": -2.90066,
+     "grid": -8.01341420211767,
+     "master": 0,
      "partner": 0
     },
     "unscored": [
@@ -13212,7 +13567,9 @@
      "master": 0,
      "partner": 0
     },
-    "unscored": []
+    "unscored": [
+     "vambrace"
+    ]
    }
   },
   {
@@ -13289,6 +13646,7 @@
      "partner": 0
     },
     "unscored": [
+     "vambrace",
      "neck",
      "earring",
      "ring"
@@ -13349,6 +13707,7 @@
     "master": true
    },
    "why": {
+    "vambrace": "no vambrace in the pull",
     "neck": "the accessory lines come with the astrogem pull, and there is none",
     "earring": "the accessory lines come with the astrogem pull, and there is none",
     "ring": "the accessory lines come with the astrogem pull, and there is none",
@@ -13375,6 +13734,7 @@
      "partner": 0
     },
     "unscored": [
+     "vambrace",
      "neck",
      "earring",
      "ring",

@@ -27,6 +27,11 @@
  *
  *   honing     per armour piece, each piece a share of the five-piece step by
  *              its main-stat gain (data/honing-t4upper.json); the weapon alone
+ *   vambrace   the Epic +0 piece against wearing none, plus every step to its
+ *              +N; a piece that has reached +10, +15 or +20 with the limit
+ *              break still to do is short that break, and it says so. The
+ *              reference wears none: the panel was pulled before the piece
+ *              existed
  *   karma      Enlightenment level; below 21 the 21→22 step is extended per
  *              level (the same +0.1% weapon power a level), and it says so
  *   gems       each gem an eleventh of the set's step; a level under the
@@ -53,7 +58,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  var VERSION = "1.0.0";
+  var VERSION = "1.1.0";      // 1.1.0: the vambrace
 
   // The honing table's armour slots, and what each worker calls them.
   var ARMOR_SLOTS = ["head", "shoulders", "torso", "legs", "hands"];
@@ -69,6 +74,7 @@
   var SYSTEMS = [
     { key: "armor", label: "Honing — armour" },
     { key: "weapon", label: "Honing — weapon" },
+    { key: "vambrace", label: "Vambrace" },
     { key: "karma", label: "Karma — Enlightenment" },
     { key: "gems", label: "Skill gems" },
     { key: "stone", label: "Ability stone" },
@@ -110,9 +116,14 @@
   // flat line, 9-7 stone, karma 21, ark grid 60/60/60 side nodes with every core
   // at 20 points. The spec names no bracelet, so the reference bracelet is the
   // calibration panel's median one (calibrate). It scores exactly K.
+  //
+  // It wears NO VAMBRACE. The spec (2026-08-14) and the panel (September 2026)
+  // are both older than the piece (October 2026), so K was fitted on characters
+  // without one, and a vambrace is scored as what it adds on top.
   var REFERENCE = {
     armor: { pieces: { head: 21, shoulders: 21, torso: 21, legs: 21, hands: 23 } },
-    weapon: 25, karma: 21, gems: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], stone: "9-7", master: false, evolution: 140,
+    weapon: 25, vambrace: { none: true },
+    karma: 21, gems: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], stone: "9-7", master: false, evolution: 140,
     acc: {
       dps: { neck: { prim: ["high", "high"], flat: null, ms: "max" },
              earring: { prim: ["high", "high"], flat: null, ms: "max" },
@@ -123,9 +134,9 @@
     },
     grid: { nodes: 60, corePoints: 20 },
     note: "the GPD chart's reference character: ilvl 1785 (weapon +25, gloves +23, the rest +21), " +
-          "level-9 gems, high/high accessories at max main stat with no flat line, 9-7 stone, karma 21, " +
-          "ark grid 60/60/60 side nodes with every core at 20 points; the spec names no bracelet, so its " +
-          "bracelet is the calibration panel's median"
+          "no vambrace, level-9 gems, high/high accessories at max main stat with no flat line, 9-7 stone, " +
+          "karma 21, ark grid 60/60/60 side nodes with every core at 20 points; the spec names no bracelet, " +
+          "so its bracelet is the calibration panel's median"
   };
 
   function isNum(x) { return typeof x === "number" && isFinite(x); }
@@ -141,7 +152,9 @@
    *   extras   { masterD      Master's damage (DPS)
    *              lower        data/honing-t4lower.json (the 1590 track: stats per item level)
    *              msC, wpC     the axis's main stat and weapon power beside the gear pieces
-   *              apT1         { perLevel } — one tier-1 evolution level's damage }
+   *              apT1         { perLevel } — one tier-1 evolution level's damage
+   *              vambraceBase    the Epic +0 vambrace against wearing none
+   *              vambraceGrades  data/vambrace.json `grades`: where each limit break sits }
    *
    * HONING IS SCORED FROM STATS, NOT FROM +N. The chart's honing rows are the
    * upper track's steps, +11 to +25; each is a knot (the five pieces' main
@@ -160,10 +173,23 @@
               msC: isNum(extras.msC) ? extras.msC : 0, wpC: isNum(extras.wpC) ? extras.wpC : 0,
               apT1: extras.apT1 && isNum(extras.apT1.perLevel) ? { perLevel: extras.apT1.perLevel, levels: 40 } : null,
               upper: { ms: {}, wp: {} }, lower: { ms: {}, wp: {}, base: 1590, max: 1755 },
-              armorKnots: [], weaponKnots: [] };
+              armorKnots: [], weaponKnots: [],
+              // the vambrace: the piece itself, each step by the level it reaches
+              // (its limit break included), each break on its own, and the grade
+              // a break at that level makes
+              vambrace: { base: isNum(extras.vambraceBase) ? extras.vambraceBase : null,
+                          steps: {}, breaks: {}, gradeAt: {}, max: 0 } };
+    (extras.vambraceGrades || []).forEach(function (g) {
+      if (g.from > 0) t.vambrace.gradeAt[String(g.from)] = g.grade;
+    });
     (rows || []).forEach(function (r) {
       var to = num(r.to);
       if ((r.series === "armor" || r.series === "weapon") && to != null) t[r.series][String(to)] = r.damage;
+      else if (r.series === "vambrace" && to != null) {
+        t.vambrace.steps[String(to)] = r.damage;
+        if (r.breakDamage > 0) t.vambrace.breaks[String(to)] = r.breakDamage;
+        if (to > t.vambrace.max) t.vambrace.max = to;
+      }
       else if (r.series === "karma" && to != null) t.karma[String(to)] = r.damage;
       else if (r.series === "gems" && to != null) t.gems[String(to)] = r.damage;
       else if (r.series === "stone") t.stone[String(r.to).trim()] = r.damage;
@@ -255,6 +281,23 @@
   function weaponD(T, level, track, adv) {
     var W = pieceStat(T, "weapon", level, track, adv);
     return isNum(W) ? { D: onKnots(T.weaponKnots, W + T.wpC), stat: W } : null;
+  }
+  function capWord(w) { w = String(w || ""); return w.charAt(0).toUpperCase() + w.slice(1); }
+  /** A vambrace reading on its ladder: { none } is no piece, { level, grade }
+   *  the piece and every step to +level, less the limit break at that level
+   *  when the grade says it is still to do. */
+  function vambraceD(T, v) {
+    var V = T.vambrace;
+    if (!V || !isNum(V.base) || !V.max) return null;
+    if (v.none) return { D: 0, rung: "none", note: null };
+    if (!isNum(v.level)) return null;
+    var lv = Math.max(0, Math.min(V.max, v.level));
+    var D = V.base + sumTo(V.steps, 0, lv);
+    var made = V.gradeAt[String(lv)], pending = !!(made && v.grade && v.grade !== made);
+    if (pending) D -= V.breaks[String(lv)] || 0;
+    return { D: D, rung: "+" + lv + (v.grade ? " " + capWord(v.grade) : ""),
+             note: pending ? "the limit break to " + capWord(made) + " is still to do, so its 1% basic attack power is not counted"
+                           : "the piece itself and every step to +" + lv };
   }
   function karmaD(T, level) {
     var L = Math.min(KARMA_MAX, level);
@@ -352,6 +395,9 @@
       out.weapon = { L: x.D, rung: "+" + rd.weapon + trackWord(rd.weaponTrack, rd.weaponAdv),
         note: "the weapon's real weapon power (" + Math.round(x.stat).toLocaleString() + ") on the honing ladder" };
     }
+    if (rd.vambrace && (x = vambraceD(T, rd.vambrace))) {
+      out.vambrace = { L: x.D, rung: x.rung, note: x.note };
+    }
     if (isNum(rd.karma)) {
       x = karmaD(T, rd.karma);
       out.karma = { L: x.D, rung: "lv " + rd.karma,
@@ -429,7 +475,7 @@
       var D = extra.acc && extra.acc[ACC_KIND[s]];
       if (isNum(D)) acc[s] = { D: D, label: "high/high, max main stat, no flat" };
     });
-    return { armor: REFERENCE.armor, weapon: REFERENCE.weapon, karma: REFERENCE.karma,
+    return { armor: REFERENCE.armor, weapon: REFERENCE.weapon, vambrace: REFERENCE.vambrace, karma: REFERENCE.karma,
              gems: REFERENCE.gems.slice(), stone: REFERENCE.stone, master: REFERENCE.master,
              evolution: REFERENCE.evolution, acc: acc,
              grid: isNum(extra.grid) ? { D: extra.grid, label: "60/60/60, cores at 20" } : null,
@@ -514,7 +560,8 @@
    * score({ axis, tables, readings, why, calib, reference })
    *
    *   tables     tables() for this axis
-   *   readings   the character: { armor: {pieces|level}, weapon, karma, gems: [..],
+   *   readings   the character: { armor: {pieces|level}, weapon,
+   *              vambrace: {level, grade} | {none: true}, karma, gems: [..],
    *              stone: "a-b", bracelet: {D,label}, acc: {slot: {D,label}},
    *              grid: {D,label}, master: bool }; anything missing is unscored
    *   why        { system: reason }  why a system is missing, for `unscored`
@@ -567,9 +614,13 @@
       return p && p.taken && p.last ? (num(p.last.to) != null ? num(p.last.to) : dflt) : dflt;
     }
     var a = lvl("armor", HONE_MIN);
+    // the plan wears a vambrace from its first step on, each limit break done
+    // (the step that reaches +10 is the one the plan pays for it with)
+    var vp = plan.vambrace;
     var rd = {
       armor: { pieces: { head: a, shoulders: a, torso: a, legs: a, hands: a } },
       weapon: lvl("weapon", HONE_MIN), karma: lvl("karma", KARMA_BASE),
+      vambrace: vp && vp.taken && vp.last && num(vp.last.to) != null ? { level: num(vp.last.to) } : { none: true },
       gems: [], stone: plan.stone && plan.stone.taken && plan.stone.last ? String(plan.stone.last.to).trim() : "7-7",
       master: false, evolution: 140, acc: {}
     };

@@ -250,3 +250,51 @@ METHODOLOGY.md, "Accessories".
 
 Still open: the DPS anchors (item 2 above), the OAuth redirect URIs, and the two
 CP measurements.
+
+# 2026-11-17 — the vambrace, and the score's branch
+
+**The vambrace is a series.** Belgardin's piece (October 2026 in the West), +0
+to +25, on both axes: `model/vambrace.js`, `data/vambrace.json`, the rows in
+`lookup.js` (`vambraceRows`, `poolLadder`), and a `vambrace` reading in the
+Loseii Score (1.1.0; the reference wears none, so K did not move). Method in
+METHODOLOGY.md, "Vambrace"; sources, the table and the open questions in
+`docs/research/vambrace.md`.
+
+Things a future session should know:
+
+1. **The table was not fetched by the script.** The machine that built this
+   could not reach Maxroll's feed, so the values were read out of the upgrade
+   calculator page's own loaded tables in a browser, rebuilt in the feed's
+   shape, and baked with `fetch-game-data.py`'s own `bake_vambrace`. Delete
+   `tools/.cache/` and run the script: `data/vambrace.json` should come back
+   byte for byte. The same run re-bakes both honing tables and karma from the
+   October feed, and those have not been compared with the July bake beyond
+   the breath unit (the feed went from 0.01% to 0.001%; the script now reads
+   which). If a honing number moves, the honing rows and `honingDamage` move
+   with it.
+2. **Three modelling calls are Shizu's to overrule**: the flat basic attack
+   power sits inside the attack-power percentage; a limit break's 1% is
+   credited to the step that reaches it; and a stretch whose later steps are
+   cheaper per 1% is priced as one. Each is one place in the code
+   (`gear.js` / `build-vambrace-dps.js`, `model/vambrace.js` `statsAt`,
+   `lookup.js` `poolLadder`).
+3. **The Workers need a deploy** for a lookup to read a vambrace: both parse
+   lostark.bible's `"bracer"` slot now (`astrogem-bible.js`, `bracelet.js`).
+   Pages deploys itself; the Workers do not. Until then a looked-up character's
+   vambrace row says the pull did not carry it, and cached records say so until
+   they are re-pulled.
+4. **After a vambrace table change**: `node tools/build-vambrace-dps.js`, then
+   `node tools/verify-loseii-score.js --capture` if the score's cases moved on
+   purpose.
+5. **The shard price box does nothing**, and did nothing before this:
+   `prices.shard` is never set, so shards are free whatever the box says. The
+   vambrace's growth shards (7.5M to +25) are baked as `growShards` and would
+   be the largest shard cost on the chart if that is ever wired.
+
+**The score's branch.** `loseii-score` had sat unmerged since 2026-09-26 (PR
+#11). It was merged with main on 2026-11-17, which surfaced a bug that was live
+on main: the lookup read "advanced honing on a weapon under +20" as a Sidereal
+weapon, and 63 of the 157 panel characters are normal 1675 weapons that kept
+advanced 40 from the 1590 set. Fixed by testing the item level
+(`lkSidereal`; METHODOLOGY.md, "A Sidereal weapon is shown, not placed"). The
+vambrace branch is stacked on it.

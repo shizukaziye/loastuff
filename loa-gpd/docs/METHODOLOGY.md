@@ -72,6 +72,9 @@ bigger denominator and is worth slightly less: 0.01382% party damage at level
 power 226,085.218, total main stat 687,158.89, basic attack power 184,566 — and
 fails loudly if the model drifts.
 
+A vambrace is one more piece in those sums (Vambrace, below). The defaults wear
+none, so every number above stands as it was.
+
 One divergence from the accessory calculator, taken deliberately: bebkok puts an
 attack-power percentage (ability stone 1.5% plus damage gems 13.2%) on the
 support's *own* base attack power, which scales the buff it hands out. The
@@ -101,8 +104,17 @@ cores it enforces.
 
 `tools/fetch-game-data.py` pulls Maxroll's planner feed
 (`assets-ng.maxroll.gg/laplanner`) — the tables their upgrade calculator itself
-runs on, tracking the July 2026 patch — and bakes the small derived files under
-`data/`. Big downloads are cached under `tools/.cache/` and not committed.
+runs on — and bakes the small derived files under `data/`. Big downloads are
+cached under `tools/.cache/` and not committed. The cache is never refreshed on
+its own: a new patch means deleting it and setting the script's `PATCH` to what
+the calculator page says it tracks. The honing and karma files are the July 2026
+bake; `data/vambrace.json` is October 2026 (Vambrace, below).
+
+One thing changed under the script between the two. The feed used to quote a
+breath's rate in the success rate's own 0.01% units and now quotes 0.001%. The
+baked files stay in 0.01%: the script reads the unit off a row whose answer is
+known (weapon +12, where a full breath doubles the 5% base) and stops, writing
+nothing, if that row fits neither.
 
 **Cross-check that runs on every fetch:** the `itemLevel` table reproduces
 bebkok's Serca gear sheet exactly (chest 57,614 at +0 and 111,477 at +25; weapon
@@ -145,6 +157,93 @@ Defaults:
 
 The step's damage is measured against a self-consistent character: the rest of
 the gear sits at the step's starting level, and only the track under test moves.
+
+## Vambrace
+
+The seventh piece of gear, added with Belgardin (October 2026 in the West). The
+first clear of Belgardin's second gate gives a character an Epic one at +0; it
+hones to +25 on one table, and a **limit break** at +10, +15 and +20 turns it
+Legendary, Relic and Ancient. One row a level, +0→+1 up to +24→+25
+(`model/vambrace.js`, `data/vambrace.json`; sources and the table in
+`docs/research/vambrace.md`).
+
+**What it carries.** A base block that is the same on every grade (10,500 main
+stat, 3,500 weapon power) plus a five-level cycle: weapon power, main stat,
+weapon power, main stat, then flat basic attack power at +5, +10, +15, +20 and
++25. A +25 carries 73,710 main stat, 22,940 weapon power and 9,050 flat basic
+attack power. Each limit break adds 1% basic attack power — the stat a damage
+gem and the ability stone give, so it joins that pool.
+
+```
+basic AP = (sqrt(total WP * total MS / 6) + vambrace flat) * (1 + AP% + limit breaks)
+```
+
+The main stat and the weapon power go into the flat sums and take the
+percentage pools with them, like any piece's. A real character confirms the
+main stat: Legendarymember's differs by 14,114 between a +15 and a +20, which is
+the table's 12,948 through that character's 9% pool. The flat basic attack
+power is taken as inside the attack-power percentage; that one is an
+assumption (Open questions).
+
+**What a level costs.** The honing rule above, with three differences. A
+vambrace takes Lava's Breath and Glacier's Breath at once, each with its own
+count, and a full load of both doubles the base rate; the count is filled from
+the cheaper breath first and solved for the cheapest, as everywhere. It takes
+destruction and guardian stones together. And each level has a growth cost in
+shards, paid once before the first tap, which the chart leaves unpriced with
+the rest of the shards.
+
+| Levels | Base rate | Taps expected, no breath | at full breath |
+|---|---|---|---|
+| +1 to +5 | 15% | 4.9 | 3.0 |
+| +6 to +10 | 10% | 6.6 | 4.2 |
+| +11 to +15 | 5% | 11.4 | 7.5 |
+| +16 to +20 | 3% | 17.5 | 11.6 |
+| +21 to +25 | 1.5% | 32.4 | 21.6 |
+
+**A limit break costs no gold**: 200 Spectral Shade or 100 Deathly Hand at +10,
+240 or 120 at +15, 150 Deathly Hand at +20, all from Belgardin. So its 1% sits
+on the step that reaches it — +9→+10 carries the Legendary break, +14→+15 the
+Relic one, +19→+20 the Ancient one — because that step's gold is what unlocks
+it and nothing else can. The row names the break and what it takes.
+
+**A stretch nobody stops inside is priced as one.** With the break on it,
++9→+10 buys three times what +8→+9 does for about the same gold, and a ladder
+is bought in order: nobody stops at +9. So a step that is cheaper per 1% than
+the stretch before it is merged into that stretch, which leaves gold per 1%
+never falling along the ladder (`poolLadder` in `lookup.js`; the ark grid rows
+follow the same rule). At default prices the stretches are +0–2, +2–5, +5–10,
++10–15, +15–20 and +20–25. Each row still shows its own gold and its own
+damage, and the tooltip says which stretch it is priced as. On a looked-up
+character the last step is priced at what it alone cost, and the next is the
+stretch from where the character stands to the next place worth stopping —
+unless a limit break is still to do, which holds the ladder (Character lookup).
+
+**What the steps are measured beside.** DPS: the axis's reference character,
+with only the vambrace moving; the page cannot run a dealer's attack power on
+its own, so the damage is baked into `data/rows-dps.json` (`vambraceDamage`) by
+`tools/build-vambrace-dps.js`, the way `honingDamage` is. Support: `gear.js`
+at +21 armour and a +25 weapon, priced live.
+
+| DPS reference | D | multiplier |
+|---|---|---|
+| the Epic +0 piece (free, so no row) | 1.44 | ×1.0145 |
+| +0 to +10, Legendary | 4.92 | |
+| +10 to +15, Relic | 3.14 | |
+| +15 to +20, Ancient | 3.44 | |
+| +20 to +25 | 3.05 | |
+| none to +25 | 15.99 | ×1.1734 |
+
+All 25 steps are about 13.95M gold at the default prices in the table above,
+half of it in the last five levels. Per 1% that is about 262k over the first
+two steps rising to 2.39M over the last five on DPS, and 286k to 2.42M on
+support.
+
+`tools/verify.js` holds the table to sources outside the feed it was baked
+from — expected taps, a published set of +0→+10 material totals (ours are
+0.09% under on every line), the limit-break costs, the Legendarymember main
+stat — and checks that the baked DPS damage is what its builder computes and
+that gold per 1% never falls.
 
 ## Karma
 
@@ -265,6 +364,7 @@ the pull cannot read keeps its row in the gear list and says why.
 | ark grid gems, skill gems | yes | gem levels only |
 | bracelet | the trait pair only | the raw payload |
 | honing, karma, stone | yes | yes, per piece |
+| vambrace | +N and the item id | +N and the item id |
 
 Both are asked at once and the answers merge, the richer field winning.
 
@@ -322,6 +422,16 @@ item level to 0.001 on all 157, and a Sidereal's is on neither set's formula.
 So that shape with no fit (off by more than 0.5) is a Sidereal, and where the
 fit cannot be run the weapon is taken as normal.
 
+**The vambrace is read off lostark.bible's `"bracer"` slot**: its +N and its
+item id, whose first four digits name the grade (1343 Epic to 1346 Ancient).
+That is how a +10 whose limit break is still to do is told from one with it
+done. A break takes raid drops, weeks of them, and no gold, so that character
+has nothing on this ladder to buy: the row says what it is waiting on, the
+vambrace stays out of the next-buy pick, and the step that reached +10 is
+priced on the stats it has bought so far, without the break's 1%. A character
+with none says so, and a pull from before the Workers looked (2026-11-17)
+leaves the row unread rather than reading it as none.
+
 **The ability stone comes from the astrogem pull, never from node counts alone.**
 The bracelet Worker sends `stoneNodes`: every engraving's node count, the malus
 included, sorted high to low. The top two are therefore not reliably the two
@@ -374,7 +484,7 @@ cannot disagree. The sum is the character's damage multiplier against the
 chart's reference character (ilvl 1785: weapon +25, gloves +23, the rest +21;
 level-9 gems; high/high accessories at max main stat with no flat line; 9-7
 stone; karma 21; a full ark passive; a 60/60/60 ark grid with every core at 20
-points). **DPS: the character's own damage, no support buffs, with a fixed dummy
+points; no vambrace). **DPS: the character's own damage, no support buffs, with a fixed dummy
 attack buff on the attack-power term. Support: the buffs measured on a fixed
 reference dealer.** (One fixed partner, below.)
 
@@ -396,6 +506,7 @@ Displayed as a whole number, like CP.
 |---|---|---|
 | Honing, armour | every piece's +N, advanced honing and gear set | the pieces' real main stat on the honing ladder (below) |
 | Honing, weapon | the weapon's +N, advanced honing and gear set | its real weapon power on the weapon ladder |
+| Vambrace | its +N and grade, or that the character wears none | the vambrace rows from +0, plus the Epic +0 piece itself against wearing none (1.44 on DPS, 0.43 on support); a level whose limit break is still to do is short that break's share |
 | Karma | Enlightenment level | the karma rows; below 21 the 21→22 step is extended per level (the same +0.1% weapon power a level) |
 | Skill gems | every gem's level (`gemLevels`, eleven of them, so a set of six 10s and five 8s is priced gem by gem) | each gem an eleventh of the set's step — skill damage, cooldown and basic attack power (Skill gems, below); below level 7 the 7→8 step is extended per level |
 | Ability stone | the two engravings' nodes | 7-7 → 9-7 (the game's own rule: combined level 5) |
@@ -442,6 +553,15 @@ leap trees, are not scored.
 
 The bracelet has no reading in the reference spec, so the reference bracelet is
 the panel's median bracelet.
+
+**The vambrace** (score 1.1.0, 2026-11-17). The reference wears none, so the
+reference still scores exactly K and K did not move: the panel was pulled in
+September, before the vambrace existed in the West, and a panel pull has no
+vambrace reading, so it is unscored there and moves nothing. A character with
+an Ancient +25 scores ×1.1734 on DPS for it. The scale was therefore fitted on
+characters with no vambrace: a vambrace moves the score by its damage and
+in-game CP by whatever CP gives it, and whether those agree is not known until
+the panel is pulled again with vambraces on it.
 
 ### One fixed partner
 
@@ -648,9 +768,10 @@ CP, and stops being damage. Until that is decided the number stays beta.
 from its stored records through `lookup.js`, checks the captured constants
 (reference, Master, the stat beside the gear, tier-1 evolution), the scale,
 the fixed dummy support buff (recomputed from the two models), the cases (the
-reference, a weak build, a whale, a mid support, and
-real pulls: Paroxysmal, Torchidesu on the lower set, Shizukaziye's bracelet pull
-alone), the invariants (every upgrade raises the score; a lower-set piece
+reference, a weak build, a whale, a mid support, the same three with a
+vambrace — Ancient +25, Legendary +12, and a +10 whose limit break is still to
+do — and real pulls: Paroxysmal, Torchidesu on the lower set, Shizukaziye's
+bracelet pull alone), the invariants (every upgrade raises the score; a lower-set piece
 scores under the upper piece at a higher item level; no clamp at the ladder
 floors; a dealer's score is independent of every support field and of its item
 level; a support's is independent of every dealer's item level; the reference
@@ -668,7 +789,13 @@ model or table change, `--capture` re-derives the panel and the REFS.
    gain rises about 67%. Default is off (`useQualityBlock: false`), matching
    bebkok and the bracelet calculator. Waiting on a reading from a real +25
    piece.
-2. **Karma level costs.** The data lists 1 Destiny Stone + 900 gold per attempt
+2. **The vambrace's flat basic attack power.** Taken as inside the attack-power
+   percentage. If the game adds it after every percentage, a +25 is ×1.1612
+   rather than ×1.1734 on the DPS reference. And one weapon-power reading on a
+   real character is off by 654 from the table. Both, with three smaller ones
+   (special honing, shards, the first real fetch), are in
+   `docs/research/vambrace.md`.
+3. **Karma level costs.** The data lists 1 Destiny Stone + 900 gold per attempt
    with a `prob` falling from 20% at level 21 to 0.25% at 29 and **0** at 30,
    plus a `care` field at about half of `prob`. A 0% success at the last level
    cannot be a plain roll, so `care` is presumably the pity path. Unresolved.

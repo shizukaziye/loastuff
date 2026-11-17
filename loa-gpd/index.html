@@ -3,7 +3,7 @@
 <meta charset='utf-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <title>Lost Ark GPD Chart — Loseii</title>
-<meta name="description" content="What every Lost Ark progression system costs per 1% damage, on one scale — honing, karma, gems, stones, bracelets, accessories and the ark grid.">
+<meta name="description" content="What every Lost Ark progression system costs per 1% damage, on one scale — honing, vambraces, karma, gems, stones, bracelets, accessories and the ark grid.">
 <meta name='theme-color' content='#0d1017'>
 <link rel='canonical' href='https://www.loseii.com/loa-gpd/'>
 <meta property='og:type' content='website'>
@@ -254,17 +254,18 @@ a.lp-prof:hover{text-decoration:underline;text-underline-offset:3px}
 </div>
 </div>
 
-<script src='model/support.js?v=20260922a' defer></script>
-<script src='model/gear.js?v=20260922a' defer></script>
-<script src='model/loseii-score.js?v=20260925b' defer></script>
-<script src='model/honing.js?v=20260922a' defer></script>
+<script src='model/support.js?v=20261117a' defer></script>
+<script src='model/gear.js?v=20261117a' defer></script>
+<script src='model/loseii-score.js?v=20261117a' defer></script>
+<script src='model/honing.js?v=20261117a' defer></script>
+<script src='model/vambrace.js?v=20261117a' defer></script>
 <script src='model/karma.js?v=20260922a' defer></script>
 <script src='model/gems.js?v=20260922a' defer></script>
 <!-- live NA market prices for the material panel; unpinned, the 6-hour refresh
      (fetch_prices.py in refresh-data.yml) rewrites it in place. It is served
      no-cache (_headers, and the loseii-chrome-cache worker on www). -->
 <script src='prices.js' defer></script>
-<script src='lookup.js?v=7' defer></script>
+<script src='lookup.js?v=8' defer></script>
 <!-- The astrogem calculator's model. The pin MUST follow the one in
      loa-astrogem-calc/index.html (and ASTROGEM_JS in lookup.js): the same URL
      there and here is one cached copy for both pages. -->
@@ -667,6 +668,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (r.gems != null) h += arkgridEffort(r);
     if (r.odds) h += "<span class='k'>chance</span>" + colourTiers(r.odds);
     if (r.minimum) h += "<span class='k'>result</span>" + colourTiers(r.minimum);
+    // a ladder's stretch priced as one (the vambrace): why the rate above is
+    // not this row's own cost over its own gain
+    if (r.poolNote) h += "<span class='k'>priced as</span>" + r.poolNote;
     if (r.series.indexOf("arkgrid") === 0) h += "<span class='k'>cut it with</span>" +
       "<a href='https://www.loseii.com/loa-astrogem-calc/'>the astrogem calculator</a>";
     return h;
@@ -1230,7 +1234,7 @@ document.addEventListener("DOMContentLoaded", function () {
               "below is the ladder's own first, priced from its base</span>") + "</td>" +
         "<td>" + step(e.last, "nothing bought on this ladder yet") + "</td>" +
         "<td class='num'>" + price(e.last) + "</td>" +
-        "<td>" + step(e.next, "nothing left on this ladder") + "</td>" +
+        "<td>" + step(e.next, e.nextWhy ? esc(e.nextWhy) : "nothing left on this ladder") + "</td>" +
         "<td class='num'>" + price(e.next) + "</td></tr>";
     }).join("");
     var missing = unread.map(function (e) {

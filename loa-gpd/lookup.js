@@ -8,13 +8,13 @@
  * of them. The chart builds every row and every placement through this file,
  * so a page that calls it gets the chart's own numbers:
  *
- *   <script src="/loa-gpd/lookup.js?v=7"></script>
+ *   <script src="/loa-gpd/lookup.js?v=8"></script>
  *   GpdLookup.ready().then(function (status) {
  *     var p = GpdLookup.place({ record: braceletAnswer, astro: astrogemAnswer });
  *     // p.cheapest, p.list, p.labels ...
  *   });
  *
- * ready() fetches everything place() needs and nothing else: the four model
+ * ready() fetches everything place() needs and nothing else: the model
  * files and the baked tables beside this file (/loa-gpd/model, /loa-gpd/data,
  * with the pins the chart uses), the astrogem model and the bracelet
  * calculator's scorer, and the baked market prices (prices.js) when the page
@@ -28,13 +28,13 @@
  *   prices      { materialId: gold per ONE unit }  the material panel
  *   enabled     { materialId: bool, shards: bool } unticked = already bound
  *   gem8Price   the level-8 gem's auction price
- *   honing, karma, rows, dpsDamage, arkgridRows, arkgridRowsDps,
+ *   honing, karma, vambrace, rows, dpsDamage, arkgridRows, arkgridRowsDps,
  *   accLattice, accGold                        the baked tables (absorb, loadLattice)
  *   accIndex, accFam, accGoldIndex             caches this file keeps on it
  *
  * Nothing here reads the host page's state. The globals it does read are the
- * model libraries it loads itself (Support, Gear, Honing, Karma, Astrogem,
- * Bracelet, Subrank; use() can hand them in), the clock (place() and
+ * model libraries it loads itself (Support, Gear, Honing, Vambrace, Karma,
+ * Astrogem, Bracelet, Subrank; use() can hand them in), the clock (place() and
  * positions() also take `now`), and, in the loaders only, document and fetch.
  *
  * Cache law: the zone keeps .js for 4 hours, so any edit here bumps this
@@ -59,9 +59,10 @@
   var BASE = SELF ? SELF.replace(/[?#].*$/, "").replace(/[^\/]*$/, "") : "/loa-gpd/";
   var VERSION = (SELF.match(/[?&]v=([^&#]*)/) || [])[1] || null;
   // file -> the global it defines; the pins are index.html's
-  var MODELS = [["model/support.js?v=20260922a", "Support"], ["model/gear.js?v=20260922a", "Gear"],
-                ["model/honing.js?v=20260922a", "Honing"], ["model/karma.js?v=20260922a", "Karma"],
-                ["model/loseii-score.js?v=20260925b", "LoseiiScore"]];
+  var MODELS = [["model/support.js?v=20261117a", "Support"], ["model/gear.js?v=20261117a", "Gear"],
+                ["model/honing.js?v=20261117a", "Honing"], ["model/vambrace.js?v=20261117a", "Vambrace"],
+                ["model/karma.js?v=20260922a", "Karma"],
+                ["model/loseii-score.js?v=20261117a", "LoseiiScore"]];
   // The astrogem calculator's model, at the pin loa-astrogem-calc/index.html
   // uses: the same URL is one cached copy for the calculator, the chart and this
   // file. It MUST follow the astrogem pin (and the chart's tag in index.html).
@@ -75,7 +76,7 @@
   var BC_FILES = [["data/bracelet-data.js", "BraceletData"], ["data/gear-data.js", "BraceletGearData"],
                   ["model/bracelet.js", "Bracelet"], ["subrank.js", "Subrank"]];
   // the baked tables the rows are built from, under data/
-  var DATA_FILES = ["honing-t4upper.json", "karma.json", "rows.json", "rows-dps.json",
+  var DATA_FILES = ["honing-t4upper.json", "karma.json", "vambrace.json", "rows.json", "rows-dps.json",
                     "arkgrid-rows-epic.json", "arkgrid-rows-rare.json",
                     "arkgrid-rows-dps-epic.json", "arkgrid-rows-dps-rare.json",
                     // the Loseii Score's calibration panel (model/loseii-score.js)
@@ -91,6 +92,7 @@
   var SERIES = {
     armor:    { label: "Honing — armour", color: "#6ad4ff", base: "+11", spend: "last" },
     weapon:   { label: "Honing — weapon", color: "#ffb86b", base: "+11", spend: "last" },
+    vambrace: { label: "Vambrace",        color: "#c5e86c", base: "+0", spend: "last" },
     gems:     { label: "Skill gems",      color: "#f2a2c0", base: "level 7", spend: "last" },
     karma:    { label: "Karma — Enlightenment", color: "#c78cff", base: "lv 21", spend: "last" },
     neck:     { label: "Necklace",        color: "#6ee7a8", base: "growth shop piece" },
@@ -359,6 +361,129 @@
     return out;
   }
 
+  // ---- the vambrace's rows ---------------------------------------------
+  // The gear the vambrace steps are measured beside. DPS: the axis's reference
+  // character, baked by tools/build-vambrace-dps.js. Support: gear.js at +21
+  // armour and +25 weapon, the reference support the Loseii Score's fixed
+  // partner is built on. Only the vambrace moves.
+  var VAMBRACE_REF = { armor: 21, weapon: 25 };
+  function capWord(w) { w = String(w || ""); return w.charAt(0).toUpperCase() + w.slice(1); }
+  function numWord(n) { return Math.round(n).toLocaleString("en-US"); }
+  /** "200 Spectral Shade or 100 Deathly Hand" */
+  function vambraceBreakCost(vd, lb) {
+    var names = {};
+    (vd.materials || []).forEach(function (m) { names[m.id] = m.name; });
+    var a = lb.cost.amount + " " + (names[lb.cost.id] || lb.cost.id);
+    return lb.or ? a + " or " + lb.or.amount + " " + (names[lb.or.id] || lb.or.id) : a;
+  }
+  /** A support's damage from one vambrace state to another, on the reference support. */
+  function vambraceSupportD(ctx, from, to) {
+    var Support = lib("Support"), Gear = lib("Gear");
+    return Support.delta(Support.DEFAULTS,
+      { gear: Gear.stats(ctx.honing, { vambrace: from }, VAMBRACE_REF.armor, VAMBRACE_REF.weapon) },
+      { gear: Gear.stats(ctx.honing, { vambrace: to }, VAMBRACE_REF.armor, VAMBRACE_REF.weapon) });
+  }
+  /**
+   * What the vambrace is worth off the ladder's steps, on one axis:
+   *
+   *   base    the Epic +0 piece against wearing none. It costs no gold, so it
+   *           is no row, but a character who has it deals that much more.
+   *   breaks  { "10": D, "15": D, "20": D } — each limit break on its own, at
+   *           the level it is done at. A row carries its break (the step that
+   *           reaches +10 includes the Legendary 1%); a character who sits at
+   *           +10 with the break still to do is short exactly this.
+   *
+   * null where the tables or the models have not loaded.
+   */
+  function vambraceExtras(ctx, axis) {
+    var V = lib("Vambrace"), vd = ctx.vambrace;
+    if (!vd || !V) return null;
+    if (axis === "dps") {
+      var b = ctx.dpsDamage && ctx.dpsDamage.vambrace;
+      return b ? { base: b.base, breaks: b.breaks || {} } : null;
+    }
+    if (!ctx.honing || !lib("Support") || !lib("Gear")) return null;
+    var out = { base: vambraceSupportD(ctx, V.NONE, V.statsAt(vd, 0)), breaks: {} };
+    Object.keys(vd.limitBreak).forEach(function (lv) {
+      out.breaks[lv] = vambraceSupportD(ctx, V.statsAt(vd, +lv, V.gradeAt(vd, +lv - 1).grade), V.statsAt(vd, +lv));
+    });
+    return out;
+  }
+  /**
+   * A LADDER IS WALKED IN ORDER, so a step that is dear per 1% is still taken
+   * when a cheaper one sits right behind it: nobody stops at +9 with +10 and
+   * its limit break one step away. Such a stretch is priced as one. A step is
+   * merged into the stretch before it for as long as it is the cheaper of the
+   * two per 1%, which leaves gold per 1% never falling along the ladder; the
+   * members of a merged stretch carry its totals (poolG, poolD, the rule the
+   * ark grid rows follow) and name where it runs (poolFrom, poolTo). A step
+   * that stands alone is left as it is. Returns the stretches, in order.
+   */
+  function poolLadder(rows) {
+    var groups = [];
+    function rate(g) { return g.damage > 0 ? g.gold / g.damage : Infinity; }
+    rows.forEach(function (r) {
+      groups.push({ rows: [r], gold: r.gold, damage: r.damage });
+      while (groups.length > 1 && rate(groups[groups.length - 1]) < rate(groups[groups.length - 2])) {
+        var b = groups.pop(), a = groups[groups.length - 1];
+        a.rows = a.rows.concat(b.rows); a.gold += b.gold; a.damage += b.damage;
+      }
+    });
+    groups.forEach(function (g) {
+      if (g.rows.length < 2) return;
+      g.rows.forEach(function (r) {
+        r.poolG = g.gold; r.poolD = g.damage;
+        r.poolFrom = g.rows[0].from; r.poolTo = g.rows[g.rows.length - 1].to;
+      });
+    });
+    return groups;
+  }
+  /** The vambrace's steps, +0 to +25, unpooled: gold, damage and the words. */
+  function vambraceRows(ctx, names) {
+    var V = lib("Vambrace"), vd = ctx.vambrace, dps = ctx.axis === "dps";
+    var extras = vd && V ? vambraceExtras(ctx, ctx.axis) : null;
+    var baked = dps && ctx.dpsDamage ? ctx.dpsDamage.vambrace : null;
+    if (!extras || (dps && !baked)) return [];
+    return V.ladder(vd, ctx.prices, ctx.enabled, 0, vd.maxLevel).map(function (s) {
+      var recipe = vd.recipe[String(s.to)], mats = [];
+      for (var id in recipe.mats) {
+        if (ctx.enabled[id] === false) continue;
+        var n = recipe.mats[id] * s.taps;
+        mats.push([names[id], Math.round(n), n * (ctx.prices[id] || 0)]);
+      }
+      s.parts.forEach(function (p) {
+        var j = p.n * s.taps;
+        mats.push([names[p.id], Math.round(j), j * (ctx.prices[p.id] || 0)]);
+      });
+      mats.push(["honing fee", "", recipe.gold * s.taps]);
+      var lb = s.limitBreak, grade = capWord(s.after.grade);
+      if (lb) mats.push(["limit break to " + grade, vambraceBreakCost(vd, lb), 0]);
+      var got = [];
+      if (s.gain.ms) got.push(numWord(s.gain.ms) + " main stat");
+      if (s.gain.wp) got.push(numWord(s.gain.wp) + " weapon power");
+      if (s.gain.apFlat) got.push(numWord(s.gain.apFlat) + " basic attack power");
+      if (lb) got.push((lb.apPct * 100).toFixed(0) + "% basic attack power from the limit break to " + grade);
+      var breathing = s.parts.map(function (p) { return p.n + " " + names[p.id]; }).join(" and ");
+      return {
+        series: "vambrace", label: "+" + s.from + " → +" + s.to,
+        from: "+" + s.from, to: "+" + s.to,
+        note: grade,
+        gold: s.gold,
+        damage: dps ? (baked.steps[String(s.to)] || 0) : vambraceSupportD(ctx, s.before, s.after),
+        // the limit break's share of that damage, for a character who has
+        // reached the level and not done the break yet
+        breakDamage: lb ? (extras.breaks[String(s.to)] || 0) : 0,
+        mats: mats,
+        buy: "the vambrace to +" + s.to + (lb ? ", then the limit break to " + grade + " (" +
+          vambraceBreakCost(vd, lb) + " from Belgardin, no gold)" : ""),
+        odds: "base rate " + s.baseRate.toFixed(2) + "%, plus a tenth of base each failure, free once " +
+              "the rates spent reach 215%. " + s.taps.toFixed(1) + " taps expected, " +
+              (s.juice ? breathing + " a tap" : "no breath — it costs more than the taps it saves"),
+        minimum: "the vambrace at +" + s.to + ", " + grade + ": " + got.join(" and ")
+      };
+    });
+  }
+
   // ---- the rows --------------------------------------------------------
   /** Every priced step on the context's axis, in the chart's order, each with
    *  its gold per 1% (`gpd`). The chart's ROWS. */
@@ -407,6 +532,17 @@
           });
         });
       });
+
+      // the vambrace, +0 to +25, each stretch nobody stops inside priced as one
+      var vrows = vambraceRows(ctx, names);
+      poolLadder(vrows).forEach(function (g) {
+        if (g.rows.length < 2) return;
+        g.rows.forEach(function (r) {
+          r.poolNote = "the " + g.rows.length + " steps from " + r.poolFrom + " to " + r.poolTo + " as one, " +
+            fmtGold(g.gold) + " for " + g.damage.toFixed(2) + "%: nobody stops between them, so they share one gold per 1%";
+        });
+      });
+      vrows.forEach(function (r) { out.push(r); });
 
       Karma.ladder(ctx.karma, Karma.ENLIGHTENMENT, {}, 21, 30).forEach(function (s) {
         var b = Gear.stats(d, { karmaWpPct: (s.total - s.gain) / 100 }, 25, 25);
@@ -841,6 +977,64 @@
             + lkAgeNote(c, "honing", now);
           e.place = "+" + hn;
         } else e.why = "no honing in the pull";
+      } else if (key === "vambrace") {
+        var vb = c.vambrace;
+        if (vb && vb.level != null) {
+          var vdata = ctx.vambrace, cap = vdata && vdata.limitBreak[String(vb.level)];
+          var pending = !!(cap && vb.grade && vb.grade !== cap.to);
+          e.owned = lkOwnedIndex(mine, function (r) {
+            return parseInt(String(r.to || "").replace(/[^0-9]/g, ""), 10) <= vb.level;
+          });
+          e.seen = "+" + vb.level + (vb.grade ? " " + capWord(vb.grade) : "");
+          e.place = "+" + vb.level;
+          var vbits = ["read off the vambrace"];
+          if (pending) vbits.push("its limit break to " + capWord(cap.to) + " is still to do");
+          e.detail = vbits.join("; ") + lkAgeNote(c, "vambrace", now);
+          // A row on the chart shares its stretch's rate. Here both steps
+          // are this character's own: the last one at what it alone cost and
+          // bought, and the next as the stretch from where the character
+          // stands to the next place worth stopping — the steps ahead pooled
+          // again from here, not from the ladder's start.
+          var bare = function (r) {
+            var x = {}; for (var kk in r) x[kk] = r[kk];
+            delete x.poolG; delete x.poolD; delete x.poolFrom; delete x.poolTo; delete x.poolNote;
+            x.gpd = x.damage > 0 ? x.gold / (x.damage * party(axis)) : Infinity;
+            return x;
+          };
+          if (e.owned >= 0) e.ladderLast = bare(mine[e.owned]);
+          // A LIMIT BREAK STILL TO DO HOLDS THE LADDER. It takes raid drops,
+          // weeks of them, and no gold; until it is done nothing past this
+          // level can be bought. So the step that reached the level has
+          // bought its stats and not yet its 1%, and there is no next step to
+          // price: the row says what it is waiting on and stays out of the
+          // next-buy pick.
+          if (pending) {
+            if (e.ladderLast) {
+              e.ladderLast.damage -= e.ladderLast.breakDamage || 0;
+              e.ladderLast.gpd = e.ladderLast.damage > 0
+                ? e.ladderLast.gold / (e.ladderLast.damage * party(axis)) : Infinity;
+            }
+            e.nextWhy = "the limit break to " + capWord(cap.to) + " comes first: " +
+              vambraceBreakCost(vdata, cap) + " from Belgardin, no gold";
+          }
+          var first = pending ? null : poolLadder(mine.slice(e.owned + 1).map(bare))[0];
+          if (first) {
+            var head = first.rows[0], nx = bare(first.rows[first.rows.length - 1]);
+            if (first.rows.length > 1) {
+              nx.from = head.from; nx.label = head.from + " → " + nx.to;
+              nx.steps = first.rows.length;
+              nx.buy = "the vambrace from " + head.from + nx.buy.slice("the vambrace".length);
+              nx.gold = first.gold; nx.damage = first.damage;
+              nx.gpd = first.damage > 0 ? first.gold / (first.damage * party(axis)) : Infinity;
+              nx.mats = null;        // one step's materials would understate the stretch
+              nx.minimum = "the vambrace at " + nx.to + ", " + nx.note + ", " + first.rows.length + " steps on: " +
+                fmtGold(first.gold) + " for " + first.damage.toFixed(2) + "% in all";
+            }
+            e.ladderNext = nx;
+          }
+        } else if (vb === null) {
+          e.why = "no vambrace on this character — the first clear of Belgardin's second gate gives one (item level 1750)";
+        } else e.why = "no vambrace in the pull — the workers read it on pulls made after the 2026-11-17 update";
       } else if (key === "karma") {
         if (c.karma != null) {
           e.owned = lkOwnedIndex(mine, function (r) {
@@ -953,8 +1147,9 @@
       if (graded) {
         if (e.accNext !== undefined) { e.last = e.accLast; e.next = e.accNext; }
         else {
-          if (e.owned >= 0) e.last = mine[e.owned];
-          e.next = e.braceletNext || mine[e.owned + 1] || null;
+          if (e.owned >= 0) e.last = e.ladderLast || mine[e.owned];
+          // `nextWhy`: a ladder with steps left that gold cannot buy yet
+          e.next = e.nextWhy ? null : (e.braceletNext || e.ladderNext || mine[e.owned + 1] || null);
         }
       }
       if (graded && e.next && isFinite(e.next.gpd) && e.next.gpd != null && e.next.gpd <= 25e6) {
@@ -1016,6 +1211,25 @@
     var tk = c.armorPieces && c.ilvlExact > 0 ? lkTracks(c) : null;
     return !!tk && tk.err > LK_SIDEREAL_GAP;
   }
+  /**
+   * The vambrace as a pull carries it: lostark.bible lists it in the "bracer"
+   * slot with its +N and its item id. The id's grade digit names the grade
+   * (1343… Epic, 1344… Legendary, 1345… Relic, 1346… Ancient, whatever the
+   * class), which is how a +10 with its limit break still to do is told from
+   * one with it done. Returns { level, grade }, null for "no vambrace worn",
+   * undefined when the pull did not look (a worker from before 2026-11-17).
+   */
+  function lkVambrace(level, itemId, looked) {
+    if (!looked) return undefined;
+    if (level == null) return null;
+    var grade = null, head = String(itemId == null ? "" : itemId).slice(0, 4);
+    ((DATA.vambrace && DATA.vambrace.grades) || LK_VAMBRACE_GRADES).forEach(function (g) {
+      if (String(g.itemId).slice(0, 4) === head) grade = g.grade;
+    });
+    return { level: +level, grade: grade };
+  }
+  var LK_VAMBRACE_GRADES = [{ grade: "epic", itemId: "1343" }, { grade: "legendary", itemId: "1344" },
+                            { grade: "relic", itemId: "1345" }, { grade: "ancient", itemId: "1346" }];
   /** Every piece in a slot kind, read as a configuration. */
   function lkAccPieces(ctx, c, kind, axis) {
     if (!c || !c.acc) return null;
@@ -1081,6 +1295,8 @@
       weaponIdRead: wpnExact && eq.weaponId != null && typeof eq.weaponSidereal === "boolean"
         ? eq.weaponSidereal : null,
       weaponSidereal: false,
+      // { level, grade }, null for none worn, undefined when the pull did not look
+      vambrace: lkVambrace(eq && eq.vambrace, eq && eq.vambraceId, !!(eq && "vambrace" in eq)),
       karma: d.karma ? d.karma.enlightenment : null,
       stone: d.stone ? d.stone.a + "-" + d.stone.b : null,
       region: d.region || null,
@@ -1113,6 +1329,12 @@
     }
     if (c.karma != null) st.karma = { src: "astrogem", ts: ts };
     if (c.stone) st.stone = { src: "astrogem", ts: ts };
+    if (c.vambrace !== undefined) st.vambrace = { src: "astrogem", ts: ts };
+    else if (prev && prev.vambrace !== undefined && prev.stamp && prev.stamp.vambrace) {
+      // the older bracelet pull read it and this one did not look: keep it
+      c.vambrace = prev.vambrace;
+      st.vambrace = prev.stamp.vambrace;
+    }
     // a field the older bracelet pull already supplied survives a re-pull that
     // could not read it — losing it would be a step backwards, not a refresh
     if (prev) {
@@ -1188,6 +1410,13 @@
           c.stamp.honing = { src: "bracelet", ts: ts, exact: true };
         }
       }
+      // the vambrace: `profile.vambrace` is { honing, id }, or null where the
+      // page has no bracer slot; a record from before the worker read it has
+      // no such key at all
+      if ("vambrace" in pr && fresher("vambrace")) {
+        c.vambrace = lkVambrace(pr.vambrace && pr.vambrace.honing, pr.vambrace && pr.vambrace.id, true);
+        c.stamp.vambrace = { src: "bracelet", ts: ts };
+      }
       // the Master ark-passive node (1032200), read off the same loadout
       if (typeof pr.master === "boolean") c.master = pr.master;
       // the ark passive trees' points (evolution / enlightenment / leap)
@@ -1257,7 +1486,7 @@
       .then(function (ok) { if (!ok) delete _need[name]; return ok; });
     return _need[name];
   }
-  /** Support, Gear, Honing and Karma, from beside this file. */
+  /** Support, Gear, Honing, Vambrace, Karma and the score, from beside this file. */
   function loadModels() {
     return Promise.all(MODELS.map(function (f) { return need(f[1], BASE + f[0]); }))
       .then(function (ok) { return ok.every(Boolean); });
@@ -1351,19 +1580,20 @@
     ctx.arkgridRows.epic = got["arkgrid-rows-epic.json"];
     ctx.arkgridRows.rare = got["arkgrid-rows-rare.json"];
     ctx.honing = got["honing-t4upper.json"]; ctx.karma = got["karma.json"];
+    ctx.vambrace = got["vambrace.json"] || null;
     if (got["honing-t4lower.json"]) ctx.honingLower = got["honing-t4lower.json"];
     ctx.rows = ctx.rows || {};
     ctx.rows.support = got["rows.json"] ? got["rows.json"].rows : [];
     ctx.rows.dps = dps ? dps.rows : null;
     ctx.dpsDamage = dps && dps.honingDamage
-      ? { honing: dps.honingDamage, karma: dps.karmaDamage } : null;
+      ? { honing: dps.honingDamage, karma: dps.karmaDamage, vambrace: dps.vambraceDamage || null } : null;
     if (got["loseii-panel.json"]) ctx.loseiiPanel = got["loseii-panel.json"];
     ctx._scoreT = {}; ctx._scoreC = {};
     return ctx;
   }
 
   // The module's own tables, for place(). The chart keeps its own on its state.
-  var DATA = { honing: null, karma: null, rows: { support: null, dps: null }, arkgridRows: {},
+  var DATA = { honing: null, karma: null, vambrace: null, rows: { support: null, dps: null }, arkgridRows: {},
                accLattice: null, accIndex: {}, accFam: {}, accGoldIndex: {} };
   var _data = null;
   function loadData() {
@@ -1431,6 +1661,8 @@
    * the chart computes them, plus labels (each system's "yours" text),
    * cheapest ({ system, label, from, to, goldPer1Pct, gold, damage, text,
    * price } or null when nothing under 25M per 1% is left), axis and role.
+   * A list entry with no `next` and a `nextWhy` has steps left that gold
+   * cannot buy yet (a vambrace whose limit break is still to do).
    */
   function place(input) {
     input = input || {};
@@ -1546,6 +1778,11 @@
     if (!c.honeExact && (c.honeArmor != null || c.honeWeapon != null)) {
       rd.honingNote = "estimated from " + (c.ilvl || "?") + " ilvl";
     }
+    if (c.vambrace && c.vambrace.level != null) {
+      rd.vambrace = { level: c.vambrace.level };
+      if (c.vambrace.grade) rd.vambrace.grade = c.vambrace.grade;
+    } else if (c.vambrace === null) rd.vambrace = { none: true };
+    else why.vambrace = "no vambrace in the pull";
     if (c.karma != null) rd.karma = c.karma; else why.karma = "no karma in the pull";
     if (c.gemLevels && c.gemLevels.length) rd.gems = c.gemLevels.slice(); else why.gems = "no skill gems in the pull";
     if (c.stone) rd.stone = c.stone; else why.stone = "no ability stone in the pull";
@@ -1655,9 +1892,12 @@
     if (!sub.prices || !sub.enabled) { var d0 = defaults(ctx.honing); sub.prices = d0.prices; sub.enabled = d0.enabled; }
     if (sub.gem8Price == null) sub.gem8Price = GEM8_PRICE;
     if (!sub.accFilter) sub.accFilter = { flat: ACC_FILTER.flat.slice(), stat: ACC_FILTER.stat.slice(), sidegrades: true };
+    var vx = vambraceExtras(sub, axis);
     var t = S.tables(steps(sub), ctx.honing, axis, { masterD: mD, lower: ctx.honingLower,
       msC: P && P.msC != null ? P.msC : lkStatC(axis).msC, wpC: P && P.wpC != null ? P.wpC : lkStatC(axis).wpC,
-      apT1: { perLevel: P && P.apT1 != null ? P.apT1 : lkApT1(axis) } });
+      apT1: { perLevel: P && P.apT1 != null ? P.apT1 : lkApT1(axis) },
+      // the Epic +0 piece against wearing none, and the ladder's grades
+      vambraceBase: vx ? vx.base : null, vambraceGrades: ctx.vambrace ? ctx.vambrace.grades : null });
     if (!t.bracelet || t.bracelet.floor == null) return t;       // the rows have not landed; do not cache
     return (ctx._scoreT[key] = t);
   }
@@ -1756,7 +1996,7 @@
     // chart builds its card from the tables, the scale and the reference
     score: score, scoreTables: scoreTables, scoreCalib: scoreCalib, scoreReference: scoreReference,
     scoreReferenceLive: scoreReferenceLive, masterD: lkMasterD, statC: lkStatC, apT1: lkApT1, tracks: lkTracks,
-    sidereal: lkSidereal,
+    sidereal: lkSidereal, vambraceOf: lkVambrace, vambraceExtras: vambraceExtras, poolLadder: poolLadder,
     dummySupportAp: lkDummySupportAp,
     scoreReadings: function (ctx, c) { return lkScoreReadings(ctx, c); }, synthGridD: lkSynthGridD,
     accChain: function (ctx, axis, kind) { return accChain(ctx, axis, kind); },

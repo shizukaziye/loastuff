@@ -22,7 +22,7 @@
  *      case from the same tables and readings, and re-derives the DPS tables
  *      from the data files itself; it must agree.
  *
- * Runs on node with no network: the four chart models, the bracelet
+ * Runs on node with no network: the five chart models, the bracelet
  * calculator's scorer and the astrogem model are required from the monorepo.
  */
 "use strict";
@@ -37,7 +37,8 @@ var FIXTURE = path.join(__dirname, "fixtures", "loseii-panel.json");
 var L = require(G + "lookup.js");
 var S = require(G + "model/loseii-score.js");
 L.use({ Support: require(G + "model/support.js"), Gear: require(G + "model/gear.js"),
-        Honing: require(G + "model/honing.js"), Karma: require(G + "model/karma.js"), LoseiiScore: S,
+        Honing: require(G + "model/honing.js"), Vambrace: require(G + "model/vambrace.js"),
+        Karma: require(G + "model/karma.js"), LoseiiScore: S,
         Astrogem: require(R + "loa-astrogem-calc/model/astrogem.js"),
         Bracelet: require(R + "loa-bracelet-calc/model/bracelet.js"),
         Subrank: require(R + "loa-bracelet-calc/subrank.js") });
@@ -207,6 +208,16 @@ function buildCases() {
                                earring: { prim: ["high"], flat: null, ms: "mid" },
                                ring: { prim: ["high", "mid"], flat: null, ms: "mid" } }),
       grid: { D: L.synthGridD("support", [40, 40, 40], [17, 17, 17, 17, 17, 17]), label: "40/40/40, cores 17" } }) });
+  // the vambrace (October 2026): the three builds above, each wearing one
+  var prior = out.slice();
+  function wearing(match, vambrace, words) {
+    var c = prior.filter(function (x) { return match.test(x.name); })[0];
+    var rd = clean(c.readings); rd.vambrace = vambrace;
+    out.push({ name: c.name.split(":")[0] + ", " + words, axis: c.axis, readings: rd });
+  }
+  wearing(/dps whale/, { level: 25, grade: "ancient" }, "with an Ancient +25 vambrace");
+  wearing(/support mid/, { level: 12, grade: "legendary" }, "with a Legendary +12 vambrace");
+  wearing(/dps weak build/, { level: 10, grade: "epic" }, "with a +10 vambrace, its limit break still to do");
   // real pulls: a whale with both halves, and a bracelet pull alone
   FX.members.filter(function (m) { return m.name === "Paroxysmal"; }).forEach(function (m) {
     out.push({ name: "Paroxysmal (NA), both pulls, in-game CP " + m.cp, axis: "dps", readings: readingsOf(m) });
@@ -253,6 +264,30 @@ var s0 = run("dps", base).score;
   var x = clean(base); t[1](x);
   check(t[0] + " raises the score", run("dps", x).score > s0);
 });
+// the vambrace: the piece, each step, each limit break, and wearing none
+function withV(v) { var x = clean(base); if (v) x.vambrace = v; return run("dps", x); }
+var vNone = withV({ none: true }), vUnread = withV(null), v0 = withV({ level: 0, grade: "epic" });
+check("an unread vambrace is unscored and moves nothing", near(vUnread.score, s0, 1e-9) &&
+      vUnread.unscored.some(function (u) { return u.system === "vambrace"; }) &&
+      !vUnread.parts.some(function (p) { return p.system === "vambrace"; }));
+check("wearing no vambrace scores what the reference does there", near(vNone.score, s0, 1e-9) &&
+      vNone.parts.some(function (p) { return p.system === "vambrace" && Math.abs(p.D) < 1e-12; }));
+check("the +0 piece scores above wearing none", v0.score > vNone.score);
+(function () {
+  var up = true, prev = v0.score;
+  for (var lv = 1; lv <= 25; lv++) { var sc = withV({ level: lv }).score; if (!(sc > prev)) up = false; prev = sc; }
+  check("every vambrace level raises the score, +1 to +25", up);
+  var V = T.dps.vambrace, total = V.base;
+  for (lv = 1; lv <= 25; lv++) total += V.steps[String(lv)];
+  check("a +25 vambrace is the piece and its 25 steps, x" + Math.exp(total / 100).toFixed(4),
+        near(withV({ level: 25, grade: "ancient" }).score, s0 * Math.exp(total / 100), 1e-6));
+  [["10", "epic", "legendary"], ["15", "legendary", "relic"], ["20", "relic", "ancient"]].forEach(function (b) {
+    var done = withV({ level: +b[0], grade: b[2] }).score, waiting = withV({ level: +b[0], grade: b[1] }).score;
+    check("a +" + b[0] + " with its limit break still to do is short exactly that break (" + V.breaks[b[0]].toFixed(4) + ")",
+          near(Math.log(done / waiting) * 100, V.breaks[b[0]], 1e-9));
+  });
+  check("a level past the table is read at +25", near(withV({ level: 30 }).score, withV({ level: 25 }).score, 1e-9));
+})();
 var noGrid = clean(base); delete noGrid.grid;
 var rg = run("dps", noGrid);
 check("a missing grid is unscored, not zero", rg.unscored.some(function (u) { return u.system === "grid"; }) &&
