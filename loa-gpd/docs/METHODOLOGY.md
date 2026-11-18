@@ -72,6 +72,9 @@ bigger denominator and is worth slightly less: 0.01382% party damage at level
 power 226,085.218, total main stat 687,158.89, basic attack power 184,566 — and
 fails loudly if the model drifts.
 
+A vambrace is one more piece in those sums (Vambrace, below). The defaults wear
+none, so every number above stands as it was.
+
 One divergence from the accessory calculator, taken deliberately: bebkok puts an
 attack-power percentage (ability stone 1.5% plus damage gems 13.2%) on the
 support's *own* base attack power, which scales the buff it hands out. The
@@ -101,8 +104,19 @@ cores it enforces.
 
 `tools/fetch-game-data.py` pulls Maxroll's planner feed
 (`assets-ng.maxroll.gg/laplanner`) — the tables their upgrade calculator itself
-runs on, tracking the July 2026 patch — and bakes the small derived files under
-`data/`. Big downloads are cached under `tools/.cache/` and not committed.
+runs on — and bakes the small derived files under `data/`. Big downloads are
+cached under `tools/.cache/` and not committed. The cache is never refreshed on
+its own: a new patch means deleting it and setting the script's `PATCH` to what
+the calculator page says it tracks. The honing and karma files are the July 2026
+bake; `data/vambrace.json` is October 2026 (Vambrace, below). The upper set's
+50 honing recipe rows were compared with the October feed on 2026-11-17 and
+have not changed.
+
+One thing changed under the script between the two. The feed used to quote a
+breath's rate in the success rate's own 0.01% units and now quotes 0.001%. The
+baked files stay in 0.01%: the script reads the unit off a row whose answer is
+known (weapon +12, where a full breath doubles the 5% base) and stops, writing
+nothing, if that row fits neither.
 
 **Cross-check that runs on every fetch:** the `itemLevel` table reproduces
 bebkok's Serca gear sheet exactly (chest 57,614 at +0 and 111,477 at +25; weapon
@@ -145,6 +159,93 @@ Defaults:
 
 The step's damage is measured against a self-consistent character: the rest of
 the gear sits at the step's starting level, and only the track under test moves.
+
+## Vambrace
+
+The seventh piece of gear, added with Belgardin (October 2026 in the West). The
+first clear of Belgardin's second gate gives a character an Epic one at +0; it
+hones to +25 on one table, and a **limit break** at +10, +15 and +20 turns it
+Legendary, Relic and Ancient. One row a level, +0→+1 up to +24→+25
+(`model/vambrace.js`, `data/vambrace.json`; sources and the table in
+`docs/research/vambrace.md`).
+
+**What it carries.** A base block that is the same on every grade (10,500 main
+stat, 3,500 weapon power) plus a five-level cycle: weapon power, main stat,
+weapon power, main stat, then flat basic attack power at +5, +10, +15, +20 and
++25. A +25 carries 73,710 main stat, 22,940 weapon power and 9,050 flat basic
+attack power. Each limit break adds 1% basic attack power — the stat a damage
+gem and the ability stone give, so it joins that pool.
+
+```
+basic AP = (sqrt(total WP * total MS / 6) + vambrace flat) * (1 + AP% + limit breaks)
+```
+
+The main stat and the weapon power go into the flat sums and take the
+percentage pools with them, like any piece's. A real character confirms the
+main stat: Legendarymember's differs by 14,114 between a +15 and a +20, which is
+the table's 12,948 through that character's 9% pool. The flat basic attack
+power is taken as inside the attack-power percentage; that one is an
+assumption (Open questions).
+
+**What a level costs.** The honing rule above, with three differences. A
+vambrace takes Lava's Breath and Glacier's Breath at once, each with its own
+count, and a full load of both doubles the base rate; the count is filled from
+the cheaper breath first and solved for the cheapest, as everywhere. It takes
+destruction and guardian stones together. And each level has a growth cost in
+shards, paid once before the first tap, which the chart leaves unpriced with
+the rest of the shards.
+
+| Levels | Base rate | Taps expected, no breath | at full breath |
+|---|---|---|---|
+| +1 to +5 | 15% | 4.9 | 3.0 |
+| +6 to +10 | 10% | 6.6 | 4.2 |
+| +11 to +15 | 5% | 11.4 | 7.5 |
+| +16 to +20 | 3% | 17.5 | 11.6 |
+| +21 to +25 | 1.5% | 32.4 | 21.6 |
+
+**A limit break costs no gold**: 200 Spectral Shade or 100 Deathly Hand at +10,
+240 or 120 at +15, 150 Deathly Hand at +20, all from Belgardin. So its 1% sits
+on the step that reaches it — +9→+10 carries the Legendary break, +14→+15 the
+Relic one, +19→+20 the Ancient one — because that step's gold is what unlocks
+it and nothing else can. The row names the break and what it takes.
+
+**A stretch nobody stops inside is priced as one.** With the break on it,
++9→+10 buys three times what +8→+9 does for about the same gold, and a ladder
+is bought in order: nobody stops at +9. So a step that is cheaper per 1% than
+the stretch before it is merged into that stretch, which leaves gold per 1%
+never falling along the ladder (`poolLadder` in `lookup.js`; the ark grid rows
+follow the same rule). At default prices the stretches are +0–2, +2–5, +5–10,
++10–15, +15–20 and +20–25. Each row still shows its own gold and its own
+damage, and the tooltip says which stretch it is priced as. On a looked-up
+character the last step is priced at what it alone cost, and the next is the
+stretch from where the character stands to the next place worth stopping —
+unless a limit break is still to do, which holds the ladder (Character lookup).
+
+**What the steps are measured beside.** DPS: the axis's reference character,
+with only the vambrace moving; the page cannot run a dealer's attack power on
+its own, so the damage is baked into `data/rows-dps.json` (`vambraceDamage`) by
+`tools/build-vambrace-dps.js`, the way `honingDamage` is. Support: `gear.js`
+at +21 armour and a +25 weapon, priced live.
+
+| DPS reference | D | multiplier |
+|---|---|---|
+| the Epic +0 piece (free, so no row) | 1.44 | ×1.0145 |
+| +0 to +10, Legendary | 4.92 | |
+| +10 to +15, Relic | 3.14 | |
+| +15 to +20, Ancient | 3.44 | |
+| +20 to +25 | 3.05 | |
+| none to +25 | 15.99 | ×1.1734 |
+
+All 25 steps are about 13.95M gold at the default prices in the table above,
+half of it in the last five levels. Per 1% that is about 262k over the first
+two steps rising to 2.39M over the last five on DPS, and 286k to 2.42M on
+support.
+
+`tools/verify.js` holds the table to sources outside the feed it was baked
+from — expected taps, a published set of +0→+10 material totals (ours are
+0.09% under on every line), the limit-break costs, the Legendarymember main
+stat — and checks that the baked DPS damage is what its builder computes and
+that gold per 1% never falls.
 
 ## Karma
 
@@ -265,6 +366,7 @@ the pull cannot read keeps its row in the gear list and says why.
 | ark grid gems, skill gems | yes | gem levels only |
 | bracelet | the trait pair only | the raw payload |
 | honing, karma, stone | yes | yes, per piece |
+| vambrace | +N and the item id | +N and the item id |
 
 Both are asked at once and the answers merge, the richer field winning.
 
@@ -306,9 +408,31 @@ T4 upper weapon's, +11 to +25. A Sidereal (Esther) weapon hones on its own
 table and already outclasses a +25, so reading its +10 as a normal +10 offered
 "+12 for 364k" to a player who would pay millions for that (KYLE,
 2026-09-27). The astrogem worker names the weapon from its item id (10134000
-against 10144000), a record pulled before that is recognised by the one shape
-only a Sidereal has — advanced honing under +20 — and the weapon row then says
-what it is and stays out of the next-buy pick.
+against 10144000), and when it read one that is the answer. The weapon row then
+says what it is and stays out of the next-buy pick.
+
+A pull with no item id — a record from before that, or a bracelet-worker pull,
+which carries none — is tested against the item level instead. The rule until
+2026-11-17 was the shape "advanced honing on a weapon under +20", on the reading
+that only a Sidereal can have it. It is not: a weapon moved from the 1590 set to
+the 1675 set keeps its advanced honing in the pull, so a normal 1675 weapon at
++12 to +19 reads "advanced 40" too. 63 of the 157 calibration-panel characters
+have that shape and all 63 were shown as Sidereal and kept off the honing
+ladder. What separates the two is the item level: read as a normal weapon, some
+split of the six pieces across the two gear sets reproduces the character's
+item level to 0.001 on all 157, and a Sidereal's is on neither set's formula.
+So that shape with no fit (off by more than 0.5) is a Sidereal, and where the
+fit cannot be run the weapon is taken as normal.
+
+**The vambrace is read off lostark.bible's `"bracer"` slot**: its +N and its
+item id, whose first four digits name the grade (1343 Epic to 1346 Ancient).
+That is how a +10 whose limit break is still to do is told from one with it
+done. A break takes raid drops, weeks of them, and no gold, so that character
+has nothing on this ladder to buy: the row says what it is waiting on, the
+vambrace stays out of the next-buy pick, and the step that reached +10 is
+priced on the stats it has bought so far, without the break's 1%. A character
+with none says so, and a pull from before the Workers looked (2026-11-17)
+leaves the row unread rather than reading it as none.
 
 **The ability stone comes from the astrogem pull, never from node counts alone.**
 The bracelet Worker sends `stoneNodes`: every engraving's node count, the malus
@@ -340,6 +464,325 @@ through `jointScore` on the right profile and read their anchors off
 measured the same way. Every rung's example is exact-verified at build time
 and `tools/verify-bracelet-bands.js` re-checks both axes.
 
+## Loseii Score
+
+One number for how hard a character hits, on the in-game Combat Power scale.
+The chart's plan card shows it for the build under the slider; the profile pages
+show it for a looked-up character, with its parts. It replaced the chart's
+Combat Power estimate on 2026-09-25, and is labelled **beta** while the check
+against lopec below stays open.
+
+### What it is
+
+```
+Loseii Score = K × exp( Σ_s D_s / 100 )
+D_s = L_s(character) − L_s(reference)
+```
+
+`L_s` is where the character stands on system `s`, in the house log-damage
+units (`D = 100·ln(multiplier)`), measured on this chart's own ladders — the
+same per-step damage the rows carry, so the chart, the lookup and the score
+cannot disagree. The sum is the character's damage multiplier against the
+chart's reference character (ilvl 1785: weapon +25, gloves +23, the rest +21;
+level-9 gems; high/high accessories at max main stat with no flat line; 9-7
+stone; karma 21; a full ark passive; a 60/60/60 ark grid with every core at 20
+points; no vambrace). **DPS: the character's own damage, no support buffs, with a fixed dummy
+attack buff on the attack-power term. Support: the buffs measured on a fixed
+reference dealer.** (One fixed partner, below.)
+
+`K` puts that multiplier on the CP scale: the weighted median, over a
+calibration panel of real NA characters, of `CP / multiplier`, so the median NA
+character scores its own in-game CP. It is one constant per axis; nothing
+depends on item level. The panel (`data/loseii-panel.json`, source records in
+`tools/fixtures/loseii-panel.json`) is 118 DPS and 39 supports from the
+bracelet and astrogem boards' caches, pulled 2026-09-25, spread across the
+bands 1700–1720, 1720–1750, 1750–1780 and 1780+ and weighted so each band
+counts as its share of the NA bracelet board. Each member's CP is the one its
+own pull carried (lostark.bible's `estimatedMaxCombatPower`). K is 6,452 on
+DPS and 5,893 on support, which is also what the reference character scores.
+Displayed as a whole number, like CP.
+
+### The systems, and where each reading comes from
+
+| System | Reading | How it is priced |
+|---|---|---|
+| Honing, armour | every piece's +N, advanced honing and gear set | the pieces' real main stat on the honing ladder (below) |
+| Honing, weapon | the weapon's +N, advanced honing and gear set | its real weapon power on the weapon ladder |
+| Vambrace | its +N and grade, or that the character wears none | the vambrace rows from +0, plus the Epic +0 piece itself against wearing none (1.44 on DPS, 0.43 on support); a level whose limit break is still to do is short that break's share |
+| Karma | Enlightenment level | the karma rows; below 21 the 21→22 step is extended per level (the same +0.1% weapon power a level) |
+| Skill gems | every gem's level (`gemLevels`, eleven of them, so a set of six 10s and five 8s is priced gem by gem) | each gem an eleventh of the set's step — skill damage, cooldown and basic attack power (Skill gems, below); below level 7 the 7→8 step is extended per level |
+| Ability stone | the two engravings' nodes | 7-7 → 9-7 (the game's own rule: combined level 5) |
+| Bracelet | the bracelet calculator's own score total (`Subrank.braceletScore`) | the scale the bracelet rungs' `totalDamage` is on |
+| Accessories | each of the five pieces as a lattice point (primaries, flat line, main-stat quintile) | the accessory lattice's damage |
+| Ark grid | `Astrogem.gridDamage` of the valid gems | the scale the ark grid rows are priced on |
+| Ark passive, evolution tier 1 | the evolution tree's points | the first 40 points buy the tier-1 stat nodes, 50 of a combat stat a level (`stats.json` `arkPassives` 1010100–1010600); a level is priced by the bracelet model's `traitDamage` for 50 specialization: 1.2123 on DPS, 0.2454 on support |
+| Master (DPS) | the ark passive node, from the bracelet pull | +7% additional damage on the bracelet model's pool (4.93) |
+| Fixed partner | nothing: the same for everyone | DPS: a fixed dummy support buff ×1.4341 on attack power; support: the chart's reference character as the dealer (One fixed partner, below) |
+
+**Honing is priced from stats, not from +N.** T4 gear comes in two sets. The
+lower one (1590, "Destined Hellfire") has item level 1590 + 5 × honing +
+advanced honing, and its stats follow item level; the upper one (1675,
+"Destined Tremor") has item level 1675 + 5 × honing. The pull gives each
+piece's +N and advanced honing but not its set, so the set is the split of the
+six pieces that reproduces the character's item level (the two readings of a
+piece sit 40+ levels apart, so it is never close; on the panel every 1700–1720
+character is on the lower set and every 1750+ one on the upper, and 1720–1750
+holds both — 30 upper, 4 lower, and one character part-way across). A piece's main
+stat or weapon power then comes from the game's own table —
+`data/honing-t4upper.json` for the upper set, `data/honing-t4lower.json` (baked
+by `tools/fetch-game-data.py` from the same Maxroll feed, keyed by item level
+1590–1755) for the lower — and the sum is placed on the honing ladder in log
+space. The chart's honing rows are the knots: the five pieces at +11…+25 plus
+the axis's other main stat (DPS: the bracelet model's reference raw main stat
+less the reference armour, 73,991; support: `gear.js`'s flats, 85,991), and the
+ladder's damage there. Between knots the ladder's own damage per unit of log
+stat applies, and beyond the ends the first (last) step's. So a piece is never
+clamped to the ladder's floor: an upper piece at a knot scores exactly the
+ladder, and a lower-set piece or one under +11 scores what it carries.
+
+**Advanced honing** needs no table of its own. On the lower set it raises item
+level one for one and the stats follow (the page's weapon power total
+reproduces exactly from the item-level table, to the point, for every
+lower-set character checked); on the upper set it adds nothing the page's stat
+totals show (Paroxysmal's weapon power reproduces exactly without it), and
+every upper-set character on the panel is at advanced 40 anyway.
+
+**The ark passive.** Every panel character from 1705 up has all three trees
+full (140 / 101 / 70 points), so the tier-1 evolution part only moves the few
+who do not. Which tier 2–5 nodes the points bought is not in the pull (the
+bracelet worker keeps only Master), so those nodes, and the enlightenment and
+leap trees, are not scored.
+
+The bracelet has no reading in the reference spec, so the reference bracelet is
+the panel's median bracelet.
+
+**The vambrace** (score 1.1.0, 2026-11-17). The reference wears none, so the
+reference still scores exactly K and K did not move: the panel was pulled in
+September, before the vambrace existed in the West, and a panel pull has no
+vambrace reading, so it is unscored there and moves nothing. A character with
+an Ancient +25 scores ×1.1734 on DPS for it. The scale was therefore fitted on
+characters with no vambrace: a vambrace moves the score by its damage and
+in-game CP by whatever CP gives it, and whether those agree is not known until
+the panel is pulled again with vambraces on it.
+
+### One fixed partner
+
+Shizu, 2026-09-26: **a dealer is scored on its own damage, with no support
+buffs**, and **a support on its buffs measured on one fixed dealer**. (A
+matched partner — the median support or dealer of the character's item-level
+band — was tried first; it was dropped for this.)
+
+**DPS.** The DPS ladders come from the bracelet model, which carries no brand,
+ally damage, ally attack or uptime term, so a dealer's score is its own
+damage. The one exception is the attack-power term. A support's attack buff is
+a flat add scaled off the support's own attack, and removing it entirely would
+leave weapon power and main stat carrying all of a raid dealer's attack, so a
+dealer's attack power carries a **fixed dummy support buff**: the reference
+support's attack buff on the reference dealer, as a multiple of that dealer's
+own attack power, from the support model (`support.js`'s ap channel):
+
+| | |
+|---|---|
+| support's base attack | 228,511 (`gear.js` at +21 armour, +25 weapon; 20.3% attack power) |
+| handed over | × 0.22 × (1 + 68.55% ally attack enhancement) = 84,733 base attack; × 1.2948, the dealer's attack-power pool = 109,714 |
+| dealer's own attack power | 182,651 base × 1.2948 + 3,600 flat = 240,097 |
+| while the buff is up | (240,097 + 109,714) / 240,097 = ×1.4570 |
+| at its 95% uptime | 1 + 0.95 × 0.4570 = **×1.4341** |
+
+It is frozen as `DUMMY_SUPPORT_AP` in `model/loseii-score.js`, and
+`tools/verify-loseii-score.js` recomputes it from the two models and fails if
+they drift. A constant multiplier cancels in every ratio, so it moves no score
+and K absorbs it; it is there, and named in the breakdown ("attack power incl.
+a fixed dummy support buff ×1.43"), so the attack-power level the model stands
+on is a raid's.
+
+**Support.** A support's buffs are measured on one fixed dealer, the chart's
+reference character — `support.js` DEFAULTS' dealer (dpsWP 260,918, dpsMS
+767,170) is exactly that character — the way lopec measures every support on its
+standard dealer. The breakdown names it.
+
+Neither axis reads a partner's item level, so neither score depends on any
+band: the verify checks that a dealer's score does not move when every support
+field in `support.js` is changed, and that a support's does not move when every
+dealer's item level is.
+
+### Skill gems
+
+The pull reads each gem's level through its basic attack power side effect
+({type:2, id:150}: 0.60 / 0.80 / 1.00 / 1.20% a gem at level 7..10, and the
+page's own attack-power total agrees on 103 of 117 corpus loadouts). The DPS
+gem ladder already priced the two bigger halves (commit 11b0fca, Shizu's model
+on bebkok's gem table): skill damage 32 / 36 / 40 / 44% on all of a dealer's
+damage, and cooldown 18 / 20 / 22 / 24% with casts going as 1 / (1 − cooldown)
+and 70% of damage on cooldown — 4.83 / 4.79 / 4.75% a set level. It left out
+the third: the basic attack power, which on the bracelet model's reference is
+another 2.00 / 1.96 / 1.92%. The rows now carry all three, 6.93 / 6.84 / 6.77%
+a set level, built by `tools/gem-rows-dps.js` (which `--check` reproduces). The
+share of damage the skill-damage half lands on is one class-neutral number, all
+of it; lopec uses each class's measured share (딜지분), which this site does not
+have. The support gem rows (`model/gems.js`) carry the attack-power half at 1.2
+points a level for the set; the pages say 2.2 (eleven gems at 0.2% a level), so
+that row is short by about a point of attack power a level — flagged, not yet
+re-baked.
+
+### What is not scored, and why
+
+A system the pull does not carry is not invented. It drops out of the sum (the
+character is taken at the reference's level there) and is named under the
+breakdown. Per character that is usually the accessories and the ark grid,
+which only the astrogem pull carries (sign-in walled), and Master and the ark
+passive points, which only the bracelet pull carries. Never scored: engravings
+(books and relic engravings — only the stone's 9-7 step is scored), runes,
+tripods and skill levels, the ark passive past tier-1 evolution and Master,
+card sets and weapon quality — none is in the pull. Elixir and transcendence
+are not on the list because both left the game in 2025
+(`docs/research/combat-power-model.md`); the bracelet worker's page probe still
+looks for them and no record carries them. A support's care and utility
+(lopec's ~7% and ~1%) are not scored either: the support axis is the buff alone.
+
+### Why not Combat Power
+
+The game's Combat Power weights each system by its own table, and that table
+is not damage: the chart's estimate of it (`combat-power.js`, now retired) had
+to fit a "progression" fudge to a leaderboard sample to follow real characters
+at all, and it was widest of the mark on supports. The Loseii Score keeps CP's
+scale, so nobody learns a new number, but takes its order and its gaps from
+damage. Where your score and your CP disagree, the game's weighting and real
+damage disagree — or an unscored system is doing the work.
+
+### How lopec informed it
+
+[lopec.kr](https://lopec.kr)'s 환산 점수 is the Korean community's standard
+for "real" power: base attack power multiplied through every damage system
+with class-neutral weights, and a support scored by buff power (~92%), care
+(~7%) and utility (~1%), scaled to sit on the dealer scale
+([support method](https://cool-kiss-ec2.notion.site/1eb758f0e8da8065aa70d07656ea2bca)).
+Its numbers land near in-game CP on purpose. The Loseii Score takes the same
+two ideas — multiply the systems, read on the CP scale — onto this site's
+damage model and its ladders.
+
+### Checked against lopec (2026-09-25/26)
+
+**lopec's own population** ([lopec.kr/stats](https://lopec.kr/stats),
+snapshot 2026-09-26; ilvl 1700+, best-score profile; 932,709 dealers and
+166,704 supports). The page publishes the spread of lopec scores and of
+in-game CP in 100-point buckets from 3,000, not medians per item-level band.
+Matching the two spreads quantile by quantile (the buckets' own totals; the
+bucket arrays in the page sum to about half the stated counts):
+
+| quantile | dealers: lopec / CP | ratio | supports: lopec / CP | ratio |
+|---|---|---|---|---|
+| p10 | 3,204 / 3,204 | 1.000 | 3,180 / 3,179 | 1.000 |
+| p25 | 3,529 / 3,548 | 0.995 | 3,495 / 3,545 | 0.986 |
+| p50 | 4,284 / 4,346 | 0.986 | 4,219 / 4,266 | 0.989 |
+| p75 | 5,294 / 5,427 | 0.975 | 5,368 / 5,350 | 1.003 |
+| p90 | 6,714 / 6,889 | 0.975 | 7,056 / 7,037 | 1.003 |
+| p95 | 7,665 / 8,001 | 0.958 | 8,168 / 7,948 | 1.028 |
+
+**lopec, middling KR dealers** (character pages `lopec.kr/character/specPoint/<name>`,
+2026-09-26; the page shows the lopec score, the in-game CP and the median lopec
+score at that item level):
+
+| name | class | ilvl | lopec | in-game CP | lopec / CP | lopec median at that ilvl | gems | grid atk/add/boss |
+|---|---|---|---|---|---|---|---|---|
+| 구름 | Aeromancer | 1737.5 | 3,369.89 | 3,635.47 | 0.927 | 3,486.20 | seven 7s, four 6s | 54/30/— |
+| 로로 | Wildsoul | 1762.5 | 6,483.40 | 6,858.69 | 0.945 | 4,736.37 | eleven 10s | 46/33/17 |
+| 호랑이 | Sharpshooter | 1770.0 | 4,819.49 | 5,026.94 | 0.959 | 5,432.04 | one 10, ten 7s | 27/38/1 |
+| 치즈 | Wildsoul | 1784.2 | 6,963.76 | 7,128.21 | 0.977 | 6,897.37 | one 9, ten 8s | 59/49/11 |
+| 조사 | Gunslinger | 1800.0 | 9,203.34 | 9,710.10 | 0.948 | 8,906.46 | eleven 10s | 50/62/78 |
+
+lopec sits 2–7% under CP on these five and 0–4% under across its population's
+quantiles, with no trend across item level.
+
+**Ours, the NA calibration panel**, median Loseii Score ÷ in-game CP per band,
+K refitted on the panel each time:
+
+| band | n | median CP | first model | gear sets | matched partner | **now** (no support buffs) | median Loseii now |
+|---|---|---|---|---|---|---|---|
+| DPS 1700–1720 | 24 | 2,313 | 1.98 | 1.43 | 1.35 | **1.41** | 3,220 |
+| DPS 1720–1750 | 25 | 3,671 | 1.10 | 1.10 | 1.05 | **1.07** | 4,007 |
+| DPS 1750–1780 | 33 | 4,945 | 1.02 | 1.02 | 1.02 | **1.02** | 5,123 |
+| DPS 1780+ | 36 | 7,543 | 0.90 | 0.90 | 0.94 | **0.92** | 6,792 |
+| Support 1700–1720 | 3 | 2,642 | 2.03 | 1.85 | 1.17 | **1.85** | 4,884 |
+| Support 1720–1750 | 10 | 3,677 | 1.52 | 1.52 | 1.21 | **1.52** | 5,258 |
+| Support 1750–1780 | 14 | 5,153 | 1.14 | 1.14 | 1.05 | **1.14** | 5,570 |
+| Support 1780+ | 12 | 7,659 | 0.78 | 0.78 | 0.91 | **0.78** | 5,900 |
+
+"First model" priced honing on the upper ladder whatever the set; "gear sets"
+priced each piece on its own set; "matched partner" added the gems'
+attack-power half and paired each character with the median partner of its
+item-level band; "now" keeps the gems and drops the pairing for one fixed
+partner. (The very first design anchored on one whale — Paroxysmal scoring
+exactly his CP — and put the middle band 22% over CP; the panel fit replaced
+it.)
+
+The gear-set fix is the whole change at 1700–1720 between the first two
+columns: those characters are on the lower set and were being priced as if
+their +18 were an upper-set +18 (ilvl 1765). The gems' attack-power half moves
+the DPS bands by one to three points (1.43 / 1.10 / 1.02 / 0.90 to 1.41 / 1.07 /
+1.02 / 0.92). The matched partner had narrowed the
+support curve most, because it scored each support with a dealer of its own
+tier; with one fixed dealer a support's score is its buffs alone, and a
+support's gear moves the party's damage far less than a dealer's gear moves
+its own, so the support curve is flat again.
+
+**What is left.** Against lopec's ~0.95 the DPS bands run +13% (1720–1750),
++8% (1750–1780) and −3% (1780+), with 1700–1720 at 1.41; the supports sit
+between 1.85 and 0.78. That is a tilt, and it is not a system we could still
+read: advanced honing is 40 on every upper-set character and the ark passive
+trees are full from 1705 up. The cleanest test is two KR dealers lopec shows in
+full, with the same relic books (44404 and 44444) and a full ark passive on
+both — 구름 (1737.5) and 치즈 (1784.2) — placed by hand on our ladders from
+their lopec pages (`tools/.cache` script; bracelet, karma and stone taken
+equal):
+
+| system (치즈 minus 구름) | D |
+|---|---|
+| armour honing (+11 → +21) | 10.5 |
+| weapon honing (+16 → an 1800 weapon) | 10.9 |
+| skill gems | 10.1 |
+| accessories (neck, earrings, rings) | 7.8 |
+| ark grid | 4.4 |
+| Master | 4.9 |
+| fixed partner | 0 |
+| **our multiplier** | **48.6 D, ×1.63** (45.6 D, ×1.58 before the gems' attack-power half) |
+| lopec | 72.6 D, ×2.07 |
+| in-game CP | 67.3 D, ×1.96 |
+
+lopec, like CP, moves about 1.5 times as far as our damage model across the
+same systems. Our model prices honing through attack power ∝ √(main stat ×
+weapon power), the game's own formula, so a +10 step on every armour piece is
+about +10.5% damage, where lopec and CP credit more. On the NA panel the same
+factor shows band to band: from 1720–1750 to 1780+ our median multiplier rises
+×1.70 (53 D) where CP rises ×2.05 (72 D). The residual at 1700–1720 is the same
+effect over a longer span, plus the skill block (tripod and skill levels,
+runes) that lostark.bible's CP breakdown shows climbing from ~0.60 of the
+whales' at 1710 to ~0.75 at 1720 (`docs/research/combat-power-model.md`) and
+that no pull carries.
+
+So a score that stays pure damage times one constant cannot track CP's shape
+the way lopec does: either it is damage, and tilts against CP, or it follows
+CP, and stops being damage. Until that is decided the number stays beta.
+
+### Checking it
+
+`node tools/verify-loseii-score.js` re-derives every panel member's readings
+from its stored records through `lookup.js`, checks the captured constants
+(reference, Master, the stat beside the gear, tier-1 evolution), the scale,
+the fixed dummy support buff (recomputed from the two models), the cases (the
+reference, a weak build, a whale, a mid support, the same three with a
+vambrace — Ancient +25, Legendary +12, and a +10 whose limit break is still to
+do — and real pulls: Paroxysmal, Torchidesu on the lower set, Shizukaziye's
+bracelet pull alone), the invariants (every upgrade raises the score; a lower-set piece
+scores under the upper piece at a higher item level; no clamp at the ladder
+floors; a dealer's score is independent of every support field and of its item
+level; a support's is independent of every dealer's item level; the reference
+scores exactly K), and runs
+the Python twin (`model/loseii_score.py verify`), which re-derives the DPS
+tables from `rows-dps.json` and both honing tables itself. `node tools/gem-rows-dps.js --check` keeps the gem rows equal
+to their three parts. After an intended
+model or table change, `--capture` re-derives the panel and the REFS.
+
 ## Open questions
 
 1. **The quality block.** Maxroll carries a second per-honing-level stat block
@@ -348,7 +791,13 @@ and `tools/verify-bracelet-bands.js` re-checks both axes.
    gain rises about 67%. Default is off (`useQualityBlock: false`), matching
    bebkok and the bracelet calculator. Waiting on a reading from a real +25
    piece.
-2. **Karma level costs.** The data lists 1 Destiny Stone + 900 gold per attempt
+2. **The vambrace's flat basic attack power.** Taken as inside the attack-power
+   percentage. If the game adds it after every percentage, a +25 is ×1.1612
+   rather than ×1.1734 on the DPS reference. And one weapon-power reading on a
+   real character is off by 654 from the table. Both, with three smaller ones
+   (special honing, shards, the first real fetch), are in
+   `docs/research/vambrace.md`.
+3. **Karma level costs.** The data lists 1 Destiny Stone + 900 gold per attempt
    with a `prob` falling from 20% at level 21 to 0.25% at 29 and **0** at 30,
    plus a `care` field at about half of `prob`. A 0% success at the last level
    cannot be a plain roll, so `care` is presumably the pity path. Unresolved.

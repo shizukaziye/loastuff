@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node tools/build-dist.mjs",
     "check-dist": "node tools/build-dist.mjs --check-only",
-    "check": "npm run check:tools && npm run check:html && npm run check:shared-pins && npm run check:cross-pins && npm run check:bracelet && npm run check:astrogem-pins && npm run check:gpd && npm run check:py",
+    "check": "npm run check:tools && npm run check:html && npm run check:shared-pins && npm run check:cross-pins && npm run check:bracelet && npm run check:astrogem-pins && npm run check:gpd && npm run check:loseii && npm run check:py",
     "check:tools": "node tools/check-tools.mjs",
     "check:html": "node tools/check-html.mjs",
     "check:shared-pins": "node tools/check-shared-pins.mjs",
@@ -14,6 +14,7 @@
     "check:bracelet": "npm --prefix loa-bracelet-calc run check",
     "check:astrogem-pins": "node loa-astrogem-calc/tools/lint-pins.js",
     "check:gpd": "node loa-gpd/tools/verify.js",
+    "check:loseii": "node loa-gpd/tools/verify-loseii-score.js",
     "check:py": "npm run check:py:market && npm run check:py:astrogem && npm run check:py:crafting && npm run check:py:hellkey",
     "check:py:market": "python tools/marketlib.py",
     "check:py:astrogem": "cd loa-astrogem-calc && python verify.py",

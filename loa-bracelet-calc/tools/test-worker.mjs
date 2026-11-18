@@ -583,6 +583,17 @@ ok("reads all six honing levels", pf && pf.honing &&
 ok("upper_body/lower_body/hand become chest/pants/gloves",
   pf.honing.chest === 22 && pf.honing.pants === 20 && pf.honing.gloves === 23);
 ok("advanced honing is reported, never applied", pf.advancedHoning && pf.advancedHoning.weapon === 40);
+// the vambrace: lostark.bible's "bracer" slot, exactly as NA/Legendarymember's page carries it (2026-11-17)
+const BRACER = '{id:134501406,slot:"bracer",data:{type:"equipment",stats:[],honing:20,advancedHoning:0}}';
+const pfv = parseCharacterProfile(PROFILE_HTML.replace(STONE, STONE + "," + BRACER));
+ok("a loadout with no bracer slot reads vambrace: null, not nothing", pf.vambrace === null, JSON.stringify(pf.vambrace));
+ok("the bracer slot is the vambrace: its +N and its item id",
+  pfv.vambrace && pfv.vambrace.honing === 20 && pfv.vambrace.id === 134501406, JSON.stringify(pfv.vambrace));
+ok("a vambrace is not a seventh honing piece",
+  pfv.honing.weapon === 25 && Object.keys(pfv.honing).length === 6 && pfv.raw.honingPieces === 6 &&
+  JSON.stringify(pfv.honing) === JSON.stringify(pf.honing));
+ok("a page whose items cannot be read leaves the vambrace out",
+  !("vambrace" in (parseCharacterProfile(PROFILE_HTML.replace("items:[", "itemz:[")) || {})));
 ok("the neck's additional damage is 2.6%", pf.neckAddDmg === 2.6, String(pf.neckAddDmg));
 ok("a base:true line is not mistaken for a roll", pf.raw.neckAddDmg === 2.6);
 ok("earring 1's weapon power is 1.8%", pf.earring1Wp === 1.8, String(pf.earring1Wp));
