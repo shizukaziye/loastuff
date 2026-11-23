@@ -70,6 +70,11 @@ jobs:
         working-directory: loa-gpd
         run: node tools/verify-loseii-score.js
 
+      - name: Aion 2 damage math (test.js)
+        if: ${{ !cancelled() }}
+        working-directory: aion2-damage-math
+        run: node test.js
+
       - name: Shared market maths (tools/marketlib.py self-test)
         if: ${{ !cancelled() }}
         run: python tools/marketlib.py
