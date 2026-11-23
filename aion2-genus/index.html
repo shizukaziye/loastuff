@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aion 2 Genus Boards — Loseii</title>
+<meta name="description" content="Get the most damage out of Aion 2 Genus Insight for the fewest Soul Crystals. Set a budget and see which lines to lock on each board, when to lock them and when to stop, priced for your own character. Global client, PvE.">
+<meta property="og:title" content="Aion 2 Genus Boards">
+<meta property="og:description" content="The most Genus Insight damage for the fewest Soul Crystals: which lines to lock, when to lock them and when to stop.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.loseii.com/aion2-genus/">
+<link rel="canonical" href="https://www.loseii.com/aion2-genus/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- No build. Every file carries a ?v= pin: bump a pin whenever its file changes, because the zone caches .css and .js
+     for hours. The look and the damage model are Damage Math's own files, loaded from its folder, so a change there
+     means a pin bump here too (tools/check-cross-pins.mjs watches for it). genus.js also runs under node (test.js). -->
+<link rel="stylesheet" href="/shared/tokens.css?v=1">
+<link rel="preload" href="/aion2-damage-math/fonts/marcellus-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/aion2-damage-math/style.css?v=1">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-in">
+    <div>
+      <p class="eyebrow">Genus Insight · Global client · PvE · Insight 10</p>
+      <h1>Aion 2 Genus Boards</h1>
+      <p class="lede">A perfect set of boards costs millions of Soul Crystals. Most of its damage costs a small part of that. Set a budget and this page works out which lines to lock, when to lock them and when to stop.</p>
+    </div>
+    <div class="hero">
+      <p class="hero-k" id="heroK">With 100,000 Soul Crystals</p>
+      <p class="hero-v" id="heroV">Working it out…</p>
+      <p class="hero-s" id="heroS">&nbsp;</p>
+    </div>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#plan">The plan</a>
+    <a href="#locks">When to lock</a>
+    <a href="#boards">Your boards</a>
+    <a href="#lines">Line values</a>
+    <a href="#how">How it works</a>
+    <a href="#sources">Sources</a>
+  </nav>
+</header>
+
+<main class="layout">
+  <aside class="rail" aria-label="Your plan">
+    <div class="rail-head">
+      <h2>Your plan</h2>
+      <div class="row">
+        <select id="sheet" aria-label="Character sheet"></select>
+      </div>
+      <p class="rail-note" id="sheetNote"></p>
+    </div>
+    <details class="grp" open>
+      <summary>Budget</summary>
+      <div class="grp-body">
+        <div class="fld">
+          <label for="f-budget">Soul Crystals to spend</label>
+          <span class="inp"><input type="number" id="f-budget" min="0" step="5000" inputmode="numeric"></span>
+          <p class="hint">On all five boards, from where they stand now. Each crystal also costs 250 Kinah.</p>
+        </div>
+        <div class="fld">
+          <label for="f-weekly">Crystals you earn a week</label>
+          <span class="inp"><input type="number" id="f-weekly" min="0" step="500" inputmode="numeric"></span>
+          <p class="hint">Sets the time only.</p>
+        </div>
+        <div class="quick">
+          <button class="btn sm" type="button" data-weekly="6500">Free routine, 6,500</button>
+          <button class="btn sm" type="button" data-weekly="27500">Plus 3 keys a day, 27,500</button>
+        </div>
+      </div>
+    </details>
+    <details class="grp" open>
+      <summary>The fight</summary>
+      <div class="grp-body">
+        <div class="fld">
+          <label for="f-critBuff">Critical Hit from skills and food</label>
+          <span class="inp"><input type="number" id="f-critBuff" min="0" step="10" inputmode="numeric"></span>
+          <p class="hint">What a fight adds on top of the sheet. A Ranger's Marking Shot is 300.</p>
+        </div>
+        <div class="fld">
+          <label for="f-critRes">Boss Critical Hit Resist</label>
+          <span class="inp"><input type="number" id="f-critRes" min="0" step="50" inputmode="numeric"></span>
+          <p class="hint">Ludra is about 1,200.</p>
+        </div>
+        <div class="fld">
+          <label for="f-front">Hits from the front</label>
+          <span class="inp"><input type="number" id="f-front" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+        </div>
+        <div class="fld">
+          <label for="f-back">Hits from behind</label>
+          <span class="inp"><input type="number" id="f-back" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+        </div>
+        <div class="fld">
+          <label for="f-bossGenus">Boss genus</label>
+          <select id="f-bossGenus">
+            <option value="cogni">Cogni (most bosses)</option>
+            <option value="fera">Fera</option>
+            <option value="natura">Natura</option>
+            <option value="varian">Varian</option>
+            <option value="none">Mixed: skip genus lines</option>
+          </select>
+          <p class="hint">A genus Damage Boost line only works on that genus.</p>
+        </div>
+        <div class="fld">
+          <label for="f-accPer100">Damage from 100 Accuracy</label>
+          <span class="inp"><input type="number" id="f-accPer100" min="0" step="0.5" inputmode="decimal"><span class="u">%</span></span>
+          <p class="hint">Leave at 0 if your hits land. If the boss parries or you miss, try 6.</p>
+        </div>
+        <p class="derived" id="derived"></p>
+      </div>
+    </details>
+  </aside>
+
+  <div class="content">
+
+    <section id="plan">
+      <div class="sec-head">
+        <h2>What the crystals buy</h2>
+        <p>The line shows the damage each budget buys when every lock is chosen well. It bends early: the last tenth of a perfect board costs more than the first nine tenths.</p>
+      </div>
+      <div class="panel">
+        <div class="tiles" id="tiles"></div>
+        <div class="chart-wrap"><svg id="curve" viewBox="0 0 720 300" role="img" aria-label="Share of a perfect board's damage by Soul Crystals spent"></svg></div>
+        <div class="tbl-wrap">
+          <table id="budgetTbl">
+            <thead><tr><th>Soul Crystals</th><th class="r">Damage</th><th class="r">Of a perfect board</th><th class="r">Kinah</th><th class="r">Time</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note" id="planNote"></p>
+      </div>
+    </section>
+
+    <section id="locks">
+      <div class="sec-head">
+        <h2>When to lock</h2>
+        <p>Each lock makes every later press dearer, so your standard should fall as the board fills. The table gives the lowest roll worth locking, by how many slots are already locked. Lock in whatever order the lines land.</p>
+      </div>
+      <div class="panel">
+        <div class="tabs" id="lockTabs" role="tablist" aria-label="Board"></div>
+        <div class="tbl-wrap">
+          <table id="lockTbl" class="lock-tbl">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note"><span class="key-h">Orange</span> needs a Heroic roll, <span class="key-u">gold</span> a Unique one. <b>any</b> means lock it at any Unique or Heroic value. A dash means leave it: no roll is worth the lock at that stage. Leave slots 2 and 8 open; they roll nothing that adds damage. These are averages over the ways a board can fill; the cards below give the exact number for a board as it stands.</p>
+      </div>
+    </section>
+
+    <section id="boards">
+      <div class="sec-head">
+        <h2>Your boards</h2>
+        <p>Enter what a board shows and tick what is locked. Each card then says what to do with the next press and what is left to pay. Leave a board empty if you are starting it on a fresh preset.</p>
+      </div>
+      <div class="boards" id="boardCards"></div>
+    </section>
+
+    <section id="lines">
+      <div class="sec-head">
+        <h2>What each line is worth</h2>
+        <p>Damage from every line at its top Heroic roll, on this sheet. The chance is for one press to land that line at Unique or Heroic.</p>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table id="lineTbl">
+            <thead><tr><th>Slot</th><th>Line</th><th class="r">Top roll</th><th>Damage at the top roll</th><th class="r">Chance a press</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note">Critical Hit and Damage Boost lines are priced at their average over your plan, because each one makes the next worth less, and Critical Hit is worth nothing past the cap. Lines that add no damage on this sheet are left out.</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="sec-head">
+        <h2>How it works</h2>
+      </div>
+      <div class="prose">
+        <p><strong>The press.</strong> Analyze re-rolls every slot you have not locked. It costs 4 Soul Crystals and 1,000 Kinah for each slot it rolls, plus a charge for the locks. The charge grows fast: a press costs 36 crystals with nothing locked, 96 with four locks and 172 with five.</p>
+      </div>
+      <div class="tbl-wrap two">
+        <table>
+          <thead><tr><th>Slots locked</th><th class="r">0</th><th class="r">1</th><th class="r">2</th><th class="r">3</th><th class="r">4</th><th class="r">5</th><th class="r">6</th><th class="r">7</th><th class="r">8</th></tr></thead>
+          <tbody>
+            <tr><td>Lock charge</td><td class="r">0</td><td class="r">8</td><td class="r">16</td><td class="r">36</td><td class="r">76</td><td class="r">156</td><td class="r">236</td><td class="r">316</td><td class="r">396</td></tr>
+            <tr><td>Whole press</td><td class="r">36</td><td class="r">40</td><td class="r">44</td><td class="r">60</td><td class="r">96</td><td class="r">172</td><td class="r">248</td><td class="r">324</td><td class="r">400</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose">
+        <p><strong>The odds.</strong> At Insight 10 each slot rolls Heroic 5% of the time and Unique 15%. The game then draws one line from the slot's list, each as likely as the next: ten lines in slots 1, 3, 5, 6 and 9, twelve in slots 2 and 8, and fourteen in slots 4 and 7 (twelve on the Special board). So one named line at Heroic is one press in 200 on most slots and one in 280 on slot 4.</p>
+        <p><strong>The choice.</strong> After a press you can stop and keep the board, press again, or lock some lines and press again. The page weighs each choice with one price: the Soul Crystals you would pay for +1% damage. A line is worth a lock when its damage, at that price, beats what the lock adds to every press still to come. Your budget sets the price, and the page solves every board state exactly from there.</p>
+        <p><strong>Damage.</strong> Each line is priced on your sheet with the <a href="/aion2-damage-math/">Damage Math</a> model. Pick "My Damage Math sheet" to use the sheet you saved there.</p>
+        <p><strong>Crystals a week.</strong> As of late November 2026 a free routine brings about 6,500 a week: Odylium Repository runs, Substance Morph, the Festival shop and the attendance board. Each character can also buy three Hidden Cube keys a day for 50 Quna each, and a keyed cube pays 1,000 crystals. That is about 27,500 a week on one character.</p>
+      </div>
+      <h3>What the page assumes</h3>
+      <ul class="src">
+        <li>Every board is at Insight 10. Do not lock anything before then.</li>
+        <li>Rolls fall evenly inside a grade's range. The client does not say.</li>
+        <li>Unique ranges for Attack, Critical Hit and Accuracy lines are the printed minimum doubled, the pattern every printed range follows. Check them in the Auto Analysis window, which shows the minimum and maximum for each grade.</li>
+        <li>Lines below Unique grade count as nothing.</li>
+        <li>A genus Damage Boost line adds to the same sum as Damage Boost and PvE Damage Boost, and only against bosses of that genus. Nobody has tested whether it multiplies on its own. If it does, it is worth more than shown.</li>
+        <li>Accuracy is worth nothing unless you give it a value. If your hits miss or get parried, fix that before you chase Critical Hit.</li>
+        <li>You get three presets, each with its own lines on all five boards. Costs here are for the boards as you entered them.</li>
+      </ul>
+      <h3>Checks</h3>
+      <ul class="src">
+        <li>Raid Relay prices a board with four chosen Heroic lines at 25,500 Soul Crystals and four Unique-or-better lines at 6,300. The solver here returns 25,489 and 6,347.</li>
+        <li>Eight thousand boards played roll by roll with the solver's rules cost within 2% of what it predicts and gain within 1%.</li>
+      </ul>
+    </section>
+
+    <section id="sources">
+      <div class="sec-head"><h2>Sources</h2></div>
+      <ul class="src">
+        <li><a href="https://raidrelay.com/aion-2-genus-insight-guide">Raid Relay, Genus Insight guide</a>: lock charges and grade odds from the Global client, the finished-board cost table, three presets.</li>
+        <li><a href="https://aion2data.com/guides/pets">Aion2Data, pet guide</a> and its pages for each genus: every slot's list of lines with Heroic ranges, and the count of bosses by genus.</li>
+        <li><a href="https://aion2tierlist.com/guides/aion-2-genus-insight-guide">AION 2 Tier List, Genus Insight guide</a>: value ranges read in the Insight windows, after the videos of Grobs and XifanGG.</li>
+        <li><a href="https://timesaver.gg/blog/aion-2-accuracy-cap">Timesaver, Accuracy and Crit Cap for Ludra</a>: Ludra's 1,200 Accuracy and 1,700 Critical Hit.</li>
+        <li><a href="https://thegameswiki.com/aion-2/wiki/genus-insight">The Games Wiki, Genus Insight</a>: NCSOFT's published grade odds by Insight level and the Korean service's changes.</li>
+        <li><a href="/aion2-damage-math/">Aion 2 Damage Math</a>: the damage model and the built-in sheets.</li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <p>Built for PvE on the Global client. Numbers are as read in November 2026; a patch can change them.</p>
+  <p>By Shizukaziye. Unofficial fan tool, not affiliated with or endorsed by NCSOFT Corporation. AION is a registered trademark of NCSOFT Corporation.</p>
+</footer>
+
+<script src="/aion2-damage-math/model.js?v=1" defer></script>
+<script src="/aion2-damage-math/presets.js?v=1" defer></script>
+<script src="genus.js?v=1" defer></script>
+<script src="app.js?v=1" defer></script>
+<script src="https://www.loseii.com/nav.js" defer></script>
+<script src="https://www.loseii.com/social-bar.js" defer></script>
+</body>
+</html>

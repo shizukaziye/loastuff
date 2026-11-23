@@ -61,7 +61,8 @@
       items: [
         { name: "Roster Checklist", url: "https://www.loseii.com/aion2-roster/" },
         { name: "Ranger Point Guide", url: "https://www.loseii.com/aion2-ranger-guide/" },
-        { name: "Damage Math", url: "https://www.loseii.com/aion2-damage-math/" }
+        { name: "Damage Math", url: "https://www.loseii.com/aion2-damage-math/" },
+        { name: "Genus Boards", url: "https://www.loseii.com/aion2-genus/" }
       ]
     },
     {

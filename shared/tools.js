@@ -61,7 +61,9 @@
           { name: "Ranger Point Guide", url: "https://www.loseii.com/aion2-ranger-guide/", kind: "planner", keyword: "Ranger",
             blurb: "tgustafsson's AION 2 Ranger guide, mirrored with credit: every Daevanion node, skill rank, trait and stigma step by step to 45.", live: true },
           { name: "Damage Math", url: "https://www.loseii.com/aion2-damage-math/", kind: "calculator", keyword: "damage math",
-            blurb: "What each damage stat is worth on your own sheet: the tested formula step by step, every stat ranked, and any upgrade in Kinah per 1% damage.", live: true }
+            blurb: "What each damage stat is worth on your own sheet: the tested formula step by step, every stat ranked, and any upgrade in Kinah per 1% damage.", live: true },
+          { name: "Genus Boards", url: "https://www.loseii.com/aion2-genus/", kind: "calculator", keyword: "genus boards",
+            blurb: "The most Genus Insight damage for the fewest Soul Crystals: which lines to lock on each board, when to lock them and when to stop.", live: true }
         ]
       },
       {
