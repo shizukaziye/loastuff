@@ -83,15 +83,38 @@
         <div class="fld">
           <label for="f-critRes">Boss Critical Hit Resist</label>
           <span class="inp"><input type="number" id="f-critRes" min="0" step="50" inputmode="numeric"></span>
-          <p class="hint">Ludra is about 1,200.</p>
+          <p class="hint">About 1,200 on Ludra. One tester puts Eternal Ludra at 1,250 to 1,350.</p>
         </div>
         <div class="fld">
-          <label for="f-front">Hits from the front</label>
-          <span class="inp"><input type="number" id="f-front" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+          <label for="f-acc">Accuracy in the fight</label>
+          <span class="inp"><input type="number" id="f-acc" min="0" step="10" inputmode="numeric"></span>
+          <p class="hint">Accuracy and Accuracy Bonus with buffs up, plus PvE Accuracy. A guess until you type yours.</p>
         </div>
         <div class="fld">
-          <label for="f-back">Hits from behind</label>
-          <span class="inp"><input type="number" id="f-back" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+          <label for="f-block">Accuracy where parries stop</label>
+          <span class="inp"><input type="number" id="f-block" min="0" step="50" inputmode="numeric"></span>
+          <p class="hint">The boss's Block. About 1,200 on Ludra, 800 to 1,100 below it.</p>
+        </div>
+        <div class="fld">
+          <label for="f-capWeight">Count Critical Hit and Accuracy at</label>
+          <span class="inp"><input type="number" id="f-capWeight" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+          <p class="hint">Of their damage. Both do nothing past the cap, and better gear takes you there.</p>
+        </div>
+        <div class="fld">
+          <label for="f-stance">You fight from</label>
+          <select id="f-stance">
+            <option value="front">The front</option>
+            <option value="back">Behind</option>
+          </select>
+          <p class="hint">Hits you do not land from your side count for the other side.</p>
+        </div>
+        <div class="fld">
+          <label for="f-frontRate">Hits from the front, when you play the front</label>
+          <span class="inp"><input type="number" id="f-frontRate" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
+        </div>
+        <div class="fld">
+          <label for="f-backRate">Hits from behind, when you play the back</label>
+          <span class="inp"><input type="number" id="f-backRate" min="0" max="100" step="5" inputmode="numeric"><span class="u">%</span></span>
         </div>
         <div class="fld">
           <label for="f-bossGenus">Boss genus</label>
@@ -103,11 +126,6 @@
             <option value="none">Mixed: skip genus lines</option>
           </select>
           <p class="hint">A genus Damage Boost line only works on that genus.</p>
-        </div>
-        <div class="fld">
-          <label for="f-accPer100">Damage from 100 Accuracy</label>
-          <span class="inp"><input type="number" id="f-accPer100" min="0" step="0.5" inputmode="decimal"><span class="u">%</span></span>
-          <p class="hint">Leave at 0 if your hits land. If the boss parries or you miss, try 6.</p>
         </div>
         <p class="derived" id="derived"></p>
       </div>
@@ -171,7 +189,7 @@
             <tbody></tbody>
           </table>
         </div>
-        <p class="note">Critical Hit and Damage Boost lines are priced at their average over your plan, because each one makes the next worth less, and Critical Hit is worth nothing past the cap. Lines that add no damage on this sheet are left out.</p>
+        <p class="note">Critical Hit, Accuracy and Damage Boost lines are priced at their average over your plan, because each one makes the next worth less. Critical Hit and Accuracy are then counted at the share you set on the left. Critical Damage Boost and Critical Attack are priced at the crit rate your plan ends with. Lines that add no damage on this sheet are left out.</p>
       </div>
     </section>
 
@@ -195,6 +213,10 @@
         <p><strong>The odds.</strong> At Insight 10 each slot rolls Heroic 5% of the time and Unique 15%. The game then draws one line from the slot's list, each as likely as the next: ten lines in slots 1, 3, 5, 6 and 9, twelve in slots 2 and 8, and fourteen in slots 4 and 7 (twelve on the Special board). So one named line at Heroic is one press in 200 on most slots and one in 280 on slot 4.</p>
         <p><strong>The choice.</strong> After a press you can stop and keep the board, press again, or lock some lines and press again. The page weighs each choice with one price: the Soul Crystals you would pay for +1% damage. A line is worth a lock when its damage, at that price, beats what the lock adds to every press still to come. Your budget sets the price, and the page solves every board state exactly from there.</p>
         <p><strong>Damage.</strong> Each line is priced on your sheet with the <a href="/aion2-damage-math/">Damage Math</a> model. Pick "My Damage Math sheet" to use the sheet you saved there.</p>
+        <p><strong>Critical Hit.</strong> Every 10 points above the boss's Critical Hit Resist is 1% crit, up to 50%. Past that a point is worth nothing, so the plan stops buying crit lines at the cap. A Front or Back Attack Critical Hit line counts only on hits from that side.</p>
+        <p><strong>Accuracy.</strong> A hit from the front or side is parried when your Accuracy is below the boss's Block: about 6.7% of hits for each 100 you are short, up to 80%. A parried hit deals about half its damage. Hits from behind are never parried. So closing a gap of 200 from the front is worth about 6% damage, and Accuracy past the boss's Block is worth nothing. Accuracy Bonus and PvE Accuracy both count.</p>
+        <p><strong>Half for capped stats.</strong> Critical Hit and Accuracy count at half their damage when the page chooses what to lock. Both are worth nothing once you pass the cap, and each gear upgrade moves you closer to it. The headline shows the counted figure; "Damage today" shows every line at full.</p>
+        <p><strong>Front and back.</strong> You fight from one side. A front line counts on the share of hits you land from the front, 85% when you play the front. A back line counts on the rest. Play the back and it is 70% from behind, 30% from the front.</p>
         <p><strong>Crystals a week.</strong> As of late November 2026 a free routine brings about 6,500 a week: Odylium Repository runs, Substance Morph, the Festival shop and the attendance board. Each character can also buy three Hidden Cube keys a day for 50 Quna each, and a keyed cube pays 1,000 crystals. That is about 27,500 a week on one character.</p>
       </div>
       <h3>What the page assumes</h3>
@@ -204,7 +226,9 @@
         <li>Unique ranges for Attack, Critical Hit and Accuracy lines are the printed minimum doubled, the pattern every printed range follows. Check them in the Auto Analysis window, which shows the minimum and maximum for each grade.</li>
         <li>Lines below Unique grade count as nothing.</li>
         <li>A genus Damage Boost line adds to the same sum as Damage Boost and PvE Damage Boost, and only against bosses of that genus. Nobody has tested whether it multiplies on its own. If it does, it is worth more than shown.</li>
-        <li>Accuracy is worth nothing unless you give it a value. If your hits miss or get parried, fix that before you chase Critical Hit.</li>
+        <li>The parry figures are player tests, not NCSOFT's: 6.7% for each 100 Accuracy short (tests run from 6.66 to 10) and half damage on a parried hit (20% to 50%). Read your own parry rate in Combat Analysis, in the BLOC column.</li>
+        <li>The sheets do not carry Accuracy, so the page starts from 1,000. Type your own.</li>
+        <li>Attack lines: on a Global sheet PvE Attack, Boss Attack, Attack Bonus and Max Attack sit within a tenth of each other. "Max Attack, then Attack Bonus" comes from Korean endgame sheets, where Weapon Damage Boost and Perfect are far higher; Max Attack pulls ahead as yours grow.</li>
         <li>You get three presets, each with its own lines on all five boards. Costs here are for the boards as you entered them.</li>
       </ul>
       <h3>Checks</h3>
@@ -236,8 +260,8 @@
 
 <script src="/aion2-damage-math/model.js?v=1" defer></script>
 <script src="/aion2-damage-math/presets.js?v=1" defer></script>
-<script src="genus.js?v=1" defer></script>
-<script src="app.js?v=1" defer></script>
+<script src="genus.js?v=2" defer></script>
+<script src="app.js?v=2" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

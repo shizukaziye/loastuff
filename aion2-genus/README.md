@@ -38,19 +38,38 @@ W(state) = -cost(state) + E[ max( stop and keep it all,
 
 Values are `price x % damage`, where price is the Soul Crystals paid for +1% damage. The page picks the price whose plan spends your budget (`sweep`, `priceFor`), then runs `plan` at that price.
 
-- A press can land any mix of useful lines. `enumerate` lists every mix of up to four at once; values sit on a fine grid for one line and coarser grids for two, three and four. Slots of one class are alike, so each mix is counted once with its multiplicity.
+- A press can land any mix of useful lines. `enumerate` lists every mix of up to four at once; values sit on a fine grid for one line (five per line and grade) and coarser grids for two, three and four (7, 3 and 2 bins). Slots of one class are alike, so each mix is counted once with its multiplicity.
 - `forward` follows the policy from any state and returns the expected crystals, presses and damage. `simulate` plays the same policy with a seeded generator for the spread of the bill.
-- **Critical Hit and Damage Boost are curves, not unit prices.** Each point makes the next worth less, and Critical Hit is worth nothing past the crit cap. `plan` prices both at the slope of the curve where the plan ends, and for Critical Hit it searches for the price at which the plan lands on the cap and no further. Reported damage uses the curves themselves (`valuer.critAt`, `poolAt`).
+- **Critical Hit, Accuracy and Damage Boost are curves, not unit prices.** Each point makes the next worth less, and Critical Hit and Accuracy are worth nothing past their caps. `plan` prices all three at the slope of the curve where the plan ends. For the two capped stats it searches, one after the other, for the price at which the plan lands on the cap and no further (`settle`). Reported damage uses the curves themselves (`valuer.critAt`, `accAt`, `poolAt`).
 - Damage per line comes from Damage Math's `A2` model on the chosen sheet (`valuer`). A genus Damage Boost line counts only on its own board, against bosses of that genus.
+
+## Line formulas (`valuer`)
+
+All values are `100 x ln(damage after / damage before)`, so they add.
+
+| Line | How it is priced |
+|---|---|
+| PvE, plain and genus Damage Boost | one sum: `1 + Damage Boost + PvE + Boss - target tolerance`; a curve (`poolAt`) |
+| Double Chance, Weapon Damage Boost, Multi-hit, Perfect | `A2` gain per 1%, on the sheet |
+| Front and Back Attack Damage Boost, Front and Back Attack | `A2` gain on the share of hits from that side (below) |
+| Attack Bonus, Max Attack, PvE and Boss Attack | `A2` gain per point. Max Attack adds half its value to average Attack, plus Perfect |
+| Critical Hit | 10 points above the boss's resist = 1% crit, capped at 50%; a curve (`critAt`), zero past the cap |
+| Front and Back Attack Critical Hit | Critical Hit times the share of hits from that side |
+| Critical Damage Boost, Critical Attack | `A2` gain at the crit rate the plan ENDS with (`critLines`), not today's |
+| Accuracy Bonus, PvE Accuracy | parry chance = 6.7% per 100 Accuracy short of the boss's Block, capped at 80%; a parried hit loses half; hits from behind are never parried; a curve (`accAt`), zero once the gap is closed |
+| Power Shard Damage Bonus | 100 points = 1% on the shard's bonus |
+
+- **Sides.** `stance` is the side you fight from. Front lines count on `frontRate` (85%) of hits when you play the front and back lines on the rest; play the back and it is `backRate` (70%) from behind. The share that can be parried is everything not from behind.
+- **Half for capped stats.** `capWeight` (50%) scales the Critical Hit and Accuracy curves when the solver chooses. `plan.total` is that counted damage; `plan.real` is every line at full on today's sheet.
 
 ## Checks (`test.js`)
 
 - Press costs against the client's table.
 - Raid Relay's finished-board table: four chosen Heroic lines 25,500 crystals (solver 25,489), four Unique-or-better 6,300 (6,347), Special about 2,400 cheaper (2,438).
-- Line values on Paroxysmal's sheet against the figures first worked out by hand.
+- Line values on Paroxysmal's sheet: front and back shares, the accuracy formula by hand, crit-only lines at today's crit and at the cap, and Max Attack against Attack Bonus on a Korean and a Global sheet.
 - The books balance: price x gain - cost equals the value the solver reports.
 - Boards played roll by roll with true continuous rolls and the solver's rules: bill, gain and net within a few percent of what it expects. This is the test of the grids.
-- The plan: a higher price never buys less, it stops at the crit cap, cold and warm starts agree, and a started board is left alone at a low price.
+- The plan: a higher price never buys less, no plan beats a perfect set, it stops at the crit and accuracy caps, counted and real damage add up as defined, cold and warm starts agree, and a started board is left alone at a low price.
 
 ## What is assumed
 
@@ -59,6 +78,8 @@ The page's own "What the page assumes" list is the full set. The ones most likel
 - **Rolls are even inside a grade's range.** The client does not say.
 - **Lines below Unique count as nothing.**
 - **Genus Damage Boost adds into the Damage Boost sum.** Untested. If it multiplies on its own it is worth more.
+- **The parry figures are player tests** (Aion 2 Maps, Timesaver): 6.66 to 10 per 100 Accuracy, 20% to 50% lost on a parried hit. `OPTS` holds 6.7 and 50.
+- **Accuracy starts at 1,000 against 1,200.** The sheets carry no Accuracy, so this is a guess until the visitor types theirs.
 - **Crystals a week** (6,500 free, 27,500 with three keys a day) are as of late November 2026 and sit in `index.html` as two buttons and a paragraph.
 
 ## Saved state
