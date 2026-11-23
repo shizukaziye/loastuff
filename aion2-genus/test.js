@@ -56,8 +56,20 @@ check('Accuracy Bonus 40, full damage', uv.u.acc * 40, 1.1, 1.3, 2);
 // lines that pay only on crits are worth what the crit rate at the end of the plan makes them worth
 check('Critical Damage Boost 3% at today\'s 7% crit', uv.u.critDb * 3, 0.15, 0.27, 2);
 check('Critical Damage Boost 3% at the 50% cap', G.units(val, 0, 0, 0, val.critHead).u.critDb * 3, 0.95, 1.10, 2);
+// PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack are left out on purpose: no slot offers them to the solver
+{
+  let offered = 0;
+  for (const b of G.BOARD_KEYS) for (let i = 1; i <= 9; i++) for (const id of G.poolOf(b, G.SLOT_CLASS[i]).lines) if (G.LEFT_OUT.indexOf(id) >= 0) offered++;
+  check('left-out attack lines offered to the solver', offered, 0, 0);
+  check('slots 1 and 5 still roll ten lines', G.poolOf('cogni', 's15').size, 10, 10);
+  const p = G.plan(A2, inputs, opts, 20000, null, {});
+  let locks = 0;
+  for (const id of G.LEFT_OUT) locks += p.per.cogni.unit(id) > 0 && G.poolOf('cogni', 's15').lines.indexOf(id) >= 0 ? 1 : 0;
+  check('left-out attack lines the plan can lock', locks, 0, 0);
+}
 // "Max Attack, then Attack Bonus" is Korean endgame advice, and the model agrees on a Korean sheet. On a Global
-// sheet the two sit within a tenth of each other, with PvE and Boss Attack a little ahead.
+// sheet the two sit within a tenth of each other. (PvE and Boss Attack come out level with them in this model, but the
+// one Global test has Boss Attack lower than the formula gives it, so they are left out.)
 {
   const k = G.units0(G.valuer(A2, PRESETS.kr.values, {})).u;
   check('Korean sheet: Max Attack 20 beats Attack Bonus 16, ratio', (k.maxAtk * 20) / (k.atkBonus * 16), 1.3, 2.5, 2);

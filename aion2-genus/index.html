@@ -228,7 +228,8 @@
         <li>A genus Damage Boost line adds to the same sum as Damage Boost and PvE Damage Boost, and only against bosses of that genus. Nobody has tested whether it multiplies on its own. If it does, it is worth more than shown.</li>
         <li>The parry figures are player tests, not NCSOFT's: 6.7% for each 100 Accuracy short (tests run from 6.66 to 10) and half damage on a parried hit (20% to 50%). Read your own parry rate in Combat Analysis, in the BLOC column.</li>
         <li>The sheets do not carry Accuracy, so the page starts from 1,000. Type your own.</li>
-        <li>Attack lines: on a Global sheet PvE Attack, Boss Attack, Attack Bonus and Max Attack sit within a tenth of each other. "Max Attack, then Attack Bonus" comes from Korean endgame sheets, where Weapon Damage Boost and Perfect are far higher; Max Attack pulls ahead as yours grow.</li>
+        <li>Slots 1 and 5 count only Max Attack and Attack Bonus. PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack are left out. All five are added after Attack Increase, so Weapon Damage Boost, the Power Shard and Attack Increase never multiply them, and each counts only under a condition: on a boss, from one side, on a crit, never in PvP. The one test on Global measured 10 Boss Attack at +0.13% against +0.27% for 10 Attack, less than the formula gives it, and nothing off a boss. Front, Back and Critical Attack are the bottom tier in Kanon's guide.</li>
+        <li>Max Attack and Attack Bonus sit within a tenth of each other on a Global sheet. Max Attack pulls ahead as your Weapon Damage Boost and Perfect grow, which is why Korean endgame guides rank it first.</li>
         <li>You get three presets, each with its own lines on all five boards. Costs here are for the boards as you entered them.</li>
       </ul>
       <h3>Checks</h3>
@@ -246,6 +247,8 @@
         <li><a href="https://aion2tierlist.com/guides/aion-2-genus-insight-guide">AION 2 Tier List, Genus Insight guide</a>: value ranges read in the Insight windows, after the videos of Grobs and XifanGG.</li>
         <li><a href="https://timesaver.gg/blog/aion-2-accuracy-cap">Timesaver, Accuracy and Crit Cap for Ludra</a>: Ludra's 1,200 Accuracy and 1,700 Critical Hit.</li>
         <li><a href="https://thegameswiki.com/aion-2/wiki/genus-insight">The Games Wiki, Genus Insight</a>: NCSOFT's published grade odds by Insight level and the Korean service's changes.</li>
+        <li><a href="https://aion2maps.com/guides/accuracy-and-crit/">Aion 2 Maps, Accuracy and Crit</a> and <a href="https://aion2maps.com/guides/stats-explained/">Stats explained</a>: parry and crit figures from one Ranger's fights, and the measured worth of Attack and Boss Attack on Global.</li>
+        <li>Kanon's Aion 2 Bible: the tiers of Attack stats (Attack, Max Attack and Attack Bonus first; PvE and Boss Attack second; Front, Back and Critical Attack last) and the Genus picks for slots 1 and 5.</li>
         <li><a href="/aion2-damage-math/">Aion 2 Damage Math</a>: the damage model and the built-in sheets.</li>
       </ul>
     </section>
@@ -260,7 +263,7 @@
 
 <script src="/aion2-damage-math/model.js?v=1" defer></script>
 <script src="/aion2-damage-math/presets.js?v=1" defer></script>
-<script src="genus.js?v=2" defer></script>
+<script src="genus.js?v=3" defer></script>
 <script src="app.js?v=2" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
