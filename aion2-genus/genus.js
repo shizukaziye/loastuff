@@ -47,7 +47,12 @@
 
   /* Pools: size is every line the slot can roll at Unique or Heroic; lines are the ones that can add damage. */
   const FLAT4 = ['critHit', 'acc', 'atkBonus'];
-  const S15 = { size: 10, lines: ['pveAtk', 'bossAtk', 'atkBonus', 'maxAtk', 'frontAtk', 'backAtk', 'critAtk', 'pen'] };
+  /* Slots 1 and 5 also roll PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack. They are left out
+     on purpose (LEFT_OUT): the solver never locks them and the page never offers them. All five are added after
+     Attack Increase and only count under a condition; the one Global test has Boss Attack at half of Attack per
+     point, less than the formula gives it. The README has the sources. */
+  const LEFT_OUT = ['pveAtk', 'bossAtk', 'frontAtk', 'backAtk', 'critAtk'];
+  const S15 = { size: 10, lines: ['maxAtk', 'atkBonus', 'pen'] };
   const S369 = { size: 10, lines: ['critHit', 'frontCrit', 'backCrit', 'acc', 'pveAcc', 'psdb'] };
   const S28 = { size: 12, lines: [] };
   const S7M = { size: 14, lines: ['critHit', 'acc'] }, S7S = { size: 12, lines: ['critHit', 'acc'] };
@@ -478,7 +483,7 @@
   }
 
   const api = { ODDS, LOCK_EXTRA, KINA_PER_CRYSTAL, pressCost, LINES, BOARDS, BOARD_KEYS, SLOT_CLASS, CLASSES, CLASS_N, CLASS_SLOTS, STRIDE, NS,
-    poolOf, lineName, OPTS, valuer, units, units0, unitOn, critPts, classAtoms, coarsen, solveBoard, forward, threshold, lk, lockCount, openSlots, validState,
+    poolOf, lineName, OPTS, LEFT_OUT, valuer, units, units0, unitOn, critPts, classAtoms, coarsen, solveBoard, forward, threshold, lk, lockCount, openSlots, validState,
     blankBoard, boardState, plan, sweep, LADDER, priceFor, perfect, rng, simulate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.A2G = api;

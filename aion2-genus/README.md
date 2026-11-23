@@ -51,14 +51,21 @@ All values are `100 x ln(damage after / damage before)`, so they add.
 |---|---|
 | PvE, plain and genus Damage Boost | one sum: `1 + Damage Boost + PvE + Boss - target tolerance`; a curve (`poolAt`) |
 | Double Chance, Weapon Damage Boost, Multi-hit, Perfect | `A2` gain per 1%, on the sheet |
-| Front and Back Attack Damage Boost, Front and Back Attack | `A2` gain on the share of hits from that side (below) |
-| Attack Bonus, Max Attack, PvE and Boss Attack | `A2` gain per point. Max Attack adds half its value to average Attack, plus Perfect |
+| Front and Back Attack Damage Boost | `A2` gain on the share of hits from that side (below) |
+| Attack Bonus, Max Attack | `A2` gain per point. Max Attack adds half its value to average Attack, plus Perfect |
 | Critical Hit | 10 points above the boss's resist = 1% crit, capped at 50%; a curve (`critAt`), zero past the cap |
 | Front and Back Attack Critical Hit | Critical Hit times the share of hits from that side |
-| Critical Damage Boost, Critical Attack | `A2` gain at the crit rate the plan ENDS with (`critLines`), not today's |
+| Critical Damage Boost | `A2` gain at the crit rate the plan ENDS with (`critLines`), not today's |
+| PvE, Boss, Front, Back and Critical Attack | left out (`LEFT_OUT`); see below |
 | Accuracy Bonus, PvE Accuracy | parry chance = 6.7% per 100 Accuracy short of the boss's Block, capped at 80%; a parried hit loses half; hits from behind are never parried; a curve (`accAt`), zero once the gap is closed |
 | Power Shard Damage Bonus | 100 points = 1% on the shard's bonus |
 
+- **Left out: PvE Attack, Boss Attack, Front Attack, Back Attack, Critical Attack** (Shizu's call, 2026-11-22). The solver never locks them and the dropdowns do not list them; `valuer` still prices them so the tests can show the comparison. Why:
+  - All five are added after Attack Increase, so Weapon Damage Boost, the Power Shard and Attack Increase never multiply them (Kanon's Bible: "Because this added after Attack Increase the value is less than Pure Attack").
+  - Each counts only under a condition: on a boss (Boss Attack measured 0 on the training dummy), from one side, on a crit (and Critical Attack is cut by the target's Critical Damage Defense), never in PvP.
+  - The one measured Global test (Aion 2 Maps, one Ranger, build of 2026-10-28): 10 Attack = +0.27% on bosses, 10 Boss Attack = +0.13% to +0.14%. That is half of Attack per point; the `A2` formula gives about 0.6, so the model prices PvE and Boss Attack some 15% to 35% high. At the measured rate a 20 roll is about +0.27% to +0.32%, under Attack Bonus 16 (+0.36%) and Max Attack 20 (+0.34%) on Paroxysmal's sheet.
+  - Kanon's tiers: Attack, Max Attack, Attack Bonus first; PvE and Boss Attack second; Front, Back, Species and Critical Attack last. No source calls PvE or Boss Attack bad outright, and nobody has published a measured Global value for PvE Attack, Max Attack or Attack Bonus.
+  - Cost of leaving them out: about 0.3% counted damage at a 100,000-crystal budget.
 - **Sides.** `stance` is the side you fight from. Front lines count on `frontRate` (85%) of hits when you play the front and back lines on the rest; play the back and it is `backRate` (70%) from behind. The share that can be parried is everything not from behind.
 - **Half for capped stats.** `capWeight` (50%) scales the Critical Hit and Accuracy curves when the solver chooses. `plan.total` is that counted damage; `plan.real` is every line at full on today's sheet.
 
