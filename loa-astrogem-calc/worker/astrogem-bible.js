@@ -790,6 +790,14 @@ function parseAccessories(html) {
 // (KYLE, 2026-09-27: "lemme just hone to esther 12 for 364k gold"). The id
 // rides with the record so the set can grow without a re-parse.
 const SIDEREAL_WEAPON_IDS = new Set([10134000]);
+// The vambrace (October 2026) is a seventh piece, in the page's "bracer" slot:
+//   {id:134501406,slot:"bracer",data:{type:"equipment",stats:[],honing:20,advancedHoning:0}}
+// Its stats array is empty, so its id is the ITEM's, in front of the slot. The
+// id's fourth digit is the grade (1343… Epic, 1344… Legendary, 1345… Relic,
+// 1346… Ancient), which is how the GPD lookup tells a +10 whose limit break is
+// still to do from one whose break is done. `vambrace` is the +N, null when
+// the character wears none; a record from before this parser has no such key.
+const BRACER_RE = /\{id:(\d+),slot:"bracer",data:\{type:"equipment",stats:\[[^\]]*\],honing:(\d+)/;
 function parseEquipmentHoning(html) {
   const re = /slot:"(weapon|head|upper_body|lower_body|hand|shoulder)",data:\{type:"equipment",stats:\[(.*?)\],honing:(\d+)(?:,advancedHoning:(\d+))?/g;
   const seen = {}; let m;
@@ -802,7 +810,10 @@ function parseEquipmentHoning(html) {
   const armor = ["head", "upper_body", "lower_body", "hand", "shoulder"]
     .map(sl => seen[sl]).filter(Boolean);
   if (!armor.length && !seen.weapon) return null;
+  const bracer = BRACER_RE.exec(html);       // the raid loadout's: first on the page
   return {
+    vambrace: bracer ? +bracer[2] : null,
+    vambraceId: bracer ? +bracer[1] : null,
     weapon: seen.weapon ? seen.weapon.honing : null,
     weaponAdv: seen.weapon ? seen.weapon.adv : null,
     weaponId: seen.weapon ? seen.weapon.id : null,

@@ -29,6 +29,9 @@
  *               graded (the chart's rule), default switches. Loaded after the
  *               bracelet and astrogem overviews have painted; the third rank tile
  *               is its cheapest step.
+ *   Loseii      GpdLookup.score() on that same placement (loa-gpd/model/
+ *   Score       loseii-score.js): the header's figure and the breakdown under
+ *               the GPD table. Saved with the GPD part.
  *
  * SPEED (docs/design/PROFILE-GAMEPLAN.md §2)
  *   - the skeleton is static HTML at its final size, painted before any script;
@@ -78,7 +81,7 @@
   // accessory lattice), so it loads after the bracelet and astrogem cards have
   // painted. lookup.js fetches all of that itself; the two scripts it would also
   // fetch from www, this page loads first from the tools' own pins (loadGpd).
-  var GPD_LIB = "/loa-gpd/lookup.js?v=6";
+  var GPD_LIB = "/loa-gpd/lookup.js?v=8";
   var AG_MODEL_JS = "/loa-astrogem-calc/model/astrogem.js?v=62";   // the grader's pin; the astrogem worker has it cached
 
   var REGIONS = ["NA", "EU"];
@@ -99,7 +102,7 @@
   var K_FAVS_OLD = "bc_favs";
   var K_CHAR = "lp_char:";
   var K_RECORD = "loseii.profile.record:";
-  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 4;   // 3: bracelet lines carry their raw form and traits their family; 4: both ranks carry a class place
+  var RECENT_MAX = 12, CHAR_KEEP = 40, RECORD_KEEP = 20, VIEW_V = 5;   // 3: bracelet lines carry their raw form and traits their family; 4: both ranks carry a class place; 5: the GPD part carries the Loseii Score
 
   // Browsers without speculation rules get a plain prefetch of a tool on hover.
   var SPEC_RULES = !!(window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"));
@@ -1172,6 +1175,11 @@
       if (h.cls) bits.push('<span' + gl(isSupportCls(h.cls) ?
         "A support class: the bracelet and astrogem boards can read it as a support." :
         "A damage-dealer class: the boards read it as a damage dealer.") + ">" + esc(CLASS_LABEL[h.cls] || h.cls) + "</span>");
+      // the Loseii Score arrives with the GPD overview, after everything else;
+      // until then the line simply does not carry it
+      var sc = m.gpd && m.gpd.st === "ok" && m.gpd.score && m.gpd.score.st === "ok" ? m.gpd.score : null;
+      if (sc) bits.push('<span class="lp-hscore"' + gl(scoreGloss(sc)) + ">Loseii Score " + nf(sc.v) +
+        (sc.miss.length ? " (beta, partial)" : " (beta)") + "</span>");
       sub = bits.join(" · ");
     } else if (h.st === "loading") {
       sub = regionHtml + ' · <span class="sk" style="width:11em"></span>';
@@ -1550,6 +1558,7 @@
   var GPD_SYSTEM = {
     armor: "All five armour pieces honed together on the T4 Upper normal track, +11 to +25.",
     weapon: "The weapon honed on its own on the T4 Upper normal track, +11 to +25.",
+    vambrace: "The vambrace honed from +0 to +25. The step that reaches +10, +15 or +20 carries that level's limit break, and the next step shown runs to the next place worth stopping.",
     gems: "Levelling the whole skill gem set, one level at a time; your lowest gem sets the rung.",
     karma: "Karmic Enlightenment, from level 21 to 30.",
     neck: "Necklaces from the accessory calculator's price lattice, from the growth shop piece up.",
@@ -1564,6 +1573,7 @@
   var GPD_MOVER = {
     armor: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
     weapon: "Material prices move it; the chart uses its defaults, with shards taken as bound.",
+    vambrace: "Material prices move it; the chart uses its defaults, with shards taken as bound. A limit break costs Belgardin drops and no gold.",
     gems: "The level-8 gem's price moves it; the chart takes 420k.",
     karma: "It is 900 gold a try with the Destiny Stones taken as owned, so no market price moves it.",
     bracelet: "Bracelet and pheon prices move it, and so do the odds of rolling this letter.",
@@ -1601,7 +1611,7 @@
   /** What the next rung means. */
   function gpdNextGloss(r) {
     var n = r.next;
-    if (!n) return "Nothing left on this ladder: no rung above yours.";
+    if (!n) return r.held ? gpdCap(r.held) + "." : "Nothing left on this ladder: no rung above yours.";
     if (GPD_ACC[r.k]) return gpdAccWords(r.k, n.to);
     if (r.k === "bracelet" && n.min) return n.to + " takes at least " + n.min + ".";
     return (n.min ? gpdCap(n.min) : n.to) + (n.note ? " (" + n.note + ")" : "") + ".";
@@ -1609,7 +1619,8 @@
   /** How the step is priced, and what would move it. */
   function gpdPriceGloss(r, axis) {
     var n = r.next;
-    if (!n) return "No rung above yours, so nothing to price.";
+    if (!n) return r.held ? "Nothing to price until then: it takes raid drops, not gold."
+      : "No rung above yours, so nothing to price.";
     var on = axis === "support" ? " on each of three dealers" : "";
     if (n.gpd == null) return "This step adds no damage on these ladders, so it has no price per 1%.";
     if (n.pd != null) return n.poolTxt + " gold of cutting and fusing buys " + gpdPct(n.pd) + " more damage" + on +
@@ -1645,7 +1656,9 @@
       var r = { k: e.key, label: e.label, color: (S && S.color) || "", i: i,
         yours: (pos.labels && pos.labels[e.key]) || L.NOT_READ,
         seen: graded ? String(e.seen) : null, detail: graded ? (e.detail || null) : null,
-        why: graded ? null : (e.why || "not in the pull"), under: graded && e.owned < 0 && !e.ownRung, next: null };
+        why: graded ? null : (e.why || "not in the pull"), under: graded && e.owned < 0 && !e.ownRung, next: null,
+        // steps left that gold cannot buy yet (a vambrace's limit break still to do)
+        held: graded && e.nextWhy ? String(e.nextWhy) : null };
       var n = graded ? e.next : null;
       if (n) {
         var pooled = n.poolD > 0 && isNum(n.poolG);
@@ -1670,6 +1683,57 @@
     return { st: "ok", axis: axis, role: pos.role || null, best: pos.bestKey || null,
       low: !pos.bestKey && low ? low.k : null,
       cheap: pos.cheapest ? { text: pos.cheapest.text, price: pos.cheapest.price } : null, rows: rows };
+  }
+
+  // ---- the Loseii Score (loa-gpd/model/loseii-score.js, through lookup.js) ----
+  /** GpdLookup.score()'s answer, cut down to what the header and the
+   *  breakdown draw; saved with the GPD part. */
+  function scorePart(sc) {
+    if (!sc) return { st: "error", msg: "The Loseii Score's tables did not load." };
+    if (sc.score == null) return { st: "none", msg: sc.why || "Nothing in the pull could be scored." };
+    return { st: "ok", v: Math.round(sc.score), axis: sc.axis, n: sc.panel ? sc.panel.n : null,
+      K: Math.round(sc.K), mult: r3(sc.mult),
+      parts: sc.parts.map(function (p) {
+        return { k: p.system, label: p.label, rung: p.rung, mult: Math.round(p.mult * 1e4) / 1e4, note: p.note || null };
+      }),
+      miss: sc.unscored.filter(function (u) { return !u.always; }).map(function (u) { return { label: u.label, why: u.why }; }),
+      always: sc.unscored.filter(function (u) { return u.always; }).map(function (u) { return u.label; }) };
+  }
+  function scoreAxisWords(axis) {
+    return axis === "support" ? "Support: the buffs measured on a fixed reference dealer (the GPD chart's reference character)"
+      : "DPS: the character's own damage, no support buffs, with a fixed dummy attack buff on the attack-power term";
+  }
+  function scoreGloss(sc) {
+    return "Loseii Score (beta). " + scoreAxisWords(sc.axis) + ". On the in-game Combat Power scale, calibrated on the measured CP of " +
+      (sc.n || "the panel's") + " NA characters; differences from your CP are where the game's weighting and real damage disagree. " +
+      "It multiplies each system's damage against the GPD chart's reference character (ilvl 1785, level-9 gems, high/high " +
+      "accessories) and scales the product so the median NA character scores its own CP." +
+      (sc.miss.length ? " Not in this pull, so taken at the reference's level: " +
+        sc.miss.map(function (u) { return u.label.toLowerCase(); }).join(", ") + "." : "") +
+      " Never scored: " + sc.always.join(", ").toLowerCase() + ". The GPD overview lists every part.";
+  }
+  function scoreHtml(sc) {
+    if (!sc) return "";
+    if (sc.st !== "ok") return '<div class="lp-gsc"><div class="lp-cmsg">No Loseii Score: ' + esc(sc.msg || "") + "</div></div>";
+    var h = '<div class="lp-gsc"><div class="lp-gsch"><b' + gl(scoreGloss(sc)) + ">Loseii Score " + nf(sc.v) + " (beta)</b>" +
+      '<span class="lp-dim"' + gl("The damage multiplier against the GPD chart's reference character, times the scale " +
+        "fitted so the median NA character scores its own in-game CP.") + "> &nbsp;×" + fx(sc.mult, 3) + " the reference · scale " +
+      nf(sc.K) + "</span></div>" +
+      '<div class="lp-tw"><table class="gr-ptab lp-gsctab"><thead><tr>' +
+      "<th" + gl("The systems the score reads, one ladder each.") + ">System</th>" +
+      '<th class="r"' + gl("That system's damage against the reference character's: above 1 deals more, below 1 less.") +
+      ">× damage</th>" +
+      "<th" + gl("Where the pull puts you on that ladder.") + ">Yours</th></tr></thead><tbody>";
+    sc.parts.forEach(function (p) {
+      h += "<tr><td>" + esc(p.label) + '</td><td class="r' + (p.mult >= 1 ? "" : " lp-dim") + '">×' + fx(p.mult, 3) + "</td>" +
+        "<td" + gl(p.note ? gpdCap(p.note) + "." : "") + '><span class="lp-gcut">' + esc(p.rung) + "</span></td></tr>";
+    });
+    h += "</tbody></table></div>";
+    var bits = [];
+    if (sc.miss.length) bits.push("<b>Not in this pull</b>, taken at the reference's level: " +
+      sc.miss.map(function (u) { return '<span' + gl(gpdCap(u.why) + ".") + ">" + esc(u.label.toLowerCase()) + "</span>"; }).join(", ") + ".");
+    bits.push("<b>Never scored</b> (not in the lostark.bible pull, or no model prices it): " + esc(sc.always.join(", ").toLowerCase()) + ".");
+    return h + '<div class="lp-gscnote">' + bits.join(" ") + "</div></div>";
   }
 
   var gpdLib = null;   // one load per page: { L: GpdLookup, st: ready()'s answer }
@@ -1721,11 +1785,16 @@
       var axis = gpdAxis(ctx), pos = null, c0 = pnow();
       try { pos = g.L.place({ record: ctx.brRec, astro: ctx.agRec, axis: axis }); }
       catch (e) { gpdFailed(ctx, "The GPD lookup could not read this character."); return; }
+      // the Loseii Score, on the same placement; a failure costs the score only
+      var sc = null;
+      try { sc = pos && g.L.score ? g.L.score({ placed: pos }) : null; } catch (e) { sc = null; }
       var computeMs = pnow() - c0;
       ctx.model.gpd = pos ? gpdPart(pos, g.L, axis)
         : { st: "none", msg: "No lostark.bible pull to place on the GPD ladders yet." };
+      if (pos) ctx.model.gpd.score = scorePart(sc);
       renderGpd(ctx);
       renderStrip(ctx);
+      renderHead(ctx);
       mark("gpd");
       if (nav) (nav.gpd = nav.gpd || []).push({ loadMs: Math.round(loadMs), computeMs: Math.round(computeMs * 10) / 10 });
       persist(ctx);
@@ -1804,14 +1873,18 @@
         '<td class="r"' + gl(gpdPriceGloss(r, g.axis)) + ">" + (best ? '<span class="lp-gtag">cheapest</span>' : "") + "<b>" + esc(n.price) + "</b></td></tr>";
     });
     if (priced.length < 3) {
-      var top = 0, unread = 0, bits = [];
-      g.rows.forEach(function (r) { if (r.why) unread++; else if (!r.next || r.next.gpd == null) top++; });
+      var top = 0, unread = 0, held = 0, bits = [];
+      g.rows.forEach(function (r) {
+        if (r.why) unread++; else if (r.held) held++; else if (!r.next || r.next.gpd == null) top++;
+      });
       if (top) bits.push(top + (top === 1 ? " ladder is" : " ladders are") + " at the top rung");
+      if (held) bits.push(held + (held === 1 ? " is" : " are") + " waiting on a limit break");
       if (unread) bits.push(unread + (unread === 1 ? " is" : " are") + " not in the pull");
       h += '<tr class="lp-gnote"><td colspan="4"' + gl("The GPD chart's gear list shows every ladder, with what the pull reads on each.") + ">" +
         (priced.length ? "Nothing else to price" : "Nothing to price") + (bits.length ? ": " + bits.join("; ") : "") + ".</td></tr>";
     }
-    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap lp-gpd3"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>");
+    setHtml("lp-gpd-body", '<div class="lp-tw lp-gpdwrap lp-gpd3"><table class="gr-ptab lp-gpdtab">' + GPD_HEAD + "<tbody>" + h + "</tbody></table></div>" +
+      scoreHtml(g.score));
     setText("lp-gpd-src", g.axis === "support" ? "Support ladders" : "DPS ladders");
     setGloss("lp-gpd-src", gpdAxisWords(g.axis));
   }

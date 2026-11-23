@@ -17,6 +17,15 @@
  * worth slightly less than the first: the same 0.1 point lands on a bigger
  * denominator.
  *
+ * A vambrace (model/vambrace.js) is one more piece: its main stat and weapon
+ * power join the flat sums and take the percentage pools with them, its flat
+ * basic attack power is added to the square root, and a limit break's basic
+ * attack power % joins AP%.
+ *
+ *   basic AP  = (sqrt(total WP * total MS / 6) + vambrace flat) * (1 + AP%)
+ *
+ * The defaults wear none, so every number from before the vambrace stands.
+ *
  * Per-piece gear stats come from data/honing-t4upper.json, whose `itemLevel`
  * curve reproduces bebkok's Serca gear table exactly.
  */
@@ -51,6 +60,9 @@
     gemApPct: 0.098,           // eleven level-9 gems; level 10 is 0.110
     adrenalineApPct: 0.09,     // Adrenaline level 7
 
+    // ---- the vambrace: Vambrace.statsAt()'s { ms, wp, apFlat, apPct }, or none ----
+    vambrace: null,
+
     useQualityBlock: false,    // see docs/METHODOLOGY.md — open question
   };
 
@@ -73,10 +85,14 @@
     });
     var msPct = o.skinMsPct + o.strongholdMsPct;
 
+    var v = o.vambrace || null;
+    if (v) { wpFlat += v.wp || 0; msFlat += v.ms || 0; }
+
     return {
       wp: wpFlat * (1 + wpPct),
       ms: msFlat * (1 + msPct),
-      apPct: o.stoneApPct + o.gemApPct + o.adrenalineApPct,
+      apPct: o.stoneApPct + o.gemApPct + o.adrenalineApPct + (v ? v.apPct || 0 : 0),
+      apFlat: v ? v.apFlat || 0 : 0,
     };
   }
 

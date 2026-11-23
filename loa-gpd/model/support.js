@@ -63,7 +63,7 @@
 
   /**
    * The party-damage multiplier of a support with these stats and buff lines.
-   * `gear` is { wp, ms } for the support; `lines` are extra buff percentages
+   * `gear` is { wp, ms, apPct, apFlat } for the support; `lines` are extra buff percentages
    * from accessories, bracelet, ark grid and so on, as fractions.
    */
   function contribution(P, gear, lines) {
@@ -76,8 +76,10 @@
 
     // bebkok's sheet puts an attack-power percentage on the support's own base
     // attack power (stone + gems), which scales the buff it hands out. The
-    // accessory calculator leaves it out — see docs/METHODOLOGY.md.
-    var supAtk = baseAtk(gear.wp, gear.ms) * (1 + (gear.apPct || 0));
+    // accessory calculator leaves it out — see docs/METHODOLOGY.md. A vambrace's
+    // flat basic attack power (gear.apFlat) is base attack power too, so it
+    // sits inside that percentage.
+    var supAtk = (baseAtk(gear.wp, gear.ms) + (gear.apFlat || 0)) * (1 + (gear.apPct || 0));
     var dpsAtk = baseAtk(P.dpsWP, P.dpsMS);
     var mults = 1 + P.dpsAtkPct;
     var apMult =

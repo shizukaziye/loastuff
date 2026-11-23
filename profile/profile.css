@@ -254,6 +254,18 @@ table.lp-gpdtab td b{font-weight:700}
 table.lp-gpdtab tr.lp-gbest td{background:rgba(102,199,255,.08)}
 table.lp-gpdtab tr.lp-gbest td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 table.lp-gpdtab tr.lp-gnote td{color:var(--dim);white-space:normal}
+
+/* ---- the Loseii Score's breakdown, under the gold-per-1% table ---- */
+.lp-gsc{margin-top:12px}
+.lp-gsch{font-size:13px;line-height:20px;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-gscsk{height:300px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+.lp-gsc .lp-tw{border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+table.lp-gsctab td{height:24px}
+table.lp-gsctab .lp-gcut{max-width:340px}
+@media (max-width:600px){table.lp-gsctab .lp-gcut{max-width:150px}}
+.lp-gscnote{font-size:12px;line-height:1.5;color:var(--dim);margin-top:6px;white-space:normal}
+.lp-gscnote b{color:var(--text);font-weight:600}
+.lp-hscore{color:var(--text);font-weight:600}
 .lp-gtag{display:inline-block;margin-right:8px;padding:0 7px;border-radius:99px;background:var(--accent);color:#06121f;
   font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:16px;vertical-align:1px}
 

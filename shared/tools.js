@@ -12,9 +12,9 @@
  *     live:    true = counts toward the hub's "N live tools" pill
  *   }
  *
- * The groups are the nav's groups, in the nav's order. The LOA ON 2026 Summer page is a
- * recap of a showcase, not a tool: it is listed (the nav and the hub link it) but has
- * live:false, so the pill does not count it.
+ * The groups are the nav's groups, in the nav's order. The LOA ON 2026 Summer and Part 2
+ * Rework pages are recaps of broadcasts, not tools: they are listed (the nav and the hub
+ * link them) but have live:false, so the pill does not count them.
  *
  * Other copies that must agree, all checked by `npm run check` (tools/check-tools.mjs):
  *   nav.js           its inline GROUPS (name + url). `node tools/check-tools.mjs --write`
@@ -50,7 +50,9 @@
           { name: "LOA ON Bingo", url: "https://loa-on-bingo.shizukaziye.workers.dev/", kind: "community", keyword: "bingo",
             blurb: "Live multiplayer watch-party bingo for LOA ON broadcasts.", live: true },
           { name: "LOA ON 2026 Summer", url: "https://www.loseii.com/loa-on-2026-summer/", kind: "recap", keyword: "",
-            blurb: "A recap of the announcements from the LOA ON 2026 Summer showcase.", live: false }
+            blurb: "A recap of the announcements from the LOA ON 2026 Summer showcase.", live: false },
+          { name: "Part 2 Rework", url: "https://www.loseii.com/loa-part-2-rework/", kind: "recap", keyword: "",
+            blurb: "The November 2026 On-Air stream in English: the Part 2 growth rework and what current gear turns into.", live: false }
         ]
       },
       {

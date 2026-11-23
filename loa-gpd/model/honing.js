@@ -13,6 +13,11 @@
  * spent add up to the artisan threshold (215.00%), the next tap is free of
  * chance and lands.
  *
+ * The weapon takes Lava's Breath and the armour Glacier's (`recipe.juice`). A
+ * vambrace takes both at once (`recipe.juices`, model/vambrace.js), each with
+ * its own count and the cap on their sum; a count is filled from the cheaper
+ * breath first.
+ *
  * "Average scenario, optimal" means the expected gold under the cheapest
  * constant breath count for that level — the tool solves for it rather than
  * assuming full juice, because on armour the breath often costs more than the
@@ -28,6 +33,39 @@
 
   var ARMOR_PIECES = 5;
 
+  /** The breaths a recipe takes: one kind on the weapon and the armour, both
+   *  on a vambrace. */
+  function juicesOf(recipe) {
+    return recipe.juices || (recipe.juice ? [recipe.juice] : []);
+  }
+  /** The most breaths a tap can take: every kind the player buys, at its limit.
+   *  An unticked breath is not used at all. */
+  function juiceCap(recipe, enabled) {
+    var cap = 0;
+    juicesOf(recipe).forEach(function (j) { if (enabled[j.id] !== false) cap += j.max; });
+    return cap;
+  }
+  /**
+   * `count` breaths a tap, shared out over the kinds the recipe takes: the
+   * cheapest per point of success first, each up to its own limit. With one
+   * kind that is the count itself. Returns { boost, gold, parts }: the success
+   * they add (0.01% units, capped at juiceMax), what they cost, and how many
+   * of each ([{ id, n }]).
+   */
+  function breaths(recipe, prices, enabled, count) {
+    var kinds = juicesOf(recipe).filter(function (j) { return enabled[j.id] !== false; })
+      .map(function (j) { return { id: j.id, rate: j.rate, max: j.max, price: prices[j.id] || 0 }; });
+    if (kinds.length > 1) kinds.sort(function (a, b) { return a.price / a.rate - b.price / b.rate; });
+    var left = count > 0 ? count : 0, boost = 0, gold = 0, parts = [];
+    kinds.forEach(function (k) {
+      var n = Math.min(left, k.max);
+      if (n <= 0) return;
+      left -= n; boost += n * k.rate; gold += n * k.price;
+      parts.push({ id: k.id, n: n });
+    });
+    return { boost: Math.min(boost, recipe.juiceMax), gold: gold, parts: parts };
+  }
+
   /** Gold for one tap, given prices and which materials the player pays for. */
   function tapCost(recipe, prices, enabled, juiceCount) {
     var gold = recipe.gold;
@@ -36,10 +74,14 @@
       gold += (prices[id] || 0) * recipe.mats[id];
     }
     if (enabled.shards !== false) gold += (prices.shard || 0) * recipe.shards;
-    if (juiceCount > 0 && enabled[recipe.juice.id] !== false) {
-      gold += (prices[recipe.juice.id] || 0) * juiceCount;
-    }
+    if (juiceCount > 0) gold += breaths(recipe, prices, enabled, juiceCount).gold;
     return gold;
+  }
+  /** Gold for the level's own growth, paid once before the first tap: the
+   *  gear XP a recipe carries as `growShards` (the vambrace's does). */
+  function growCost(recipe, prices, enabled) {
+    if (enabled.shards === false) return 0;
+    return (prices.shard || 0) * (recipe.growShards || 0);
   }
 
   /**
@@ -47,7 +89,7 @@
    * Returns { gold, taps } — taps is the expected number of attempts.
    */
   function expectedAt(recipe, prices, enabled, juiceCount) {
-    var boost = Math.min(juiceCount * recipe.juice.rate, recipe.juiceMax);
+    var boost = juiceCount > 0 ? breaths(recipe, prices, enabled, juiceCount).boost : 0;
     var cost = tapCost(recipe, prices, enabled, juiceCount);
     var artisan = 0, pReach = 1, gold = 0, taps = 0, fails = 0;
     while (pReach > 1e-12 && fails < 600) {
@@ -62,14 +104,17 @@
     return { gold: gold, taps: taps };
   }
 
-  /** Cheapest breath count for one level. */
+  /** Cheapest breath count for one level: { gold, taps, juice, parts }, where
+   *  `juice` is the breaths a tap in all and `parts` how many of each kind. */
   function solveLevel(recipe, prices, enabled) {
     var best = null;
-    var cap = enabled[recipe.juice.id] === false ? 0 : recipe.juice.max;
+    var cap = juiceCap(recipe, enabled);
     for (var k = 0; k <= cap; k++) {
       var r = expectedAt(recipe, prices, enabled, k);
       if (!best || r.gold < best.gold) best = { gold: r.gold, taps: r.taps, juice: k };
     }
+    best.parts = best.juice > 0 ? breaths(recipe, prices, enabled, best.juice).parts : [];
+    best.gold += growCost(recipe, prices, enabled);
     return best;
   }
 
@@ -128,7 +173,10 @@
 
   return {
     ARMOR_PIECES: ARMOR_PIECES,
+    juicesOf: juicesOf,
+    breaths: breaths,
     tapCost: tapCost,
+    growCost: growCost,
     expectedAt: expectedAt,
     solveLevel: solveLevel,
     step: step,

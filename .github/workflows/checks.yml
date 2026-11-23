@@ -65,6 +65,11 @@ jobs:
         working-directory: loa-gpd
         run: node tools/verify.js
 
+      - name: GPD chart, Loseii Score (tools/verify-loseii-score.js, with its Python twin)
+        if: ${{ !cancelled() }}
+        working-directory: loa-gpd
+        run: node tools/verify-loseii-score.js
+
       - name: Aion 2 damage math (test.js)
         if: ${{ !cancelled() }}
         working-directory: aion2-damage-math
