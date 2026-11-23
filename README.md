@@ -38,6 +38,7 @@ Tools (each folder is served at `/<folder>/`):
 - `loa-deal-finder/` — Deal Finder
 - `loa-hell-key-calc/` — Hell Key Calculator
 - `loa-on-2026-summer/` — LOA ON 2026 Summer recap
+- `loa-part-2-rework/` — Part 2 Rework recap: the Nov 20, 2026 Korean On-Air stream in English (one static page, no script)
 - `aion2-roster/` — Aion 2 Roster Checklist (main + alts, per-character vs per-server limits, refill trackers, auto resets)
 - `aion2-ranger-guide/` — Ranger Point Guide, a mirror of tgustafsson's ranger.tgustafsson.se (offline Oct 2026) restored from the Internet Archive, credited
 - `aion2-damage-math/` — Aion 2 Damage Math (the damage formula, every stat priced for one character, upgrades in Kinah per 1% damage); see its [README](aion2-damage-math/README.md)
@@ -107,6 +108,7 @@ To switch it on: Cloudflare dashboard → Workers & Pages → `loastuff` → Set
 - [Hell Key Calculator](https://www.loseii.com/loa-hell-key-calc/) — Paradise Hell key EV, middle-jump strategy, altar verdict, season projection
 - [LOA ON Bingo](https://loa-on-bingo.shizukaziye.workers.dev/) — live multiplayer watch-party bingo (own repo)
 - [LOA ON 2026 Summer](https://www.loseii.com/loa-on-2026-summer/) — showcase recap (a page, not a tool: the hub's count leaves it out)
+- [Part 2 Rework](https://www.loseii.com/loa-part-2-rework/) — the Nov 20, 2026 On-Air stream in English: the growth rework and the gear transfer tables (a page, not a tool)
 
 **Aion 2**
 - [Roster Checklist](https://www.loseii.com/aion2-roster/) — main + alt daily/weekly checklist with per-server limits, Odyle and charge trackers, Kina-tier counter
