@@ -85,7 +85,7 @@ function check(label, got, lo, hi) {
   near('unbuffed crit rate on Ludra is zero', P.c, 0);
   const i2 = Object.assign({}, i, { critBuff: 300 });
   near('with +300 from buffs: (974 + 300 - 1200) / 10', A2.parts(A2.toState(i2), A2.toParams(i2)).c, 0.074);
-  near('3 Wisdom alone = 0.3 / (100 + Double)', A2.gain1(s, p, 'wisdom', 3), 0.003 / (1 + s.dbl));
+  near("3 Wisdom alone = 0.3 / (100 + Double - the target's Double Resist)", A2.gain1(s, p, 'wisdom', 3), 0.003 / P.dblMult);
 }
 
 // ---------- 6. the Attack stat in the character window ----------
@@ -108,6 +108,33 @@ function check(label, got, lo, hi) {
   const bu = A2.toState(PRESETS.bu.values);
   near('Bu: Pure Attack from the 2,722 in her window', bu.P, 1848.5, 0.1);
   for (const k of ['sorc', 'paroxysmal']) { const v = PRESETS[k].values, st = A2.toState(v); console.log('     ', k, 'window', v.sheetAtk, '-> Pure', st.P.toFixed(1)); }
+}
+
+// ---------- Global reference: reproduce Aion 2 Maps' measured per-stat figures for one Ranger ----------
+// Tier 4 Transcendence and Conquest [Hard] bosses, Global build of 2026-10-28. Critical Hit is left out: the published
+// figure mixes skills at the cap with skills below it, which one crit rate cannot stand for.
+{
+  const g = PRESETS.global.values;
+  const tier4 = g, hard = Object.assign({}, g, { tol: 62.5, def: 9450, dblRes: 5, uptime: 72 });
+  const rows = [
+    ['+1% Double Chance', 'dbl', 1, 0.78, 0.83], ['+1% Front Attack Damage Boost', 'posDb', 1, 0.76, 0.72], ['+1% Attack Increase', 'atkInc', 1, 0.62, 0.64],
+    ['+1% Weapon Damage Boost', 'wdb', 1, 0.54, 0.56], ['+1% Damage Boost', 'db', 1, 0.51, 0.55], ['+1% Critical Damage Boost', 'critDmg', 1, 0.34, 0.34],
+    ['+10 Attack', 'atk', 10, 0.27, 0.27], ['+10 Boss Attack', 'flatPve', 10, 0.13, 0.14], ['+100 Penetration', 'pen', 100, 0.17, 0.18],
+    ['+1% Multi-hit Chance', 'multiHit', 1, 0.12, 0.11], ['+1% Perfect Chance', 'perfect', 1, 0.08, 0.08]
+  ];
+  console.log('\nGlobal reference (Aion 2 Maps, one Ranger at about 225,000 Combat Power)');
+  for (const [label, stat, step, m4, mh] of rows) {
+    const tol = stat === 'multiHit' ? 0.15 : 0.09;     // the published figures carry two digits, so about 4% of rounding alone
+    for (const [name, inp, m] of [['tier 4', tier4, m4], ['Conquest Hard', hard, mh]]) {
+      const got = A2.gain1(A2.toState(inp), A2.toParams(inp), stat, step);
+      check(`${label}, ${name}`, got, m / 100 * (1 - tol), m / 100 * (1 + tol));
+    }
+  }
+  // the question that started this: 10 Boss Attack is worth half of 10 Attack on this sheet, as measured
+  const s = A2.toState(tier4), p = A2.toParams(tier4);
+  const ratio = A2.gain1(s, p, 'flatPve', 10) / A2.gain1(s, p, 'atk', 10);
+  const ok = ratio > 0.43 && ratio < 0.55; if (!ok) fails++;
+  console.log(`${ok ? 'ok  ' : 'FAIL'} Boss Attack against Attack, per point                ${ratio.toFixed(3)}   measured 0.48 to 0.52`);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall checks passed');

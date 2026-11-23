@@ -103,7 +103,7 @@
   }
   function defaults() {
     const b = {
-      v: 8, preset: Z.DEFAULT, inputs: Object.assign({}, Z.PRESETS[Z.DEFAULT].values),
+      v: 9, preset: Z.DEFAULT, inputs: Object.assign({}, Z.PRESETS[Z.DEFAULT].values),
       steps: {}, chart: null,
       bind: { resetCost: 300000, tier: '86' },
       stone: { kind: 'superior', price: 5000, fee: 2000, lambda: 400000 },
@@ -114,14 +114,16 @@
   }
   function merge(d) {
     const b = defaults();
-    if (!d || [3, 4, 5, 6, 7, 8].indexOf(d.v) < 0) return b;
+    if (!d || [3, 4, 5, 6, 7, 8, 9].indexOf(d.v) < 0) return b;
     const old = d.v < 5; // before v5: typed-in numbers are kept, anything else moves to the current default sheet and comparison
     b.preset = Z.PRESETS[d.preset] ? d.preset : 'custom';
     Object.assign(b.inputs, d.inputs || {});
     if (old && b.preset !== 'custom') b.preset = Z.DEFAULT;
     // v7 reads the window's Attack the way Korean and Taiwanese tests show it (no Weapon Damage Boost, middle of the weapon range)
     // and adds base Attack, so a save made on a built-in sheet before that reloads the sheet's current values
-    if (d.v < 7 && b.preset !== 'custom') b.inputs = Object.assign({}, Z.PRESETS[b.preset].values);
+    // v9 moves the Global targets to measured boss tolerance and Defense and adds flat skill damage, so a save made on a
+    // built-in sheet before that reloads the sheet's current values as well
+    if (d.v < 9 && b.preset !== 'custom') b.inputs = Object.assign({}, Z.PRESETS[b.preset].values);
     b.steps = d.steps && typeof d.steps === 'object' ? d.steps : {};
     b.chart = Array.isArray(d.chart) ? d.chart.filter((k) => STATS[k]) : null;
     Object.assign(b.bind, d.bind || {}); Object.assign(b.stone, d.stone || {}); Object.assign(b.solver, d.solver || {});
@@ -179,15 +181,15 @@
     critBuff: { label: 'Critical Hit from buffs and food', hint: 'For a Ranger: Marking Shot’s Precision and Bow of Blessing. Added flat.' },
     critChance: { label: 'Crit rate, measured', unit: '%', hint: 'From a damage meter, on this target.' },
     critDmg: { label: 'Critical Damage Boost', unit: '%' },
-    target: { label: 'Preset', type: 'select', opts: [['dummy', Z.TARGETS.dummy.label], ['boss', Z.TARGETS.boss.label], ['ludra', Z.TARGETS.ludra.label], ['t4', Z.TARGETS.t4.label], ['kr', Z.TARGETS.kr.label], ['custom', 'Custom']] },
-    tol: { label: 'Damage Tolerance', unit: '%', hint: 'Unpublished for Ludra on Global, so its 30 is a placeholder. The solver under The formula measures it.' },
+    target: { label: 'Preset', type: 'select', opts: [['dummy', Z.TARGETS.dummy.label], ['boss', Z.TARGETS.boss.label], ['t4g', Z.TARGETS.t4g.label], ['hardg', Z.TARGETS.hardg.label], ['ludra', Z.TARGETS.ludra.label], ['t4', Z.TARGETS.t4.label], ['kr', Z.TARGETS.kr.label], ['custom', 'Custom']] },
+    tol: { label: 'Damage Tolerance', unit: '%', hint: 'Measured on Global at 58 to 68% for tier 4 Transcendence and Conquest [Hard]. Ludra is unpublished and takes 65. The solver under The formula measures it.' },
     dblRes: { label: 'Double Resist', unit: '%' },
     cdTol: { label: 'Critical Damage Tolerance', unit: '%' },
     critRes: { label: 'Critical Hit Resist', hint: 'Ludra: about 1,200 by player reports. Unpublished for other bosses.' },
     flatPve: { label: 'PvE Attack + Boss Attack' },
     flatPos: { label: 'Back or Front Attack' },
     flatCrit: { label: 'Critical Attack' },
-    skillCoef: { label: 'Average skill coefficient', step: 0.05 },
+    skillCoef: { label: 'Average skill coefficient', step: 0.05, hint: 'Fitted with the flat damage below to one Global Ranger\u2019s measured table. Other classes will differ.' },
     skillFlat: { label: 'Skill flat damage per use' },
     def: { label: 'Target Defense' },
     pen: { label: 'Your Penetration' },
@@ -201,7 +203,7 @@
     dblModel: { label: 'Double Resist works by', type: 'select', opts: [['sub', 'Subtracting from chance'], ['mul', 'Scaling the chance down']] },
     mhModel: { label: 'Multi-hit model', type: 'select', opts: [['flat', 'One proc, fixed bonus (Global parses)'], ['chain', 'Chained hits (Korean figures)']], hint: 'Chained: each extra hit rolls your chance again, up to four, for +11%, +25%, +43% and +67% in total.' },
     mhBase: { label: 'Hidden Multi-hit chance', unit: '%', hint: 'Datamined weapon base on Global.' },
-    mhBonus: { label: 'Extra damage per Multi-hit proc', unit: '%', hint: '1 to 4 extra hits at about 6% each average 15%.' },
+    mhBonus: { label: 'Extra damage per Multi-hit proc', unit: '%', hint: 'Global fights measure about 0.1% damage per 1% Multi-hit, which fits 11%.' },
     mhElig: { label: 'Damage that can Multi-hit', unit: '%', hint: 'Procs, damage over time and skills that already multi-hit cannot.' },
     mhPos: { label: 'Multi-hit applies', type: 'select', opts: [['out', 'To the whole hit'], ['in', 'Inside the Attack chain']] },
     pfHidden: { label: 'Hidden Perfect bonus', unit: '%', hint: 'Extra Pure Attack on a Perfect hit, beyond the top of the range. Korean tests put a Perfect hit about 8% above an average one, which 7 here reproduces.' },
@@ -837,7 +839,7 @@
 
   function start(data) {
     let loaded = null;
-    if (data && [3, 4, 5, 6, 7, 8].indexOf(data.v) >= 0) loaded = data;
+    if (data && [3, 4, 5, 6, 7, 8, 9].indexOf(data.v) >= 0) loaded = data;
     else { try { loaded = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { loaded = null; } }
     st = merge(loaded);
     buildRail(); buildRank(); buildLegend(); buildCmp();

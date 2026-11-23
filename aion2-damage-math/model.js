@@ -83,8 +83,10 @@
     const states = [[(1 - q) * (1 - u), 0, 0], [(1 - q) * u, 0, 1], [q * (1 - u), 1, 0], [q * u, 1, 1]];
     for (const [pr, cr, po] of states) {
       if (pr <= 0) continue;
-      const A = A0 + (po ? s.fPos : 0) + (cr ? s.fCrit : 0);
-      e += pr * hit(A) * (cr ? M : 1) * (po ? 1 + s.fb : 1);
+      // Front, Back and Critical Attack are flat damage added after the skill multiplier (Aion 2 Maps on Global;
+      // Korean and Taiwanese tests place Back and Critical Attack the same way)
+      const flat = (po ? s.fPos : 0) + (cr ? s.fCrit : 0);
+      e += pr * Math.max(0, A0 * p.k + p.S - D + flat) * (cr ? M : 1) * (po ? 1 + s.fb : 1);
     }
     const baseHit = hit(A0);
     const pool = Math.max(0.05, 1 + s.db + s.pve + s.boss + p.pDb - p.tol);

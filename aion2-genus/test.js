@@ -33,13 +33,16 @@ const inputs = Object.assign({}, PRESETS.paroxysmal.values, { critBuff: 300 });
 const opts = {};
 const val = G.valuer(A2, inputs, opts), uv = G.units0(val);
 check('Double Chance 3%', uv.u.dbl * 3, 2.5, 2.9, 2);
-check('PvE Damage Boost 4%', uv.u.pveDb * 4, 2.4, 2.9, 2);
+check('PvE Damage Boost 4% against 65% tolerance', uv.u.pveDb * 4, 3.2, 3.7, 2);
 check('Critical Hit 30, first line, full damage', uv.u.critHit * 30, 2.3, 2.9, 2);
-check('Damage Boost 3%', uv.u.db * 3, 1.8, 2.2, 2);
+check('Damage Boost 3%', uv.u.db * 3, 2.4, 2.8, 2);
 check('PvE Attack 20', uv.u.pveAtk * 20, 0.30, 0.42, 3);
 check('Attack Bonus 16', uv.u.atkBonus * 16, 0.28, 0.42, 3);
 check('Max Attack 20', uv.u.maxAtk * 20, 0.28, 0.42, 3);
 check('Critical Hit to the cap', val.critHead, 425, 427);
+// boss Defense is far above your Penetration, so each 100 Penetration adds 10 damage to every skill use
+check('Penetration 200', uv.u.pen * 200, 0.35, 0.60, 3);
+check('Penetration 200 beats Max Attack 20 on this sheet, ratio', (uv.u.pen * 200) / (uv.u.maxAtk * 20), 1.05, 1.8, 2);
 check('past the cap a point of Critical Hit is worth nothing', val.critMarg(430), 0, 0, 4);
 // front and back: 85% of hits from the front leaves 15% for the back, and the other way round at 70%
 check('Front Attack Damage Boost 3% at 85% of hits', uv.u.frontDb * 3, 2.45, 2.60, 2);
@@ -139,6 +142,18 @@ const lam100 = G.priceFor(pts, 100000), p100 = G.plan(A2, inputs, opts, lam100, 
 check('the 100,000 plan spends about 100,000', p100.cost, 88000, 112000);
 check('the 100,000 plan: share of a perfect set, %', p100.total / perf.total * 100, 60, 95, 1);
 check('no plan beats a perfect set', pts[pts.length - 1].total / perf.total, 0.8, 1.0, 3);
+// budgets in the millions: past the ladder the plan keeps closing in on a perfect set and never passes it
+{
+  let from = pts[pts.length - 1].next, prev = pts[pts.length - 1], ok = 1;
+  for (const lam of G.LADDER_HIGH) {
+    const r = G.plan(A2, inputs, opts, lam, null, { start: from, val });
+    if (!(r.cost >= prev.cost * 0.98 && r.total >= prev.total - 0.1)) ok = 0;
+    from = r.next; prev = r;
+  }
+  check('past the ladder a higher price still never buys less', ok, 1, 1);
+  check('the dearest plan: share of a perfect set, %', prev.total / perf.total * 100, 99, 100, 1);
+  check('the dearest plan costs millions of crystals', prev.cost, 5e6, 5e7);
+}
 check('the plan stops at the crit cap', p100.critAdd, 300, val.critHead * 1.06);
 check('the plan stops at the accuracy cap', p100.accAdd, 0, val.accHead * 1.06);
 check('spread brackets the mean', (p100.spread.lo < p100.cost && p100.spread.hi > p100.cost) ? 1 : 0, 1, 1);
@@ -164,7 +179,7 @@ Object.assign(mine.cogni[6], { line: 'critHit', val: 12, locked: false });
 const lowP = G.plan(A2, inputs, opts, 300, mine, {}), highP = G.plan(A2, inputs, opts, 30000, mine, {});
 check('low price: stop on the started board', lowP.per.cogni.press ? 1 : 0, 0, 0);
 check('high price: keep pressing it', highP.per.cogni.press ? 1 : 0, 1, 1);
-check('locked lines count as damage held', highP.locked, 2.9, 4.0, 2);
+check('locked lines count as damage held', highP.locked, 3.5, 4.7, 2);
 console.log(`\nsweep ${tSweep} ms, solves per rung ${pts.map((p) => p.iters).join(' ')}`);
 console.log(`perfect set +${perf.total.toFixed(1)}% counted (+${perf.real.toFixed(1)}% real)   100k plan +${p100.total.toFixed(1)}% counted (+${p100.real.toFixed(1)}% real) at ${Math.round(lam100)} crystals per 1%, 80% of runs ${Math.round(p100.spread.lo)} to ${Math.round(p100.spread.hi)}`);
 console.log(`  Critical Hit ${p100.critAdd.toFixed(0)} of ${val.critHead.toFixed(0)}, Accuracy ${p100.accAdd.toFixed(0)} of ${val.accHead.toFixed(0)}`);

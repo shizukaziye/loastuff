@@ -38,9 +38,11 @@ W(state) = -cost(state) + E[ max( stop and keep it all,
 
 Values are `price x % damage`, where price is the Soul Crystals paid for +1% damage. The page picks the price whose plan spends your budget (`sweep`, `priceFor`), then runs `plan` at that price.
 
-- A press can land any mix of useful lines. `enumerate` lists every mix of up to four at once; values sit on a fine grid for one line (five per line and grade) and coarser grids for two, three and four (7, 3 and 2 bins). Slots of one class are alike, so each mix is counted once with its multiplicity.
+- A press can land any mix of useful lines. `enumerate` lists every mix of up to four at once; values sit on a fine grid for one line (nine bands per line and grade, `ROLL`, narrowing to the top 1% of the range) and coarser grids for two, three and four (7, 3 and 2 bins). Slots of one class are alike, so each mix is counted once with its multiplicity.
 - `forward` follows the policy from any state and returns the expected crystals, presses and damage. `simulate` plays the same policy with a seeded generator for the spread of the bill.
 - **Critical Hit, Accuracy and Damage Boost are curves, not unit prices.** Each point makes the next worth less, and Critical Hit and Accuracy are worth nothing past their caps. `plan` prices all three at the slope of the curve where the plan ends. For the two capped stats it searches, one after the other, for the price at which the plan lands on the cap and no further (`settle`). Reported damage uses the curves themselves (`valuer.critAt`, `accAt`, `poolAt`).
+- **One price cannot always land on a cap.** At a high price each slot holds out for one line, so a small move in the price flips that slot on all five boards at once and the plan jumps over the cap. When the shared price misses, `plan` gives each board its own prices for Critical Hit and Accuracy: it tries a few (`STEPS`) board by board and keeps whatever raises damage less cost.
+- **Budgets in the millions.** `LADDER` ends at a plan of about 660,000 crystals. Past it the page climbs `LADDER_HIGH`, only as far as the budget needs. The top rung takes nothing but the top 1% of rolls on each slot's best line: about 15 million crystals and 99.5% of a perfect set on Paroxysmal's sheet. A budget above that has nothing left to buy, and the page says so. A perfect set itself (the top roll in every slot) has no finite price when rolls are even.
 - Damage per line comes from Damage Math's `A2` model on the chosen sheet (`valuer`). A genus Damage Boost line counts only on its own board, against bosses of that genus.
 
 ## Line formulas (`valuer`)
@@ -53,6 +55,7 @@ All values are `100 x ln(damage after / damage before)`, so they add.
 | Double Chance, Weapon Damage Boost, Multi-hit, Perfect | `A2` gain per 1%, on the sheet |
 | Front and Back Attack Damage Boost | `A2` gain on the share of hits from that side (below) |
 | Attack Bonus, Max Attack | `A2` gain per point. Max Attack adds half its value to average Attack, plus Perfect |
+| Penetration | each 100 adds 10 damage per skill use while the target's Defense is above it; the built-in sheets take Ludra at 10,000 Defense, so a 200 roll is the best line in slots 1 and 5 |
 | Critical Hit | 10 points above the boss's resist = 1% crit, capped at 50%; a curve (`critAt`), zero past the cap |
 | Front and Back Attack Critical Hit | Critical Hit times the share of hits from that side |
 | Critical Damage Boost | `A2` gain at the crit rate the plan ENDS with (`critLines`), not today's |
@@ -63,7 +66,7 @@ All values are `100 x ln(damage after / damage before)`, so they add.
 - **Left out: PvE Attack, Boss Attack, Front Attack, Back Attack, Critical Attack** (Shizu's call, 2026-11-22). The solver never locks them and the dropdowns do not list them; `valuer` still prices them so the tests can show the comparison. Why:
   - All five are added after Attack Increase, so Weapon Damage Boost, the Power Shard and Attack Increase never multiply them (Kanon's Bible: "Because this added after Attack Increase the value is less than Pure Attack").
   - Each counts only under a condition: on a boss (Boss Attack measured 0 on the training dummy), from one side, on a crit (and Critical Attack is cut by the target's Critical Damage Defense), never in PvP.
-  - The one measured Global test (Aion 2 Maps, one Ranger, build of 2026-10-28): 10 Attack = +0.27% on bosses, 10 Boss Attack = +0.13% to +0.14%. That is half of Attack per point; the `A2` formula gives about 0.6, so the model prices PvE and Boss Attack some 15% to 35% high. At the measured rate a 20 roll is about +0.27% to +0.32%, under Attack Bonus 16 (+0.36%) and Max Attack 20 (+0.34%) on Paroxysmal's sheet.
+  - The one measured Global test (Aion 2 Maps, one Ranger, build of 2026-10-28): 10 Attack = +0.27% on bosses, 10 Boss Attack = +0.13% to +0.14%. That is half of Attack per point, and the `A2` formula agrees on that Ranger's sheet (0.46). On Paroxysmal's sheet, with less Weapon Damage Boost and Attack Increase, the formula gives 0.62: a Boss Attack 20 roll comes to +0.36% there, level with Attack Bonus 16 (+0.35%) and Max Attack 20 (+0.33%). So on that sheet the model does not rank Boss Attack last; it is left out on Shizu's call and Kanon's tiers.
   - Kanon's tiers: Attack, Max Attack, Attack Bonus first; PvE and Boss Attack second; Front, Back, Species and Critical Attack last. No source calls PvE or Boss Attack bad outright, and nobody has published a measured Global value for PvE Attack, Max Attack or Attack Bonus.
   - Cost of leaving them out: about 0.3% counted damage at a 100,000-crystal budget.
 - **Sides.** `stance` is the side you fight from. Front lines count on `frontRate` (85%) of hits when you play the front and back lines on the rest; play the back and it is `backRate` (70%) from behind. The share that can be parried is everything not from behind.
@@ -77,6 +80,7 @@ All values are `100 x ln(damage after / damage before)`, so they add.
 - The books balance: price x gain - cost equals the value the solver reports.
 - Boards played roll by roll with true continuous rolls and the solver's rules: bill, gain and net within a few percent of what it expects. This is the test of the grids.
 - The plan: a higher price never buys less, no plan beats a perfect set, it stops at the crit and accuracy caps, counted and real damage add up as defined, cold and warm starts agree, and a started board is left alone at a low price.
+- Budgets in the millions: up `LADDER_HIGH` a higher price still never buys less, and the top rung lands between 99% and 100% of a perfect set.
 
 ## What is assumed
 

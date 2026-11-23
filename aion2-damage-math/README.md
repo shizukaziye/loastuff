@@ -30,7 +30,7 @@ Window  = (Pure Attack + Attack Bonus + base Attack) × (1 + Attack Increase)
 
 "Window" is the Attack the character window shows. It leaves out Weapon Damage Boost and the Power Shard and counts the weapon at the middle of its range. The page turns that number back into Pure Attack, the part Weapon Damage Boost multiplies.
 
-`test.js` checks the model three ways: against the per-stat values published for a Korean endgame sheet (Double Chance, Weapon Damage Boost, Critical Damage Boost, Damage Boost, Attack, Max Attack, Attack Bonus, Perfect, Multi-hit), against closed-form derivatives on a Global sheet, and against worked examples from Korean and Taiwanese forum tests of the character window.
+`test.js` checks the model four ways: against Aion 2 Maps' measured per-stat table for one Global Ranger on tier 4 Transcendence and Conquest [Hard] (eleven stats, each within 9%, Multi-hit within 15%), against the per-stat values published for a Korean endgame sheet (Double Chance, Weapon Damage Boost, Critical Damage Boost, Damage Boost, Attack, Max Attack, Attack Bonus, Perfect, Multi-hit), against closed-form derivatives on a Global sheet, and against worked examples from Korean and Taiwanese forum tests of the character window.
 
 ## What is measured and what is assumed
 
@@ -39,7 +39,11 @@ The page's own Confidence table is the full list. The parts most likely to move:
 - **The character window on Global.** Korean and Taiwanese tests show Weapon Damage Boost is not in the displayed Attack. One Global reading (a 22 Attack helmet line moved Bu's Attack by 28 where her visible 17.1% Attack Increase predicts 26) does not fit yet. The check is to take the Revelation Amulet off: the Attack should not move.
 - **Base Attack, 237.** Bu's gear, Attack Bonus and Attack Increase explain 2,444 of the 2,722 her window shows. The rest, before Attack Increase, is entered as base Attack on every built-in sheet. Only Bu's Attack was read in game; the other sheets' Attack is predicted from their gear plus that 237.
 - **Filler strength, 50%.** How much of a cooldown or Combat Speed gain turns into damage. It decides most of what Illusion and Time are worth.
-- **Global Multi-hit.** One proc worth 15% on top of a 20% hidden chance. The Korean chained model is a switch under Model choices.
+- **Global Multi-hit.** One proc worth 11% on top of a 20% hidden chance, which matches the 0.09 to 0.12% per 1% that Aion 2 Maps measured. The Korean chained model is a switch under Model choices.
+- **Global boss targets.** Tier 4 Transcendence (68% Damage Tolerance, 8,600 Defense, 920 crit resist) and Conquest [Hard] (62%, 9,500, 926) are Aion 2 Maps' reads from fight logs, build of 2026-10-28. Ludra's are unpublished: its preset takes 65% and 10,000 from the tier below. `TARGETS` in `presets.js`.
+- **Skill multiplier 0.75, flat skill damage 1,000.** Fitted, with the 11% above, so the model reproduces one Global Ranger's measured per-stat table (the `global` reference sheet). They set how Attack stats trade against the Damage Boost pool and what Penetration is worth. Other classes and rotations will differ. The Korean reference keeps 1 and 0.
+- **Front, Back and Critical Attack** are flat damage added after the skill multiplier, as Aion 2 Maps places them on Global and Korean and Taiwanese tests place Back and Critical Attack.
+- **Power Shard Damage Bonus is disputed.** The page counts 100 points as 1% on the shard (Grobs). Aion 2 Maps places it as flat Attack on shard skills. Nobody has published a test that separates the two.
 
 ## Data with a date on it
 

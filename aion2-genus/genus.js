@@ -50,7 +50,7 @@
   /* Slots 1 and 5 also roll PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack. They are left out
      on purpose (LEFT_OUT): the solver never locks them and the page never offers them. All five are added after
      Attack Increase and only count under a condition; the one Global test has Boss Attack at half of Attack per
-     point, less than the formula gives it. The README has the sources. */
+     point. The README has the sources. */
   const LEFT_OUT = ['pveAtk', 'bossAtk', 'frontAtk', 'backAtk', 'critAtk'];
   const S15 = { size: 10, lines: ['maxAtk', 'atkBonus', 'pen'] };
   const S369 = { size: 10, lines: ['critHit', 'frontCrit', 'backCrit', 'acc', 'pveAcc', 'psdb'] };
@@ -136,17 +136,20 @@
   const critPts = (uv, id, roll) => (id === 'frontCrit' ? uv.front : id === 'backCrit' ? uv.back : 1) * roll;
 
   /* ---- a slot's outcomes as atoms: probability p, value v in crystals (price x %), its crit and pool parts ---- */
-  function classAtoms(pool, unit, lam, q) {
+  /* A roll is even over its grade's range. The range is cut into bands that narrow toward the top, so a plan with a
+     huge budget can hold out for rolls in the top 1% and so close in on a perfect set. */
+  const ROLL = [0, 0.2, 0.4, 0.6, 0.75, 0.86, 0.93, 0.97, 0.99, 1];
+  function classAtoms(pool, unit, lam, cuts) {
     const out = [];
-    q = q || 5;
+    cuts = cuts || ROLL;
     for (const id of pool.lines) {
       const u = unit(id); if (!(u > 0)) continue;
       const ln = LINES[id];
       for (const g of ['heroic', 'unique']) {
-        const r = g === 'heroic' ? ln.h : ln.u, P = ODDS[g] / pool.size / q;
-        for (let i = 0; i < q; i++) {
-          const v = lam * u * (r[0] + (r[1] - r[0]) * (i + 0.5) / q);
-          out.push({ p: P, v, vc: ln.grp === 'crit' ? v : 0, va: ln.grp === 'acc' ? v : 0, vp: ln.grp === 'pool' ? v : 0 });
+        const r = g === 'heroic' ? ln.h : ln.u, P = ODDS[g] / pool.size;
+        for (let i = 1; i < cuts.length; i++) {
+          const v = lam * u * (r[0] + (r[1] - r[0]) * (cuts[i - 1] + cuts[i]) / 2);
+          out.push({ p: P * (cuts[i] - cuts[i - 1]), v, vc: ln.grp === 'crit' ? v : 0, va: ln.grp === 'acc' ? v : 0, vp: ln.grp === 'pool' ? v : 0 });
         }
       }
     }
@@ -306,6 +309,7 @@
     return { idx: c[0] * 16 + c[1] * 4 + c[2] * 2 + c[3], dead };
   }
 
+  const STEPS = [0, 0.1, 0.3, 0.6, 1];   // a board's own price for a capped stat, as shares of the stat's full price
   /* ---- the whole plan: five boards, each from where it stands, at one price ----
      Critical Hit, Accuracy and Damage Boost lines are priced at what the last point of each is worth once the plan is
      done (the slope of its curve there). Past a cap that slope is zero, so the search below finds, for Critical Hit
@@ -329,9 +333,11 @@
       for (let i = 1; i <= 9; i++) { const x = sl[i]; if (!useful(b, i, x)) continue; put(now, uNow, b, x.line, +x.val || 0); if (x.locked) put(cur, uNow, b, x.line, +x.val || 0); }
     }
 
-    function evalAt(pr, keep) {
-      const uv = units(val, pr.uc, pr.ua, pr.up, pr.critLvl), per = {}, addT = zero(); let cost = 0, presses = 0;
-      for (const b of BOARD_KEYS) {
+    /* one board at its prices; pr.ucB and pr.uaB, when set, hold a board's own prices for Critical Hit and Accuracy */
+    function evalBoard(b, pr, keep) {
+      const uc = pr.ucB ? pr.ucB[b] : pr.uc, ua = pr.uaB ? pr.uaB[b] : pr.ua;
+      const uv = units(val, uc, ua, pr.up, pr.critLvl);
+      {
         const sl = boards[b] || blankBoard(), st = boardState(sl);
         const unit = (id) => unitOn(uv, b, id);
         const fine = CLASSES.map((cl) => classAtoms(poolOf(b, cl), unit, lam));
@@ -362,16 +368,24 @@
         // would a blank board on a spare preset beat carrying on with this one?
         const started = st.idx !== 0 || st.dead > 0 || vis.length > 0;
         const fresh = started && (st.dead === 0 ? sol : solveBoard(fine, 0)).W[0] > lam * locked + best + 1e-6;
-        if (pr.uc > 0) t.crit += fw.vc / lam / pr.uc;
-        if (pr.ua > 0) t.acc += fw.va / lam / pr.ua;
+        if (uc > 0) t.crit += fw.vc / lam / uc;
+        if (ua > 0) t.acc += fw.va / lam / ua;
         if (pr.up > 0) t.pool += fw.vp / lam / pr.up;
         t.other += (fw.v - fw.vc - fw.va - fw.vp) / lam;
-        per[b] = { sol, state: st, next, press: bm >= 0, lockNow, thr, cost: fw.cost, presses: fw.presses, fw, unit, fresh, add: t };
-        cost += fw.cost; presses += fw.presses;
-        addT.crit += t.crit; addT.acc += t.acc; addT.pool += t.pool; addT.other += t.other;
+        return { sol, state: st, next, press: bm >= 0, lockNow, thr, cost: fw.cost, presses: fw.presses, fw, unit, fresh, add: t };
       }
-      return { uv, per, cost, presses, add: addT, critAdd: addT.crit, accAdd: addT.acc, poolAdd: addT.pool, pr: Object.assign({}, pr) };
     }
+    function gather(per, pr) {
+      const addT = zero(); let cost = 0, presses = 0;
+      for (const b of BOARD_KEYS) { const x = per[b], t = x.add; cost += x.cost; presses += x.presses; addT.crit += t.crit; addT.acc += t.acc; addT.pool += t.pool; addT.other += t.other; }
+      return { uv: units(val, pr.uc, pr.ua, pr.up, pr.critLvl), per, cost, presses, add: addT, critAdd: addT.crit, accAdd: addT.acc, poolAdd: addT.pool, pr: Object.assign({}, pr) };
+    }
+    function evalAt(pr, keep) {
+      const per = {};
+      for (const b of BOARD_KEYS) per[b] = evalBoard(b, pr, keep);
+      return gather(per, pr);
+    }
+    const worth = (t, k) => t.other + val.poolAt(t.pool) + k * (val.critAt(t.crit) + val.accAt(t.acc));
 
     const critRoom = Math.max(0, val.critHead - cur.crit), accRoom = Math.max(0, val.accHead - cur.acc);
     const cm = (x) => w * val.critMarg(x), am = (x) => w * val.accMarg(x);
@@ -415,6 +429,38 @@
       if (!(accRoom > 0) || landed(r, 'accAdd', cur.acc, accRoom, am, 'ua')) break;
     }
     if (Math.abs(pr.up - r.pr.up) > 0.012 * (r.pr.up || 1)) r = run();
+    /* One price for all five boards cannot always land on a cap. At a high price each slot holds out for one line, so
+       a small move in the price flips that slot on every board at once and the plan jumps over the cap. When that
+       happens, let each board have its own prices for Critical Hit and Accuracy: try a few board by board and keep
+       whatever raises damage less cost, which is what the plan as a whole maximises. */
+    if (cfg.polish !== false && !(landed(r, 'critAdd', cur.crit, critRoom, cm, 'uc') && landed(r, 'accAdd', cur.acc, accRoom, am, 'ua'))) {
+      const pb = Object.assign({}, r.pr, { ucB: {}, uaB: {} }), per = Object.assign({}, r.per);
+      for (const b of BOARD_KEYS) { pb.ucB[b] = r.pr.uc; pb.uaB[b] = r.pr.ua; }
+      const score = () => {
+        const t = { crit: cur.crit, acc: cur.acc, pool: cur.pool, other: cur.other }; let cost = 0;
+        for (const b of BOARD_KEYS) { const a = per[b].add; t.crit += a.crit; t.acc += a.acc; t.pool += a.pool; t.other += a.other; cost += per[b].cost; }
+        return worth(t, w) - cost / lam;
+      };
+      const tops = { ucB: critRoom > 0 ? cm(cur.crit) : 0, uaB: accRoom > 0 ? am(cur.acc) : 0 };
+      let best = score();
+      for (let pass = 0; pass < 2; pass++) {
+        let moved = false;
+        for (const b of BOARD_KEYS) for (const key of ['ucB', 'uaB']) {
+          if (!(tops[key] > 0)) continue;
+          const was = pb[key][b], keepB = per[b]; let bu = was, bp = keepB;
+          for (const f of STEPS) {
+            const u = f * tops[key];
+            if (Math.abs(u - was) <= 1e-9 * tops[key]) continue;
+            pb[key][b] = u; per[b] = evalBoard(b, pb, false); iters += 0.2;
+            const sc = score();
+            if (sc > best + 1e-7) { best = sc; bu = u; bp = per[b]; moved = true; }
+          }
+          pb[key][b] = bu; per[b] = bp;
+        }
+        if (!moved) break;
+      }
+      r = gather(per, pb);
+    }
     const fin = r.pr;
     if (cfg.spread > 0) r = evalAt(fin, true);
     // damage: the curves for the three curved stats, the unit prices for the rest
@@ -422,7 +468,6 @@
     const cG = val.critAt(cur.crit + a.crit) - val.critAt(cur.crit), aG = val.accAt(cur.acc + a.acc) - val.accAt(cur.acc), pG = val.poolAt(cur.pool + a.pool) - val.poolAt(cur.pool);
     const rc = a.crit > 0 ? cG / a.crit : 0, ra = a.acc > 0 ? aG / a.acc : 0, rp = a.pool > 0 ? pG / a.pool : 0;
     for (const b of BOARD_KEYS) { const pb = r.per[b], t = pb.add; pb.gain = t.other + t.pool * rp + w * (t.crit * rc + t.acc * ra); }
-    const worth = (t, k) => t.other + val.poolAt(t.pool) + k * (val.critAt(t.crit) + val.accAt(t.acc));
     const end = { crit: cur.crit + a.crit, acc: cur.acc + a.acc, pool: cur.pool + a.pool, other: cur.other + a.other };
     const res = { lam, val, uv: r.uv, per: r.per, cost: r.cost, presses: r.presses, kina: r.cost * KINA_PER_CRYSTAL,
       locked: worth(cur, w), now: worth(now, w), total: worth(end, w), real: worth(end, 1), realNow: worth(now, 1),
@@ -440,12 +485,15 @@
 
   /* the plan at a ladder of prices; each rung starts from the one before */
   const LADDER = [500, 1500, 3500, 7000, 12000, 19000, 29000, 44000, 66000, 100000, 160000, 260000, 420000];
+  /* Prices past the ladder, for budgets in the millions. Each rung holds out for better rolls than the last; the top
+     one takes only the top 1% of rolls on a slot's best line, which is as near a perfect set as the roll bands go. */
+  const LADDER_HIGH = [800000, 2000000, 5000000, 12000000, 35000000, 100000000];
   function sweep(A2, inputs, opts, boards, lams) {
     const pts = [], val = valuer(A2, inputs, opts); let start = null;
     for (const lam of lams || LADDER) {
       const r = plan(A2, inputs, opts, lam, boards, { start, val });
       start = r.next;
-      pts.push({ lam, cost: r.cost, total: r.total, real: r.real, gain: r.gain, locked: r.locked, iters: r.iters });
+      pts.push({ lam, cost: r.cost, total: r.total, real: r.real, gain: r.gain, locked: r.locked, iters: r.iters, next: r.next });
     }
     return pts;
   }
@@ -484,7 +532,7 @@
 
   const api = { ODDS, LOCK_EXTRA, KINA_PER_CRYSTAL, pressCost, LINES, BOARDS, BOARD_KEYS, SLOT_CLASS, CLASSES, CLASS_N, CLASS_SLOTS, STRIDE, NS,
     poolOf, lineName, OPTS, LEFT_OUT, valuer, units, units0, unitOn, critPts, classAtoms, coarsen, solveBoard, forward, threshold, lk, lockCount, openSlots, validState,
-    blankBoard, boardState, plan, sweep, LADDER, priceFor, perfect, rng, simulate };
+    blankBoard, boardState, plan, sweep, LADDER, LADDER_HIGH, priceFor, perfect, rng, simulate };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.A2G = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
