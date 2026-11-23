@@ -1,0 +1,69 @@
+/* Aion 2 Genus Boards (www.loseii.com/aion2-genus/)
+   The page wears Damage Math's stylesheet (/aion2-damage-math/style.css). This file only adds what that one lacks:
+   the result tiles, the board tabs, the lock table and the board cards. */
+:root { --heroic: #f0914a; --unique: var(--accent, #e8b75c); }
+
+.quick { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- tiles ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 16px; }
+.tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.tile .k { margin: 0; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tile .v { margin: 2px 0 0; font-family: var(--font-display); font-size: 1.55rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .s { margin: 2px 0 0; font-size: .78rem; color: var(--ink-2); }
+.busy .tile .v, .busy #heroV { opacity: .45; }
+
+/* ---------- chart ---------- */
+#curve .grid { stroke: var(--grid); stroke-width: 1; }
+#curve .axis { stroke: var(--axis); stroke-width: 1; }
+#curve .line { fill: none; stroke: var(--series-1); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#curve .guide { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 4; }
+#curve .dot { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+#curve .mark { font-size: 12.5px; font-weight: 600; fill: var(--ink); font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+#budgetTbl { margin-top: 12px; }
+#budgetTbl tr.best td { font-weight: 600; }
+
+/* ---------- tabs ---------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.tab { background: transparent; border: 1px solid var(--line-strong); border-radius: 99px; padding: 4px 14px; min-height: 30px; font-size: .84rem; cursor: pointer; color: var(--ink-2); }
+.tab:hover { border-color: var(--ink-2); }
+.tab[aria-selected="true"] { background: var(--accent-wash); border-color: var(--accent-fill); color: var(--ink); }
+
+/* ---------- lock table ---------- */
+.lock-tbl td.r, .lock-tbl th.r { min-width: 52px; }
+.lock-tbl td.h { color: var(--heroic); font-weight: 600; }
+.lock-tbl td.u { color: var(--unique); font-weight: 600; }
+.lock-tbl td.any { color: var(--ink); font-weight: 600; }
+.lock-tbl td.no, .lock-tbl td.na { color: var(--muted); }
+.lock-tbl th.grp-h { text-align: center; border-bottom: 1px solid var(--line); }
+.key-h { color: var(--heroic); font-weight: 600; }
+.key-u { color: var(--unique); font-weight: 600; }
+
+/* ---------- board cards ---------- */
+.boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+.bcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.bcard-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bcard h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.slots { display: grid; gap: 5px; }
+.slot { display: grid; grid-template-columns: 18px minmax(0, 1fr) 70px auto; gap: 6px; align-items: center; }
+.slot .sn { font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+.slot select { width: 100%; min-width: 0; min-height: 30px; padding: 3px 6px; font-size: .84rem; }
+.slot input[type="number"] { width: 70px; min-height: 30px; padding: 3px 6px; }
+.slot input[type="number"]:disabled { opacity: .35; }
+.slot label { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.slot.locked .sn { color: var(--accent); }
+.verdict { border-left: 2px solid var(--accent-fill); padding: 2px 0 2px 12px; display: grid; gap: 4px; }
+.verdict .do { margin: 0; font-weight: 600; }
+.verdict p { margin: 0; font-size: .86rem; color: var(--ink-2); }
+.verdict.done { border-left-color: var(--good); }
+.verdict ul { margin: 2px 0 0; padding-left: 16px; font-size: .84rem; color: var(--ink-2); display: grid; gap: 2px; }
+.verdict li b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.tbl-wrap.two { margin: 12px 0; }
+h3 + .src { margin-top: 0; }
+
+@media (max-width: 620px) {
+  .boards { grid-template-columns: 1fr; }
+  .slot { grid-template-columns: 16px minmax(0, 1fr) 62px auto; }
+  .slot input[type="number"] { width: 62px; }
+}
