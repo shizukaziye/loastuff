@@ -63,22 +63,24 @@
   }
   function fightDefaults(key) {
     const v = sheetValues(key);
-    return { critBuff: key in SKILL_CRIT ? SKILL_CRIT[key] : num(v.critBuff), critRes: num(v.critRes), front: 50, back: 50, bossGenus: 'cogni', accPer100: 0 };
+    return { critBuff: key in SKILL_CRIT ? SKILL_CRIT[key] : num(v.critBuff), critRes: num(v.critRes), bossGenus: 'cogni',
+      stance: G.OPTS.stance, frontRate: G.OPTS.frontRate, backRate: G.OPTS.backRate, acc: G.OPTS.acc, block: G.OPTS.block, capWeight: G.OPTS.capWeight };
   }
 
   /* ---------- state ---------- */
   function defaults() {
-    const b = { v: 1, sheet: DEFAULT, budget: 100000, weekly: 6500, fight: fightDefaults(DEFAULT), boards: {}, lockBoard: 'cogni' };
+    const b = { v: 2, sheet: DEFAULT, budget: 100000, weekly: 6500, fight: fightDefaults(DEFAULT), boards: {}, lockBoard: 'cogni' };
     for (const k of G.BOARD_KEYS) b.boards[k] = G.blankBoard();
     return b;
   }
   function merge(d) {
     const b = defaults();
-    if (!d || d.v !== 1) return b;
+    if (!d || (d.v !== 1 && d.v !== 2)) return b;   // v1 had other names for the fight's fields: they fall back to the defaults
     if (d.sheet === 'mine' ? !!mathSheet() : (Z.PRESETS[d.sheet] && d.sheet !== 'kr')) b.sheet = d.sheet;
     b.fight = fightDefaults(b.sheet);
     if (d.fight && typeof d.fight === 'object') for (const k in b.fight) {
       if (k === 'bossGenus') { if (['cogni', 'fera', 'natura', 'varian', 'none'].indexOf(d.fight[k]) >= 0) b.fight[k] = d.fight[k]; }
+      else if (k === 'stance') { if (d.fight[k] === 'front' || d.fight[k] === 'back') b.fight[k] = d.fight[k]; }
       else if (isFinite(Number(d.fight[k])) && Number(d.fight[k]) >= 0) b.fight[k] = Number(d.fight[k]);
     }
     if (isFinite(Number(d.budget)) && Number(d.budget) >= 0) b.budget = Number(d.budget);
@@ -105,7 +107,7 @@
     const f = st.fight;
     return {
       inputs: Object.assign({}, sheetValues(st.sheet), { critBuff: f.critBuff, critRes: f.critRes }),
-      opts: { front: f.front, back: f.back, bossGenus: f.bossGenus, accPer100: f.accPer100 }
+      opts: { stance: f.stance, frontRate: f.frontRate, backRate: f.backRate, bossGenus: f.bossGenus, acc: f.acc, block: f.block, capWeight: f.capWeight }
     };
   }
   function schedule() { save(); document.body.classList.add('busy'); clearTimeout(runT); runT = setTimeout(run, 160); }
@@ -155,21 +157,22 @@
     const p = C.plan, share = p.total / C.perf.total;
     $('heroK').textContent = 'With ' + fmtN(st.budget) + (started() ? ' more' : '') + ' Soul Crystals';
     clear($('heroV')).append(h('b', null, fmtG(p.total)), ' damage, ', h('b', null, Math.round(share * 100) + '%'), ' of a perfect set of boards');
-    $('heroS').textContent = p.cost < 1 ? 'Nothing left worth a press at this budget.'
-      : 'About ' + fmtWeeks(weeksFor(p.cost)) + ' at ' + fmtN(st.weekly) + ' crystals a week, and ' + fmtK(p.kina) + ' Kinah.';
+    const today = p.val.w < 1 ? fmtG(p.real) + ' in today\u2019s fight, with Critical Hit and Accuracy at full. ' : '';
+    $('heroS').textContent = today + (p.cost < 1 ? 'Nothing left worth a press at this budget.'
+      : 'About ' + fmtWeeks(weeksFor(p.cost)) + ' at ' + fmtN(st.weekly) + ' crystals a week, and ' + fmtK(p.kina) + ' Kinah.');
   }
   function tile(k, v, s) { return h('div', { class: 'tile' }, h('p', { class: 'k', text: k }), h('p', { class: 'v', text: v }), h('p', { class: 's', text: s })); }
   function renderTiles() {
     const p = C.plan, share = p.total / C.perf.total;
     clear($('tiles')).append(
-      tile('Damage from Genus', fmtG(p.total), p.now > 0.005 ? fmtG(p.now) + ' on the boards now' : 'from blank boards'),
+      tile(p.val.w < 1 ? 'Damage, counted' : 'Damage from Genus', fmtG(p.total), (p.val.w < 1 ? 'Critical Hit and Accuracy at ' + Math.round(p.val.w * 100) + '%. ' : '') + (p.now > 0.005 ? fmtG(p.now) + ' on the boards now' : 'From blank boards')),
       tile('Of a perfect set', Math.round(share * 100) + '%', 'perfect is ' + fmtG(C.perf.total)),
       tile('Soul Crystals', fmtC(p.cost), p.spread && p.cost > 0 ? '4 runs in 5 land between ' + fmtC(p.spread.lo) + ' and ' + fmtC(p.spread.hi) : 'nothing left to spend'),
       tile('Kinah', fmtK(p.kina), '250 for each crystal'),
       tile('Time', fmtWeeks(weeksFor(p.cost)), 'at ' + fmtN(st.weekly) + ' crystals a week'),
-      tile('Price paid', fmtC(C.lam), 'crystals for the last +1%')
+      tile('Damage today', fmtG(p.real), 'every line at full, on this sheet')
     );
-    $('planNote').textContent = 'Your luck moves the bill, not the rules: follow the lock table and stop when a board\'s card says so. The price is what the plan pays for its last and dearest 1% of damage.';
+    $('planNote').textContent = 'Your luck moves the bill, not the rules: follow the lock table and stop when a board\'s card says so. This plan pays up to ' + fmtC(C.lam) + ' crystals for its last and dearest 1% of damage.';
   }
 
   function renderCurve() {
@@ -258,9 +261,9 @@
   }
 
   function renderLines() {
-    // Critical Hit and Damage Boost: the average worth of a point over the stretch this plan adds
-    const p = C.plan, v = p.val, ca = Math.max(1, p.critAdd), pa = Math.max(0.1, p.poolAdd);
-    const uv = G.units(v, (v.critAt(p.critCur + ca) - v.critAt(p.critCur)) / ca, (v.poolAt(p.poolCur + pa) - v.poolAt(p.poolCur)) / pa);
+    // Critical Hit, Accuracy and Damage Boost: the average worth of a point over the stretch this plan adds
+    const p = C.plan, v = p.val, avg = (curve, from, more, least) => { const d = Math.max(least, more); return (curve(from + d) - curve(from)) / d; };
+    const uv = G.units(v, v.w * avg(v.critAt, p.cur.crit, p.critAdd, 1), v.w * avg(v.accAt, p.cur.acc, p.accAdd, 1), avg(v.poolAt, p.cur.pool, p.poolAdd, 0.1), p.end.crit);
     const tb = clear($('lineTbl').tBodies[0]);
     let max = 0; const rows = [];
     const push = (slot, b, cls) => {
@@ -283,9 +286,12 @@
     const p = C.plan, v = p.val, head = v.critHead, n = clear($('derived'));
     const have = num(C.inputs.critRating) + num(C.inputs.critBuff);
     if (C.inputs.critMode === 'manual') n.append('This sheet has its crit rate typed in: ', h('b', null, Math.round(v.critRate * 100) + '%'), '. ');
-    else n.append('Critical Hit in the fight: ', h('b', null, fmtN(have)), ' against ', h('b', null, fmtN(num(C.inputs.critRes))), ' resist, so you crit ', h('b', null, Math.round(v.critRate * 100) + '%'), ' of hits. ');
-    if (head <= 0) n.append('That is the cap, so crit lines are worth nothing here.');
-    else n.append('The ' + Math.round(v.critCap * 100) + '% cap is ', h('b', null, fmtN(head)), ' Critical Hit away, and this plan ends with about ', h('b', null, fmtN(p.critCur + p.critAdd)), ' from Genus. Check the first number in game: it decides most of the plan.');
+    else n.append('Critical Hit ', h('b', null, fmtN(have)), ' against ', h('b', null, fmtN(num(C.inputs.critRes))), ' resist: you crit ', h('b', null, Math.round(v.critRate * 100) + '%'), ' of hits. ');
+    if (head <= 0) n.append('That is the cap, so crit lines are worth nothing here. ');
+    else n.append('The ' + Math.round(v.critCap * 100) + '% cap is ', h('b', null, fmtN(head)), ' away; this plan ends with about ', h('b', null, fmtN(p.end.crit)), ' from Genus. ');
+    if (v.accHead <= 0) n.append('Your Accuracy is past the boss\u2019s Block, so Accuracy lines are worth nothing here.');
+    else n.append('Accuracy is ', h('b', null, fmtN(v.accHead)), ' short: ', h('b', null, Math.round(v.parryNow * 100) + '%'), ' of your hits from the front or side are parried. This plan ends with about ', h('b', null, fmtN(p.end.acc)), ' from Genus.');
+    n.append(' Check both numbers in game: they decide most of the plan.');
   }
 
   /* ---------- board cards ---------- */
@@ -343,12 +349,12 @@
   }
 
   /* ---------- rail ---------- */
-  const FIELDS = ['critBuff', 'critRes', 'front', 'back', 'accPer100'];
+  const FIELDS = ['critBuff', 'critRes', 'acc', 'block', 'capWeight', 'frontRate', 'backRate'], PCT = ['capWeight', 'frontRate', 'backRate'];
   function syncRail() {
     $('sheet').value = st.sheet;
     $('f-budget').value = st.budget; $('f-weekly').value = st.weekly;
     for (const k of FIELDS) $('f-' + k).value = st.fight[k];
-    $('f-bossGenus').value = st.fight.bossGenus;
+    $('f-bossGenus').value = st.fight.bossGenus; $('f-stance').value = st.fight.stance;
     const pz = Z.PRESETS[st.sheet];
     $('sheetNote').textContent = st.sheet === 'mine' ? 'The sheet you saved in Damage Math, as it stands now.' : pz && pz.note ? 'A built-in sheet from Damage Math. Edit it there, then pick "My Damage Math sheet" here.' : '';
   }
@@ -359,8 +365,9 @@
     sel.addEventListener('change', () => { st.sheet = sel.value; st.fight = fightDefaults(st.sheet); syncRail(); schedule(); });
     $('f-budget').addEventListener('input', (e) => { st.budget = Math.max(0, num(e.target.value)); schedule(); });
     $('f-weekly').addEventListener('input', (e) => { st.weekly = Math.max(0, num(e.target.value)); schedule(); });
-    for (const k of FIELDS) $('f-' + k).addEventListener('input', (e) => { let x = Math.max(0, num(e.target.value)); if (k === 'front' || k === 'back') x = Math.min(100, x); st.fight[k] = x; schedule(); });
+    for (const k of FIELDS) $('f-' + k).addEventListener('input', (e) => { let x = Math.max(0, num(e.target.value)); if (PCT.indexOf(k) >= 0) x = Math.min(100, x); st.fight[k] = x; schedule(); });
     $('f-bossGenus').addEventListener('change', (e) => { st.fight.bossGenus = e.target.value; schedule(); });
+    $('f-stance').addEventListener('change', (e) => { st.fight.stance = e.target.value; schedule(); });
     for (const btn of document.querySelectorAll('[data-weekly]')) btn.addEventListener('click', () => { st.weekly = num(btn.getAttribute('data-weekly')); $('f-weekly').value = st.weekly; schedule(); });
     syncRail();
   }
