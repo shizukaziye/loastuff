@@ -222,13 +222,16 @@
       <h3>What the page assumes</h3>
       <ul class="src">
         <li>Every board is at Insight 10. Do not lock anything before then.</li>
+        <li>The built-in sheets fight Ludra at 65% Damage Tolerance and 10,000 Defense. Nobody has published Ludra's; these come from the tier below it, where Aion 2 Maps measured 58 to 68% and 8,600 to 10,300. High tolerance makes every Damage Boost line worth more, so check your own in Damage Math.</li>
         <li>Rolls fall evenly inside a grade's range. The client does not say.</li>
+        <li>No budget buys a perfect set outright: that takes the top roll in every slot. The plan closes in on it instead. From blank boards on the default sheet it reaches about 97% at 1 million crystals and 99% at 10 million. Past about 15 million it stops, because every slot already holds out for the top 1% of rolls on its best line.</li>
         <li>Unique ranges for Attack, Critical Hit and Accuracy lines are the printed minimum doubled, the pattern every printed range follows. Check them in the Auto Analysis window, which shows the minimum and maximum for each grade.</li>
         <li>Lines below Unique grade count as nothing.</li>
         <li>A genus Damage Boost line adds to the same sum as Damage Boost and PvE Damage Boost, and only against bosses of that genus. Nobody has tested whether it multiplies on its own. If it does, it is worth more than shown.</li>
         <li>The parry figures are player tests, not NCSOFT's: 6.7% for each 100 Accuracy short (tests run from 6.66 to 10) and half damage on a parried hit (20% to 50%). Read your own parry rate in Combat Analysis, in the BLOC column.</li>
         <li>The sheets do not carry Accuracy, so the page starts from 1,000. Type your own.</li>
-        <li>Slots 1 and 5 count only Max Attack and Attack Bonus. PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack are left out. All five are added after Attack Increase, so Weapon Damage Boost, the Power Shard and Attack Increase never multiply them, and each counts only under a condition: on a boss, from one side, on a crit, never in PvP. The one test on Global measured 10 Boss Attack at +0.13% against +0.27% for 10 Attack, less than the formula gives it, and nothing off a boss. Front, Back and Critical Attack are the bottom tier in Kanon's guide.</li>
+        <li>Penetration is the best line in slots 1 and 5 on a boss. Global bosses carry 8,600 to 10,300 Defense, far above anyone's Penetration, and each 100 Penetration adds 10 damage to every skill use. Aion 2 Maps measured that at +0.17% for each 100 on one Ranger, so a 200 roll edges past Max Attack 20 and Attack Bonus 16. It is worth less on the training dummy (1,800 Defense) and nothing once your Penetration passes the target's Defense.</li>
+        <li>Slots 1 and 5 otherwise count only Max Attack and Attack Bonus. PvE Attack, Boss Attack, Front Attack, Back Attack and Critical Attack are left out. All five are added after Attack Increase, so Weapon Damage Boost, the Power Shard and Attack Increase never multiply them, and each counts only under a condition: on a boss, from one side, on a crit, never in PvP. The one test on Global measured 10 Boss Attack at +0.13% against +0.27% for 10 Attack, and nothing off a boss. Front, Back and Critical Attack are the bottom tier in Kanon's guide.</li>
         <li>Max Attack and Attack Bonus sit within a tenth of each other on a Global sheet. Max Attack pulls ahead as your Weapon Damage Boost and Perfect grow, which is why Korean endgame guides rank it first.</li>
         <li>You get three presets, each with its own lines on all five boards. Costs here are for the boards as you entered them.</li>
       </ul>
@@ -261,10 +264,10 @@
   <p>By Shizukaziye. Unofficial fan tool, not affiliated with or endorsed by NCSOFT Corporation. AION is a registered trademark of NCSOFT Corporation.</p>
 </footer>
 
-<script src="/aion2-damage-math/model.js?v=1" defer></script>
-<script src="/aion2-damage-math/presets.js?v=1" defer></script>
-<script src="genus.js?v=3" defer></script>
-<script src="app.js?v=2" defer></script>
+<script src="/aion2-damage-math/model.js?v=2" defer></script>
+<script src="/aion2-damage-math/presets.js?v=2" defer></script>
+<script src="genus.js?v=4" defer></script>
+<script src="app.js?v=3" defer></script>
 <script src="https://www.loseii.com/nav.js" defer></script>
 <script src="https://www.loseii.com/social-bar.js" defer></script>
 </body>

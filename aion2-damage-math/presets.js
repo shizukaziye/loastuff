@@ -2,22 +2,28 @@
 (function (root) {
   'use strict';
   const MODEL_DEFAULTS = {
-    skillCoef: 1, skillFlat: 0, gCrit: 0, critCap: 50, ccPer100: 10,
+    // Skill multiplier and flat skill damage: fitted, with Multi-hit's 11%, to Aion 2 Maps' Global table (one Ranger,
+    // about 225,000 Combat Power). See the Global reference sheet below. The Korean reference keeps 1 and 0.
+    skillCoef: 0.75, skillFlat: 1000, gCrit: 0, critCap: 50, ccPer100: 10,
     partyDb: 0, partyDbl: 0, partyCd: 0, dblModel: 'sub',
-    mhBase: 20, mhBonus: 15, mhElig: 100, mhPos: 'out',
+    mhBase: 20, mhBonus: 11, mhElig: 100, mhPos: 'out',
     mhModel: 'flat', pfHidden: 7, csEff: 50, deityPer: 0.1, psdb: 0, baseAtk: 0,
     critMode: 'rating', critBuff: 0, critRes: 0, critChance: 0, cdr: 0
   };
   /* A key left out of a target (critRes on the Korean ones) is left as the user has it. */
   const TARGETS = {
-    dummy: { label: 'Training dummy', tol: 10, dblRes: 0, cdTol: 0, wTol: 0, def: 0, critRes: 0 },
-    boss:  { label: 'Early dungeon boss (placeholder)', tol: 30, dblRes: 0, cdTol: 0, wTol: 0, def: 0, critRes: 700 },
-    ludra: { label: 'Ludra, Global', tol: 30, dblRes: 0, cdTol: 0, wTol: 0, def: 0, critRes: 1200 },
+    // Global figures are Aion 2 Maps' reads from fight logs (build of 2026-10-28): the dummy, tier 4 Transcendence and
+    // Conquest [Hard]. Nobody has published Ludra's tolerance or Defense, so it takes the tier below it.
+    dummy: { label: 'Training dummy', tol: 10, dblRes: 0, cdTol: 0, wTol: 0, def: 1800, critRes: 0 },
+    boss:  { label: 'Early dungeon boss (placeholder)', tol: 30, dblRes: 0, cdTol: 0, wTol: 0, def: 5000, critRes: 700 },
+    t4g:   { label: 'Tier 4 Transcendence, Global (measured)', tol: 68, dblRes: 0, cdTol: 0, wTol: 0, def: 8600, critRes: 920 },
+    hardg: { label: 'Conquest [Hard], Global (measured)', tol: 62, dblRes: 5, cdTol: 5, wTol: 0, def: 9500, critRes: 926 },
+    ludra: { label: 'Ludra, Global (estimate)', tol: 65, dblRes: 5, cdTol: 5, wTol: 0, def: 10000, critRes: 1200 },
     t4:    { label: 'Transcendence 4 last boss (Korean test)', tol: 44, dblRes: 0, cdTol: 25, wTol: 15, def: 6373 },
     kr:    { label: 'KR endgame raid boss', tol: 50, dblRes: 30, cdTol: 25, wTol: 0, def: 0 }
   };
-  const BOSS = { target: 'boss', tol: 30, dblRes: 0, cdTol: 0, wTol: 0, def: 0, critRes: 700 };
-  const LUDRA = { target: 'ludra', tol: 30, dblRes: 0, cdTol: 0, wTol: 0, def: 0, critRes: 1200 };
+  const BOSS = Object.assign({ target: 'boss' }, TARGETS.boss), LUDRA = Object.assign({ target: 'ludra' }, TARGETS.ludra);
+  delete BOSS.label; delete LUDRA.label;
   const SHUGO = 'Summed from what Shugo.GG showed on Nov 16, 2026: gear, soul binding, manastones, Daevanion, wings, titles and deity points';
   const MISSING = ' Pets, collections, skill buffs, food and party buffs are missing, so check Critical Hit against the game.';
   const RANGER_MISSING = ' Not included: Marking Shot’s Precision (+300 Critical Hit), Gale Arrow (+7% Combat Speed and PvE Damage Boost), pets, collections, food and party buffs. Check Critical Hit against the game.';
@@ -110,7 +116,20 @@
         db: 130, pveDb: 60, bossDb: 40, dbl: 80, posDb: 30, uptime: 75, combatSpeed: 60, cdr: 0, multiHit: 38,
         critMode: 'manual', critChance: 80, critDmg: 90, critRating: 2500, critInc: 30,
         target: 'kr', tol: 50, dblRes: 30, cdTol: 25, wTol: 0, def: 0, critRes: 0,
-        critCap: 80, ccPer100: 6.67, csEff: 100, partyDbl: 12, mhModel: 'chain', mhBase: 0, mhBonus: 12.5, pfHidden: 7, deityPer: 0.2
+        critCap: 80, ccPer100: 6.67, csEff: 100, partyDbl: 12, mhModel: 'chain', mhBase: 0, mhBonus: 12.5, pfHidden: 7, deityPer: 0.2,
+        skillCoef: 1, skillFlat: 0
+      })
+    },
+    global: {
+      label: 'Reference: Global Ranger, 225k Combat Power',
+      note: 'A synthetic Global sheet, tuned so the model reproduces the per-stat figures Aion 2 Maps measured for one Ranger on tier 4 Transcendence and Conquest [Hard] bosses. Use it to check the model, not to plan gear.',
+      values: Object.assign({}, MODEL_DEFAULTS, { tol: 68, dblRes: 0, cdTol: 0, wTol: 0, def: 8600, critRes: 920 }, {
+        // pure 2,964, bonus 380, increase 37.7: Attack in the window = (2,964 + 380) x 1.377
+        sheetAtk: 4605, atkInc: 37.7, atkBonus: 380, baseAtk: 0, wdb: 47.8, rangeW: 120, perfect: 10, shard: 5, psdb: 40,
+        flatPve: 380, flatPos: 0, flatCrit: 0, pen: 1700,
+        db: 122.8, pveDb: 0, bossDb: 31.4, dbl: 25.2, posDb: 0, uptime: 76, combatSpeed: 40, cdr: 10, multiHit: 12,
+        critMode: 'manual', critChance: 48, critDmg: 35.7, critRating: 1400, critInc: 15,
+        target: 't4g', skillCoef: 0.74, skillFlat: 1020, mhBonus: 11
       })
     }
   };

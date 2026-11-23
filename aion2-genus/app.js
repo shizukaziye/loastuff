@@ -48,7 +48,7 @@
     if (w < 0.15) return 'now';
     if (w < 1) return 'under a week';
     if (w < 9.5) return trim(w, 1) + ' weeks';
-    return Math.round(w) + ' weeks';
+    return fmtN(w) + ' weeks';
   }
   const rollText = (id, x) => (LINES[id].unit === '%' ? trim(x, 2) + '%' : String(Math.round(x)));
 
@@ -76,7 +76,7 @@
   function merge(d) {
     const b = defaults();
     if (!d || (d.v !== 1 && d.v !== 2)) return b;   // v1 had other names for the fight's fields: they fall back to the defaults
-    if (d.sheet === 'mine' ? !!mathSheet() : (Z.PRESETS[d.sheet] && d.sheet !== 'kr')) b.sheet = d.sheet;
+    if (d.sheet === 'mine' ? !!mathSheet() : (Z.PRESETS[d.sheet] && d.sheet !== 'kr' && d.sheet !== 'global')) b.sheet = d.sheet;
     b.fight = fightDefaults(b.sheet);
     if (d.fight && typeof d.fight === 'object') for (const k in b.fight) {
       if (k === 'bossGenus') { if (['cogni', 'fera', 'natura', 'varian', 'none'].indexOf(d.fight[k]) >= 0) b.fight[k] = d.fight[k]; }
@@ -102,7 +102,8 @@
   function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* storage can be unavailable */ } }, 400); }
 
   /* ---------- compute: a ladder of prices (slow, in slices), then the plan at the budget's price ---------- */
-  let job = 0, runT = 0, sweepKey = '', sweepPts = null;
+  const RUNGS = G.LADDER.concat(G.LADDER_HIGH);
+  let job = 0, runT = 0, SW = { key: '', pts: [], from: null };
   function ctx() {
     const f = st.fight;
     return {
@@ -115,23 +116,30 @@
     const id = ++job, c = ctx(), key = JSON.stringify([c.inputs, c.opts, st.boards]);
     const finish = () => {
       if (id !== job) return;
-      const pts = sweepPts, b = Math.max(0, st.budget);
+      const pts = SW.pts, b = Math.max(0, st.budget), top = pts[pts.length - 1];
       const lam = b < pts[0].cost ? Math.max(5, pts[0].lam * b / Math.max(1, pts[0].cost)) : G.priceFor(pts, b);
-      const plan = G.plan(A, c.inputs, c.opts, lam, st.boards, { spread: 600 });
-      C = { inputs: c.inputs, opts: c.opts, pts, lam, plan, perf: G.perfect(A, c.inputs, c.opts) };
+      // past the ladder's base the plan starts from the rung below, as the ladder itself does
+      let start = null;
+      if (lam > G.LADDER[G.LADDER.length - 1]) for (const q of pts) if (q.lam <= lam) start = q.next;
+      const plan = G.plan(A, c.inputs, c.opts, lam, st.boards, { spread: 600, start });
+      // over: the budget is past the dearest plan there is, so part of it has nothing to buy
+      C = { inputs: c.inputs, opts: c.opts, pts, lam, plan, perf: G.perfect(A, c.inputs, c.opts), over: pts.length === RUNGS.length && b > top.cost };
       document.body.classList.remove('busy');
       render();
     };
-    if (key === sweepKey && sweepPts) { finish(); return; }
-    const pts = [], val = G.valuer(A, c.inputs, c.opts); let from = null, i = 0;
+    if (key !== SW.key) SW = { key, pts: [], from: null };
+    const sw = SW, val = G.valuer(A, c.inputs, c.opts);
+    // the base ladder always; the rungs past it only while the budget is above what the last one spends
+    const more = () => sw.pts.length < G.LADDER.length || (sw.pts.length < RUNGS.length && sw.pts[sw.pts.length - 1].cost < st.budget);
     (function step() {
       if (id !== job) return;
-      const r = G.plan(A, c.inputs, c.opts, G.LADDER[i], st.boards, { start: from, val });
-      from = r.next;
+      if (!more()) { finish(); return; }
+      const lam = RUNGS[sw.pts.length], r = G.plan(A, c.inputs, c.opts, lam, st.boards, { start: sw.from, val });
       // keep the ladder rising: a rung may not cost or gain less than the one below it
-      const prev = pts[pts.length - 1];
-      pts.push({ lam: G.LADDER[i], cost: prev ? Math.max(prev.cost, r.cost) : r.cost, total: prev ? Math.max(prev.total, r.total) : r.total, locked: r.locked });
-      if (++i < G.LADDER.length) setTimeout(step, 0); else { sweepKey = key; sweepPts = pts; finish(); }
+      const prev = sw.pts[sw.pts.length - 1];
+      sw.pts.push({ lam, cost: prev ? Math.max(prev.cost, r.cost) : r.cost, total: prev ? Math.max(prev.total, r.total) : r.total, locked: r.locked, next: r.next });
+      sw.from = r.next;
+      setTimeout(step, 0);
     })();
   }
   /* total damage a budget buys, read off the ladder */
@@ -158,7 +166,8 @@
     $('heroK').textContent = 'With ' + fmtN(st.budget) + (started() ? ' more' : '') + ' Soul Crystals';
     clear($('heroV')).append(h('b', null, fmtG(p.total)), ' damage, ', h('b', null, Math.round(share * 100) + '%'), ' of a perfect set of boards');
     const today = p.val.w < 1 ? fmtG(p.real) + ' in today\u2019s fight, with Critical Hit and Accuracy at full. ' : '';
-    $('heroS').textContent = today + (p.cost < 1 ? 'Nothing left worth a press at this budget.'
+    const spare = C.over ? 'The plan spends about ' + fmtC(p.cost) + ' of them. By then every slot holds out for the top 1% of rolls on its best line, so the rest has nothing to buy. ' : '';
+    $('heroS').textContent = today + spare + (p.cost < 1 ? 'Nothing left worth a press at this budget.'
       : 'About ' + fmtWeeks(weeksFor(p.cost)) + ' at ' + fmtN(st.weekly) + ' crystals a week, and ' + fmtK(p.kina) + ' Kinah.');
   }
   function tile(k, v, s) { return h('div', { class: 'tile' }, h('p', { class: 'k', text: k }), h('p', { class: 'v', text: v }), h('p', { class: 's', text: s })); }
@@ -178,13 +187,14 @@
   function renderCurve() {
     const svg = clear($('curve')), W = 720, H = 300, m = { l: 46, r: 18, t: 16, b: 40 };
     const pts = C.pts, perf = C.perf.total, p = C.plan;
-    const xmax = Math.max(300000, Math.ceil(Math.max(st.budget, p.cost) * 1.4 / 50000) * 50000);
+    const xmax = Math.max(300000, Math.ceil((C.over ? p.cost : Math.max(st.budget, p.cost)) * 1.4 / 50000) * 50000);
     const X = (c) => m.l + (W - m.l - m.r) * Math.min(1, c / xmax), Y = (s) => H - m.b - (H - m.t - m.b) * Math.min(1, Math.max(0, s));
     for (const s of [0, 0.25, 0.5, 0.75, 1]) {
       svg.append(sv('line', { class: s ? 'grid' : 'axis', x1: m.l, x2: W - m.r, y1: Y(s), y2: Y(s) }));
       svg.append(sv('text', { class: 'ax-t', x: m.l - 8, y: Y(s) + 4, 'text-anchor': 'end' }, Math.round(s * 100) + '%'));
     }
-    const step = xmax <= 300000 ? 50000 : xmax <= 600000 ? 100000 : xmax <= 1500000 ? 250000 : 500000;
+    let step = 50000;
+    for (const s of [50000, 100000, 250000, 500000, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8]) { step = s; if (xmax / s <= 6.5) break; }
     for (let c = 0; c <= xmax + 1; c += step) svg.append(sv('text', { class: 'ax-t', x: X(c), y: H - m.b + 16, 'text-anchor': 'middle' }, c ? fmtK(c) : '0'));
     svg.append(sv('text', { class: 'ax-title', x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle' }, 'Soul Crystals spent on all five boards'));
     let d = 'M' + X(0).toFixed(1) + ' ' + Y(pts[0].locked / perf).toFixed(1);
@@ -361,7 +371,7 @@
   function buildRail() {
     const sel = $('sheet');
     if (mathSheet()) sel.append(h('option', { value: 'mine' }, 'My Damage Math sheet'));
-    for (const k in Z.PRESETS) if (k !== 'kr') sel.append(h('option', { value: k }, Z.PRESETS[k].label));
+    for (const k in Z.PRESETS) if (k !== 'kr' && k !== 'global') sel.append(h('option', { value: k }, Z.PRESETS[k].label));
     sel.addEventListener('change', () => { st.sheet = sel.value; st.fight = fightDefaults(st.sheet); syncRail(); schedule(); });
     $('f-budget').addEventListener('input', (e) => { st.budget = Math.max(0, num(e.target.value)); schedule(); });
     $('f-weekly').addEventListener('input', (e) => { st.weekly = Math.max(0, num(e.target.value)); schedule(); });
